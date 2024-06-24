@@ -1,0 +1,13 @@
+.layout {
+    display: flex;
+  }
+  
+  app-sidebar {
+    width: 200px;
+  }
+  
+  main {
+    flex-grow: 1;
+    padding: 20px;
+  }
+  

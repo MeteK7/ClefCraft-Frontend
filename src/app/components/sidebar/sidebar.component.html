@@ -1,0 +1,15 @@
+<nav>
+    <ul>
+      <li><a routerLink="/home" routerLinkActive="active-link">Home</a></li>
+      <li><a routerLink="/login" routerLinkActive="active-link">Login</a></li>
+      <li><a routerLink="/calendar" routerLinkActive="active-link">Calendar</a></li>
+      <li><a routerLink="/event-tracker" routerLinkActive="active-link">Event Tracker</a></li>
+      <li><a routerLink="/board" routerLinkActive="active-link">Board</a></li>
+      <li><a routerLink="/kanbanboard" routerLinkActive="active-link">Kanban Board</a></li>
+      <li><a routerLink="/playalong" routerLinkActive="active-link">Playalong</a></li>
+      <li><a routerLink="/metronome" routerLinkActive="active-link">Metronome</a></li>
+      <li><a routerLink="/tuner" routerLinkActive="active-link">Tuner</a></li>
+      <li *ngIf="isAdmin"><a routerLink="/management" routerLinkActive="active-link">Management</a></li>
+    </ul>
+  </nav>
+  
