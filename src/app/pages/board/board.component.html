@@ -1,1 +1,6 @@
-<p>board works!</p>
+<!-- components/board/board.component.html -->
+<div class="board">
+    <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds"></app-board-column>
+    <app-add-item-form (itemCreated)="onItemCreated($event)"></app-add-item-form>
+</div>
+  

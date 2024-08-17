@@ -1,0 +1,22 @@
+<!-- components/add-item-form/add-item-form.component.html -->
+<div class="add-item-form">
+    <h3>Add New Item</h3>
+    <form (ngSubmit)="createItem()">
+      <div>
+        <label for="title">Title:</label>
+        <input id="title" [(ngModel)]="title" name="title" required>
+      </div>
+      <div>
+        <label for="description">Description:</label>
+        <textarea id="description" [(ngModel)]="description" name="description" required></textarea>
+      </div>
+      <div>
+        <label for="boardColumnId">Column:</label>
+        <select id="boardColumnId" [(ngModel)]="boardColumnId" name="boardColumnId">
+          <option *ngFor="let column of columns" [value]="column.id">{{ column.title }}</option>
+        </select>
+      </div>
+      <button type="submit">Add Item</button>
+    </form>
+  </div>
+  

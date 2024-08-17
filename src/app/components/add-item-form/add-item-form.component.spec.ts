@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { KanbanTaskComponent } from './kanban-task.component';
+import { AddItemFormComponent } from './add-item-form.component';
 
-describe('KanbanTaskComponent', () => {
-  let component: KanbanTaskComponent;
-  let fixture: ComponentFixture<KanbanTaskComponent>;
+describe('AddItemFormComponent', () => {
+  let component: AddItemFormComponent;
+  let fixture: ComponentFixture<AddItemFormComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [KanbanTaskComponent]
+      imports: [AddItemFormComponent]
     })
     .compileComponents();
-    
-    fixture = TestBed.createComponent(KanbanTaskComponent);
+
+    fixture = TestBed.createComponent(AddItemFormComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

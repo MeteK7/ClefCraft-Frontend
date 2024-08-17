@@ -1,0 +1,20 @@
+<!-- components/board-column/board-column.component.html -->
+<div class="board-column">
+  <h2>{{ column.title }}</h2>
+  <div cdkDropListGroup>
+    <div
+      class="item-list"
+      cdkDropList
+      [cdkDropListData]="column.items"
+      [cdkDropListConnectedTo]="connectedTo"
+      (cdkDropListDropped)="drop($event)"
+      id="column-{{column.title}}"
+    >
+      <app-board-item
+        *ngFor="let item of column.items"
+        [item]="item"
+        cdkDrag
+      ></app-board-item>
+    </div>
+  </div>
+</div>

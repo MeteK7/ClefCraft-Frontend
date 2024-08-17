@@ -1,4 +1,4 @@
-.kanban-column {
+.board-column {
     width: 100%; /* Adjust the width as needed */
     padding: 10px;
     margin: 10px;
@@ -9,7 +9,7 @@
     vertical-align: top;
   }
   
-  .task-list {
+  .item-list {
     min-height: 50px;
   }
   

@@ -1,19 +1,19 @@
 //add an @Input() to receive the list of all column IDs.
 import { Component, Input } from '@angular/core';
-import { Column, Task } from '../../models/kanban.model';
+import { Column, Item } from '../../models/board.model';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-//The KanbanTaskComponent is a child component of the KanbanColumnComponent because tasks are part of a column in the Kanban board. Therefore, it makes sense to import KanbanTaskComponent inside KanbanColumnComponent rather than directly in KanbanBoardComponent.
-import { KanbanTaskComponent } from '../kanban-task/kanban-task.component';
+//The BoardItemComponent is a child component of the BoardColumnComponent because items are part of a column in the Board board. Therefore, it makes sense to import BoardItemComponent inside BoardColumnComponent rather than directly in BoardComponent.
+import { BoardItemComponent } from '../board-item/board-item.component';
 
 @Component({
-  selector: 'app-kanban-column',
+  selector: 'app-board-column',
   standalone: true,
-  imports: [CommonModule, DragDropModule, KanbanTaskComponent],
-  templateUrl: './kanban-column.component.html',
-  styleUrls: ['./kanban-column.component.css']
+  imports: [CommonModule, DragDropModule, BoardItemComponent],
+  templateUrl: './board-column.component.html',
+  styleUrls: ['./board-column.component.css']
 })
-export class KanbanColumnComponent {
+export class BoardColumnComponent {
   @Input() column!: Column;
   @Input() allColumnIds!: string[];
 
@@ -21,18 +21,18 @@ export class KanbanColumnComponent {
     return this.allColumnIds;
   }
 
-  drop(event: CdkDragDrop<Task[]>) {
+  drop(event: CdkDragDrop<Item[]>) {
     console.log('Drop event:', event);
     console.log('Previous Container ID:', event.previousContainer.id);
     console.log('Current Container ID:', event.container.id);
 
     if (event.previousContainer === event.container) {
-      // Moving task within the same column
-      console.log('Moving task within the same column');
+      // Moving item within the same column
+      console.log('Moving item within the same column');
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
     } else {
-      // Moving task to a different column
-      console.log('Moving task to a different column');
+      // Moving item to a different column
+      console.log('Moving item to a different column');
       
       transferArrayItem(
         event.previousContainer.data,
