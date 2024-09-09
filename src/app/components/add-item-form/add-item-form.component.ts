@@ -30,6 +30,10 @@ export class AddItemFormComponent {
     const newItem = { title: this.title, description: this.description, boardColumnId: this.boardColumnId };
     this.boardService.createBoardItem(newItem).subscribe(item => {
       this.itemCreated.emit(item);
+
+      this.title = '';
+      this.description = '';
+      this.boardColumnId = 1;
     });
   }
 }

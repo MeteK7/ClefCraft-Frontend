@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 //The BoardItemComponent is a child component of the BoardColumnComponent because items are part of a column in the Board board. Therefore, it makes sense to import BoardItemComponent inside BoardColumnComponent rather than directly in BoardComponent.
 import { BoardItemComponent } from '../board-item/board-item.component';
+import { BoardService } from '../../_services/board.service';
 
 @Component({
   selector: 'app-board-column',
@@ -17,6 +18,8 @@ export class BoardColumnComponent {
   @Input() column!: Column;
   @Input() allColumnIds!: string[];
 
+  constructor(private boardService: BoardService) {}
+  
   get connectedTo(): string[] {
     return this.allColumnIds;
   }
@@ -40,8 +43,26 @@ export class BoardColumnComponent {
         event.previousIndex,
         event.currentIndex
       );
+
+            // Update item’s column on the server
+            const item = event.container.data[event.currentIndex];
+            const newColumnId = this.column.id;
+            this.updateItemColumn(item.id, newColumnId);
     }
   }
+  updateItemColumn(itemId: number, newColumnId: number) {
+    const updatedItem = {
+      id: itemId,
+      boardColumnId: newColumnId
+    };
 
-  
+    this.boardService.updateBoardItemColumn(updatedItem).subscribe(
+      (response) => {
+        console.log('Item updated successfully:', response);
+      },
+      (error) => {
+        console.error('Error updating item:', error);
+      }
+    );
+  }
 }

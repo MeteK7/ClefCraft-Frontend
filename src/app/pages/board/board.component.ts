@@ -41,5 +41,7 @@ export class BoardComponent implements OnInit {
     if (column) {
       column.boardItems.push(item);
     }
+
+    this.loadBoardColumns();
   }
 }

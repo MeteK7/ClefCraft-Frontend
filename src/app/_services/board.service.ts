@@ -14,7 +14,7 @@ export class BoardService {
   getBoardColumns(): Observable<Column[]> {
     return this.http.get<Column[]>(this.apiUrl);
   }
-  
+
   getBoardItems(): Observable<Item[]> {
     return this.http.get<Item[]>(this.apiUrl);
   }
@@ -24,5 +24,12 @@ export class BoardService {
       'Content-Type': 'application/json'
     });
     return this.http.post<Item>(this.apiUrl, item, { headers });
+  }
+
+  updateBoardItemColumn(item: { id: number; boardColumnId: number }): Observable<any> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+    return this.http.post<any>(`${this.apiUrl}/SwitchColumn`, item, { headers });
   }
 }
