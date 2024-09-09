@@ -5,13 +5,13 @@
     <div
       class="item-list"
       cdkDropList
-      [cdkDropListData]="column.items"
+      [cdkDropListData]="column.boardItems"
       [cdkDropListConnectedTo]="connectedTo"
       (cdkDropListDropped)="drop($event)"
       id="column-{{column.title}}"
     >
       <app-board-item
-        *ngFor="let item of column.items"
+        *ngFor="let item of column.boardItems"
         [item]="item"
         cdkDrag
       ></app-board-item>

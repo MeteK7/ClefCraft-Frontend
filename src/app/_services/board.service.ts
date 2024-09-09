@@ -14,6 +14,10 @@ export class BoardService {
   getBoardColumns(): Observable<Column[]> {
     return this.http.get<Column[]>(this.apiUrl);
   }
+  
+  getBoardItems(): Observable<Item[]> {
+    return this.http.get<Item[]>(this.apiUrl);
+  }
 
   createBoardItem(item: Partial<Item>): Observable<Item> {
     const headers = new HttpHeaders({

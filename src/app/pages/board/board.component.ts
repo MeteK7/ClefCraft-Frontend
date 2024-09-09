@@ -15,16 +15,20 @@ import { AddItemFormComponent } from '../../components/add-item-form/add-item-fo
 })
 export class BoardComponent implements OnInit {
   columns: Column[] = [];
+  items: Item[] = [];
 
   constructor(private boardService: BoardService) {}
 
   ngOnInit(): void {
     this.loadBoardColumns();
+    //this.loadBoardItems();
   }
-
   loadBoardColumns(): void {
     this.boardService.getBoardColumns().subscribe(columns => {
-      this.columns = columns;
+      this.columns = columns.map(column => ({
+        ...column,
+        items: column.boardItems // ensure items are assigned from response
+      }));
     });
   }
 
@@ -35,7 +39,7 @@ export class BoardComponent implements OnInit {
   onItemCreated(item: Item): void {
     const column = this.columns.find(c => c.id === item.id);
     if (column) {
-      column.items.push(item);
+      column.boardItems.push(item);
     }
   }
 }

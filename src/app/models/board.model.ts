@@ -9,6 +9,6 @@ export interface Item {
   export interface Column {
     id: number;
     title: string;
-    items: Item[];
+    boardItems: Item[];
   }
   
