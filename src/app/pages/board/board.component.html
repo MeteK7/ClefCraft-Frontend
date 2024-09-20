@@ -1,6 +1,7 @@
 <!-- components/board/board.component.html -->
 <div class="board">
     <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds"></app-board-column>
-    <app-add-item-form (itemCreated)="onItemCreated($event)"></app-add-item-form>
+    <button mat-raised-button (click)="openAddItemDialog()">Add New Item</button>
+    <!-- <app-add-item-form (itemCreated)="onItemCreated($event)"></app-add-item-form> -->
 </div>
   

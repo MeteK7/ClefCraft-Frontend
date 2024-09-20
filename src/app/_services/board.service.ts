@@ -23,7 +23,7 @@ export class BoardService {
     const headers = new HttpHeaders({
       'Content-Type': 'application/json'
     });
-    return this.http.post<Item>(this.apiUrl, item, { headers });
+    return this.http.post<Item>(`${this.apiUrl}/Create`, item, { headers });
   }
 
   updateBoardItemColumn(item: { id: number; boardColumnId: number }): Observable<any> {
