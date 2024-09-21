@@ -1,5 +1,11 @@
 <!-- components/board/board.component.html -->
 <div class="board">
+    <div>
+        <label for="boardId">Board:</label>
+        <select id="boardId" [(ngModel)]="selectedBoardId" name="boardId">
+          <option *ngFor="let board of boards" [value]="board.id">{{ board.title }}</option>
+        </select>
+      </div>
     <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds"></app-board-column>
     <button mat-raised-button (click)="openAddItemDialog()">Add New Item</button>
     <!-- <app-add-item-form (itemCreated)="onItemCreated($event)"></app-add-item-form> -->

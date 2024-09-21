@@ -1,29 +1,44 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BoardColumnComponent } from '../board-column/board-column.component';
-import { Column, Item } from '../../models/board.model';
+import { Board, Column, Item } from '../../models/board.model';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { BoardService } from '../../_services/board.service';
 import { AddItemFormComponent } from '../../components/add-item-form/add-item-form.component';
 import { MatDialog } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [CommonModule, BoardColumnComponent, DragDropModule, AddItemFormComponent],
+  imports: [CommonModule, FormsModule, BoardColumnComponent, DragDropModule, AddItemFormComponent],
   templateUrl: './board.component.html',
   styleUrls: ['./board.component.css']
 })
 export class BoardComponent implements OnInit {
+  boards: Board[] = [];
   columns: Column[] = [];
   items: Item[] = [];
+  selectedBoardId: number | null = null; 
 
   constructor(private boardService: BoardService, private dialog: MatDialog) {}
 
   ngOnInit(): void {
+    this.loadBoards();
     this.loadBoardColumns();
     //this.loadBoardItems();
   }
+
+  loadBoards(): void {
+    this.boardService.getBoards().subscribe(boards => {
+      this.boards = boards;
+
+      if (boards.length) {
+        this.selectedBoardId = boards[0].id;
+      }
+    });
+  }
+
   loadBoardColumns(): void {
     this.boardService.getBoardColumns().subscribe(columns => {
       this.columns = columns.map(column => ({
