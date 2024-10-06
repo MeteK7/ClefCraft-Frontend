@@ -1,31 +1,46 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BoardColumnComponent } from '../board-column/board-column.component';
-import { Column, Item } from '../../models/board.model';
+import { Board, Column, Item } from '../../models/board.model';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { BoardService } from '../../_services/board.service';
 import { AddItemFormComponent } from '../../components/add-item-form/add-item-form.component';
 import { MatDialog } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [CommonModule, BoardColumnComponent, DragDropModule, AddItemFormComponent],
+  imports: [CommonModule, FormsModule, BoardColumnComponent, DragDropModule, AddItemFormComponent],
   templateUrl: './board.component.html',
   styleUrls: ['./board.component.css']
 })
 export class BoardComponent implements OnInit {
+  boards: Board[] = [];
   columns: Column[] = [];
   items: Item[] = [];
+  selectedBoardId: number | null = null; 
 
   constructor(private boardService: BoardService, private dialog: MatDialog) {}
 
   ngOnInit(): void {
-    this.loadBoardColumns();
+    this.loadBoards();
     //this.loadBoardItems();
   }
-  loadBoardColumns(): void {
-    this.boardService.getBoardColumns().subscribe(columns => {
+
+  loadBoards(): void {
+    this.boardService.getBoards().subscribe(boards => {
+      this.boards = boards;
+
+      if (boards.length) {
+        this.selectedBoardId = boards[0].id; //Assigning default value
+        this.loadBoardColumnItems(this.selectedBoardId); // Load columns and items for the first board
+      }
+    });
+  }
+
+  loadBoardColumnItems(boardId: number): void {
+    this.boardService.getBoardItemsByBoardId(boardId).subscribe(columns => {
       this.columns = columns.map(column => ({
         ...column,
         items: column.boardItems
@@ -40,7 +55,10 @@ export class BoardComponent implements OnInit {
   openAddItemDialog(): void {
     const dialogRef = this.dialog.open(AddItemFormComponent, {
       width: '400px',
-      data: { columns: this.columns } // Passing the columns to the form component
+      data: { 
+        columns: this.columns,
+        boardId: this.selectedBoardId // Pass the selected board ID 
+      } // Passing the columns to the form component
     });
 
     // Handle the event when the dialog is closed and a new item is created
@@ -57,6 +75,14 @@ export class BoardComponent implements OnInit {
       column.boardItems.push(item);
     }
 
-    this.loadBoardColumns();
+    //this.loadBoardColumnItems();
   }
+
+  onBoardSelection(boardId: number | null): void {
+    // Check if boardId is not null before proceeding
+    if (boardId !== null) {
+        this.selectedBoardId = boardId;
+        this.loadBoardColumnItems(boardId); // Fetch data for the selected board
+    }
+}
 }
