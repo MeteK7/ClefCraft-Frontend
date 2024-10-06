@@ -25,7 +25,6 @@ export class BoardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadBoards();
-    this.loadBoardColumns();
     //this.loadBoardItems();
   }
 
@@ -34,13 +33,14 @@ export class BoardComponent implements OnInit {
       this.boards = boards;
 
       if (boards.length) {
-        this.selectedBoardId = boards[0].id;
+        this.selectedBoardId = boards[0].id; //Assigning default value
+        this.loadBoardColumnItems(this.selectedBoardId); // Load columns and items for the first board
       }
     });
   }
 
-  loadBoardColumns(): void {
-    this.boardService.getBoardColumns().subscribe(columns => {
+  loadBoardColumnItems(boardId: number): void {
+    this.boardService.getBoardItemsByBoardId(boardId).subscribe(columns => {
       this.columns = columns.map(column => ({
         ...column,
         items: column.boardItems
@@ -55,7 +55,10 @@ export class BoardComponent implements OnInit {
   openAddItemDialog(): void {
     const dialogRef = this.dialog.open(AddItemFormComponent, {
       width: '400px',
-      data: { columns: this.columns } // Passing the columns to the form component
+      data: { 
+        columns: this.columns,
+        boardId: this.selectedBoardId // Pass the selected board ID 
+      } // Passing the columns to the form component
     });
 
     // Handle the event when the dialog is closed and a new item is created
@@ -72,6 +75,14 @@ export class BoardComponent implements OnInit {
       column.boardItems.push(item);
     }
 
-    this.loadBoardColumns();
+    //this.loadBoardColumnItems();
   }
+
+  onBoardSelection(boardId: number | null): void {
+    // Check if boardId is not null before proceeding
+    if (boardId !== null) {
+        this.selectedBoardId = boardId;
+        this.loadBoardColumnItems(boardId); // Fetch data for the selected board
+    }
+}
 }

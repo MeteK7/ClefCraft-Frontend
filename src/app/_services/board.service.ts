@@ -15,12 +15,8 @@ export class BoardService {
     return this.http.get<Board[]>(`${this.apiUrl}/Boards`);
   }
 
-  getBoardColumns(): Observable<Column[]> {
-    return this.http.get<Column[]>(`${this.apiUrl}/BoardItems`);
-  }
-
-  getBoardItems(): Observable<Item[]> {
-    return this.http.get<Item[]>(`${this.apiUrl}/BoardItems`);
+  getBoardItemsByBoardId(boardId: number): Observable<Column[]> {
+    return this.http.get<Column[]>(`${this.apiUrl}/BoardItems/GetBoardItemsByBoardId/${boardId}`);
   }
 
   createBoardItem(item: Partial<Item>): Observable<Item> {

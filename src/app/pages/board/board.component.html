@@ -2,7 +2,7 @@
 <div class="board">
     <div>
         <label for="boardId">Board:</label>
-        <select id="boardId" [(ngModel)]="selectedBoardId" name="boardId">
+        <select id="boardId" [(ngModel)]="selectedBoardId" name="boardId" (change)="onBoardSelection(selectedBoardId)">
           <option *ngFor="let board of boards" [value]="board.id">{{ board.title }}</option>
         </select>
       </div>

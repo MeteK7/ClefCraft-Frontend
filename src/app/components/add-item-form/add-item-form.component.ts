@@ -22,11 +22,12 @@ export class AddItemFormComponent {
   constructor(
     private boardService: BoardService,
     private dialogRef: MatDialogRef<AddItemFormComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { columns: Column[] }
+    @Inject(MAT_DIALOG_DATA) public data: { columns: Column[], boardId: number }
   ) {}
 
   ngOnInit(): void {
-    this.boardService.getBoardColumns().subscribe(columns => {
+    const boardId = this.data.boardId;  // Use the passed boardId
+    this.boardService.getBoardItemsByBoardId(boardId).subscribe(columns => {
       this.columns = columns;
     });
   }
