@@ -1,7 +1,26 @@
 .board-item {
-    background-color: #fff;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-  }
+  background-color: #fff;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+.board-item:hover {
+  background-color: #f1f1f1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+}
+
+.board-item h4 {
+  margin: 0 0 5px;
+  font-size: 18px;
+  color: #333;
+}
+
+.board-item p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}

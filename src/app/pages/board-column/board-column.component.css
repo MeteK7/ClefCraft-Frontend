@@ -1,15 +1,30 @@
 .board-column {
-    width: 100%; /* Adjust the width as needed */
-    padding: 10px;
-    margin: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-    display: inline-block;
-    vertical-align: top;
-  }
-  
-  .item-list {
-    min-height: 50px;
-  }
-  
+  flex: 1;
+  min-width: 250px;
+  padding: 20px;
+  background: rgba(223, 229, 248, 0.6); /* dark glass effect */
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+.board-column:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.board-column h2 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+  color: #000000;
+}
+
+.item-list {
+  min-height: 50px;
+  background: rgba(255, 255, 255, 0.1); /* transparent container for items */
+  border-radius: 5px;
+  padding: 10px;
+  transition: background 0.3s ease;
+}
+
+.item-list:hover {
+  background: rgba(255, 255, 255, 0.2); /* hover effect */
+}
