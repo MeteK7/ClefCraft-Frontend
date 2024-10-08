@@ -1,4 +1,49 @@
-.board {
-    display: flex;
-    justify-content: space-around;
-  }
+.board { 
+  display: flex;
+  gap: 15px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.4); /* board area glass effect */
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+  border: 1px solid #ccc; /* Light border to define the edges */
+}
+
+.board-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.board-header select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: #fff;
+  margin-left: 10px;
+}
+
+.board-columns {
+  display: flex;
+  flex-wrap: nowrap; /* Columns will stay on one row */
+  justify-content: flex-start; /* Align columns to the start */
+  gap: 10px; /* Slight gap between columns */
+  overflow-x: auto; /* Allows scrolling horizontally if necessary */
+  padding: 10px;
+}
+
+.add-item-btn {
+  margin-top: 20px;
+  background-color: #007bff;
+  color: #fff;
+  padding: 10px 20px; /* Add padding for better button size */
+  border: none; /* Remove border */
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background-color 0.3s; /* Smooth background color transition */
+  font-size: 20px; /* Increase font size */
+}
+
+.add-item-btn:hover {
+  background-color: #0056b3; /* Darker shade on hover */
+}
