@@ -15,7 +15,11 @@ export interface Item {
     id: number;
     title: string;
     description: string;
-    status: string; // Add the status property
+    status: string;
+    boardColumnId: number;
+    createdBy?: string; 
+    dateCreated?: Date; 
+    dateModified?: Date; 
   }
   
   

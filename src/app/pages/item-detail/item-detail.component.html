@@ -1,0 +1,12 @@
+<div class="item-detail">
+    <h3>{{ item.title }}</h3>
+    <p *ngIf="item.createdBy">Created By: {{ item.createdBy }}</p>
+    <p *ngIf="item.dateCreated">Created On: {{ item.dateCreated | date }}</p>
+    <p *ngIf="item.dateModified">Last Modified: {{ item.dateModified | date }}</p>
+  
+    <textarea [(ngModel)]="item.description" placeholder="Description"></textarea>
+  
+    <button (click)="saveItem()">Save</button>
+    <button (click)="deleteItem()">Delete</button>
+  </div>
+  

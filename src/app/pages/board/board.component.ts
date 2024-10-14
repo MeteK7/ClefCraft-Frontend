@@ -19,9 +19,11 @@ export class BoardComponent implements OnInit {
   boards: Board[] = [];
   columns: Column[] = [];
   items: Item[] = [];
-  selectedBoardId: number | null = null; 
+  selectedBoardId: number | null = null;
+  selectedItem: Item | null = null; // Track selected item for details
+  viewMode: 'dialog' | 'sidebar' = 'dialog'; // Default to dialog
 
-  constructor(private boardService: BoardService, private dialog: MatDialog) {}
+  constructor(private boardService: BoardService, private dialog: MatDialog) { }
 
   ngOnInit(): void {
     this.loadBoards();
@@ -55,7 +57,7 @@ export class BoardComponent implements OnInit {
   openAddItemDialog(): void {
     const dialogRef = this.dialog.open(AddItemFormComponent, {
       width: '400px',
-      data: { 
+      data: {
         columns: this.columns,
         boardId: this.selectedBoardId // Pass the selected board ID 
       } // Passing the columns to the form component
@@ -81,8 +83,15 @@ export class BoardComponent implements OnInit {
   onBoardSelection(boardId: number | null): void {
     // Check if boardId is not null before proceeding
     if (boardId !== null) {
-        this.selectedBoardId = boardId;
-        this.loadBoardColumnItems(boardId); // Fetch data for the selected board
+      this.selectedBoardId = boardId;
+      this.loadBoardColumnItems(boardId); // Fetch data for the selected board
     }
-}
+  }
+  
+
+  onItemClicked(item: Item): void {
+    this.selectedItem = item;
+    // You can handle showing the details page here, for example:
+    console.log('Item clicked:', item);
+  }
 }

@@ -10,11 +10,12 @@
       (cdkDropListDropped)="drop($event)"
       id="column-{{column.title}}"
     >
-      <app-board-item
-        *ngFor="let item of column.boardItems"
-        [item]="item"
-        cdkDrag
-      ></app-board-item>
+    <app-board-item
+    *ngFor="let item of column.boardItems"
+    [item]="item"
+    (click)="openItemDetails(item)" 
+    cdkDrag
+  ></app-board-item>
     </div>
   </div>
 </div>
