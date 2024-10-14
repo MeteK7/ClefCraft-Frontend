@@ -9,7 +9,7 @@ import { Board, Column, Item } from '../models/board.model';
 export class BoardService {
   private apiUrl = 'https://localhost:7287/api'; // API base URL
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getBoards(): Observable<Board[]> {
     return this.http.get<Board[]>(`${this.apiUrl}/Boards`);
@@ -31,5 +31,23 @@ export class BoardService {
       'Content-Type': 'application/json'
     });
     return this.http.post<any>(`${this.apiUrl}/BoardItems/SwitchColumn`, item, { headers });
+  }
+
+  // Fetch item details
+  getBoardItemById(itemId: number): Observable<Item> {
+    return this.http.get<Item>(`${this.apiUrl}/BoardItems/${itemId}`);
+  }
+
+  // Update an item
+  updateBoardItem(item: Item): Observable<Item> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+    return this.http.put<Item>(`${this.apiUrl}/BoardItems/Update/${item.id}`, item, { headers });
+  }
+
+  // Delete an item
+  deleteBoardItem(itemId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/BoardItems/Delete/${itemId}`);
   }
 }

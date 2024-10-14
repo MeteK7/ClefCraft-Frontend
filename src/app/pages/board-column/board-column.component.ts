@@ -1,5 +1,5 @@
 //add an @Input() to receive the list of all column IDs.
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Column, Item } from '../../models/board.model';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
@@ -17,7 +17,8 @@ import { BoardService } from '../../_services/board.service';
 export class BoardColumnComponent {
   @Input() column!: Column;
   @Input() allColumnIds!: string[];
-
+  @Output() itemClicked = new EventEmitter<Item>(); 
+  
   constructor(private boardService: BoardService) {}
   
   get connectedTo(): string[] {
@@ -64,5 +65,9 @@ export class BoardColumnComponent {
         console.error('Error updating item:', error);
       }
     );
+  }
+
+  openItemDetails(item: Item): void {
+    this.itemClicked.emit(item);  // Emit the clicked item to the parent
   }
 }

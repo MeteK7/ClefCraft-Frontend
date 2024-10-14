@@ -6,8 +6,18 @@
   </select>
 </div>
 
+<label>View Mode:</label>
+<select [(ngModel)]="viewMode">
+  <option value="dialog">Dialog</option>
+  <option value="sidebar">Sidebar</option>
+</select>
+
+<!-- Sidebar Section (Visible when sidebar mode is selected) -->
+<div *ngIf="viewMode === 'sidebar'" class="sidebar">
+  <app-item-detail *ngIf="selectedItem" [item]="selectedItem"></app-item-detail>
+</div>
 <div class="board-columns">
-  <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds"></app-board-column>
+  <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds" (itemClicked)="onItemClicked($event)"></app-board-column>
 </div>
 
 <button class="add-item-btn" (click)="openAddItemDialog()">Add New Item</button>
