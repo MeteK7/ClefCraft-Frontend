@@ -1,10 +1,8 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, EventEmitter, Inject, Input, Output } from '@angular/core';
 import { Item } from '../../models/board.model';
-import { BoardService } from '../../_services/board.service';
-import { MatDialogRef } from '@angular/material/dialog';
-import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-
+import { FormsModule } from '@angular/forms';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 @Component({
   selector: 'app-item-detail',
@@ -14,33 +12,27 @@ import { CommonModule } from '@angular/common';
   styleUrl: './item-detail.component.css'
 })
 export class ItemDetailComponent {
-  @Input() item!: Item;
+  @Input() item!: Item; // This will be used for sidebar
   @Output() itemUpdated = new EventEmitter<Item>();
   @Output() itemDeleted = new EventEmitter<number>();
 
-  constructor(private boardService: BoardService, private dialogRef: MatDialogRef<ItemDetailComponent>) {}
-
-  saveItem(): void {
-    this.boardService.updateBoardItem(this.item).subscribe(
-      updatedItem => {
-        this.itemUpdated.emit(updatedItem);
-        this.dialogRef.close();
-      },
-      error => {
-        console.error('Error updating item', error);
-      }
-    );
+  constructor(
+    public dialogRef: MatDialogRef<ItemDetailComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: { item: Item }
+  ) {
+    // Use the data from the dialog, if available
+    if (data) {
+      this.item = data.item;
+    }
   }
 
-  deleteItem(): void {
-    this.boardService.deleteBoardItem(this.item.id).subscribe(
-      () => {
-        this.itemDeleted.emit(this.item.id);
-        this.dialogRef.close();
-      },
-      error => {
-        console.error('Error deleting item', error);
-      }
-    );
+  saveItem() {
+    this.itemUpdated.emit(this.item);
+    this.dialogRef.close(this.item); 
+  }
+
+  deleteItem() {
+    this.itemDeleted.emit(this.item.id);
+    this.dialogRef.close();
   }
 }

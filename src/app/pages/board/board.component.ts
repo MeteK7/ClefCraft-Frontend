@@ -5,13 +5,14 @@ import { Board, Column, Item } from '../../models/board.model';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { BoardService } from '../../_services/board.service';
 import { AddItemFormComponent } from '../../components/add-item-form/add-item-form.component';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
+import { ItemDetailComponent } from '../item-detail/item-detail.component';
 
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [CommonModule, FormsModule, BoardColumnComponent, DragDropModule, AddItemFormComponent],
+  imports: [CommonModule, FormsModule, BoardColumnComponent, DragDropModule, AddItemFormComponent, ItemDetailComponent],
   templateUrl: './board.component.html',
   styleUrls: ['./board.component.css']
 })
@@ -20,8 +21,8 @@ export class BoardComponent implements OnInit {
   columns: Column[] = [];
   items: Item[] = [];
   selectedBoardId: number | null = null;
-  selectedItem: Item | null = null; // Track selected item for details
-  viewMode: 'dialog' | 'sidebar' = 'dialog'; // Default to dialog
+  selectedItem: Item | null = null;
+  itemViewOption: string = 'sidebar';
 
   constructor(private boardService: BoardService, private dialog: MatDialog) { }
 
@@ -87,11 +88,22 @@ export class BoardComponent implements OnInit {
       this.loadBoardColumnItems(boardId); // Fetch data for the selected board
     }
   }
-  
 
   onItemClicked(item: Item): void {
     this.selectedItem = item;
-    // You can handle showing the details page here, for example:
-    console.log('Item clicked:', item);
+  }
+
+
+  onItemUpdated(updatedItem: Item): void {
+    this.boardService.updateBoardItem(updatedItem).subscribe(response => {
+      // Handle the update
+    });
+  }
+
+  onItemDeleted(deletedItemId: number): void {
+    this.boardService.deleteBoardItem(deletedItemId).subscribe(response => {
+      // Handle the deletion
+      this.selectedItem = null;
+    });
   }
 }

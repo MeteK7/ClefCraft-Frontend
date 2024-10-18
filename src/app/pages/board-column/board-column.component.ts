@@ -17,7 +17,7 @@ import { BoardService } from '../../_services/board.service';
 export class BoardColumnComponent {
   @Input() column!: Column;
   @Input() allColumnIds!: string[];
-  @Output() itemClicked = new EventEmitter<Item>(); 
+  @Output() itemClicked = new EventEmitter<Item>();
   
   constructor(private boardService: BoardService) {}
   
@@ -67,7 +67,7 @@ export class BoardColumnComponent {
     );
   }
 
-  openItemDetails(item: Item): void {
-    this.itemClicked.emit(item);  // Emit the clicked item to the parent
+  onItemClicked(item: Item) {
+    this.itemClicked.emit(item);
   }
 }

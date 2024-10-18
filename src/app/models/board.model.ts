@@ -20,6 +20,7 @@ export interface Item {
     createdBy?: string; 
     dateCreated?: Date; 
     dateModified?: Date; 
+    linkedItems?: string[];
   }
   
   
