@@ -1,0 +1,47 @@
+/* Sidebar styles */
+.sidebar-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 100vh;
+    background-color: #fff;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    overflow: auto;
+    padding: 10px;
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .sidebar-container.ng-enter {
+    transform: translateX(100%);
+  }
+  
+  .sidebar-container.ng-leave {
+    transform: translateX(0%);
+  }
+  
+  /* Dialog styles */
+.dialog-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 400px; /* Dialog can have different width than sidebar */
+    height: 100vh;
+    background-color: #f7f7f7;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+    overflow: auto;
+    padding: 15px;
+    border-radius: 8px;
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .dialog-container.ng-enter {
+    transform: scale(0.9);
+  }
+  
+  .dialog-container.ng-leave {
+    transform: scale(1);
+  }
+  

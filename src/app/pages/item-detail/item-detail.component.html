@@ -1,10 +1,24 @@
-<div class="item-detail">
+<div class="item-detail" *ngIf="item">
     <h3>{{ item.title }}</h3>
-    <p *ngIf="item.createdBy">Created By: {{ item.createdBy }}</p>
-    <p *ngIf="item.dateCreated">Created On: {{ item.dateCreated | date }}</p>
-    <p *ngIf="item.dateModified">Last Modified: {{ item.dateModified | date }}</p>
+    <p>{{ item.description }}</p>
   
-    <textarea [(ngModel)]="item.description" placeholder="Description"></textarea>
+    <div>
+      <label>Created By: </label>{{ item.createdBy }}
+    </div>
+    <div>
+      <label>Created On: </label>{{ item.dateCreated | date }}
+    </div>
+    <div>
+      <label>Last Modified: </label>{{ item.dateModified | date }}
+    </div>
+    <div>
+      <label>Column: </label>{{ item.boardColumnId }}
+    </div>
+    <div>
+      <label>Linked Items: </label>{{ item.linkedItems?.join(', ') }}
+    </div>
+  
+    <textarea [(ngModel)]="item.description" placeholder="Update description..."></textarea>
   
     <button (click)="saveItem()">Save</button>
     <button (click)="deleteItem()">Delete</button>

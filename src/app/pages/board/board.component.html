@@ -2,22 +2,46 @@
 <div class="board-header">
   <label for="boardId">Select Board:</label>
   <select id="boardId" [(ngModel)]="selectedBoardId" name="boardId" (change)="onBoardSelection(selectedBoardId)">
-      <option *ngFor="let board of boards" [value]="board.id">{{ board.title }}</option>
+    <option *ngFor="let board of boards" [value]="board.id">{{ board.title }}</option>
   </select>
 </div>
 
-<label>View Mode:</label>
-<select [(ngModel)]="viewMode">
-  <option value="dialog">Dialog</option>
-  <option value="sidebar">Sidebar</option>
-</select>
+<div class="view-options">
+  <label>View Item Details:</label>
+  <select [(ngModel)]="itemViewOption">
+    <option value="sidebar">Sidebar</option>
+    <option value="dialog">Dialog</option>
+  </select>
+</div>
 
-<!-- Sidebar Section (Visible when sidebar mode is selected) -->
-<div *ngIf="viewMode === 'sidebar'" class="sidebar">
-  <app-item-detail *ngIf="selectedItem" [item]="selectedItem"></app-item-detail>
-</div>
+<!-- Columns -->
 <div class="board-columns">
-  <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds" (itemClicked)="onItemClicked($event)"></app-board-column>
+  <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds"
+    (itemClicked)="onItemClicked($event)">
+  </app-board-column>
 </div>
+
+<!-- Sidebar Rendering -->
+<ng-container *ngIf="itemViewOption === 'sidebar' && selectedItem">
+  <div class="sidebar-container">
+    <app-item-detail 
+      [item]="selectedItem" 
+      (itemUpdated)="onItemUpdated($event)" 
+      (itemDeleted)="onItemDeleted($event)">
+    </app-item-detail>
+  </div>
+</ng-container>
+
+<!-- Dialog Rendering -->
+<ng-container *ngIf="itemViewOption === 'dialog' && selectedItem">
+  <div class="dialog-container">
+    <app-item-detail 
+      [item]="selectedItem" 
+      (itemUpdated)="onItemUpdated($event)" 
+      (itemDeleted)="onItemDeleted($event)">
+    </app-item-detail>
+  </div>
+</ng-container>
+
 
 <button class="add-item-btn" (click)="openAddItemDialog()">Add New Item</button>

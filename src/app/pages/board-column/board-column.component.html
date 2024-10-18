@@ -13,8 +13,8 @@
     <app-board-item
     *ngFor="let item of column.boardItems"
     [item]="item"
-    (click)="openItemDetails(item)" 
     cdkDrag
+    (itemClickedEvent)="onItemClicked(item)"
   ></app-board-item>
     </div>
   </div>
