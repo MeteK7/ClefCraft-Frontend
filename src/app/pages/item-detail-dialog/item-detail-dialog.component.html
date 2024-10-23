@@ -1,0 +1,34 @@
+<h2>Item Details</h2>
+<div>
+  <label>Title:</label>
+  <input [(ngModel)]="data.item.title" />
+</div>
+<div>
+  <label>Description:</label>
+  <textarea [(ngModel)]="data.item.description"></textarea>
+</div>
+<div>
+  <label>Created On:</label>
+  <p>{{ data.item.dateCreated }}</p>
+</div>
+<div>
+  <label>Last Modified:</label>
+  <p>{{ data.item.dateModified }}</p>
+</div>
+<div>
+  <label>Created By:</label>
+  <p>{{ data.item.createdBy }}</p>
+</div>
+<div>
+  <label>Linked Items:</label>
+  <ul>
+    <li *ngFor="let linkedItem of data.item.linkedItems">
+      {{ linkedItem.title }} <!-- Ensure linkedItem is an object with a title -->
+    </li>
+  </ul>
+</div>
+<div>
+  <button (click)="onSave()">Save</button>
+  <button (click)="onDelete()">Delete</button>
+  <button (click)="onCancel()">Cancel</button>
+</div>

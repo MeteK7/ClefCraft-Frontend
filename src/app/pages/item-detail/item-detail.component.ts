@@ -17,8 +17,8 @@ export class ItemDetailComponent {
   @Output() itemDeleted = new EventEmitter<number>();
 
   constructor(
-    public dialogRef: MatDialogRef<ItemDetailComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { item: Item }
+    public dialogRef?: MatDialogRef<ItemDetailComponent>,
+    @Inject(MAT_DIALOG_DATA) public data?: { item: Item }
   ) {
     // Use the data from the dialog, if available
     if (data) {
@@ -28,11 +28,15 @@ export class ItemDetailComponent {
 
   saveItem() {
     this.itemUpdated.emit(this.item);
-    this.dialogRef.close(this.item); 
+    if (this.dialogRef) {
+      this.dialogRef.close(this.item); 
+    }
   }
 
   deleteItem() {
     this.itemDeleted.emit(this.item.id);
-    this.dialogRef.close();
+    if (this.dialogRef) {
+      this.dialogRef.close();
+    }
   }
 }

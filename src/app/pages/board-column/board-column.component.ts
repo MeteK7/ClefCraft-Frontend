@@ -67,7 +67,7 @@ export class BoardColumnComponent {
     );
   }
 
-  onItemClicked(item: Item) {
-    this.itemClicked.emit(item);
+  onItemClick(item: Item): void {
+    this.itemClicked.emit(item); // Emit the clicked item
   }
 }

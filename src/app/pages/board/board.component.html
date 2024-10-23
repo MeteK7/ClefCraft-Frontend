@@ -4,44 +4,24 @@
   <select id="boardId" [(ngModel)]="selectedBoardId" name="boardId" (change)="onBoardSelection(selectedBoardId)">
     <option *ngFor="let board of boards" [value]="board.id">{{ board.title }}</option>
   </select>
+  <button (click)="toggleViewMode()">
+    Switch to {{ viewMode === 'dialog' ? 'Sidebar' : 'Dialog' }} View
+  </button>
 </div>
 
 <div class="view-options">
   <label>View Item Details:</label>
-  <select [(ngModel)]="itemViewOption">
+  <select [(ngModel)]="viewMode">
     <option value="sidebar">Sidebar</option>
     <option value="dialog">Dialog</option>
   </select>
 </div>
 
-<!-- Columns -->
 <div class="board-columns">
-  <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds"
-    (itemClicked)="onItemClicked($event)">
-  </app-board-column>
+  <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds" (itemClicked)="onItemClick($event)"></app-board-column>
 </div>
 
-<!-- Sidebar Rendering -->
-<ng-container *ngIf="itemViewOption === 'sidebar' && selectedItem">
-  <div class="sidebar-container">
-    <app-item-detail 
-      [item]="selectedItem" 
-      (itemUpdated)="onItemUpdated($event)" 
-      (itemDeleted)="onItemDeleted($event)">
-    </app-item-detail>
-  </div>
-</ng-container>
-
-<!-- Dialog Rendering -->
-<ng-container *ngIf="itemViewOption === 'dialog' && selectedItem">
-  <div class="dialog-container">
-    <app-item-detail 
-      [item]="selectedItem" 
-      (itemUpdated)="onItemUpdated($event)" 
-      (itemDeleted)="onItemDeleted($event)">
-    </app-item-detail>
-  </div>
-</ng-container>
-
-
 <button class="add-item-btn" (click)="openAddItemDialog()">Add New Item</button>
+
+<!-- Sidebar View -->
+<app-item-detail-sidebar *ngIf="viewMode === 'sidebar' && selectedItem" [item]="selectedItem"></app-item-detail-sidebar>

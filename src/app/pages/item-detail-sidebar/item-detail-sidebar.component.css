@@ -1,0 +1,12 @@
+.sidebar {
+    width: 300px; /* Set the width of the sidebar */
+    position: fixed; /* Fix the sidebar to the left */
+    right: 0; /* Position it on the right side */
+    top: 0; /* Align it to the top */
+    height: 100%; /* Make it full height */
+    background-color: #f7f7f7; /* Light background color */
+    border-left: 1px solid #ddd; /* Border for separation */
+    padding: 20px; /* Add some padding */
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1); /* Optional shadow */
+  }
+  

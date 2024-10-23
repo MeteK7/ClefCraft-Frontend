@@ -42,4 +42,19 @@ export class BoardService {
     return this.http.delete(`${this.apiUrl}/BoardItems/Delete/${itemId}`);
   }
   
+  updateItem(item: Item): Observable<Item> {
+    return this.http.put<Item>(`${this.apiUrl}/BoardItems/Update`, item);
+  }
+  
+  deleteItem(itemId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/BoardItems/Delete/${itemId}`);
+  }
+
+  closeSidebar(): void {
+    // Logic to close sidebar
+  }
+
+  saveChanges(): void {
+    // Logic to save the item changes
+  }
 }

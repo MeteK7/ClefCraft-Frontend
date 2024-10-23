@@ -12,9 +12,9 @@ import { DragDropModule } from '@angular/cdk/drag-drop';
 })
 export class BoardItemComponent {
   @Input() item!: Item;
-  @Output() itemClickedEvent = new EventEmitter<Item>();
+  @Output() itemClicked = new EventEmitter<Item>();
 
-  onItemClicked() {
-    this.itemClickedEvent.emit(this.item);
+  onClick(): void {
+    this.itemClicked.emit(this.item);
   }
 }

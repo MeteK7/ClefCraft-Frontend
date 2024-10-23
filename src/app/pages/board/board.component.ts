@@ -7,12 +7,13 @@ import { BoardService } from '../../_services/board.service';
 import { AddItemFormComponent } from '../../components/add-item-form/add-item-form.component';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
-import { ItemDetailComponent } from '../item-detail/item-detail.component';
+import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
+import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-sidebar.component';
 
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [CommonModule, FormsModule, BoardColumnComponent, DragDropModule, AddItemFormComponent, ItemDetailComponent],
+  imports: [CommonModule, FormsModule, BoardColumnComponent, DragDropModule, AddItemFormComponent, ItemDetailSidebarComponent],
   templateUrl: './board.component.html',
   styleUrls: ['./board.component.css']
 })
@@ -22,7 +23,7 @@ export class BoardComponent implements OnInit {
   items: Item[] = [];
   selectedBoardId: number | null = null;
   selectedItem: Item | null = null;
-  itemViewOption: string = 'sidebar';
+  viewMode: 'dialog' | 'sidebar' = 'dialog'; // Default view mode
 
   constructor(private boardService: BoardService, private dialog: MatDialog) { }
 
@@ -89,21 +90,44 @@ export class BoardComponent implements OnInit {
     }
   }
 
-  onItemClicked(item: Item): void {
-    this.selectedItem = item;
+  onItemClick(item: Item): void {
+    this.selectedItem = item; // Set selectedItem to the clicked item
+    if (this.viewMode === 'dialog') {
+      this.openItemDetailDialog(item);
+    } else {
+      this.openItemDetailSidebar(item);
+    }
+  }
+   // Method to open item detail dialog
+   openItemDetailDialog(item: Item): void {
+    const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
+      width: '400px',
+      data: { item }
+    });
+
+    dialogRef.afterClosed().subscribe((updatedItem: Item | undefined) => {
+      if (updatedItem) {
+        this.onItemUpdated(updatedItem);
+      }
+    });
   }
 
+  // Method to handle opening the sidebar
+  openItemDetailSidebar(item: Item): void {
+    this.selectedItem = item; // Set the selected item
+  }
 
   onItemUpdated(updatedItem: Item): void {
-    this.boardService.updateBoardItem(updatedItem).subscribe(response => {
-      // Handle the update
-    });
+    const column = this.columns.find(c => c.id === updatedItem.boardColumnId);
+    if (column) {
+      const itemIndex = column.boardItems.findIndex(i => i.id === updatedItem.id);
+      if (itemIndex !== -1) {
+        column.boardItems[itemIndex] = updatedItem; // Update the item in the column
+      }
+    }
   }
 
-  onItemDeleted(deletedItemId: number): void {
-    this.boardService.deleteBoardItem(deletedItemId).subscribe(response => {
-      // Handle the deletion
-      this.selectedItem = null;
-    });
+  toggleViewMode(): void {
+    this.viewMode = this.viewMode === 'dialog' ? 'sidebar' : 'dialog';
   }
 }

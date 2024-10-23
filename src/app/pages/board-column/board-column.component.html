@@ -2,20 +2,10 @@
 <div class="board-column">
   <h2>{{ column.title }}</h2>
   <div cdkDropListGroup>
-    <div
-      class="item-list"
-      cdkDropList
-      [cdkDropListData]="column.boardItems"
-      [cdkDropListConnectedTo]="connectedTo"
-      (cdkDropListDropped)="drop($event)"
-      id="column-{{column.title}}"
-    >
-    <app-board-item
-    *ngFor="let item of column.boardItems"
-    [item]="item"
-    cdkDrag
-    (itemClickedEvent)="onItemClicked(item)"
-  ></app-board-item>
+    <div class="item-list" cdkDropList [cdkDropListData]="column.boardItems" [cdkDropListConnectedTo]="connectedTo"
+      (cdkDropListDropped)="drop($event)" id="column-{{column.title}}">
+      <app-board-item *ngFor="let item of column.boardItems" [item]="item" (click)="onItemClick(item)"
+        cdkDrag></app-board-item>
     </div>
   </div>
 </div>
