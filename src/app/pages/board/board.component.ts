@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BoardColumnComponent } from '../board-column/board-column.component';
 import { Board, Column, Item } from '../../models/board.model';
@@ -24,12 +24,35 @@ export class BoardComponent implements OnInit {
   selectedBoardId: number | null = null;
   selectedItem: Item | null = null;
   viewMode: 'dialog' | 'sidebar' = 'dialog'; // Default view mode
+  isSidebarOpen: boolean = false;
 
-  constructor(private boardService: BoardService, private dialog: MatDialog) { }
+  constructor(private boardService: BoardService, private dialog: MatDialog, private eRef: ElementRef) { }
 
   ngOnInit(): void {
     this.loadBoards();
     //this.loadBoardItems();
+  }
+
+  @HostListener('document:click', ['$event'])
+  handleClickOutside(event: Event): void {
+    const target = event.target as HTMLElement;
+    const sidebar = document.querySelector('.sidebar');
+    
+    console.log('Selected item before checking click outside:', this.selectedItem);
+
+    // If the sidebar is open and the click happens outside of it, close it
+    if (this.viewMode === 'sidebar' && sidebar && !sidebar.contains(target) && this.selectedItem) {
+      // Check if the sidebar is fully opened before allowing the click to close it
+      if (this.isSidebarOpen) {
+        // Reset the flag immediately after checking, allowing the sidebar to open
+        this.isSidebarOpen = false;
+        return; // Do not close the sidebar on the first click
+      }
+      this.selectedItem = null;  // Close the sidebar
+    }
+
+    console.log('Click target:', target);
+
   }
 
   loadBoards(): void {
@@ -91,7 +114,9 @@ export class BoardComponent implements OnInit {
   }
 
   onItemClick(item: Item): void {
+    console.log('Item clicked:', item);
     this.selectedItem = item; // Set selectedItem to the clicked item
+    this.isSidebarOpen = true; // Mark the sidebar as open
     if (this.viewMode === 'dialog') {
       this.openItemDetailDialog(item);
     } else {
@@ -129,5 +154,6 @@ export class BoardComponent implements OnInit {
 
   toggleViewMode(): void {
     this.viewMode = this.viewMode === 'dialog' ? 'sidebar' : 'dialog';
+    this.isSidebarOpen = false;
   }
 }
