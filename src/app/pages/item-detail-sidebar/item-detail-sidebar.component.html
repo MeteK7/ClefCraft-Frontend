@@ -1,34 +1,40 @@
 <div class="sidebar">
-    <h2>Item Details</h2>
-    <div>
-      <label>Title:</label>
-      <input [(ngModel)]="item.title" />
-    </div>
-    <div>
-      <label>Description:</label>
-      <textarea [(ngModel)]="item.description"></textarea>
-    </div>
-    <div>
-      <label>Created On:</label>
-      <p>{{ item.dateCreated }}</p>
-    </div>
-    <div>
-      <label>Last Modified:</label>
-      <p>{{ item.dateModified }}</p>
-    </div>
-    <div>
-      <label>Created By:</label>
-      <p>{{ item.createdBy }}</p>
-    </div>
-    <div>
-      <label>Linked Items:</label>
-      <ul>
-        <li *ngFor="let linkedItem of item.linkedItems">{{ linkedItem.title }}</li>
-      </ul>
-    </div>
-    <div>
-      <button (click)="onSave()">Save</button>
-      <button (click)="onDelete()">Delete</button>
-    </div>
+  <h2>Item Details</h2>
+
+  <div>
+    <label>Title:</label>
+    <input [(ngModel)]="item.title" placeholder="Enter item title" />
   </div>
-  
+
+  <div>
+    <label>Description:</label>
+    <textarea [(ngModel)]="item.description" placeholder="Enter item description"></textarea>
+  </div>
+
+  <div>
+    <label>Created On:</label>
+    <p>{{ item.dateCreated | date:'medium' }}</p>
+  </div>
+
+  <div>
+    <label>Last Modified:</label>
+    <p>{{ item.dateModified | date:'medium' }}</p>
+  </div>
+
+  <div>
+    <label>Created By:</label>
+    <p>{{ item.createdBy }}</p>
+  </div>
+
+  <div>
+    <label>Linked Items:</label>
+    <ul>
+      <li *ngFor="let linkedItem of item.linkedItems">{{ linkedItem.title }}</li>
+    </ul>
+  </div>
+
+  <div class="actions">
+    <button class="save-btn" (click)="onSave()">Save</button>
+    <button class="delete-btn" (click)="onDelete()">Delete</button>
+  </div>
+</div>

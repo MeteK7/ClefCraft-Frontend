@@ -1,12 +1,101 @@
+/* Sidebar container styling */
 .sidebar {
-    width: 300px; /* Set the width of the sidebar */
-    position: fixed; /* Fix the sidebar to the left */
-    right: 0; /* Position it on the right side */
-    top: 0; /* Align it to the top */
-    height: 100%; /* Make it full height */
-    background-color: #f7f7f7; /* Light background color */
-    border-left: 1px solid #ddd; /* Border for separation */
-    padding: 20px; /* Add some padding */
-    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1); /* Optional shadow */
-  }
-  
+  width: 300px;
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100%;
+  background-color: #ffffff;
+  border-left: 1px solid #ddd;
+  padding: 20px;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+/* Header title styling */
+.sidebar h2 {
+  font-size: 1.6em;
+  color: #333;
+  margin-bottom: 1em;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 0.5em;
+}
+
+/* Input styling for title and description */
+.sidebar label {
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 0.3em;
+  display: inline-block;
+}
+
+.sidebar input,
+.sidebar textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 0.3em;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.sidebar textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.sidebar input:focus,
+.sidebar textarea:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+/* Information display styling */
+.sidebar p {
+  font-size: 0.9em;
+  color: #666;
+  margin: 0.5em 0 1em;
+}
+
+.sidebar ul {
+  padding-left: 1em;
+  list-style-type: disc;
+  color: #444;
+  font-size: 0.9em;
+}
+
+.sidebar ul li {
+  margin-bottom: 0.3em;
+}
+
+/* Buttons styling */
+.sidebar button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.sidebar button:hover {
+  opacity: 0.9;
+}
+
+/* Specific button styles */
+.save-btn {
+  background-color: #28a745;
+  color: white;
+  margin-right: 10px;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+  color: white;
+}
