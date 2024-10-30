@@ -24,4 +24,4 @@
 <button class="add-item-btn" (click)="openAddItemDialog()">Add New Item</button>
 
 <!-- Sidebar View -->
-<app-item-detail-sidebar *ngIf="viewMode === 'sidebar' && selectedItem" [item]="selectedItem"></app-item-detail-sidebar>
+<app-item-detail-sidebar *ngIf="viewMode === 'sidebar' && selectedItem" [item]="selectedItem" (itemUpdated)="onItemUpdated($event)"></app-item-detail-sidebar>

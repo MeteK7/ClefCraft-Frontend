@@ -13,12 +13,16 @@ import { BoardService } from '../../_services/board.service';
 })
 export class ItemDetailSidebarComponent {
   @Input() item!: Item;
+  @Output() itemUpdated = new EventEmitter<Item>();
 
   constructor(private boardService: BoardService) {}
 
   onSave(): void {
-    // Logic to save the item
-    this.boardService.updateBoardItem(this.item).subscribe();
+    this.boardService.updateBoardItem(this.item).subscribe((updatedItem) => {
+      // Ensure boardColumnId is present in updatedItem
+      updatedItem.boardColumnId = this.item.boardColumnId || updatedItem.boardColumnId;
+      this.itemUpdated.emit(updatedItem);  // Emit the updated item back to the parent
+    });
   }
 
   onDelete(): void {

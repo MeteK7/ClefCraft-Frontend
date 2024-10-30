@@ -26,16 +26,18 @@ export class BoardService {
     return this.http.post<Item>(`${this.apiUrl}/BoardItems/Create`, item, { headers });
   }
 
-  updateBoardItemColumn(item: { id: number; boardColumnId: number }): Observable<any> {
+  updateBoardItem(item: Item): Observable<Item> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+    return this.http.put<Item>(`${this.apiUrl}/BoardItems/${item.id}`, item, { headers });
+  }
+
+  switchBoardItemColumn(item: { id: number; boardColumnId: number }): Observable<any> {
     const headers = new HttpHeaders({
       'Content-Type': 'application/json'
     });
     return this.http.post<any>(`${this.apiUrl}/BoardItems/SwitchColumn`, item, { headers });
-  }
-
-  updateBoardItem(item: Item): Observable<Item> {
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    return this.http.put<Item>(`${this.apiUrl}/BoardItems/Update`, item, { headers });
   }
   
   deleteBoardItem(itemId: number): Observable<any> {

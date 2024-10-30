@@ -57,7 +57,7 @@ export class BoardColumnComponent {
       boardColumnId: newColumnId
     };
 
-    this.boardService.updateBoardItemColumn(updatedItem).subscribe(
+    this.boardService.switchBoardItemColumn(updatedItem).subscribe(
       (response) => {
         console.log('Item updated successfully:', response);
       },
@@ -68,6 +68,6 @@ export class BoardColumnComponent {
   }
 
   onItemClick(item: Item): void {
-    this.itemClicked.emit(item); // Emit the clicked item
+    this.itemClicked.emit({ ...item, boardColumnId: this.column.id }); // Emit the clicked item
   }
 }
