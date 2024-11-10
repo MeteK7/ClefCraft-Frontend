@@ -2,13 +2,13 @@ import { Component, ElementRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BoardColumnComponent } from '../board-column/board-column.component';
 import { Board, Column, Item } from '../../models/board.model';
-import { DragDropModule } from '@angular/cdk/drag-drop';
 import { BoardService } from '../../_services/board.service';
 import { AddItemFormComponent } from '../../components/add-item-form/add-item-form.component';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
 import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-sidebar.component';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-board',

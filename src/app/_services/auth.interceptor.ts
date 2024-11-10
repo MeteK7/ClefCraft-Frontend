@@ -1,27 +1,21 @@
-import { Injectable } from '@angular/core';
-import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpRequest, HttpHandlerFn, HttpEvent } from '@angular/common/http';
 import { AuthService } from './auth.service';
+import { inject } from '@angular/core';
+import { Observable } from 'rxjs';
 
-@Injectable()
-export class AuthInterceptor implements HttpInterceptor {
-    constructor(private authService: AuthService) { }
+export function authInterceptorFn(req: HttpRequest<any>, next: HttpHandlerFn): Observable<HttpEvent<any>> {
+  const authService = inject(AuthService);  // Use `inject` to get AuthService instance
+  const authToken = authService.getToken(); // Get token from AuthService
 
-    intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-        const token = this.authService.getToken();
-        console.log("Token from interceptor:", token); // Add this line to debug
+  // If there's a token, clone the request and add the Authorization header
+  if (authToken) {
+    const clonedRequest = req.clone({
+      setHeaders: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+    return next(clonedRequest);  // Pass the cloned request to next handler
+  }
 
-        if (token) {
-            request = request.clone({
-                setHeaders: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-
-            console.log('Token in AuthInterceptor:', token);
-        } else {
-            console.warn('No token found in AuthInterceptor.');
-        }
-        return next.handle(request);
-    }
+  return next(req);  // If no token, just pass the original request
 }

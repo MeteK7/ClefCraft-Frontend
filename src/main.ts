@@ -7,17 +7,14 @@ import { FormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ToastrModule } from 'ngx-toastr';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { HTTP_INTERCEPTORS, provideHttpClient } from '@angular/common/http';
-import { AuthInterceptor } from './app/_services/auth.interceptor';
-
-//const providers = appConfig.providers || []; // Use empty array if appConfig.providers is undefined
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { authInterceptorFn } from './app/_services/auth.interceptor';  // Import the interceptor function
 
 bootstrapApplication(AppComponent, {
   providers: [
     importProvidersFrom(BrowserModule, FormsModule, BrowserAnimationsModule, ToastrModule.forRoot()),
-    provideHttpClient(), // Provides the HttpClient globally
-    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }, // Registers AuthInterceptor to attach JWT token
+    provideHttpClient(withInterceptors([authInterceptorFn])),  // Register the interceptor function here
     provideAnimationsAsync(),
-    ...(appConfig.providers || []) // Spread additional providers from appConfig if available
+    ...(appConfig.providers || [])  // Spread additional providers from appConfig if available
   ]
 }).catch(err => console.error(err));

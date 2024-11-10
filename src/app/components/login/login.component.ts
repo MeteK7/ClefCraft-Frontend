@@ -24,6 +24,7 @@ export class LoginComponent {
         console.log('Login successful', response);
         // Display message and navigate to the homepage
         this.toastr.success('Login successful', 'Success');
+        localStorage.setItem('token', response.token); //TEST
         this.router.navigate(['/home']);
       },
       error => {
