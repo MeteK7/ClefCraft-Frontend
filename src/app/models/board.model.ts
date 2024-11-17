@@ -19,6 +19,8 @@ export interface Item {
     boardColumnId: number;
     createdBy?: string; 
     modifiedBy?: string; 
+    createdByFullName:string;
+    modifiedByFullName:string;
     dateCreated?: Date; 
     dateModified?: Date; 
     linkedItems?: Item[];

@@ -68,12 +68,16 @@ export class BoardComponent implements OnInit {
 
   loadBoardColumnItems(boardId: number): void {
     this.boardService.getBoardItemsByBoardId(boardId).subscribe(columns => {
-      this.columns = columns.map(column => ({
-        ...column,
-        items: column.boardItems
-      }));
+        this.columns = columns.map(column => ({
+            ...column,
+            items: column.boardItems.map(item => ({
+                ...item,
+                createdByFullName: item.createdByFullName, // Map full name
+                modifiedByFullName: item.modifiedByFullName // Map full name
+            }))
+        }));
     });
-  }
+}
 
   get allColumnIds(): string[] {
     return this.columns.map(column => 'column-' + column.title);
