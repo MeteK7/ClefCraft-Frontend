@@ -10,22 +10,22 @@
     <label>Description:</label>
     <textarea [(ngModel)]="item.description" placeholder="Enter item description"></textarea>
   </div>
-
-  <div>
-    <label>Created On:</label>
-    <p>{{ item.dateCreated | date:'medium' }}</p>
-  </div>
-
   <div>
     <label>Last Modified:</label>
     <p>{{ item.dateModified | date:'medium' }}</p>
   </div>
-
+  <div>
+    <label>Last Modified By:</label>
+    <p>{{ item.modifiedByFullName }}</p>
+  </div>
+  <div>
+    <label>Created On:</label>
+    <p>{{ item.dateCreated | date:'medium' }}</p>
+  </div>
   <div>
     <label>Created By:</label>
-    <p>{{ item.createdBy }}</p>
+    <p>{{ item.createdByFullName }}</p>
   </div>
-
   <div>
     <label>Linked Items:</label>
     <ul>
