@@ -14,6 +14,8 @@
   gap: 15px;
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
+  overflow-y: auto; /* Ensure scrolling if content overflows */
+  z-index: 1000; /* Ensure sidebar is above other content */
 }
 
 /* Header title styling */
@@ -98,4 +100,68 @@
 .delete-btn {
   background-color: #dc3545;
   color: white;
+}
+
+/* Responsive Sidebar: Change layout for smaller screens */
+@media screen and (max-width: 768px) {
+  .sidebar {
+    width: 80%; /* Sidebar takes up 80% on smaller devices */
+    position: fixed; /* Keep it fixed to the right */
+    top: 0;
+    right: 0;
+    height: auto; /* Remove the fixed height */
+    max-height: 100vh; /* Prevent overflow */
+    padding: 15px; /* Adjust padding */
+  }
+
+  .sidebar h2 {
+    font-size: 1.4em; /* Smaller header size */
+  }
+
+  /* Adjust input and textarea sizes */
+  .sidebar input,
+  .sidebar textarea {
+    font-size: 0.9em; /* Smaller font size for inputs */
+  }
+
+  .sidebar p {
+    font-size: 0.8em; /* Smaller text for information display */
+  }
+
+  /* Reduce button sizes */
+  .sidebar button {
+    font-size: 0.9em;
+    padding: 8px 16px;
+  }
+}
+
+/* Full-screen sidebar for very small screens (phones) */
+@media screen and (max-width: 480px) {
+  .sidebar {
+    width: 100%; /* Sidebar takes up full width */
+    position: absolute; /* Allow sidebar to be overlay */
+    top: 0;
+    right: 0;
+    height: auto;
+    max-height: 100vh;
+  }
+
+  .sidebar h2 {
+    font-size: 1.2em; /* Adjust the title size */
+  }
+
+  /* Further adjustments for text and buttons */
+  .sidebar input,
+  .sidebar textarea {
+    font-size: 0.85em;
+  }
+
+  .sidebar p {
+    font-size: 0.75em;
+  }
+
+  .sidebar button {
+    font-size: 0.8em; /* Smaller buttons for mobile */
+    padding: 6px 14px;
+  }
 }

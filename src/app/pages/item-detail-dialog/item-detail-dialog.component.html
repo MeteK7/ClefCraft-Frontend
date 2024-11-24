@@ -8,7 +8,8 @@
 
     <div class="form-group">
       <label for="itemDescription">Description:</label>
-      <textarea id="itemDescription" class="input-field" [(ngModel)]="data.item.description" placeholder="Enter item description"></textarea>
+      <textarea id="itemDescription" class="input-field" [(ngModel)]="data.item.description"
+        placeholder="Enter item description"></textarea>
     </div>
 
     <div class="info-group">
@@ -21,13 +22,13 @@
         <p>{{ data.item.dateModified | date:'short' }}</p>
       </div>
       <div>
-        <label>Created By:</label>
-        <p>{{ data.item.createdByFullName }}</p>
-    </div>
-    <div>
         <label>Last Modified By:</label>
         <p>{{ data.item.modifiedByFullName }}</p>
-    </div>    
+      </div>
+      <div>
+        <label>Created By:</label>
+        <p>{{ data.item.createdByFullName }}</p>
+      </div>
     </div>
 
     <div class="linked-items">
