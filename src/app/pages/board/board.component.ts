@@ -41,10 +41,10 @@ export class BoardComponent implements OnInit {
     console.log('Selected item before checking click outside:', this.selectedItem);
 
     // If the sidebar is open and the click happens outside of it, close it
-    if (this.viewMode === 'sidebar' && sidebar && !sidebar.contains(target) && this.selectedItem) {
+    if (this.viewMode === 'sidebar' && this.selectedItem && sidebar && !sidebar.contains(target)) {
       // Check if the sidebar is fully opened before allowing the click to close it
       if (this.isSidebarOpen) {
-        // Reset the flag immediately after checking, allowing the sidebar to open
+        // Reset the flag immediately after clicking, allowing the sidebar to keep open
         this.isSidebarOpen = false;
         return; // Do not close the sidebar on the first click
       }
@@ -118,9 +118,8 @@ export class BoardComponent implements OnInit {
   }
 
   onItemClick(item: Item): void {
-    console.log('Item clicked:', item);
+    //console.log('Item clicked:', item);
     this.selectedItem = item; // Set selectedItem to the clicked item
-    this.isSidebarOpen = true; // Mark the sidebar as open
     if (this.viewMode === 'dialog') {
       this.openItemDetailDialog(item);
     } else {
@@ -143,7 +142,8 @@ export class BoardComponent implements OnInit {
 
   // Method to handle opening the sidebar
   openItemDetailSidebar(item: Item): void {
-    this.selectedItem = item; // Set the selected item
+    //this.selectedItem = item; // Set the selected item
+    this.isSidebarOpen = true; // Mark the sidebar flag as true in case the user opens sidebar.
   }
 
   onItemUpdated(updatedItem: Item): void {
@@ -158,6 +158,6 @@ export class BoardComponent implements OnInit {
 
   toggleViewMode(): void {
     this.viewMode = this.viewMode === 'dialog' ? 'sidebar' : 'dialog';
-    this.isSidebarOpen = false;
+    this.isSidebarOpen = false; //Flag
   }
 }
