@@ -1,0 +1,68 @@
+<mat-tab-group>
+  <mat-tab label="General">
+    <form [formGroup]="generalForm" class="form-container">
+      <div class="form-row">
+        <mat-form-field class="full-width">
+          <mat-label>Subject</mat-label>
+          <input matInput formControlName="subject" />
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field class="half-width">
+          <mat-label>Location</mat-label>
+          <input matInput formControlName="location" />
+        </mat-form-field>
+
+
+      </div>
+
+      <div class="form-row">
+        <mat-form-field class="half-width">
+          <mat-label>Start Date</mat-label>
+          <input matInput [matDatepicker]="picker1" formControlName="startDate" />
+          <mat-datepicker-toggle matSuffix [for]="picker1"></mat-datepicker-toggle>
+          <mat-datepicker #picker1></mat-datepicker>
+        </mat-form-field>
+        
+        <mat-form-field class="half-width">
+          <mat-label>End Date</mat-label>
+          <input matInput [matDatepicker]="picker2" formControlName="endDate" />
+          <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
+          <mat-datepicker #picker2></mat-datepicker>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-checkbox formControlName="allDay" class="checkbox">
+          All Day
+        </mat-checkbox>
+        <mat-form-field class="half-width">
+          <mat-label>Importance</mat-label>
+          <mat-select formControlName="importance">
+            <mat-option *ngFor="let level of importanceLevels" [value]="level">
+              {{ level }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field class="full-width">
+          <textarea matInput placeholder="Comments" formControlName="comments"></textarea>
+        </mat-form-field>
+      </div>
+    </form>
+  </mat-tab>
+
+  <mat-tab label="Attachments">Attachment section here...</mat-tab>
+  <mat-tab label="Recurrence">Recurrence options here...</mat-tab>
+  <mat-tab label="History">History logs here...</mat-tab>
+</mat-tab-group>
+
+<div class="dialog-actions">
+  <button mat-raised-button color="primary" (click)="handleSave()">
+    Save
+  </button>
+  <button mat-button (click)="handleCancel()">Cancel</button>
+</div>

@@ -1,1 +1,60 @@
-<p>calendar works!</p>
+<div class="calendar-header">
+  <h1>Calendar</h1>
+  <button mat-button (click)="navigateToBoard()">Back to Board</button>
+</div>
+
+<div class="calendar-container">
+  <mat-form-field>
+    <mat-label>Select a date</mat-label>
+    <input matInput [matDatepicker]="picker" (dateChange)="onDateSelected($event.value)" />
+    <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+    <mat-datepicker #picker></mat-datepicker>
+  </mat-form-field>
+</div>
+
+<div class="selected-date-summary">
+  <h3>{{ selectedDate | date: 'EEEE, MMMM d, y' }}</h3>
+  <p>
+    Week {{ getWeekNumber(selectedDate) }}, day {{ getDayOfYear(selectedDate) }} of the year
+  </p>
+</div>
+
+<!-- Calendar Navigation -->
+<div class="calendar-navigation">
+  <button mat-button (click)="goToPreviousMonth()">Previous</button>
+  <button mat-button (click)="goToNextMonth()">Next</button>
+  <button mat-button (click)="goToToday()">Today</button>
+</div>
+
+<!-- Calendar Grid -->
+<table class="calendar-grid">
+  <thead>
+    <tr>
+      <th *ngFor="let day of weekdays">{{ day }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let row of calendarGrid">
+      <td *ngFor="let date of row" (click)="onDateSelected(date)" class="calendar-day">
+        <div class="day">
+          <span>{{ date.getDate() }}</span>
+          <div class="events">
+            <div *ngFor="let event of getEventsForDay(date)" class="event" matTooltip="{{ event.subject }}">
+              <span>{{ event.subject }}</span>
+            </div>
+          </div>
+        </div>
+      </td>      
+    </tr>
+  </tbody>
+</table>
+
+<!-- Dialog for adding/editing events -->
+<ng-template>
+  <app-calendar-dialog
+    [date]="selectedDate"
+    [linkedRecord]="linkedRecord"
+    (onSave)="saveEvent($event)"
+    (onCancel)="handleDialogCancel()"
+  ></app-calendar-dialog>
+</ng-template>

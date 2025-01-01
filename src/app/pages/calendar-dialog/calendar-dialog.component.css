@@ -1,0 +1,42 @@
+/* General styles for the dialog */
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 0;
+  gap: 8px;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.full-width {
+  flex: 1 1 100%;
+}
+
+.half-width {
+  flex: 1 1 calc(50% - 16px);
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+textarea[matInput] {
+  min-height: 200px;
+  resize: vertical;
+}
