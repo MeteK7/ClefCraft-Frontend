@@ -61,3 +61,18 @@ button {
   text-align: center;
   margin-bottom: 10px;
 }
+
+.selected-date-summary {
+  text-align: left;
+  margin: 20px 0;
+}
+
+.selected-date-summary h3 {
+  font-size: 1.5em;
+  margin: 0;
+}
+
+.selected-date-summary p {
+  font-size: 1.2em;
+  color: #555;
+}

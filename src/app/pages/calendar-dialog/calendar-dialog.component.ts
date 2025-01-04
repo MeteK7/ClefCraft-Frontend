@@ -45,7 +45,7 @@ export class CalendarDialogComponent implements OnInit {
       endDate: ['', Validators.required],
       allDay: [false],
       importance: ['Normal'],
-      comments: [''],
+      comment: [''],
     });
   }
 

@@ -173,19 +173,19 @@ getDayOfYear(date: Date): number {
   saveEvent(record: any): void {
     const event = {
       ...record,
-      startDate: new Date(record.startDate).toISOString(),
-      endDate: new Date(record.endDate).toISOString(),
+      userId: this.userId,
+      startDate: record.startDate,
+      endDate: record.endDate,
     };
-
+  
     this.calendarService.saveEvent(event).subscribe(
       (response) => {
         console.log('Event saved successfully:', response);
-        this.fetchEvents(); // Refetch events after save
+        this.fetchEvents();
       },
       (error) => console.error('Error saving event:', error)
     );
   }
-
 
   navigateToBoard(): void {
     console.log('Navigating to the board...');
