@@ -17,11 +17,11 @@
   </select>
 </div>
 
+<button class="add-item-btn" (click)="openAddItemDialog()">Add New Item</button>
+
 <div class="board-columns">
   <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds" (itemClicked)="onItemClick($event)"></app-board-column>
 </div>
-
-<button class="add-item-btn" (click)="openAddItemDialog()">Add New Item</button>
 
 <!-- Sidebar View -->
 <app-item-detail-sidebar *ngIf="viewMode === 'sidebar' && selectedItem" [item]="selectedItem" (itemUpdated)="onItemUpdated($event)"></app-item-detail-sidebar>

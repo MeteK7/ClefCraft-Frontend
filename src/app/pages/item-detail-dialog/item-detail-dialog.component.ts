@@ -36,4 +36,22 @@ export class ItemDetailDialogComponent {
   onCancel(): void {
     this.dialogRef.close();
   }
+  markAsWorked(): void {
+    const currentDate = new Date(); // Use today's date as the event date
+    const event = {
+      subject: this.data.item.title, // Use the task title as the event subject
+      description: this.data.item.description, // Use the task description
+      startDate: currentDate,
+      endDate: currentDate,
+      userId: '944d0156-cb3d-466f-a1ea-5f53e3a10f8e', // Replace with dynamic userId
+    };
+
+    this.boardService.createBoardItem(event).subscribe(
+      () => {
+        console.log('Task marked as worked and saved as an event.');
+        this.dialogRef.close();
+      },
+      (error) => console.error('Error marking task as worked:', error)
+    );
+  }
 }
