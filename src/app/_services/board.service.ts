@@ -59,4 +59,12 @@ export class BoardService {
   saveChanges(): void {
     // Logic to save the item changes
   }
+
+  //Mark Board Item as Worked to the Calendar
+  createCalendarEvent(event: any): Observable<any> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+    return this.http.post(`${this.apiUrl}/Calendar/Create`, event, { headers, withCredentials: true });
+  }  
 }
