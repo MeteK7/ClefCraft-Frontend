@@ -46,14 +46,20 @@ export class CalendarComponent implements OnInit {
       (events) => {
         this.events = events.map(event => ({
           ...event,
-          startDate: new Date(event.startDate), // Convert to Date object
-          endDate: new Date(event.endDate),
+          startDate: this.convertToLocalDate(event.startDate),
+          endDate: this.convertToLocalDate(event.endDate),
         }));
         this.generateCalendarGrid();
       },
       (error) => console.error('Error fetching events:', error)
     );
   }
+  
+  convertToLocalDate(utcDate: string): Date {
+    const date = new Date(utcDate); // Parses as UTC
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000); // Convert to local time
+  }
+  
 
   generateCalendarGrid(): void {
     const currentMonth = this.selectedDate.getMonth();
@@ -88,11 +94,17 @@ export class CalendarComponent implements OnInit {
 
   getEventsForDay(date: Date): any[] {
     return this.events.filter((event) => {
-      return (
-        event.startDate.toDateString() === date.toDateString() // Ensures full date match
+      const eventDate = new Date(
+        event.startDate.getFullYear(),
+        event.startDate.getMonth(),
+        event.startDate.getDate()
       );
+      const selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+      return eventDate.getTime() === selectedDate.getTime();
     });
   }
+  
 
   //CONSIDER USING THE CODE BELOW IF YOU WANT
   /*
@@ -170,12 +182,13 @@ getDayOfYear(date: Date): number {
     });
   }  
 
+  //When dealing with all-day events, it's critical to strip the time portion of the date to avoid timezone-related offsets.
   saveEvent(record: any): void {
     const event = {
       ...record,
       userId: this.userId,
-      startDate: record.startDate,
-      endDate: record.endDate,
+      startDate: new Date(record.startDate).toISOString(), // UTC
+      endDate: new Date(record.endDate).toISOString(),
     };
   
     this.calendarService.saveEvent(event).subscribe(

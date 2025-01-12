@@ -41,17 +41,19 @@ export class ItemDetailDialogComponent {
 
   markAsWorked(): void {
     const currentDate = new Date();
+    
+    // Include time to avoid issues with date-only strings
+    const formattedDate = currentDate.toISOString();
   
-    // Map BoardItem properties to CreateCalendarEventCommand fields
     const calendarEvent = {
-      subject: this.data.item.title, // Map Title to Subject
-      comment: this.data.item.description, // Map Description to Comment
-      startDate: currentDate.toISOString(), // Use current date
-      endDate: currentDate.toISOString(),   // Same for end date
-      allDayEvent: true,                    // Default to all-day event
-      importance: 'Normal',                 // Default importance
-      linkedBoardItemId: this.data.item.id, // Link to the BoardItem
-      userId: '944d0156-cb3d-466f-a1ea-5f53e3a10f8e', // Replace with dynamic user ID
+      subject: this.data.item.title,
+      comment: this.data.item.description,
+      startDate: formattedDate, // Use the full ISO string
+      endDate: formattedDate,
+      allDayEvent: true,
+      importance: 'Normal',
+      linkedBoardItemId: this.data.item.id,
+      userId: '944d0156-cb3d-466f-a1ea-5f53e3a10f8e',
     };
   
     this.calendarService.saveEvent(calendarEvent).subscribe(
@@ -61,6 +63,5 @@ export class ItemDetailDialogComponent {
       },
       (error) => console.error('Error marking board item as a calendar event:', error)
     );
-  }
-  
+  }  
 }
