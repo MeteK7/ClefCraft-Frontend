@@ -1,45 +1,62 @@
-<div class="dialog-container"> <!-- Add the container class here -->
+<div class="dialog-container">
   <h2 class="dialog-title">Item Details</h2>
-  <div class="dialog-content">
-    <div class="form-group">
-      <label for="itemTitle">Title:</label>
-      <input id="itemTitle" class="input-field" [(ngModel)]="data.item.title" placeholder="Enter item title" />
-    </div>
 
-    <div class="form-group">
-      <label for="itemDescription">Description:</label>
-      <textarea id="itemDescription" class="input-field" [(ngModel)]="data.item.description"
-        placeholder="Enter item description"></textarea>
-    </div>
+  <mat-tab-group>
+    <!-- Details Tab -->
+    <mat-tab label="Details">
+      <div class="dialog-content">
+        <div class="form-group">
+          <label for="itemTitle">Title:</label>
+          <input id="itemTitle" class="input-field" [(ngModel)]="data.item.title" placeholder="Enter item title" />
+        </div>
 
-    <div class="info-group">
-      <div>
-        <label>Created On:</label>
-        <p>{{ data.item.dateCreated | date:'short' }}</p>
-      </div>
-      <div>
-        <label>Last Modified:</label>
-        <p>{{ data.item.dateModified | date:'short' }}</p>
-      </div>
-      <div>
-        <label>Last Modified By:</label>
-        <p>{{ data.item.modifiedByFullName }}</p>
-      </div>
-      <div>
-        <label>Created By:</label>
-        <p>{{ data.item.createdByFullName }}</p>
-      </div>
-    </div>
+        <div class="form-group">
+          <label for="itemDescription">Description:</label>
+          <textarea id="itemDescription" class="input-field" [(ngModel)]="data.item.description" placeholder="Enter item description"></textarea>
+        </div>
 
-    <div class="linked-items">
-      <label>Linked Items:</label>
-      <ul>
-        <li *ngFor="let linkedItem of data.item.linkedItems">
-          {{ linkedItem.title }} <!-- Ensure linkedItem is an object with a title -->
-        </li>
-      </ul>
-    </div>
-  </div>
+        <div class="info-group">
+          <div>
+            <label>Created On:</label>
+            <p>{{ data.item.dateCreated | date: 'short' }}</p>
+          </div>
+          <div>
+            <label>Last Modified:</label>
+            <p>{{ data.item.dateModified | date: 'short' }}</p>
+          </div>
+          <div>
+            <label>Last Modified By:</label>
+            <p>{{ data.item.modifiedByFullName }}</p>
+          </div>
+          <div>
+            <label>Created By:</label>
+            <p>{{ data.item.createdByFullName }}</p>
+          </div>
+        </div>
+
+        <div class="linked-items">
+          <label>Linked Items:</label>
+          <ul>
+            <li *ngFor="let linkedItem of data.item.linkedItems">
+              {{ linkedItem.title }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- History Tab -->
+    <mat-tab label="History">
+      <div class="history-tab">
+        <h5>Work History</h5>
+        <ul>
+          <li *ngFor="let historyItem of markAsWorkedHistory">
+            {{ historyItem.dateCreated | date: 'short' }} - {{ historyItem.actionBy }}
+          </li>
+        </ul>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
 
   <div class="dialog-actions">
     <button class="btn save-btn" (click)="onSave()">Save</button>

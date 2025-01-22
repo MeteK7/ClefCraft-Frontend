@@ -189,6 +189,8 @@ getDayOfYear(date: Date): number {
       userId: this.userId,
       startDate: new Date(record.startDate).toISOString(), // UTC
       endDate: new Date(record.endDate).toISOString(),
+      dateCreated: new Date().toISOString(), // Ensure UTC
+      dateModified: new Date().toISOString(), // Ensure UTC
     };
   
     this.calendarService.saveEvent(event).subscribe(

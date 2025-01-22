@@ -5,11 +5,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BoardService } from '../../_services/board.service';
 import { CalendarService } from '../../_services/calendar.service';
+import { MatTabsModule } from '@angular/material/tabs';
 
 @Component({
   selector: 'app-item-detail-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MatTabsModule],
   templateUrl: './item-detail-dialog.component.html',
   styleUrl: './item-detail-dialog.component.css'
 })
@@ -21,6 +22,25 @@ export class ItemDetailDialogComponent {
     private boardService: BoardService,
     private calendarService: CalendarService
   ) {}
+
+  markAsWorkedHistory: { dateCreated: string; actionBy: string }[] = []
+
+  ngOnInit(): void {
+    this.fetchMarkAsWorkedHistory();
+  }
+  
+  fetchMarkAsWorkedHistory(): void {
+    // Replace with API call to fetch history
+    this.calendarService.GetWorkHistory(this.data.item.id).subscribe(
+      (history) => {
+        this.markAsWorkedHistory = history.map((entry) => ({
+          dateCreated: entry.dateCreated,
+          actionBy: entry.actionByFullName,
+        }));
+      },
+      (error) => console.error('Error fetching Mark as Worked history:', error)
+    );
+  }
 
   onSave(): void {
     // Logic to save the item
@@ -40,16 +60,12 @@ export class ItemDetailDialogComponent {
   }
 
   markAsWorked(): void {
-    const currentDate = new Date();
-    
-    // Include time to avoid issues with date-only strings
-    const formattedDate = currentDate.toISOString();
-  
+    const currentDate = new Date().toISOString();
     const calendarEvent = {
       subject: this.data.item.title,
       comment: this.data.item.description,
-      startDate: formattedDate, // Use the full ISO string
-      endDate: formattedDate,
+      startDate: currentDate,
+      endDate: currentDate,
       allDayEvent: true,
       importance: 'Normal',
       linkedBoardItemId: this.data.item.id,
@@ -59,9 +75,17 @@ export class ItemDetailDialogComponent {
     this.calendarService.saveEvent(calendarEvent).subscribe(
       () => {
         console.log('Board item successfully marked as a calendar event.');
+  
+        // Add to local history for immediate feedback
+        this.markAsWorkedHistory.push({
+          dateCreated: currentDate,
+          actionBy: 'Current User', // Replace with logged-in user's name
+        });
+  
         this.dialogRef.close();
       },
       (error) => console.error('Error marking board item as a calendar event:', error)
     );
-  }  
+  }
+  
 }
