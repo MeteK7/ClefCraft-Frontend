@@ -34,12 +34,17 @@ export class ItemDetailDialogComponent {
     this.calendarService.GetWorkHistory(this.data.item.id).subscribe(
       (history) => {
         this.markAsWorkedHistory = history.map((entry) => ({
-          dateCreated: entry.dateCreated,
+          dateCreated: this.convertToLocalDate(entry.dateCreated).toISOString(),
           actionBy: entry.actionByFullName,
         }));
       },
       (error) => console.error('Error fetching Mark as Worked history:', error)
     );
+  }
+
+  convertToLocalDate(utcDate: string): Date {
+    const date = new Date(utcDate); // Parses as UTC
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000); // Convert to local time
   }
 
   onSave(): void {
