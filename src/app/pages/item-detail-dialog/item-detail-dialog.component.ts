@@ -6,11 +6,13 @@ import { FormsModule } from '@angular/forms';
 import { BoardService } from '../../_services/board.service';
 import { CalendarService } from '../../_services/calendar.service';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatSelectModule } from '@angular/material/select';
+import { MatRadioModule } from '@angular/material/radio'; 
 
 @Component({
   selector: 'app-item-detail-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatTabsModule],
+  imports: [CommonModule, FormsModule, MatTabsModule, MatSelectModule, MatRadioModule],
   templateUrl: './item-detail-dialog.component.html',
   styleUrl: './item-detail-dialog.component.css'
 })
@@ -24,6 +26,9 @@ export class ItemDetailDialogComponent {
   ) {}
 
   markAsWorkedHistory: { dateCreated: string; actionBy: string }[] = []
+  priorities = ['Low', 'Medium', 'High'];
+  statuses = ['To Do', 'In Progress', 'Done'];
+  availableAssignees = ['User 1', 'User 2', 'User 3']; // Replace with actual user list
 
   ngOnInit(): void {
     this.fetchMarkAsWorkedHistory();
@@ -53,6 +58,21 @@ export class ItemDetailDialogComponent {
       this.dialogRef.close(this.data.item);
     });
   }
+
+  addTag(newTag: string): void {
+    if (!this.data.item.tags) {
+      this.data.item.tags = []; // ✅ Ensure tags array is initialized
+    }
+    if (newTag && !this.data.item.tags.includes(newTag)) {
+      this.data.item.tags.push(newTag);
+    }
+  }
+  
+  removeTag(tag: string): void {
+    if (this.data.item.tags) {
+      this.data.item.tags = this.data.item.tags.filter(t => t !== tag);
+    }
+  }  
 
   onDelete(): void {
     this.boardService.deleteBoardItem(this.data.item.id).subscribe(() => {

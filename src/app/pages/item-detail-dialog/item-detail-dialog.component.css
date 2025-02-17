@@ -2,6 +2,8 @@
     border-radius: 8px; /* Apply rounded corners */
     overflow: hidden;    /* Ensure child elements respect the border radius */
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Optional: Add shadow for depth */
+    height: 100%; /* Make it fill the dialog */
+    width: 100%;
   }
   
   .dialog-title {
@@ -12,11 +14,15 @@
     padding: 1em; /* Add padding to the title */
     background-color: #f5f5f5; /* Optional: background color for header */
   }
-  
-  .dialog-content {
-    padding: 1em;
-    display: flex;
-    flex-direction: column;
+
+  ::ng-deep .mat-mdc-dialog-surface {
+    max-width: none !important;
+    width: 50vw !important; /* Adjust the width */
+    height: 80vh !important; /* Adjust the height */
+    position: relative !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, 0%) !important; /* Center the dialog */
   }
   
   .form-group {
@@ -58,11 +64,16 @@
     margin-left: 20px;
   }
   
-  .dialog-actions {
+.dialog-actions {
     display: flex;
     justify-content: space-between;
-    margin-top: 1em;
-  }
+    align-items: center;
+    padding: 1em; /* Add some padding */
+    position: absolute;
+    bottom: 0;
+    background: white; /* Ensures visibility */
+}
+
   
   .btn {
     padding: 0.5em 1em;

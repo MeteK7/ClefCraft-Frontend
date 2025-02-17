@@ -24,6 +24,12 @@ export interface Item {
     dateCreated?: Date; 
     dateModified?: Date; 
     linkedItems?: Item[];
+    tags?: string[]; 
+    estimatedTime?: number; // Estimated time in hours
+    timeSpent?: number;     // Time spent in hours
+    assignee?: string;  
+    priority?: string; 
+    dueDate?: Date; 
   }
   
   

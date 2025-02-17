@@ -2,45 +2,74 @@
   <h2 class="dialog-title">Item Details</h2>
 
   <mat-tab-group>
-    <!-- Details Tab -->
     <mat-tab label="Details">
       <div class="dialog-content">
         <div class="form-group">
           <label for="itemTitle">Title:</label>
-          <input id="itemTitle" class="input-field" [(ngModel)]="data.item.title" placeholder="Enter item title" />
+          <input id="itemTitle" class="input-field" [(ngModel)]="data.item.title" />
         </div>
 
         <div class="form-group">
           <label for="itemDescription">Description:</label>
-          <textarea id="itemDescription" class="input-field" [(ngModel)]="data.item.description" placeholder="Enter item description"></textarea>
+          <textarea id="itemDescription" class="input-field" [(ngModel)]="data.item.description"></textarea>
         </div>
 
-        <div class="info-group">
-          <div>
-            <label>Created On:</label>
-            <p>{{ data.item.dateCreated | date: 'short' }}</p>
-          </div>
-          <div>
-            <label>Last Modified:</label>
-            <p>{{ data.item.dateModified | date: 'short' }}</p>
-          </div>
-          <div>
-            <label>Last Modified By:</label>
-            <p>{{ data.item.modifiedByFullName }}</p>
-          </div>
-          <div>
-            <label>Created By:</label>
-            <p>{{ data.item.createdByFullName }}</p>
-          </div>
+        <!-- Due Date -->
+        <div class="form-group">
+          <label for="dueDate">Due Date:</label>
+          <input id="dueDate" type="date" class="input-field" [(ngModel)]="data.item.dueDate" />
         </div>
 
-        <div class="linked-items">
-          <label>Linked Items:</label>
-          <ul>
-            <li *ngFor="let linkedItem of data.item.linkedItems">
-              {{ linkedItem.title }}
-            </li>
-          </ul>
+        <!-- Priority -->
+        <div class="form-group">
+          <label for="priority">Priority:</label>
+          <mat-radio-group [(ngModel)]="data.item.priority">
+            <mat-radio-button *ngFor="let priority of priorities" [value]="priority">
+              {{ priority }}
+            </mat-radio-button>
+          </mat-radio-group>
+        </div>
+
+        <!-- Status -->
+        <div class="form-group">
+          <label for="status">Status:</label>
+          <mat-select [(ngModel)]="data.item.status">
+            <mat-option *ngFor="let status of statuses" [value]="status">
+              {{ status }}
+            </mat-option>
+          </mat-select>
+        </div>
+
+        <!-- Assignee -->
+        <div class="form-group">
+          <label for="assignee">Assignee:</label>
+          <mat-select [(ngModel)]="data.item.assignee">
+            <mat-option *ngFor="let assignee of availableAssignees" [value]="assignee">
+              {{ assignee }}
+            </mat-option>
+          </mat-select>
+        </div>
+
+        <!-- Tags -->
+        <div class="form-group">
+          <label>Tags:</label>
+          <div class="tags-container">
+            <span *ngFor="let tag of data.item.tags" class="tag">
+              {{ tag }} <button (click)="removeTag(tag)">x</button>
+            </span>
+          </div>
+          <input placeholder="Add tag" #tagInput (keyup.enter)="addTag(tagInput.value); tagInput.value=''" />
+        </div>
+
+        <!-- Time Tracking -->
+        <div class="form-group">
+          <label for="estimatedTime">Estimated Time (hrs):</label>
+          <input id="estimatedTime" type="number" class="input-field" [(ngModel)]="data.item.estimatedTime" />
+        </div>
+
+        <div class="form-group">
+          <label for="timeSpent">Time Spent (hrs):</label>
+          <input id="timeSpent" type="number" class="input-field" [(ngModel)]="data.item.timeSpent" />
         </div>
       </div>
     </mat-tab>
