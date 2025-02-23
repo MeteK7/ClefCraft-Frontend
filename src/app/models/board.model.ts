@@ -11,6 +11,11 @@ export interface Column {
   boardItems: Item[];
 }
 
+export interface Tag{
+  id: number;
+  name: string;
+}
+
 export interface Item {
     id: number;
     title: string;

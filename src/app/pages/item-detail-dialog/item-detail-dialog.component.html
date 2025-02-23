@@ -20,16 +20,6 @@
           <input id="dueDate" type="date" class="input-field" [(ngModel)]="data.item.dueDate" />
         </div>
 
-        <!-- Priority -->
-        <div class="form-group">
-          <label for="priority">Priority:</label>
-          <mat-radio-group [(ngModel)]="data.item.priority">
-            <mat-radio-button *ngFor="let priority of priorities" [value]="priority">
-              {{ priority }}
-            </mat-radio-button>
-          </mat-radio-group>
-        </div>
-
         <!-- Status -->
         <div class="form-group">
           <label for="status">Status:</label>
@@ -46,6 +36,16 @@
           <mat-select [(ngModel)]="data.item.assignee">
             <mat-option *ngFor="let assignee of availableAssignees" [value]="assignee">
               {{ assignee }}
+            </mat-option>
+          </mat-select>
+        </div>
+
+        <!-- Tags dropdown to select from available tags -->
+        <div class="form-group">
+          <label>Tags:</label>
+          <mat-select [(ngModel)]="data.item.tags" multiple>
+            <mat-option *ngFor="let tag of tags" [value]="tag">
+              {{ tag.name }}
             </mat-option>
           </mat-select>
         </div>
@@ -70,6 +70,38 @@
         <div class="form-group">
           <label for="timeSpent">Time Spent (hrs):</label>
           <input id="timeSpent" type="number" class="input-field" [(ngModel)]="data.item.timeSpent" />
+        </div>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Info">
+      <div>
+        <div class="info-group">
+          <div>
+            <label>Created On:</label>
+            <p>{{ data.item.dateCreated | date: 'short' }}</p>
+          </div>
+          <div>
+            <label>Last Modified:</label>
+            <p>{{ data.item.dateModified | date: 'short' }}</p>
+          </div>
+          <div>
+            <label>Last Modified By:</label>
+            <p>{{ data.item.modifiedByFullName }}</p>
+          </div>
+          <div>
+            <label>Created By:</label>
+            <p>{{ data.item.createdByFullName }}</p>
+          </div>
+        </div>
+
+        <div class="linked-items">
+          <label>Linked Items:</label>
+          <ul>
+            <li *ngFor="let linkedItem of data.item.linkedItems">
+              {{ linkedItem.title }}
+            </li>
+          </ul>
         </div>
       </div>
     </mat-tab>
