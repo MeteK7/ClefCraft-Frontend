@@ -29,7 +29,7 @@ export interface Item {
     dateCreated?: Date; 
     dateModified?: Date; 
     linkedItems?: Item[];
-    tags?: string[]; 
+    tags?: Tag[]; 
     estimatedTime?: number; // Estimated time in hours
     timeSpent?: number;     // Time spent in hours
     assignee?: string;  

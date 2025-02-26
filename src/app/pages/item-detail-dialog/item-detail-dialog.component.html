@@ -50,17 +50,6 @@
           </mat-select>
         </div>
 
-        <!-- Tags -->
-        <div class="form-group">
-          <label>Tags:</label>
-          <div class="tags-container">
-            <span *ngFor="let tag of data.item.tags" class="tag">
-              {{ tag }} <button (click)="removeTag(tag)">x</button>
-            </span>
-          </div>
-          <input placeholder="Add tag" #tagInput (keyup.enter)="addTag(tagInput.value); tagInput.value=''" />
-        </div>
-
         <!-- Time Tracking -->
         <div class="form-group">
           <label for="estimatedTime">Estimated Time (hrs):</label>

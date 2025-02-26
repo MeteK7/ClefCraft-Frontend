@@ -55,36 +55,49 @@ export class ItemDetailDialogComponent {
   }
   
   onSave(): void {
+    // Prepare the data for the update
+    const updateData = {
+      ...this.data.item, // Spread the existing item properties
+      tagIds: this.data.item.tags?.map(tag => tag.id) || [] // Map tags to tagIds
+    };
+  
     // Logic to save the item
-    this.boardService.updateBoardItem(this.data.item).subscribe(() => {
+    this.boardService.updateBoardItem(updateData).subscribe(() => {
       this.dialogRef.close(this.data.item);
     });
   }
   
-    fetchTags(): void {
+  fetchTags(): void {
     this.boardService.getTags().subscribe(
       (tags) => {
         this.tags = tags;  // Populate dropdown with tags
+  
+        // Map data.item.tags to the correct instances in the tags array
+        if (this.data.item.tags) {
+          this.data.item.tags = this.data.item.tags.map(itemTag => 
+            this.tags.find(tag => tag.id === itemTag.id) || itemTag
+          );
+        }
       },
       (error) => console.error('Error fetching tags:', error)
     );
   }
   
-  addTag(newTag: string): void {
+  addTag(newTag: Tag): void {
     if (!this.data.item.tags) {
-      this.data.item.tags = []; // ✅ Ensure tags array is initialized
+      this.data.item.tags = [];
     }
-    if (newTag && !this.data.item.tags.includes(newTag)) {
+    if (newTag && !this.data.item.tags.find(t => t.id === newTag.id)) {
       this.data.item.tags.push(newTag);
     }
   }
   
-  removeTag(tag: string): void {
+  removeTag(tagToRemove: Tag): void {
     if (this.data.item.tags) {
-      this.data.item.tags = this.data.item.tags.filter(t => t !== tag);
+      this.data.item.tags = this.data.item.tags.filter(t => t.id !== tagToRemove.id);
     }
-  }
-  
+  }  
+
   onDelete(): void {
     this.boardService.deleteBoardItem(this.data.item.id).subscribe(() => {
       this.dialogRef.close(this.data.item);
