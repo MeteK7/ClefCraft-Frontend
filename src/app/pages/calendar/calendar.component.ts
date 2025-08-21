@@ -42,7 +42,7 @@ export class CalendarComponent implements OnInit {
   }
 
   fetchEvents(): void {
-    this.calendarService.getEvents(this.userId).subscribe(
+    this.calendarService.getEvents().subscribe(
       (events) => {
         this.events = events.map(event => ({
           ...event,
@@ -186,7 +186,6 @@ getDayOfYear(date: Date): number {
   saveEvent(record: any): void {
     const event = {
       ...record,
-      userId: this.userId,
       startDate: new Date(record.startDate).toISOString(), // UTC
       endDate: new Date(record.endDate).toISOString(),
       dateCreated: new Date().toISOString(), // Ensure UTC

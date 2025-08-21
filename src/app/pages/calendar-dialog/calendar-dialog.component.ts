@@ -10,6 +10,8 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { Item } from '../../models/board.model';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { CalendarService } from '../../_services/calendar.service';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -24,6 +26,7 @@ import { MAT_DIALOG_DATA } from '@angular/material/dialog';
     MatSelectModule,
     MatTabsModule,
     MatButtonModule,
+    MatIconModule,
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
@@ -36,8 +39,11 @@ export class CalendarDialogComponent implements OnInit {
 
   generalForm: FormGroup;
   importanceLevels: string[] = ['Low', 'Normal', 'High'];
-
-  constructor(private fb: FormBuilder, @Inject(MAT_DIALOG_DATA) public data: any) {
+  attachments: File[] = [];
+  existingAttachments: any[] = [];
+  eventId: number | null = null;
+  
+  constructor(private fb: FormBuilder, @Inject(MAT_DIALOG_DATA) public data: any, private calendarService: CalendarService) {
     this.generalForm = this.fb.group({
       subject: ['', Validators.required],
       location: [''],
@@ -51,10 +57,49 @@ export class CalendarDialogComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.data.eventData) {
-      this.generalForm.patchValue(this.data.eventData); // Populate form with event data
+      this.generalForm.patchValue(this.data.eventData);
+      this.eventId = this.data.eventData.id;
+      this.fetchAttachments(this.eventId!); // Use non-null assertion operator
     }
+  }  
+
+  fetchAttachments(eventId: number): void {
+    this.calendarService.getAttachments(eventId).subscribe(
+      (attachments: any[]) => (this.existingAttachments = attachments), // Explicitly type attachments
+      (error: any) => console.error('Failed to load attachments', error) // Explicitly type error
+    );
+  }
+  
+  onFileSelected(event: any): void {
+    const selectedFiles = Array.from(event.target.files) as File[];
+    this.attachments.push(...selectedFiles);
+  }
+  
+  uploadAttachments(): void {
+    if (!this.eventId) return;
+
+    const formData = new FormData();
+    this.attachments.forEach(file => formData.append('files', file));
+
+    this.calendarService.uploadAttachments(this.eventId, formData).subscribe(
+      () => {
+        this.fetchAttachments(this.eventId!);
+        this.attachments = [];
+      },
+      (error: any) => console.error('Upload failed', error) // Explicitly type 'error'
+    );
+  }
+  
+  deleteAttachment(id: number): void {
+    this.calendarService.deleteAttachment(id).subscribe(
+      () => {
+        this.existingAttachments = this.existingAttachments.filter(a => a.id !== id);
+      },
+      (error: any) => console.error('Delete failed', error) // Explicitly type 'error'
+    );
   }
 
+  
   handleSave(): void {
     const record = this.generalForm.value;
     this.onSave.emit(record);

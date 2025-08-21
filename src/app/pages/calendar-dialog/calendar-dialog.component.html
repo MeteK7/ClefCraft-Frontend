@@ -55,7 +55,25 @@
     </form>
   </mat-tab>
 
-  <mat-tab label="Attachments">Attachment section here...</mat-tab>
+  <mat-tab label="Attachments">
+    <div class="attachment-section">
+      <input type="file" (change)="onFileSelected($event)" multiple />
+      <button mat-stroked-button color="primary" (click)="uploadAttachments()" [disabled]="attachments.length === 0">
+        Upload Selected
+      </button>
+  
+      <h3>Uploaded Files</h3>
+      <ul>
+        <li *ngFor="let attachment of existingAttachments">
+          <a [href]="'/' + attachment.storedFilePath" target="_blank">{{ attachment.fileName }}</a>
+          <button mat-icon-button color="warn" (click)="deleteAttachment(attachment.id)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </mat-tab>
+  
   <mat-tab label="Recurrence">Recurrence options here...</mat-tab>
   <mat-tab label="History">History logs here...</mat-tab>
 </mat-tab-group>
