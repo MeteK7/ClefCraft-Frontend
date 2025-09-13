@@ -89,6 +89,20 @@ export class CalendarDialogComponent implements OnInit {
       (error: any) => console.error('Upload failed', error) // Explicitly type 'error'
     );
   }
+
+  downloadAttachment(attachment: any): void {
+  this.calendarService.downloadAttachment(attachment.id).subscribe(
+    (blob: Blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = attachment.fileName;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    },
+    (error: any) => console.error('Download failed', error)
+  );
+}
   
   deleteAttachment(id: number): void {
     this.calendarService.deleteAttachment(id).subscribe(
