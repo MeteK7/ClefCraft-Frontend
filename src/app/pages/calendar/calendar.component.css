@@ -2,7 +2,8 @@
 .calendar-grid {
   width: 100%;
   display: table;
-  table-layout: fixed; /* Ensures equal-width columns */
+  table-layout: fixed;
+  /* Ensures equal-width columns */
   border-collapse: collapse;
 }
 
@@ -15,7 +16,8 @@
 }
 
 .calendar-grid td {
-  height: calc(100vh / 7); /* Distributes height for rows evenly */
+  height: calc(100vh / 7);
+  /* Distributes height for rows evenly */
   cursor: pointer;
 }
 
@@ -61,6 +63,111 @@ button {
 .calendar-summary {
   text-align: center;
   margin-bottom: 10px;
+}
+
+.selected-date-summary {
+  text-align: left;
+  margin: 20px 0;
+}
+
+.selected-date-summary h3 {
+  font-size: 1.5em;
+  margin: 0;
+}
+
+.selected-date-summary p {
+  font-size: 1.2em;
+  color: #555;
+}
+
+/* Highlight the selected date with full border and glow */
+.calendar-day.selected {
+  border: 2px solid #2196f3;
+  /* blue border */
+  border-radius: 5px;
+  box-shadow: 0 0 8px 2px rgba(33, 150, 243, 0.6);
+  /* subtle glow */
+  animation: flashBorder 2s ease forwards;
+  /* lasts 2 seconds */
+}
+
+/* Animation fades the glow and border after 2 seconds */
+@keyframes flashBorder {
+  0% {
+    border-color: #2196f3;
+    box-shadow: 0 0 8px 2px rgba(33, 150, 243, 0.6);
+  }
+
+  70% {
+    border-color: #2196f3;
+    box-shadow: 0 0 8px 2px rgba(33, 150, 243, 0.6);
+  }
+
+  100% {
+    border-color: #ccc;
+    /* default border */
+    box-shadow: none;
+  }
+}
+
+/* Existing styles for calendar grid and events */
+.calendar-grid {
+  width: 100%;
+  display: table;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.calendar-grid th,
+.calendar-grid td {
+  padding: 10px;
+  text-align: center;
+  border: 1px solid #ccc;
+  vertical-align: top;
+}
+
+.calendar-grid td {
+  height: calc(100vh / 7);
+  cursor: pointer;
+}
+
+.calendar-grid .day {
+  position: relative;
+  height: 100%;
+}
+
+.calendar-grid .events {
+  position: absolute;
+  top: 20px;
+  left: 5px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-grid .event {
+  margin-bottom: 5px;
+  background-color: #e0f7fa;
+  padding: 2px;
+  border-radius: 3px;
+  font-size: 1.5em;
+}
+
+.calendar-header,
+.calendar-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.calendar-navigation {
+  margin-bottom: 1rem;
+}
+
+button {
+  margin: 0 5px;
 }
 
 .selected-date-summary {

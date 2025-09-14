@@ -1,88 +1,108 @@
-<mat-tab-group>
-  <mat-tab label="General">
-    <form [formGroup]="generalForm" class="form-container">
-      <div class="form-row">
-        <mat-form-field class="full-width">
-          <mat-label>Subject</mat-label>
-          <input matInput formControlName="subject" />
-        </mat-form-field>
-      </div>
+<div class="dialog-container">
+  <mat-tab-group animationDuration="300ms" class="tab-container">
+    <!-- General Tab -->
+    <mat-tab label="General">
+      <form [formGroup]="generalForm" class="form-container">
 
-      <div class="form-row">
-        <mat-form-field class="half-width">
-          <mat-label>Location</mat-label>
-          <input matInput formControlName="location" />
-        </mat-form-field>
+        <div class="form-section-row">
+          <!-- Event Details -->
+          <div class="section half-section">
+            <h3 class="section-title">Event Details</h3>
+            <div class="form-row">
+              <mat-form-field class="full-width highlight-field">
+                <mat-label>Subject</mat-label>
+                <input matInput formControlName="subject" placeholder="Enter event subject" />
+              </mat-form-field>
+            </div>
+            <div class="form-row">
+              <mat-form-field class="full-width">
+                <mat-label>Location</mat-label>
+                <input matInput formControlName="location" placeholder="Enter location" />
+              </mat-form-field>
+            </div>
+          </div>
 
+          <!-- Schedule -->
+          <div class="section half-section">
+            <h3 class="section-title">Schedule</h3>
+            <div class="form-row">
+              <mat-form-field class="half-width">
+                <mat-label>Start Date</mat-label>
+                <input matInput [matDatepicker]="picker1" formControlName="startDate" />
+                <mat-datepicker-toggle matSuffix [for]="picker1"></mat-datepicker-toggle>
+                <mat-datepicker #picker1></mat-datepicker>
+              </mat-form-field>
 
-      </div>
+              <mat-form-field class="half-width">
+                <mat-label>End Date</mat-label>
+                <input matInput [matDatepicker]="picker2" formControlName="endDate" />
+                <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
+                <mat-datepicker #picker2></mat-datepicker>
+              </mat-form-field>
+            </div>
 
-      <div class="form-row">
-        <mat-form-field class="half-width">
-          <mat-label>Start Date</mat-label>
-          <input matInput [matDatepicker]="picker1" formControlName="startDate" />
-          <mat-datepicker-toggle matSuffix [for]="picker1"></mat-datepicker-toggle>
-          <mat-datepicker #picker1></mat-datepicker>
-        </mat-form-field>
+            <div class="form-row">
+              <mat-checkbox formControlName="allDay" class="checkbox">All Day</mat-checkbox>
+              <mat-form-field class="half-width">
+                <mat-label>Importance</mat-label>
+                <mat-select formControlName="importance">
+                  <mat-option *ngFor="let level of importanceLevels" [value]="level">
+                    {{ level }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+          </div>
+        </div>
 
-        <mat-form-field class="half-width">
-          <mat-label>End Date</mat-label>
-          <input matInput [matDatepicker]="picker2" formControlName="endDate" />
-          <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
-          <mat-datepicker #picker2></mat-datepicker>
-        </mat-form-field>
-      </div>
+        <!-- Notes (Full width below) -->
+        <div class="notes-section">
+          <h3 class="section-title">Notes</h3>
+          <div class="form-row">
+            <mat-form-field class="full-width">
+              <textarea matInput placeholder="Add a comment..." formControlName="comment"></textarea>
+            </mat-form-field>
+          </div>
+        </div>
+      </form>
+    </mat-tab>
 
-      <div class="form-row">
-        <mat-checkbox formControlName="allDay" class="checkbox">
-          All Day
-        </mat-checkbox>
-        <mat-form-field class="half-width">
-          <mat-label>Importance</mat-label>
-          <mat-select formControlName="importance">
-            <mat-option *ngFor="let level of importanceLevels" [value]="level">
-              {{ level }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
+    <!-- Attachments Tab -->
+    <mat-tab label="Attachments">
+      <div class="attachment-section">
+        <h3 class="section-title">Manage Attachments</h3>
 
-      <div class="form-row">
-        <mat-form-field class="full-width">
-          <textarea matInput placeholder="Comment here." formControlName="comment"></textarea>
-        </mat-form-field>
-      </div>
-    </form>
-  </mat-tab>
-
-  <mat-tab label="Attachments">
-    <div class="attachment-section">
-      <input type="file" (change)="onFileSelected($event)" multiple />
-      <button mat-stroked-button color="primary" (click)="uploadAttachments()" [disabled]="attachments.length === 0">
-        Upload Selected
-      </button>
-
-      <h3>Uploaded Files</h3>
-      <ul>
-        <li *ngFor="let attachment of existingAttachments">
-          <span (click)="downloadAttachment(attachment)" style="cursor:pointer; text-decoration:underline; color:blue;">
-            {{ attachment.fileName }}
-          </span>
-          <button mat-icon-button color="warn" (click)="deleteAttachment(attachment.id)">
-            <mat-icon>delete</mat-icon>
+        <div class="upload-row">
+          <input type="file" (change)="onFileSelected($event)" multiple />
+          <button mat-stroked-button color="primary" (click)="uploadAttachments()"
+            [disabled]="attachments.length === 0">
+            Upload Selected
           </button>
-        </li>
-      </ul>
-    </div>
-  </mat-tab>
+        </div>
 
-  <mat-tab label="Recurrence">Recurrence options here...</mat-tab>
-  <mat-tab label="History">History logs here...</mat-tab>
-</mat-tab-group>
+        <mat-divider></mat-divider>
 
-<div class="dialog-actions">
-  <button mat-raised-button color="primary" (click)="handleSave()">
-    Save
-  </button>
-  <button mat-button (click)="handleCancel()">Cancel</button>
+        <h4>Uploaded Files</h4>
+        <ul class="attachment-list">
+          <li *ngFor="let attachment of existingAttachments" class="attachment-item">
+            <span (click)="downloadAttachment(attachment)" class="attachment-link">
+              <mat-icon>insert_drive_file</mat-icon> {{ attachment.fileName }}
+            </span>
+            <button mat-icon-button color="warn" (click)="deleteAttachment(attachment.id)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Recurrence">Recurrence options here...</mat-tab>
+    <mat-tab label="History">History logs here...</mat-tab>
+  </mat-tab-group>
+
+  <!-- Fixed Action Bar -->
+  <div class="dialog-actions fixed-actions">
+    <button mat-raised-button color="primary" (click)="handleSave()">Save</button>
+    <button mat-button (click)="handleCancel()">Cancel</button>
+  </div>
 </div>

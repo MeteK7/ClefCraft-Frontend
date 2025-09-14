@@ -8,22 +8,51 @@
   overflow: hidden;
 }
 
-.dialog-content {
-  flex-grow: 1;
-  overflow-y: auto; /* Enables scrolling inside the dialog */
-  padding: 1em;
-  padding-right: 2em;
-  max-height: 65vh; /* Adjust this as needed */
+/* Make the tab group take available space */
+mat-tab-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
+/* Ensure tab content containers are properly sized */
+::ng-deep .mat-mdc-tab-body-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+::ng-deep .mat-mdc-tab-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+::ng-deep .mat-mdc-tab-body-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+/* Fixed actions at the bottom */
 .dialog-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1em;
   background: white;
-  position: sticky;
-  bottom: 0;
+  border-top: 1px solid #eee;
+  gap: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure buttons have proper spacing */
+.dialog-actions .btn {
+  margin: 0;
+  min-width: 100px;
 }
 
 ::ng-deep .mat-mdc-dialog-surface {
@@ -37,89 +66,145 @@
     will-change: auto !important;
 }
 
+/* Make dialog content fill available space */
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  padding: 1em 2em 1em 1em;
+}
 
-  /* ::ng-deep .mat-mdc-dialog-surface {
-    width: 50vw !important;
-    height: 80vh !important;
-    display: flex !important;
+/* Make the description textarea expand naturally */
+.form-group.textarea-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+#itemDescription {
+  flex: 1;
+  min-height: 6em;
+  resize: vertical;
+}
+
+/* Form layout adjustments */
+.form-row {
+  display: flex;
+  gap: 2em;
+  flex: 1;
+}
+
+.form-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  flex: 1;
+}
+
+/* Ensure form groups take proper space */
+.form-group {
+  margin-bottom: 1.5em;
+}
+
+/* Rest of your existing styles */
+.input-field {
+  width: 100%;
+  padding: 0.5em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+.input-field:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+.info-group {
+  display: flex;
+  justify-content: space-between;
+  margin: 1em 0;
+  font-size: 0.9em;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.linked-items {
+  margin-bottom: 1.5em;
+}
+
+.linked-items ul {
+  list-style-type: disc;
+  margin-left: 20px;
+}
+
+.btn {
+  padding: 0.5em 1em;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s;
+}
+
+.save-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #218838;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}
+
+.cancel-btn {
+  background-color: #6c757d;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #5a6268;
+}
+
+.mark-as-worked-btn {
+  background-color: #007bff;
+  color: white;
+}
+
+.mark-as-worked-btn:hover {
+  background-color: #0056b3;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .form-row {
     flex-direction: column;
-} */
-
-  .form-group {
-    margin-bottom: 1.5em;
+    gap: 1.5em;
   }
   
-  .label {
-    font-weight: bold;
-    color: #555;
+  .dialog-actions {
+    flex-wrap: wrap;
+    justify-content: center;
   }
   
-  .input-field {
-    width: 100%;
-    padding: 0.5em;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1em;
-  }
-  
-  .input-field:focus {
-    border-color: #007bff; /* Focus color */
-    outline: none;
+  .dialog-actions .btn {
+    flex: 1;
+    min-width: auto;
+    margin: 4px;
   }
   
   .info-group {
-    display: flex;
-    justify-content: space-between;
-    margin: 1em 0;
-    font-size: 0.9em;
-    color: #666;
+    flex-direction: column;
+    gap: 8px;
   }
   
-  .linked-items {
-    margin-bottom: 1.5em;
-  }
-  
-  .linked-items ul {
-    list-style-type: disc;
-    margin-left: 20px;
-  }
-  
-
-
-  
-  .btn {
-    padding: 0.5em 1em;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.3s;
-  }
-  
-  .save-btn {
-    background-color: #28a745; /* Green */
-    color: white;
-  }
-  
-  .save-btn:hover {
-    background-color: #218838;
-  }
-  
-  .delete-btn {
-    background-color: #dc3545; /* Red */
-    color: white;
-  }
-  
-  .delete-btn:hover {
-    background-color: #c82333;
-  }
-  
-  .cancel-btn {
-    background-color: #6c757d; /* Grey */
-    color: white;
-  }
-  
-  .cancel-btn:hover {
-    background-color: #5a6268;
-  }
-  
+}

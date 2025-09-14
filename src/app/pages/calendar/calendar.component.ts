@@ -54,12 +54,12 @@ export class CalendarComponent implements OnInit {
       (error) => console.error('Error fetching events:', error)
     );
   }
-  
+
   convertToLocalDate(utcDate: string): Date {
     const date = new Date(utcDate); // Parses as UTC
     return new Date(date.getTime() - date.getTimezoneOffset() * 60000); // Convert to local time
   }
-  
+
 
   generateCalendarGrid(): void {
     const currentMonth = this.selectedDate.getMonth();
@@ -100,11 +100,11 @@ export class CalendarComponent implements OnInit {
         event.startDate.getDate()
       );
       const selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  
+
       return eventDate.getTime() === selectedDate.getTime();
     });
   }
-  
+
 
   //CONSIDER USING THE CODE BELOW IF YOU WANT
   /*
@@ -128,37 +128,44 @@ export class CalendarComponent implements OnInit {
     // Get the Thursday of the current week to ensure correct ISO week calculation
     const targetDate = new Date(date.getTime());
     targetDate.setDate(targetDate.getDate() + 3 - ((targetDate.getDay() + 6) % 7));
-  
+
     // Calculate the first Thursday of the year
     const firstThursday = new Date(targetDate.getFullYear(), 0, 4);
     firstThursday.setDate(firstThursday.getDate() + 3 - ((firstThursday.getDay() + 6) % 7));
-  
+
     // Calculate the ISO week number
     const diff = targetDate.getTime() - firstThursday.getTime();
     return 1 + Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
-  }  
-
-// Get the day of the year
-getDayOfYear(date: Date): number {
-  const startOfYear = new Date(date.getFullYear(), 0, 0);
-  const diff =
-    date.getTime() -
-    startOfYear.getTime() +
-    (startOfYear.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000;
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-}
-
-
-  onDateSelected(date: Date): void {
-    this.selectedDate = date;
-    const eventsForDay = this.getEventsForDay(date);
-    
-    // Assuming you only handle one event per day for simplicity
-    const eventData = eventsForDay.length > 0 ? eventsForDay[0] : null;
-  
-    this.openDialog(eventData);
   }
-  
+
+  // Get the day of the year
+  getDayOfYear(date: Date): number {
+    const startOfYear = new Date(date.getFullYear(), 0, 0);
+    const diff =
+      date.getTime() -
+      startOfYear.getTime() +
+      (startOfYear.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000;
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  }
+
+
+  // Datepicker now only navigates calendar
+  onDateSelectedFromPicker(date: Date): void {
+    this.selectedDate = date;
+    this.generateCalendarGrid(); // Update calendar view to the selected month
+  }
+
+  onEmptyDayClicked(date: Date): void {
+    this.selectedDate = date;       // Update selected date
+    this.openDialog(null);          // Open dialog with no existing event (new event)
+  }
+
+  // Per-event click opens dialog
+  onEventClicked(event: any, e: MouseEvent): void {
+    e.stopPropagation(); // Prevent parent td click
+    this.selectedDate = new Date(event.startDate); // Optional: update selected date
+    this.openDialog(event);
+  }
 
   openDialog(eventData: any = null): void {
     const dialogRef = this.dialog.open(CalendarDialogComponent, {
@@ -171,16 +178,16 @@ getDayOfYear(date: Date): number {
         eventData: eventData, // Pass event data
       },
     });
-  
+
     dialogRef.componentInstance.onSave.subscribe((record: any) => {
       this.saveEvent(record);
       dialogRef.close();
     });
-  
+
     dialogRef.componentInstance.onCancel.subscribe(() => {
       dialogRef.close();
     });
-  }  
+  }
 
   //When dealing with all-day events, it's critical to strip the time portion of the date to avoid timezone-related offsets.
   saveEvent(record: any): void {
@@ -191,7 +198,7 @@ getDayOfYear(date: Date): number {
       dateCreated: new Date().toISOString(), // Ensure UTC
       dateModified: new Date().toISOString(), // Ensure UTC
     };
-  
+
     this.calendarService.saveEvent(event).subscribe(
       (response) => {
         console.log('Event saved successfully:', response);
@@ -227,4 +234,12 @@ getDayOfYear(date: Date): number {
   handleDialogCancel(): void {
     console.log('Dialog canceled');
   }
+
+  // Check if two dates are the same (ignoring time)
+  isSameDate(date1: Date, date2: Date): boolean {
+    return date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate();
+  }
+
 }

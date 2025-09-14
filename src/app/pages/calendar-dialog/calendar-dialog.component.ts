@@ -12,6 +12,7 @@ import { Item } from '../../models/board.model';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { CalendarService } from '../../_services/calendar.service';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -27,6 +28,7 @@ import { MatIconModule } from '@angular/material/icon';
     MatTabsModule,
     MatButtonModule,
     MatIconModule,
+    MatDividerModule,
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
@@ -42,7 +44,7 @@ export class CalendarDialogComponent implements OnInit {
   attachments: File[] = [];
   existingAttachments: any[] = [];
   eventId: number | null = null;
-  
+
   constructor(private fb: FormBuilder, @Inject(MAT_DIALOG_DATA) public data: any, private calendarService: CalendarService) {
     this.generalForm = this.fb.group({
       subject: ['', Validators.required],
@@ -57,11 +59,19 @@ export class CalendarDialogComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.data.eventData) {
+      // Editing existing event
       this.generalForm.patchValue(this.data.eventData);
       this.eventId = this.data.eventData.id;
-      this.fetchAttachments(this.eventId!); // Use non-null assertion operator
+      this.fetchAttachments(this.eventId!);
+    } else if (this.data.date) {
+      // Creating new event -> populate start/end date
+      const selectedDate = this.data.date;
+      this.generalForm.patchValue({
+        startDate: selectedDate,
+        endDate: selectedDate
+      });
     }
-  }  
+  }
 
   fetchAttachments(eventId: number): void {
     this.calendarService.getAttachments(eventId).subscribe(
@@ -69,12 +79,12 @@ export class CalendarDialogComponent implements OnInit {
       (error: any) => console.error('Failed to load attachments', error) // Explicitly type error
     );
   }
-  
+
   onFileSelected(event: any): void {
     const selectedFiles = Array.from(event.target.files) as File[];
     this.attachments.push(...selectedFiles);
   }
-  
+
   uploadAttachments(): void {
     if (!this.eventId) return;
 
@@ -91,19 +101,19 @@ export class CalendarDialogComponent implements OnInit {
   }
 
   downloadAttachment(attachment: any): void {
-  this.calendarService.downloadAttachment(attachment.id).subscribe(
-    (blob: Blob) => {
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = attachment.fileName;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    },
-    (error: any) => console.error('Download failed', error)
-  );
-}
-  
+    this.calendarService.downloadAttachment(attachment.id).subscribe(
+      (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = attachment.fileName;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      (error: any) => console.error('Download failed', error)
+    );
+  }
+
   deleteAttachment(id: number): void {
     this.calendarService.deleteAttachment(id).subscribe(
       () => {
@@ -113,7 +123,7 @@ export class CalendarDialogComponent implements OnInit {
     );
   }
 
-  
+
   handleSave(): void {
     const record = this.generalForm.value;
     this.onSave.emit(record);
@@ -122,4 +132,6 @@ export class CalendarDialogComponent implements OnInit {
   handleCancel(): void {
     this.onCancel.emit();
   }
+
+
 }
