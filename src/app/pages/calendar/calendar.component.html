@@ -42,14 +42,16 @@
           <span>{{ date.getDate() }}</span>
 
           <div class="events">
-            <div *ngFor="let event of getEventsForDay(date)" class="event" matTooltip="{{ event.subject }}"
-              (click)="onEventClicked(event, $event)">
-              <span>{{ event.subject }}</span>
+            <div *ngFor="let event of getEventsForDay(date)" class="event" [class.linked]="event.linkedBoardItemId"
+              matTooltip="{{ event.subject }}" (click)="onEventClicked(event, $event)">
+              <span class="event-title">
+                <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
+                {{ event.subject }}
+              </span>
             </div>
           </div>
         </div>
       </td>
-
     </tr>
   </tbody>
 </table>

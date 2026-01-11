@@ -318,9 +318,26 @@ textarea[matInput] {
   border-bottom: 1px solid #ffeeba;
 }
 
-
-
 .pending {
   opacity: 0.7;
   font-style: italic;
+}
+
+.linked-board-banner {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: #f3e5f5;
+  border-left: 4px solid #673ab7;
+  border-radius: 4px;
+}
+
+.linked-board-banner mat-icon {
+  margin-right: 8px;
+}
+
+.linked-text .label {
+  font-size: 11px;
+  color: #555;
 }

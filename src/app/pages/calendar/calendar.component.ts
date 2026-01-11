@@ -12,6 +12,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { SavePayload } from './models/save-payload.model';
 import { CalendarEvent } from './models/calendar-event.model';
 import { CalendarEventUI } from './models/calendar-event.model-ui';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-calendar',
@@ -24,6 +25,7 @@ import { CalendarEventUI } from './models/calendar-event.model-ui';
     MatTooltipModule,
     MatButtonModule,
     MatInputModule,
+    MatIconModule,
     CalendarDialogComponent,
   ],
   templateUrl: './calendar.component.html',

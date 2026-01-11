@@ -2,6 +2,17 @@
   <div *ngIf="hasUnsavedChanges" class="unsaved-banner">
     ⚠ You have unsaved changes
   </div>
+  <!-- Linked Board Item Context -->
+  <div *ngIf="data?.eventData?.linkedBoardItemId" class="linked-board-banner">
+    <mat-icon color="primary">link</mat-icon>
+
+    <div class="linked-text">
+      <div class="label">Linked Board Item</div>
+      <button mat-button color="primary" (click)="openLinkedBoardItem()">
+        {{ data.eventData.linkedBoardItemTitle }}
+      </button>
+    </div>
+  </div>
   <mat-tab-group animationDuration="300ms" class="tab-container">
     <!-- General Tab -->
     <mat-tab label="General">

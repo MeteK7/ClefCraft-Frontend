@@ -7,4 +7,6 @@ export interface CalendarEventUI {
   allDay: boolean;
   importance: 'Low' | 'Normal' | 'High';
   comment?: string;
+  linkedBoardItemId?: number;
+  linkedBoardItemTitle?: string; 
 }

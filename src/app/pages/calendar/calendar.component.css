@@ -184,3 +184,24 @@ button {
   font-size: 1.2em;
   color: #555;
 }
+
+.event {
+  font-size: 12px;
+  padding: 2px 4px;
+  margin-bottom: 2px;
+  border-radius: 4px;
+  background: #e3f2fd;
+  cursor: pointer;
+}
+
+.event.linked {
+  background: #ede7f6;
+  border-left: 3px solid #673ab7;
+}
+
+.linked-icon {
+  font-size: 14px;
+  vertical-align: middle;
+  margin-right: 4px;
+  color: #673ab7;
+}
