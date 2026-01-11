@@ -20,6 +20,10 @@ export class CalendarService {
     return this.http.post<any>(`${this.apiUrl}/create`, event);
   }
 
+  updateEvent(id: number, event: any): Observable<any> {
+  return this.http.put<any>(`${this.apiUrl}/${id}`, event);
+}
+
   GetWorkHistory(itemId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/WorkHistory/${itemId}`);
   }

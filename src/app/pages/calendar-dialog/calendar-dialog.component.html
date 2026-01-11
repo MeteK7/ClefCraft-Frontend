@@ -1,4 +1,7 @@
 <div class="dialog-container">
+    <div *ngIf="hasUnsavedChanges" class="unsaved-banner">
+    ⚠ You have unsaved changes
+  </div>
   <mat-tab-group animationDuration="300ms" class="tab-container">
     <!-- General Tab -->
     <mat-tab label="General">
@@ -70,25 +73,28 @@
     <!-- Attachments Tab -->
     <mat-tab label="Attachments">
       <div class="attachment-section">
-        <h3 class="section-title">Manage Attachments</h3>
 
-        <div class="upload-row">
-          <input type="file" (change)="onFileSelected($event)" multiple />
-          <button mat-stroked-button color="primary" (click)="uploadAttachments()"
-            [disabled]="attachments.length === 0">
-            Upload Selected
-          </button>
-        </div>
+        <input type="file" multiple (change)="onFileSelected($event)" />
 
         <mat-divider></mat-divider>
 
-        <h4>Uploaded Files</h4>
+        <h4>Files</h4>
         <ul class="attachment-list">
-          <li *ngFor="let attachment of existingAttachments" class="attachment-item">
-            <span (click)="downloadAttachment(attachment)" class="attachment-link">
-              <mat-icon>insert_drive_file</mat-icon> {{ attachment.fileName }}
-            </span>
-            <button mat-icon-button color="warn" (click)="deleteAttachment(attachment.id)">
+
+          <!-- Pending -->
+          <li *ngFor="let file of stagedAttachments" class="attachment pending">
+            <mat-icon>schedule</mat-icon>
+            {{ file.name }} <em>(Pending)</em>
+            <button mat-icon-button (click)="removeStagedFile(file)">
+              <mat-icon>close</mat-icon>
+            </button>
+          </li>
+
+          <!-- Existing -->
+          <li *ngFor="let a of existingAttachments" class="attachment">
+            <mat-icon>insert_drive_file</mat-icon>
+            {{ a.fileName }}
+            <button mat-icon-button color="warn" (click)="deleteAttachment(a.id)">
               <mat-icon>delete</mat-icon>
             </button>
           </li>
@@ -101,8 +107,15 @@
   </mat-tab-group>
 
   <!-- Fixed Action Bar -->
-  <div class="dialog-actions fixed-actions">
+  <!--<div class="dialog-actions fixed-actions">
     <button mat-raised-button color="primary" (click)="handleSave()">Save</button>
+    <button mat-button (click)="handleCancel()">Cancel</button>
+  </div>-->
+
+  <div class="dialog-actions fixed-actions">
+    <button mat-raised-button color="primary">
+      Save
+    </button>
     <button mat-button (click)="handleCancel()">Cancel</button>
   </div>
 </div>

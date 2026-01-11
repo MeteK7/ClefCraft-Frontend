@@ -1,18 +1,30 @@
-import { Component, EventEmitter, Inject, Input, OnInit, Output } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Inject,
+  Input,
+  OnInit,
+  Output
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators
+} from '@angular/forms';
+import { MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
+import { CalendarService } from '../../_services/calendar.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
-import { Item } from '../../models/board.model';
-import { MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { CalendarService } from '../../_services/calendar.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -22,30 +34,39 @@ import { MatDividerModule } from '@angular/material/divider';
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
-    MatDatepickerModule,
     MatCheckboxModule,
     MatSelectModule,
     MatTabsModule,
     MatButtonModule,
     MatIconModule,
     MatDividerModule,
+    MatDatepickerModule,
+    MatNativeDateModule
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
 })
 export class CalendarDialogComponent implements OnInit {
-  @Input() date: Date = new Date();
-  @Input() linkedRecord: any | null = null;
+
   @Output() onSave = new EventEmitter<any>();
   @Output() onCancel = new EventEmitter<void>();
 
   generalForm: FormGroup;
-  importanceLevels: string[] = ['Low', 'Normal', 'High'];
-  attachments: File[] = [];
-  existingAttachments: any[] = [];
-  eventId: number | null = null;
 
-  constructor(private fb: FormBuilder, @Inject(MAT_DIALOG_DATA) public data: any, private calendarService: CalendarService) {
+  importanceLevels = ['Low', 'Normal', 'High'];
+
+  existingAttachments: any[] = [];
+  stagedAttachments: File[] = [];
+
+  eventId: number | null = null;
+  hasUnsavedChanges = false;
+
+  constructor(
+    private fb: FormBuilder,
+    @Inject(MAT_DIALOG_DATA) public data: any,
+    private calendarService: CalendarService,
+    private dialog: MatDialog
+  ) {
     this.generalForm = this.fb.group({
       subject: ['', Validators.required],
       location: [''],
@@ -59,33 +80,29 @@ export class CalendarDialogComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.data.eventData) {
-      // Editing existing event
       this.generalForm.patchValue(this.data.eventData);
       this.eventId = this.data.eventData.id;
       this.fetchAttachments(this.eventId!);
-    } else if (this.data.date) {
-      // Creating new event -> populate start/end date
-      const selectedDate = this.data.date;
+    } else {
       this.generalForm.patchValue({
-        startDate: selectedDate,
-        endDate: selectedDate
+        startDate: this.data.date,
+        endDate: this.data.date
       });
     }
+
+    // 🔴 Global dirty tracking
+    this.generalForm.valueChanges.subscribe(() => {
+      this.hasUnsavedChanges = true;
+    });
   }
 
   fetchAttachments(eventId: number): void {
-    this.calendarService.getAttachments(eventId).subscribe(
-      (attachments: any[]) => (this.existingAttachments = attachments), // Explicitly type attachments
-      (error: any) => console.error('Failed to load attachments', error) // Explicitly type error
-    );
+    this.calendarService.getAttachments(eventId).subscribe(a => {
+      this.existingAttachments = a;
+    });
   }
 
-  onFileSelected(event: any): void {
-    const selectedFiles = Array.from(event.target.files) as File[];
-    this.attachments.push(...selectedFiles);
-  }
-
-  uploadAttachments(): void {
+  /*uploadAttachments(): void {
     if (!this.eventId) return;
 
     const formData = new FormData();
@@ -98,7 +115,7 @@ export class CalendarDialogComponent implements OnInit {
       },
       (error: any) => console.error('Upload failed', error) // Explicitly type 'error'
     );
-  }
+  }*/
 
   downloadAttachment(attachment: any): void {
     this.calendarService.downloadAttachment(attachment.id).subscribe(
@@ -114,24 +131,60 @@ export class CalendarDialogComponent implements OnInit {
     );
   }
 
+  // ============================
+  // ATTACHMENTS (STAGED)
+  // ============================
+
+  onFileSelected(event: any): void {
+    const files = Array.from(event.target.files) as File[];
+    this.stagedAttachments.push(...files);
+    this.hasUnsavedChanges = true;
+  }
+
+  removeStagedFile(file: File): void {
+    this.stagedAttachments = this.stagedAttachments.filter(f => f !== file);
+    this.hasUnsavedChanges = true;
+  }
+
   deleteAttachment(id: number): void {
-    this.calendarService.deleteAttachment(id).subscribe(
-      () => {
-        this.existingAttachments = this.existingAttachments.filter(a => a.id !== id);
-      },
-      (error: any) => console.error('Delete failed', error) // Explicitly type 'error'
-    );
+    this.calendarService.deleteAttachment(id).subscribe(() => {
+      this.existingAttachments =
+        this.existingAttachments.filter(a => a.id !== id);
+      this.hasUnsavedChanges = true;
+    });
   }
 
 
+  // ============================
+  // SAVE / CANCEL
+  // ============================
+
   handleSave(): void {
-    const record = this.generalForm.value;
-    this.onSave.emit(record);
+    const record = {
+      ...this.generalForm.value,
+      id: this.eventId
+    };
+
+    this.onSave.emit({
+      record,
+      attachments: this.stagedAttachments
+    });
+
+    this.hasUnsavedChanges = false;
   }
 
   handleCancel(): void {
-    this.onCancel.emit();
+    if (!this.hasUnsavedChanges) {
+      this.onCancel.emit();
+      return;
+    }
+
+    const confirm = window.confirm(
+      'You have unsaved changes, including attachments.\n\nDiscard them?'
+    );
+
+    if (confirm) {
+      this.onCancel.emit();
+    }
   }
-
-
 }
