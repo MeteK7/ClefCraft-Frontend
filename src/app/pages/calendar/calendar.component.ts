@@ -9,6 +9,10 @@ import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.comp
 import { Item } from '../../models/board.model';
 import { CalendarService } from '../../_services/calendar.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { SavePayload } from './models/save-payload.model';
+import { CalendarEvent } from './models/calendar-event.model';
+import { CalendarEventUI } from './models/calendar-event.model-ui';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-calendar',
@@ -21,13 +25,14 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     MatTooltipModule,
     MatButtonModule,
     MatInputModule,
+    MatIconModule,
     CalendarDialogComponent,
   ],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.css'],
 })
 export class CalendarComponent implements OnInit {
-  events: any[] = [];
+  events: CalendarEventUI[] = [];
   selectedDate: Date = new Date();
   linkedRecord: Item | null = null;
   userId: string = '944d0156-cb3d-466f-a1ea-5f53e3a10f8e';  // TEST
@@ -42,8 +47,8 @@ export class CalendarComponent implements OnInit {
   }
 
   fetchEvents(): void {
-    this.calendarService.getEvents(this.userId).subscribe(
-      (events) => {
+    this.calendarService.getEvents().subscribe(
+      (events: CalendarEvent[]) => {
         this.events = events.map(event => ({
           ...event,
           startDate: this.convertToLocalDate(event.startDate),
@@ -51,15 +56,15 @@ export class CalendarComponent implements OnInit {
         }));
         this.generateCalendarGrid();
       },
-      (error) => console.error('Error fetching events:', error)
+      error => console.error('Error fetching events:', error)
     );
   }
-  
+
   convertToLocalDate(utcDate: string): Date {
     const date = new Date(utcDate); // Parses as UTC
     return new Date(date.getTime() - date.getTimezoneOffset() * 60000); // Convert to local time
   }
-  
+
 
   generateCalendarGrid(): void {
     const currentMonth = this.selectedDate.getMonth();
@@ -100,11 +105,11 @@ export class CalendarComponent implements OnInit {
         event.startDate.getDate()
       );
       const selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  
+
       return eventDate.getTime() === selectedDate.getTime();
     });
   }
-  
+
 
   //CONSIDER USING THE CODE BELOW IF YOU WANT
   /*
@@ -128,78 +133,133 @@ export class CalendarComponent implements OnInit {
     // Get the Thursday of the current week to ensure correct ISO week calculation
     const targetDate = new Date(date.getTime());
     targetDate.setDate(targetDate.getDate() + 3 - ((targetDate.getDay() + 6) % 7));
-  
+
     // Calculate the first Thursday of the year
     const firstThursday = new Date(targetDate.getFullYear(), 0, 4);
     firstThursday.setDate(firstThursday.getDate() + 3 - ((firstThursday.getDay() + 6) % 7));
-  
+
     // Calculate the ISO week number
     const diff = targetDate.getTime() - firstThursday.getTime();
     return 1 + Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
-  }  
-
-// Get the day of the year
-getDayOfYear(date: Date): number {
-  const startOfYear = new Date(date.getFullYear(), 0, 0);
-  const diff =
-    date.getTime() -
-    startOfYear.getTime() +
-    (startOfYear.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000;
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-}
-
-
-  onDateSelected(date: Date): void {
-    this.selectedDate = date;
-    const eventsForDay = this.getEventsForDay(date);
-    
-    // Assuming you only handle one event per day for simplicity
-    const eventData = eventsForDay.length > 0 ? eventsForDay[0] : null;
-  
-    this.openDialog(eventData);
   }
-  
+
+  // Get the day of the year
+  getDayOfYear(date: Date): number {
+    const startOfYear = new Date(date.getFullYear(), 0, 0);
+    const diff =
+      date.getTime() -
+      startOfYear.getTime() +
+      (startOfYear.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000;
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  }
+
+
+  // Datepicker now only navigates calendar
+  onDateSelectedFromPicker(date: Date): void {
+    this.selectedDate = date;
+    this.generateCalendarGrid(); // Update calendar view to the selected month
+  }
+
+  onEmptyDayClicked(date: Date): void {
+    this.selectedDate = date;       // Update selected date
+    this.openDialog(null);          // Open dialog with no existing event (new event)
+  }
+
+  // Per-event click opens dialog
+  onEventClicked(event: any, e: MouseEvent): void {
+    e.stopPropagation(); // Prevent parent td click
+    this.selectedDate = new Date(event.startDate); // Optional: update selected date
+    this.openDialog(event);
+  }
 
   openDialog(eventData: any = null): void {
     const dialogRef = this.dialog.open(CalendarDialogComponent, {
-      width: '70%', // Occupy the full screen width
-      maxWidth: 'none', // Disable Angular Material's default max-width
+      width: '70%',
       height: '80vh',
+      maxWidth: 'none', // Disable Angular Material's default max-width
+      disableClose: true,
       data: {
         date: this.selectedDate,
-        linkedRecord: this.linkedRecord,
-        eventData: eventData, // Pass event data
-      },
+        eventData
+      }
     });
-  
-    dialogRef.componentInstance.onSave.subscribe((record: any) => {
-      this.saveEvent(record);
-      dialogRef.close();
+
+    dialogRef.componentInstance.onSave.subscribe(
+      ({ record, attachments }: SavePayload) => {
+        const save$ = record.id
+          ? this.calendarService.updateEvent(record.id, record)
+          : this.calendarService.saveEvent(record);
+
+        save$.subscribe((savedEvent: CalendarEvent) => {
+          if (attachments.length > 0) {
+            const formData = new FormData();
+            attachments.forEach((f: File) => formData.append('files', f));
+
+            this.calendarService
+              .uploadAttachments(savedEvent.id!, formData)
+              .subscribe(() => this.fetchEvents());
+          } else {
+            this.fetchEvents();
+          }
+
+          dialogRef.close();
+        });
+      });
+
+    dialogRef.componentInstance.onCancel.subscribe(() => dialogRef.close());
+
+    const attemptClose = () => {
+      const hasChanges = dialogRef.componentInstance.hasUnsavedChanges;
+
+      if (!hasChanges) {
+        dialogRef.close();
+        return;
+      }
+
+      const confirm = window.confirm(
+        'You have unsaved changes.\n\nDiscard them?'
+      );
+
+      if (confirm) {
+        dialogRef.close();
+      }
+    };
+
+    // BACKDROP
+    dialogRef.backdropClick().subscribe(() => {
+      attemptClose();
     });
-  
-    dialogRef.componentInstance.onCancel.subscribe(() => {
-      dialogRef.close();
+
+    // ESC
+    dialogRef.keydownEvents().subscribe(event => {
+      if (event.key === 'Escape') {
+        attemptClose();
+      }
     });
-  }  
+  }
 
   //When dealing with all-day events, it's critical to strip the time portion of the date to avoid timezone-related offsets.
   saveEvent(record: any): void {
     const event = {
       ...record,
-      userId: this.userId,
-      startDate: new Date(record.startDate).toISOString(), // UTC
+      startDate: new Date(record.startDate).toISOString(),
       endDate: new Date(record.endDate).toISOString(),
-      dateCreated: new Date().toISOString(), // Ensure UTC
-      dateModified: new Date().toISOString(), // Ensure UTC
+      //dateModified: new Date().toISOString()
     };
-  
-    this.calendarService.saveEvent(event).subscribe(
-      (response) => {
-        console.log('Event saved successfully:', response);
-        this.fetchEvents();
-      },
-      (error) => console.error('Error saving event:', error)
-    );
+
+    if (record.id) {
+      // UPDATE
+      this.calendarService.updateEvent(record.id, event).subscribe(
+        () => this.fetchEvents(),
+        err => console.error('Update failed', err)
+      );
+    } else {
+      // CREATE
+      this.calendarService.saveEvent(event).subscribe(
+        () => this.fetchEvents(),
+        err => console.error('Create failed', err)
+      );
+    }
   }
 
   navigateToBoard(): void {
@@ -228,4 +288,12 @@ getDayOfYear(date: Date): number {
   handleDialogCancel(): void {
     console.log('Dialog canceled');
   }
+
+  // Check if two dates are the same (ignoring time)
+  isSameDate(date1: Date, date2: Date): boolean {
+    return date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate();
+  }
+
 }

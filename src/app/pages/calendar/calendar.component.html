@@ -3,15 +3,17 @@
   <button mat-button (click)="navigateToBoard()">Back to Board</button>
 </div>
 
+<!-- Datepicker: only navigates calendar -->
 <div class="calendar-container">
   <mat-form-field>
     <mat-label>Select a date</mat-label>
-    <input matInput [matDatepicker]="picker" (dateChange)="onDateSelected($event.value)" />
+    <input matInput [matDatepicker]="picker" (dateChange)="onDateSelectedFromPicker($event.value)" />
     <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
     <mat-datepicker #picker></mat-datepicker>
   </mat-form-field>
 </div>
 
+<!-- Selected date summary -->
 <div class="selected-date-summary">
   <h3>{{ selectedDate | date: 'EEEE, MMMM d, y' }}</h3>
   <p>
@@ -35,26 +37,21 @@
   </thead>
   <tbody>
     <tr *ngFor="let row of calendarGrid">
-      <td *ngFor="let date of row" (click)="onDateSelected(date)" class="calendar-day">
-        <div class="day">
+      <td *ngFor="let date of row" class="calendar-day" [class.selected]="isSameDate(date, selectedDate)">
+        <div class="day" (click)="onEmptyDayClicked(date)">
           <span>{{ date.getDate() }}</span>
+
           <div class="events">
-            <div *ngFor="let event of getEventsForDay(date)" class="event" matTooltip="{{ event.subject }}">
-              <span>{{ event.subject }}</span>
+            <div *ngFor="let event of getEventsForDay(date)" class="event" [class.linked]="event.linkedBoardItemId"
+              matTooltip="{{ event.subject }}" (click)="onEventClicked(event, $event)">
+              <span class="event-title">
+                <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
+                {{ event.subject }}
+              </span>
             </div>
           </div>
         </div>
-      </td>      
+      </td>
     </tr>
   </tbody>
 </table>
-
-<!-- Dialog for adding/editing events -->
-<ng-template>
-  <app-calendar-dialog
-    [date]="selectedDate"
-    [linkedRecord]="linkedRecord"
-    (onSave)="saveEvent($event)"
-    (onCancel)="handleDialogCancel()"
-  ></app-calendar-dialog>
-</ng-template>

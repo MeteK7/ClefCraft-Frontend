@@ -6,10 +6,25 @@
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
 }
 .board-column:hover {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  background: rgb(223, 229, 248);
+  transform: scale(1.02);
 }
+
+/* .board-column {
+  flex: 1;
+  min-width: 300px;
+  max-width: 500px;
+  transition: all 0.3s ease;
+}
+
+.board-column:hover {
+  transform: scale(1.02);
+  background: rgba(223, 229, 248, 0.8);
+} */
 
 .board-column h2 {
   font-size: 1.5rem;

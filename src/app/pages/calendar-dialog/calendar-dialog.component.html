@@ -1,68 +1,169 @@
-<mat-tab-group>
-  <mat-tab label="General">
-    <form [formGroup]="generalForm" class="form-container">
-      <div class="form-row">
-        <mat-form-field class="full-width">
-          <mat-label>Subject</mat-label>
-          <input matInput formControlName="subject" />
-        </mat-form-field>
+<div class="dialog-container">
+  <div *ngIf="hasUnsavedChanges" class="unsaved-banner">
+    ⚠ You have unsaved changes
+  </div>
+  <!-- Linked Board Item Context -->
+  <div *ngIf="data?.eventData?.linkedBoardItemId" class="linked-board-banner">
+    <mat-icon color="primary">link</mat-icon>
+
+    <div class="linked-text-inline">
+      <span class="label">Linked Board Item:</span>
+      <button mat-button color="primary" class="linked-item-btn" (click)="openLinkedBoardItem()">
+        {{ data.eventData.linkedBoardItemTitle }}
+      </button>
+    </div>
+  </div>
+  <mat-tab-group animationDuration="300ms" class="tab-container">
+    <!-- General Tab -->
+    <mat-tab label="General">
+      <form [formGroup]="generalForm" class="form-container">
+
+        <div class="form-section-row">
+          <!-- Event Details -->
+          <div class="section half-section">
+            <h3 class="section-title">Event Details</h3>
+            <div class="form-row">
+              <mat-form-field class="full-width highlight-field">
+                <mat-label>Subject</mat-label>
+                <input matInput formControlName="subject" placeholder="Enter event subject" />
+                <mat-error *ngIf="generalForm.get('subject')?.hasError('required')">
+                  Subject is required
+                </mat-error>
+              </mat-form-field>
+            </div>
+            <div class="form-row">
+              <mat-form-field class="full-width">
+                <mat-label>Location</mat-label>
+                <input matInput formControlName="location" placeholder="Enter location" />
+              </mat-form-field>
+            </div>
+          </div>
+
+          <!-- Schedule -->
+          <div class="section half-section">
+            <h3 class="section-title">Schedule</h3>
+            <div class="form-row">
+              <mat-form-field class="half-width">
+                <mat-label>Start Date</mat-label>
+                <input matInput [matDatepicker]="picker1" formControlName="startDate" />
+                <mat-datepicker-toggle matSuffix [for]="picker1"></mat-datepicker-toggle>
+                <mat-datepicker #picker1></mat-datepicker>
+                <mat-error *ngIf="generalForm.get('startDate')?.hasError('required')">
+                  Start date is required
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field class="half-width">
+                <mat-label>End Date</mat-label>
+                <input matInput [matDatepicker]="picker2" formControlName="endDate" />
+                <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
+                <mat-datepicker #picker2></mat-datepicker>
+                <mat-error *ngIf="generalForm.get('endDate')?.hasError('required')">
+                  End date is required
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-checkbox formControlName="allDay" class="checkbox">All Day</mat-checkbox>
+              <mat-form-field class="half-width">
+                <mat-label>Importance</mat-label>
+                <mat-select formControlName="importance">
+                  <mat-option *ngFor="let level of importanceLevels" [value]="level">
+                    {{ level }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes (Full width below) -->
+        <div class="notes-section">
+          <h3 class="section-title">Notes</h3>
+          <div class="form-row">
+            <mat-form-field class="full-width">
+              <textarea matInput placeholder="Add a comment..." formControlName="comment"></textarea>
+            </mat-form-field>
+          </div>
+        </div>
+      </form>
+    </mat-tab>
+
+    <!-- Attachments Tab -->
+    <mat-tab label="Attachments">
+      <div class="attachment-section">
+
+        <!-- Upload -->
+        <div class="upload-card">
+          <button mat-raised-button color="primary" class="upload-btn" (click)="fileInput.click()">
+            <mat-icon>upload</mat-icon>
+            Add files
+          </button>
+
+          <span class="upload-hint">
+            You can attach multiple files
+          </span>
+
+          <input #fileInput type="file" multiple hidden (change)="onFileSelected($event)" />
+        </div>
+
+        <!-- Pending -->
+        <ng-container *ngIf="stagedAttachments.length > 0">
+          <h4 class="attachment-title">Pending uploads</h4>
+
+          <ul class="attachment-list">
+            <li *ngFor="let file of stagedAttachments" class="attachment-item pending">
+              <div class="attachment-left">
+                <mat-icon color="warn">schedule</mat-icon>
+                <span>{{ file.name }}</span>
+              </div>
+
+              <button mat-icon-button (click)="removeStagedFile(file)" matTooltip="Remove">
+                <mat-icon>close</mat-icon>
+              </button>
+            </li>
+          </ul>
+        </ng-container>
+
+        <!-- Existing -->
+        <ng-container *ngIf="existingAttachments.length > 0">
+          <h4 class="attachment-title">Uploaded files</h4>
+
+          <ul class="attachment-list">
+            <li *ngFor="let a of existingAttachments" class="attachment-item">
+              <div class="attachment-left attachment-link" (click)="downloadAttachment(a)">
+                <mat-icon>insert_drive_file</mat-icon>
+                <span>{{ a.fileName }}</span>
+              </div>
+
+              <button mat-icon-button color="warn" (click)="deleteAttachment(a.id)" matTooltip="Delete">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </li>
+          </ul>
+        </ng-container>
+
+        <!-- Empty state -->
+        <div *ngIf="stagedAttachments.length === 0 && existingAttachments.length === 0" class="empty-attachments">
+          <mat-icon>attach_file</mat-icon>
+          <p>No attachments yet</p>
+        </div>
+
       </div>
+    </mat-tab>
+    <mat-tab label="Recurrence">Recurrence options here...</mat-tab>
+    <mat-tab label="History">History logs here...</mat-tab>
+  </mat-tab-group>
 
-      <div class="form-row">
-        <mat-form-field class="half-width">
-          <mat-label>Location</mat-label>
-          <input matInput formControlName="location" />
-        </mat-form-field>
+  <div class="dialog-actions fixed-actions">
+    <div class="validation-hint" *ngIf="generalForm.invalid && generalForm.touched">
+      Please fill in all required fields before saving.
+    </div>
 
-
-      </div>
-
-      <div class="form-row">
-        <mat-form-field class="half-width">
-          <mat-label>Start Date</mat-label>
-          <input matInput [matDatepicker]="picker1" formControlName="startDate" />
-          <mat-datepicker-toggle matSuffix [for]="picker1"></mat-datepicker-toggle>
-          <mat-datepicker #picker1></mat-datepicker>
-        </mat-form-field>
-        
-        <mat-form-field class="half-width">
-          <mat-label>End Date</mat-label>
-          <input matInput [matDatepicker]="picker2" formControlName="endDate" />
-          <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
-          <mat-datepicker #picker2></mat-datepicker>
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-checkbox formControlName="allDay" class="checkbox">
-          All Day
-        </mat-checkbox>
-        <mat-form-field class="half-width">
-          <mat-label>Importance</mat-label>
-          <mat-select formControlName="importance">
-            <mat-option *ngFor="let level of importanceLevels" [value]="level">
-              {{ level }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      <div class="form-row">
-        <mat-form-field class="full-width">
-          <textarea matInput placeholder="Comment here." formControlName="comment"></textarea>
-        </mat-form-field>
-      </div>
-    </form>
-  </mat-tab>
-
-  <mat-tab label="Attachments">Attachment section here...</mat-tab>
-  <mat-tab label="Recurrence">Recurrence options here...</mat-tab>
-  <mat-tab label="History">History logs here...</mat-tab>
-</mat-tab-group>
-
-<div class="dialog-actions">
-  <button mat-raised-button color="primary" (click)="handleSave()">
-    Save
-  </button>
-  <button mat-button (click)="handleCancel()">Cancel</button>
+    <button mat-raised-button color="primary" (click)="handleSave()">
+      Save
+    </button>
+    <button mat-button (click)="handleCancel()">Cancel</button>
+  </div>
 </div>

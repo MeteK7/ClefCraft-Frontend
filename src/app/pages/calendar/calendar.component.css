@@ -1,8 +1,10 @@
-/* Stretch the calendar grid to fill the available space */
+/* =========================
+   CALENDAR GRID
+   ========================= */
+
 .calendar-grid {
   width: 100%;
-  display: table;
-  table-layout: fixed; /* Ensures equal-width columns */
+  table-layout: fixed;
   border-collapse: collapse;
 }
 
@@ -15,32 +17,83 @@
 }
 
 .calendar-grid td {
-  height: calc(100vh / 7); /* Distributes height for rows evenly */
+  height: calc(100vh / 7);
   cursor: pointer;
 }
+
+/* =========================
+   DAY CELL
+   ========================= */
 
 .calendar-grid .day {
   position: relative;
   height: 100%;
+  overflow: hidden; /* 🔑 prevents overlap into other days */
 }
+
+/* Day number */
+.calendar-grid .day > span {
+  font-weight: 500;
+}
+
+/* =========================
+   EVENTS CONTAINER
+   ========================= */
 
 .calendar-grid .events {
   position: absolute;
-  top: 20px;
-  left: 5px;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  top: 24px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  overflow: hidden; /* 🔑 contain events inside cell */
 }
 
+/* =========================
+   EVENT ITEM
+   ========================= */
+
 .calendar-grid .event {
-  margin-bottom: 5px;
-  background-color: #e0f7fa;
-  padding: 2px;
-  border-radius: 3px;
-  font-size: 1.5em;
+  background: #e3f2fd;
+  border-radius: 4px;
+  padding: 4px 6px;           /* ⬆ more breathing room */
+  cursor: pointer;
+
+  font-size: 14px;            /* ✅ readable */
+  line-height: 1.35;          /* ✅ comfortable */
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;      /* still max 2 lines */
+  -webkit-box-orient: vertical;
+
+  max-height: calc(1.35em * 2); /* exact clamp height */
 }
+
+/* Linked board item styling */
+.calendar-grid .event.linked {
+  background: #ede7f6;
+  border-left: 3px solid #673ab7;
+}
+
+/* Linked icon */
+.linked-icon {
+  font-size: 14px;
+  vertical-align: middle;
+  margin-right: 4px;
+  color: #673ab7;
+}
+
+/* =========================
+   HEADER & NAVIGATION
+   ========================= */
 
 .calendar-header,
 .calendar-navigation {
@@ -58,10 +111,9 @@ button {
   margin: 0 5px;
 }
 
-.calendar-summary {
-  text-align: center;
-  margin-bottom: 10px;
-}
+/* =========================
+   SELECTED DATE SUMMARY
+   ========================= */
 
 .selected-date-summary {
   text-align: left;
@@ -76,4 +128,32 @@ button {
 .selected-date-summary p {
   font-size: 1.2em;
   color: #555;
+}
+
+/* =========================
+   SELECTED DAY HIGHLIGHT
+   ========================= */
+
+.calendar-day.selected {
+  border: 2px solid #2196f3;
+  border-radius: 5px;
+  box-shadow: 0 0 8px 2px rgba(33, 150, 243, 0.6);
+  animation: flashBorder 2s ease forwards;
+}
+
+@keyframes flashBorder {
+  0% {
+    border-color: #2196f3;
+    box-shadow: 0 0 8px 2px rgba(33, 150, 243, 0.6);
+  }
+
+  70% {
+    border-color: #2196f3;
+    box-shadow: 0 0 8px 2px rgba(33, 150, 243, 0.6);
+  }
+
+  100% {
+    border-color: #ccc;
+    box-shadow: none;
+  }
 }

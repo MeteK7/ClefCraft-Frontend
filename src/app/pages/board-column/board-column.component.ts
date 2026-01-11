@@ -18,9 +18,9 @@ export class BoardColumnComponent {
   @Input() column!: Column;
   @Input() allColumnIds!: string[];
   @Output() itemClicked = new EventEmitter<Item>();
-  
-  constructor(private boardService: BoardService) {}
-  
+
+  constructor(private boardService: BoardService) { }
+
   get connectedTo(): string[] {
     return this.allColumnIds;
   }
@@ -37,7 +37,7 @@ export class BoardColumnComponent {
     } else {
       // Moving item to a different column
       console.log('Moving item to a different column');
-      
+
       transferArrayItem(
         event.previousContainer.data,
         event.container.data,
@@ -45,10 +45,10 @@ export class BoardColumnComponent {
         event.currentIndex
       );
 
-            // Update item’s column on the server
-            const item = event.container.data[event.currentIndex];
-            const newColumnId = this.column.id;
-            this.updateItemColumn(item.id, newColumnId);
+      // Update item’s column on the server
+      const item = event.container.data[event.currentIndex];
+      const newColumnId = this.column.id;
+      this.updateItemColumn(item.id, newColumnId);
     }
   }
   updateItemColumn(itemId: number, newColumnId: number) {
