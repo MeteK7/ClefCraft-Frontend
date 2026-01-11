@@ -160,6 +160,11 @@ export class CalendarDialogComponent implements OnInit {
   // ============================
 
   handleSave(): void {
+    if (this.generalForm.invalid) {
+      this.generalForm.markAllAsTouched();
+      return;
+    }
+    
     const record = {
       ...this.generalForm.value,
       id: this.eventId

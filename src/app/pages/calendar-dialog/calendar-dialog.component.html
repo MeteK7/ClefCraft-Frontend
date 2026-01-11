@@ -1,5 +1,5 @@
 <div class="dialog-container">
-    <div *ngIf="hasUnsavedChanges" class="unsaved-banner">
+  <div *ngIf="hasUnsavedChanges" class="unsaved-banner">
     ⚠ You have unsaved changes
   </div>
   <mat-tab-group animationDuration="300ms" class="tab-container">
@@ -15,6 +15,9 @@
               <mat-form-field class="full-width highlight-field">
                 <mat-label>Subject</mat-label>
                 <input matInput formControlName="subject" placeholder="Enter event subject" />
+                <mat-error *ngIf="generalForm.get('subject')?.hasError('required')">
+                  Subject is required
+                </mat-error>
               </mat-form-field>
             </div>
             <div class="form-row">
@@ -34,6 +37,9 @@
                 <input matInput [matDatepicker]="picker1" formControlName="startDate" />
                 <mat-datepicker-toggle matSuffix [for]="picker1"></mat-datepicker-toggle>
                 <mat-datepicker #picker1></mat-datepicker>
+                <mat-error *ngIf="generalForm.get('startDate')?.hasError('required')">
+                  Start date is required
+                </mat-error>
               </mat-form-field>
 
               <mat-form-field class="half-width">
@@ -41,6 +47,9 @@
                 <input matInput [matDatepicker]="picker2" formControlName="endDate" />
                 <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
                 <mat-datepicker #picker2></mat-datepicker>
+                <mat-error *ngIf="generalForm.get('endDate')?.hasError('required')">
+                  End date is required
+                </mat-error>
               </mat-form-field>
             </div>
 
@@ -106,14 +115,12 @@
     <mat-tab label="History">History logs here...</mat-tab>
   </mat-tab-group>
 
-  <!-- Fixed Action Bar -->
-  <!--<div class="dialog-actions fixed-actions">
-    <button mat-raised-button color="primary" (click)="handleSave()">Save</button>
-    <button mat-button (click)="handleCancel()">Cancel</button>
-  </div>-->
-
   <div class="dialog-actions fixed-actions">
-    <button mat-raised-button color="primary">
+    <div class="validation-hint" *ngIf="generalForm.invalid && generalForm.touched">
+      Please fill in all required fields before saving.
+    </div>
+
+    <button mat-raised-button color="primary" (click)="handleSave()">
       Save
     </button>
     <button mat-button (click)="handleCancel()">Cancel</button>
