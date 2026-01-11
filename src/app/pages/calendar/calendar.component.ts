@@ -205,6 +205,35 @@ export class CalendarComponent implements OnInit {
       });
 
     dialogRef.componentInstance.onCancel.subscribe(() => dialogRef.close());
+
+    const attemptClose = () => {
+      const hasChanges = dialogRef.componentInstance.hasUnsavedChanges;
+
+      if (!hasChanges) {
+        dialogRef.close();
+        return;
+      }
+
+      const confirm = window.confirm(
+        'You have unsaved changes.\n\nDiscard them?'
+      );
+
+      if (confirm) {
+        dialogRef.close();
+      }
+    };
+
+    // BACKDROP
+    dialogRef.backdropClick().subscribe(() => {
+      attemptClose();
+    });
+
+    // ESC
+    dialogRef.keydownEvents().subscribe(event => {
+      if (event.key === 'Escape') {
+        attemptClose();
+      }
+    });
   }
 
   //When dealing with all-day events, it's critical to strip the time portion of the date to avoid timezone-related offsets.
