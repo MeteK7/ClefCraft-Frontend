@@ -59,7 +59,34 @@ textarea[matInput] {
   resize: vertical;
 }
 
-/* Attachments */
+/* ATTACHMENTS SECTION */
+/* Upload card */
+.upload-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #fafafa;
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.upload-hint {
+  font-size: 13px;
+  color: #666;
+}
+
+/* Section titles */
+.attachment-title {
+  margin-top: 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #444;
+}
+
+/* ATTACHMENTS SECTION */
+
+/* Container */
 .attachment-section {
   padding: 16px;
   display: flex;
@@ -67,44 +94,102 @@ textarea[matInput] {
   gap: 12px;
 }
 
-.upload-row {
+/* Upload card */
+.upload-card {
   display: flex;
-  gap: 12px;
   align-items: center;
-  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px;
+  background: #fafafa;
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
 }
 
+.upload-hint {
+  font-size: 13px;
+  color: #666;
+}
+
+/* Upload button */
+.upload-btn {
+  border-radius: 9px;
+  padding: 6px 14px;
+}
+
+.upload-btn mat-icon {
+  font-size: 20px;
+  height: 20px;
+  width: 20px;
+  line-height: 20px;
+  margin-right: 6px;
+}
+
+/* Section titles */
+.attachment-title {
+  margin-top: 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #444;
+}
+
+/* List */
 .attachment-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
+/* Item */
 .attachment-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
-  border-radius: 6px;
-  transition: background 0.2s;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
 }
 
 .attachment-item:hover {
-  background: #f7f7f7;
+  background: #f5f5f5;
 }
 
+/* Left side */
+.attachment-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Clickable attachment */
 .attachment-link {
   cursor: pointer;
   color: #1976d2;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: color 0.2s;
+  transition: color 0.2s ease;
 }
 
 .attachment-link:hover {
   color: #0d47a1;
 }
+
+/* Pending state */
+.attachment-item.pending {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+/* Empty state */
+.empty-attachments {
+  margin-top: 40px;
+  text-align: center;
+  color: #888;
+}
+
+.empty-attachments mat-icon {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+
+/* END - ATTACHMENTS SECTION */
 
 /* Responsive */
 @media (max-width: 600px) {
@@ -191,53 +276,6 @@ textarea[matInput] {
   resize: vertical;
 }
 
-/* Attachments */
-.attachment-section {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.upload-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.attachment-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.attachment-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.attachment-item:hover {
-  background: #f7f7f7;
-}
-
-.attachment-link {
-  cursor: pointer;
-  color: #1976d2;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: color 0.2s;
-}
-
-.attachment-link:hover {
-  color: #0d47a1;
-}
-
 /* Responsive */
 @media (max-width: 600px) {
   .form-row {
@@ -318,16 +356,10 @@ textarea[matInput] {
   border-bottom: 1px solid #ffeeba;
 }
 
-.pending {
-  opacity: 0.7;
-  font-style: italic;
-}
-
 .linked-board-banner {
   display: flex;
   align-items: center;
   padding: 10px 14px;
-  margin-bottom: 12px;
   background: #f3e5f5;
   border-left: 4px solid #673ab7;
   border-radius: 4px;
@@ -337,7 +369,23 @@ textarea[matInput] {
   margin-right: 8px;
 }
 
-.linked-text .label {
-  font-size: 11px;
-  color: #555;
+.linked-text-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
 }
+
+.linked-text-inline .label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #444;
+  white-space: nowrap;
+}
+
+.linked-item-btn {
+  text-transform: none;
+  font-weight: 500;
+  border-radius: 10px;
+}
+

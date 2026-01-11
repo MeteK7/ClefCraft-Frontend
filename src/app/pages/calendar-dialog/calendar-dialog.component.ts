@@ -148,6 +148,7 @@ export class CalendarDialogComponent implements OnInit {
   }
 
   deleteAttachment(id: number): void {
+    if (!confirm('Delete this attachment?')) return;
     this.calendarService.deleteAttachment(id).subscribe(() => {
       this.existingAttachments =
         this.existingAttachments.filter(a => a.id !== id);

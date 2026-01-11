@@ -6,9 +6,9 @@
   <div *ngIf="data?.eventData?.linkedBoardItemId" class="linked-board-banner">
     <mat-icon color="primary">link</mat-icon>
 
-    <div class="linked-text">
-      <div class="label">Linked Board Item</div>
-      <button mat-button color="primary" (click)="openLinkedBoardItem()">
+    <div class="linked-text-inline">
+      <span class="label">Linked Board Item:</span>
+      <button mat-button color="primary" class="linked-item-btn" (click)="openLinkedBoardItem()">
         {{ data.eventData.linkedBoardItemTitle }}
       </button>
     </div>
@@ -94,34 +94,64 @@
     <mat-tab label="Attachments">
       <div class="attachment-section">
 
-        <input type="file" multiple (change)="onFileSelected($event)" />
+        <!-- Upload -->
+        <div class="upload-card">
+          <button mat-raised-button color="primary" class="upload-btn" (click)="fileInput.click()">
+            <mat-icon>upload</mat-icon>
+            Add files
+          </button>
 
-        <mat-divider></mat-divider>
+          <span class="upload-hint">
+            You can attach multiple files
+          </span>
 
-        <h4>Files</h4>
-        <ul class="attachment-list">
+          <input #fileInput type="file" multiple hidden (change)="onFileSelected($event)" />
+        </div>
 
-          <!-- Pending -->
-          <li *ngFor="let file of stagedAttachments" class="attachment pending">
-            <mat-icon>schedule</mat-icon>
-            {{ file.name }} <em>(Pending)</em>
-            <button mat-icon-button (click)="removeStagedFile(file)">
-              <mat-icon>close</mat-icon>
-            </button>
-          </li>
+        <!-- Pending -->
+        <ng-container *ngIf="stagedAttachments.length > 0">
+          <h4 class="attachment-title">Pending uploads</h4>
 
-          <!-- Existing -->
-          <li *ngFor="let a of existingAttachments" class="attachment">
-            <mat-icon>insert_drive_file</mat-icon>
-            {{ a.fileName }}
-            <button mat-icon-button color="warn" (click)="deleteAttachment(a.id)">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </li>
-        </ul>
+          <ul class="attachment-list">
+            <li *ngFor="let file of stagedAttachments" class="attachment-item pending">
+              <div class="attachment-left">
+                <mat-icon color="warn">schedule</mat-icon>
+                <span>{{ file.name }}</span>
+              </div>
+
+              <button mat-icon-button (click)="removeStagedFile(file)" matTooltip="Remove">
+                <mat-icon>close</mat-icon>
+              </button>
+            </li>
+          </ul>
+        </ng-container>
+
+        <!-- Existing -->
+        <ng-container *ngIf="existingAttachments.length > 0">
+          <h4 class="attachment-title">Uploaded files</h4>
+
+          <ul class="attachment-list">
+            <li *ngFor="let a of existingAttachments" class="attachment-item">
+              <div class="attachment-left attachment-link" (click)="downloadAttachment(a)">
+                <mat-icon>insert_drive_file</mat-icon>
+                <span>{{ a.fileName }}</span>
+              </div>
+
+              <button mat-icon-button color="warn" (click)="deleteAttachment(a.id)" matTooltip="Delete">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </li>
+          </ul>
+        </ng-container>
+
+        <!-- Empty state -->
+        <div *ngIf="stagedAttachments.length === 0 && existingAttachments.length === 0" class="empty-attachments">
+          <mat-icon>attach_file</mat-icon>
+          <p>No attachments yet</p>
+        </div>
+
       </div>
     </mat-tab>
-
     <mat-tab label="Recurrence">Recurrence options here...</mat-tab>
     <mat-tab label="History">History logs here...</mat-tab>
   </mat-tab-group>
