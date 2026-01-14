@@ -1,112 +1,95 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { Item, Tag } from '../../models/board.model';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { BoardService } from '../../_services/board.service';
-import { CalendarService } from '../../_services/calendar.service';
+import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
 
+import { Item, Tag } from '../../models/board.model';
+import { BoardService } from '../../_services/board.service';
+import { CalendarService } from '../../_services/calendar.service';
+
 @Component({
   selector: 'app-item-detail-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatTabsModule, MatSelectModule, MatRadioModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatTabsModule,
+    MatSelectModule,
+    MatRadioModule
+  ],
   templateUrl: './item-detail-dialog.component.html',
   styleUrl: './item-detail-dialog.component.css'
 })
+export class ItemDetailDialogComponent implements OnInit {
+  form!: FormGroup;
 
-export class ItemDetailDialogComponent {
-  markAsWorkedHistory: { dateCreated: string; actionBy: string }[] = []
+  markAsWorkedHistory: { dateCreated: string; actionBy: string }[] = [];
   priorities = ['Low', 'Medium', 'High'];
   statuses = ['To Do', 'In Progress', 'Done'];
-  availableAssignees = ['User 1', 'User 2', 'User 3']; // Replace with actual user list
+  availableAssignees = ['User 1', 'User 2', 'User 3'];
   tags: Tag[] = [];
+
   hasUnsavedChanges = false;
-  originalItemData: Item;
+  originalItemData!: Item;
 
   constructor(
     public dialogRef: MatDialogRef<ItemDetailDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { item: Item },
+    private fb: FormBuilder,
     private boardService: BoardService,
     private calendarService: CalendarService
-  ) { this.originalItemData = { ...data.item }; }
-
+  ) {}
 
   ngOnInit(): void {
+    this.originalItemData = structuredClone(this.data.item);
+
+    this.buildForm();
     this.fetchTags();
     this.fetchMarkAsWorkedHistory();
+    this.trackFormChanges();
   }
 
-  onFormChange(): void {
-    const currentData = this.data.item;
-    const isModified = JSON.stringify(currentData) !== JSON.stringify(this.originalItemData);
-    this.hasUnsavedChanges = isModified;
-  }
+  private buildForm(): void {
+    const item = this.data.item;
 
-  fetchMarkAsWorkedHistory(): void {
-    // Replace with API call to fetch history
-    this.calendarService.GetWorkHistory(this.data.item.id).subscribe(
-      (history) => {
-        this.markAsWorkedHistory = history.map((entry) => ({
-          dateCreated: this.convertToLocalDate(entry.dateCreated).toISOString(),
-          actionBy: entry.actionByFullName,
-        }));
-      },
-      (error) => console.error('Error fetching Mark as Worked history:', error)
-    );
-  }
-
-  convertToLocalDate(utcDate: string): Date {
-    const date = new Date(utcDate); // Parses as UTC
-    return new Date(date.getTime() - date.getTimezoneOffset() * 60000); // Convert to local time
-  }
-
-  onSave(): void {
-    // Prepare the data for the update
-    const updateData = {
-      ...this.data.item, // Spread the existing item properties
-      tagIds: this.data.item.tags?.map(tag => tag.id) || [] // Map tags to tagIds
-    };
-
-    this.hasUnsavedChanges = false;
-
-    // Logic to save the item
-    this.boardService.updateBoardItem(updateData).subscribe(() => {
-      this.dialogRef.close(this.data.item);
+    this.form = this.fb.group({
+      title: [item.title],
+      description: [item.description],
+      status: [item.status],
+      assignee: [item.assignee],
+      tags: [item.tags ?? []],
+      dueDate: [item.dueDate],
+      estimatedTime: [item.estimatedTime],
+      timeSpent: [item.timeSpent]
     });
   }
 
-  fetchTags(): void {
-    this.boardService.getTags().subscribe(
-      (tags) => {
-        this.tags = tags;  // Populate dropdown with tags
-
-        // Map data.item.tags to the correct instances in the tags array
-        if (this.data.item.tags) {
-          this.data.item.tags = this.data.item.tags.map(itemTag =>
-            this.tags.find(tag => tag.id === itemTag.id) || itemTag
-          );
-        }
-      },
-      (error) => console.error('Error fetching tags:', error)
-    );
+  private trackFormChanges(): void {
+    this.form.valueChanges.subscribe(value => {
+      const current = { ...this.originalItemData, ...value };
+      this.hasUnsavedChanges =
+        JSON.stringify(current) !== JSON.stringify(this.originalItemData);
+    });
   }
 
-  addTag(newTag: Tag): void {
-    if (!this.data.item.tags) {
-      this.data.item.tags = [];
-    }
-    if (newTag && !this.data.item.tags.find(t => t.id === newTag.id)) {
-      this.data.item.tags.push(newTag);
-    }
-  }
+  onSave(): void {
+    if (this.form.invalid) return;
 
-  removeTag(tagToRemove: Tag): void {
-    if (this.data.item.tags) {
-      this.data.item.tags = this.data.item.tags.filter(t => t.id !== tagToRemove.id);
-    }
+    const formValue = this.form.value;
+
+    const updateData = {
+      ...this.data.item,
+      ...formValue,
+      tagIds: formValue.tags?.map((t: Tag) => t.id) ?? []
+    };
+
+    this.boardService.updateBoardItem(updateData).subscribe(() => {
+      this.hasUnsavedChanges = false;
+      this.dialogRef.close(updateData);
+    });
   }
 
   onDelete(): void {
@@ -120,41 +103,60 @@ export class ItemDetailDialogComponent {
       const confirmCancel = window.confirm(
         'You have unsaved changes. Do you want to discard them?'
       );
-      if (confirmCancel) {
-        this.dialogRef.close();
-      }
-    } else {
-      this.dialogRef.close();
+      if (!confirmCancel) return;
     }
+    this.dialogRef.close();
+  }
+
+  fetchTags(): void {
+    this.boardService.getTags().subscribe(tags => {
+      this.tags = tags;
+
+      // Ensure selected tags reference same instances
+      const selected = this.form.get('tags')?.value ?? [];
+      this.form.patchValue({
+        tags: selected.map((t: Tag) =>
+          this.tags.find(tag => tag.id === t.id) || t
+        )
+      });
+    });
+  }
+
+  fetchMarkAsWorkedHistory(): void {
+    this.calendarService.GetWorkHistory(this.data.item.id).subscribe(history => {
+      this.markAsWorkedHistory = history.map(entry => ({
+        dateCreated: this.convertToLocalDate(entry.dateCreated).toISOString(),
+        actionBy: entry.actionByFullName
+      }));
+    });
+  }
+
+  convertToLocalDate(utcDate: string): Date {
+    const date = new Date(utcDate);
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   }
 
   markAsWorked(): void {
     const currentDate = new Date().toISOString();
+    const formValue = this.form.value;
+
     const calendarEvent = {
-      subject: this.data.item.title,
-      comment: this.data.item.description,
+      subject: formValue.title,
+      comment: formValue.description,
       startDate: currentDate,
       endDate: currentDate,
       allDayEvent: true,
       importance: 'Normal',
       linkedBoardItemId: this.data.item.id,
-      userId: '944d0156-cb3d-466f-a1ea-5f53e3a10f8e',
+      userId: '944d0156-cb3d-466f-a1ea-5f53e3a10f8e'
     };
 
-    this.calendarService.saveEvent(calendarEvent).subscribe(
-      () => {
-        console.log('Board item successfully marked as a calendar event.');
-
-        // Add to local history for immediate feedback
-        this.markAsWorkedHistory.push({
-          dateCreated: currentDate,
-          actionBy: 'Current User', // Replace with logged-in user's name
-        });
-
-        this.dialogRef.close();
-      },
-      (error) => console.error('Error marking board item as a calendar event:', error)
-    );
+    this.calendarService.saveEvent(calendarEvent).subscribe(() => {
+      this.markAsWorkedHistory.push({
+        dateCreated: currentDate,
+        actionBy: 'Current User'
+      });
+      this.dialogRef.close();
+    });
   }
-
 }

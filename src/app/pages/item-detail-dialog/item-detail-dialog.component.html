@@ -1,50 +1,52 @@
-<div class="dialog-container">
-    <div *ngIf="hasUnsavedChanges" class="unsaved-banner">
+<div class="dialog-container" [formGroup]="form">
+  <div *ngIf="hasUnsavedChanges" class="unsaved-banner">
     ⚠ You have unsaved changes
   </div>
+
   <h2 class="dialog-title">Item Details</h2>
+
   <mat-tab-group>
     <mat-tab label="Details">
       <div class="dialog-content">
         <div class="form-group">
-          <label for="itemTitle">Title:</label>
-          <input id="itemTitle" class="input-field" [(ngModel)]="data.item.title" (ngModelChange)="onFormChange()"/>
+          <label>Title:</label>
+          <input class="input-field" formControlName="title" />
         </div>
 
         <div class="form-group textarea-group">
-          <label for="itemDescription">Description:</label>
-          <textarea id="itemDescription" class="input-field" [(ngModel)]="data.item.description" (ngModelChange)="onFormChange()"></textarea>
+          <label>Description:</label>
+          <textarea
+            class="input-field"
+            id="itemDescription"
+            formControlName="description">
+          </textarea>
         </div>
 
-
-        <!-- Two-column row -->
         <div class="form-row">
-          <!-- Left column -->
           <div class="form-column">
-            <!-- Status -->
             <div class="form-group">
-              <label for="status">Status:</label>
-              <mat-select [(ngModel)]="data.item.status" (ngModelChange)="onFormChange()">
+              <label>Status:</label>
+              <mat-select formControlName="status">
                 <mat-option *ngFor="let status of statuses" [value]="status">
                   {{ status }}
                 </mat-option>
               </mat-select>
             </div>
 
-            <!-- Assignee -->
             <div class="form-group">
-              <label for="assignee">Assignee:</label>
-              <mat-select [(ngModel)]="data.item.assignee" (ngModelChange)="onFormChange()">
-                <mat-option *ngFor="let assignee of availableAssignees" [value]="assignee">
+              <label>Assignee:</label>
+              <mat-select formControlName="assignee">
+                <mat-option
+                  *ngFor="let assignee of availableAssignees"
+                  [value]="assignee">
                   {{ assignee }}
                 </mat-option>
               </mat-select>
             </div>
 
-            <!-- Tags -->
             <div class="form-group">
               <label>Tags:</label>
-              <mat-select [(ngModel)]="data.item.tags" multiple (ngModelChange)="onFormChange()">
+              <mat-select formControlName="tags" multiple>
                 <mat-option *ngFor="let tag of tags" [value]="tag">
                   {{ tag.name }}
                 </mat-option>
@@ -52,24 +54,20 @@
             </div>
           </div>
 
-          <!-- Right column -->
           <div class="form-column">
-            <!-- Due Date -->
             <div class="form-group">
-              <label for="dueDate">Due Date:</label>
-              <input id="dueDate" type="date" class="input-field" [(ngModel)]="data.item.dueDate" (ngModelChange)="onFormChange()"/>
+              <label>Due Date:</label>
+              <input type="date" class="input-field" formControlName="dueDate" />
             </div>
 
-            <!-- Estimated Time -->
             <div class="form-group">
-              <label for="estimatedTime">Estimated Time (hrs):</label>
-              <input id="estimatedTime" type="number" class="input-field" [(ngModel)]="data.item.estimatedTime" (ngModelChange)="onFormChange()"/>
+              <label>Estimated Time (hrs):</label>
+              <input type="number" class="input-field" formControlName="estimatedTime" />
             </div>
 
-            <!-- Time Spent -->
             <div class="form-group">
-              <label for="timeSpent">Time Spent (hrs):</label>
-              <input id="timeSpent" type="number" class="input-field" [(ngModel)]="data.item.timeSpent" (ngModelChange)="onFormChange()"/>
+              <label>Time Spent (hrs):</label>
+              <input type="number" class="input-field" formControlName="timeSpent" />
             </div>
           </div>
         </div>
@@ -108,7 +106,6 @@
       </div>
     </mat-tab>
 
-    <!-- History Tab -->
     <mat-tab label="History">
       <div class="history-tab">
         <h5>Work History</h5>
@@ -125,6 +122,8 @@
     <button class="btn save-btn" (click)="onSave()">Save</button>
     <button class="btn delete-btn" (click)="onDelete()">Delete</button>
     <button class="btn cancel-btn" (click)="onCancel()">Cancel</button>
-    <button class="btn mark-as-worked-btn" (click)="markAsWorked()">Mark as Worked</button>
+    <button class="btn mark-as-worked-btn" (click)="markAsWorked()">
+      Mark as Worked
+    </button>
   </div>
 </div>
