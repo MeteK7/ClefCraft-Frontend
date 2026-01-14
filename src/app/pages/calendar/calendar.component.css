@@ -1,4 +1,62 @@
 /* =========================
+   CALENDAR TOP BAR
+   ========================= */
+
+.calendar-top-bar {
+  display: flex;
+  gap: 24px;
+  padding: 1rem;
+  flex-wrap: wrap; /* responsive */
+}
+
+/* Title + back button */
+.calendar-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+/* Selected date summary (center area) */
+.selected-date-summary {
+  flex: 1;
+  text-align: left;
+  margin: 0;
+}
+
+.selected-date-summary h3 {
+  font-size: 1.2em;
+  margin: 0;
+}
+
+.selected-date-summary p {
+  font-size: 0.95em;
+  margin: 0;
+  color: #555;
+}
+
+/* Date picker (right side) */
+.calendar-container {
+  min-width: 220px;
+}
+
+/* =========================
+   CALENDAR NAVIGATION
+   ========================= */
+
+.calendar-navigation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+button {
+  margin: 0 5px;
+}
+
+/* =========================
    CALENDAR GRID
    ========================= */
 
@@ -28,7 +86,7 @@
 .calendar-grid .day {
   position: relative;
   height: 100%;
-  overflow: hidden; /* 🔑 prevents overlap into other days */
+  overflow: hidden; /* prevents overlap */
 }
 
 /* Day number */
@@ -51,7 +109,7 @@
   flex-direction: column;
   gap: 2px;
 
-  overflow: hidden; /* 🔑 contain events inside cell */
+  overflow: hidden;
 }
 
 /* =========================
@@ -61,20 +119,29 @@
 .calendar-grid .event {
   background: #e3f2fd;
   border-radius: 4px;
-  padding: 4px 6px;           /* ⬆ more breathing room */
+  padding: 4px 6px;
   cursor: pointer;
 
-  font-size: 14px;            /* ✅ readable */
-  line-height: 1.35;          /* ✅ comfortable */
+  font-size: 14px;
+  line-height: 1.35;
 
   overflow: hidden;
   text-overflow: ellipsis;
 
-  display: -webkit-box;
-  -webkit-line-clamp: 2;      /* still max 2 lines */
-  -webkit-box-orient: vertical;
+  max-height: calc(1.35em * 2);
+}
 
-  max-height: calc(1.35em * 2); /* exact clamp height */
+/* Event content layout */
+.event-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+
+  overflow: hidden;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* Linked board item styling */
@@ -85,49 +152,10 @@
 
 /* Linked icon */
 .linked-icon {
-  font-size: 14px;
-  vertical-align: middle;
-  margin-right: 4px;
+  font-size: 16px;
   color: #673ab7;
-}
-
-/* =========================
-   HEADER & NAVIGATION
-   ========================= */
-
-.calendar-header,
-.calendar-navigation {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-}
-
-.calendar-navigation {
-  margin-bottom: 1rem;
-}
-
-button {
-  margin: 0 5px;
-}
-
-/* =========================
-   SELECTED DATE SUMMARY
-   ========================= */
-
-.selected-date-summary {
-  text-align: left;
-  margin: 20px 0;
-}
-
-.selected-date-summary h3 {
-  font-size: 1.5em;
-  margin: 0;
-}
-
-.selected-date-summary p {
-  font-size: 1.2em;
-  color: #555;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 /* =========================

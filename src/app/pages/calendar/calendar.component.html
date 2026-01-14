@@ -1,24 +1,27 @@
-<div class="calendar-header">
-  <h1>Calendar</h1>
-  <button mat-button (click)="navigateToBoard()">Back to Board</button>
-</div>
+<div class="calendar-top-bar">
+  <!-- Title + back -->
+  <div class="calendar-header">
+    <h1>Calendar</h1>
+    <!--<button mat-button (click)="navigateToBoard()">Back to Board</button>-->
+  </div>
 
-<!-- Datepicker: only navigates calendar -->
-<div class="calendar-container">
-  <mat-form-field>
-    <mat-label>Select a date</mat-label>
-    <input matInput [matDatepicker]="picker" (dateChange)="onDateSelectedFromPicker($event.value)" />
-    <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-    <mat-datepicker #picker></mat-datepicker>
-  </mat-form-field>
-</div>
+  <!-- Selected date summary -->
+  <div class="selected-date-summary">
+    <h3>{{ selectedDate | date: 'EEEE, MMMM d, y' }}</h3>
+    <p>
+      Week {{ getWeekNumber(selectedDate) }}, day {{ getDayOfYear(selectedDate) }} of the year
+    </p>
+  </div>
 
-<!-- Selected date summary -->
-<div class="selected-date-summary">
-  <h3>{{ selectedDate | date: 'EEEE, MMMM d, y' }}</h3>
-  <p>
-    Week {{ getWeekNumber(selectedDate) }}, day {{ getDayOfYear(selectedDate) }} of the year
-  </p>
+  <!-- Datepicker -->
+  <div class="calendar-container">
+    <mat-form-field appearance="outline">
+      <mat-label>Select a date</mat-label>
+      <input matInput [matDatepicker]="picker" (dateChange)="onDateSelectedFromPicker($event.value)" />
+      <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-datepicker #picker></mat-datepicker>
+    </mat-form-field>
+  </div>
 </div>
 
 <!-- Calendar Navigation -->
