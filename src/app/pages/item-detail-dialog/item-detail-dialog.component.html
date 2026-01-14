@@ -1,17 +1,19 @@
 <div class="dialog-container">
+    <div *ngIf="hasUnsavedChanges" class="unsaved-banner">
+    ⚠ You have unsaved changes
+  </div>
   <h2 class="dialog-title">Item Details</h2>
-
   <mat-tab-group>
     <mat-tab label="Details">
       <div class="dialog-content">
         <div class="form-group">
           <label for="itemTitle">Title:</label>
-          <input id="itemTitle" class="input-field" [(ngModel)]="data.item.title" />
+          <input id="itemTitle" class="input-field" [(ngModel)]="data.item.title" (ngModelChange)="onFormChange()"/>
         </div>
 
         <div class="form-group textarea-group">
           <label for="itemDescription">Description:</label>
-          <textarea id="itemDescription" class="input-field" [(ngModel)]="data.item.description"></textarea>
+          <textarea id="itemDescription" class="input-field" [(ngModel)]="data.item.description" (ngModelChange)="onFormChange()"></textarea>
         </div>
 
 
@@ -22,7 +24,7 @@
             <!-- Status -->
             <div class="form-group">
               <label for="status">Status:</label>
-              <mat-select [(ngModel)]="data.item.status">
+              <mat-select [(ngModel)]="data.item.status" (ngModelChange)="onFormChange()">
                 <mat-option *ngFor="let status of statuses" [value]="status">
                   {{ status }}
                 </mat-option>
@@ -32,7 +34,7 @@
             <!-- Assignee -->
             <div class="form-group">
               <label for="assignee">Assignee:</label>
-              <mat-select [(ngModel)]="data.item.assignee">
+              <mat-select [(ngModel)]="data.item.assignee" (ngModelChange)="onFormChange()">
                 <mat-option *ngFor="let assignee of availableAssignees" [value]="assignee">
                   {{ assignee }}
                 </mat-option>
@@ -42,7 +44,7 @@
             <!-- Tags -->
             <div class="form-group">
               <label>Tags:</label>
-              <mat-select [(ngModel)]="data.item.tags" multiple>
+              <mat-select [(ngModel)]="data.item.tags" multiple (ngModelChange)="onFormChange()">
                 <mat-option *ngFor="let tag of tags" [value]="tag">
                   {{ tag.name }}
                 </mat-option>
@@ -55,19 +57,19 @@
             <!-- Due Date -->
             <div class="form-group">
               <label for="dueDate">Due Date:</label>
-              <input id="dueDate" type="date" class="input-field" [(ngModel)]="data.item.dueDate" />
+              <input id="dueDate" type="date" class="input-field" [(ngModel)]="data.item.dueDate" (ngModelChange)="onFormChange()"/>
             </div>
 
             <!-- Estimated Time -->
             <div class="form-group">
               <label for="estimatedTime">Estimated Time (hrs):</label>
-              <input id="estimatedTime" type="number" class="input-field" [(ngModel)]="data.item.estimatedTime" />
+              <input id="estimatedTime" type="number" class="input-field" [(ngModel)]="data.item.estimatedTime" (ngModelChange)="onFormChange()"/>
             </div>
 
             <!-- Time Spent -->
             <div class="form-group">
               <label for="timeSpent">Time Spent (hrs):</label>
-              <input id="timeSpent" type="number" class="input-field" [(ngModel)]="data.item.timeSpent" />
+              <input id="timeSpent" type="number" class="input-field" [(ngModel)]="data.item.timeSpent" (ngModelChange)="onFormChange()"/>
             </div>
           </div>
         </div>
