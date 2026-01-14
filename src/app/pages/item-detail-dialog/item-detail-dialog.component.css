@@ -184,6 +184,13 @@ mat-tab-group {
   background-color: #0056b3;
 }
 
+.unsaved-banner {
+  background: #fff3cd;
+  padding: 10px;
+  font-weight: bold;
+  border-bottom: 1px solid #ffeeba;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .form-row {
