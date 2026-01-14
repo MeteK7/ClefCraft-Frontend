@@ -60,7 +60,13 @@ export class CalendarDialogComponent implements OnInit {
   stagedAttachments: File[] = [];
 
   eventId: number | null = null;
-  hasUnsavedChanges = false;
+  hasFormChanges = false;
+  hasAttachmentChanges = false;
+
+  get hasUnsavedChanges(): boolean {
+    return this.hasFormChanges || this.hasAttachmentChanges;
+  }
+  private originalFormValue!: any;
 
   constructor(
     private fb: FormBuilder,
@@ -91,10 +97,28 @@ export class CalendarDialogComponent implements OnInit {
       });
     }
 
-    // 🔴 Global dirty tracking
-    this.generalForm.valueChanges.subscribe(() => {
-      this.hasUnsavedChanges = true;
+    this.originalFormValue = this.normalizeForm(this.generalForm.value);
+    this.trackFormChanges();
+  }
+
+  private trackFormChanges(): void {
+    this.generalForm.valueChanges.subscribe(value => {
+      const current = this.normalizeForm(value);
+      this.hasFormChanges =
+        JSON.stringify(current) !== JSON.stringify(this.originalFormValue);
     });
+  }
+
+  private normalizeForm(value: any) {
+    return {
+      ...value,
+      startDate: value.startDate
+        ? new Date(value.startDate).toISOString()
+        : null,
+      endDate: value.endDate
+        ? new Date(value.endDate).toISOString()
+        : null
+    };
   }
 
   fetchAttachments(eventId: number): void {
@@ -136,26 +160,29 @@ export class CalendarDialogComponent implements OnInit {
   // ATTACHMENTS (STAGED)
   // ============================
 
-  onFileSelected(event: any): void {
-    const files = Array.from(event.target.files) as File[];
-    this.stagedAttachments.push(...files);
-    this.hasUnsavedChanges = true;
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+
+    if (!input.files || input.files.length === 0) return;
+
+    this.stagedAttachments.push(...Array.from(input.files));
+    this.hasAttachmentChanges = true;
   }
 
   removeStagedFile(file: File): void {
     this.stagedAttachments = this.stagedAttachments.filter(f => f !== file);
-    this.hasUnsavedChanges = true;
+    this.hasAttachmentChanges = true;
   }
 
   deleteAttachment(id: number): void {
     if (!confirm('Delete this attachment?')) return;
+
     this.calendarService.deleteAttachment(id).subscribe(() => {
       this.existingAttachments =
         this.existingAttachments.filter(a => a.id !== id);
-      this.hasUnsavedChanges = true;
+      this.hasAttachmentChanges = true;
     });
   }
-
 
   // ============================
   // SAVE / CANCEL
@@ -167,18 +194,16 @@ export class CalendarDialogComponent implements OnInit {
       return;
     }
 
-    const record = {
-      ...this.generalForm.value,
-      id: this.eventId
-    };
-
     this.onSave.emit({
-      record,
+      record: { ...this.generalForm.value, id: this.eventId },
       attachments: this.stagedAttachments
     });
 
-    this.hasUnsavedChanges = false;
+    this.originalFormValue = this.normalizeForm(this.generalForm.value);
+    this.hasFormChanges = false;
+    this.hasAttachmentChanges = false;
   }
+
 
   handleCancel(): void {
     if (!this.hasUnsavedChanges) {
