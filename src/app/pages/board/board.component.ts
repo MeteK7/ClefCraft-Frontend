@@ -37,7 +37,7 @@ export class BoardComponent implements OnInit {
   handleClickOutside(event: Event): void {
     const target = event.target as HTMLElement;
     const sidebar = document.querySelector('.sidebar');
-    
+
     console.log('Selected item before checking click outside:', this.selectedItem);
 
     // If the sidebar is open and the click happens outside of it, close it
@@ -68,16 +68,16 @@ export class BoardComponent implements OnInit {
 
   loadBoardColumnItems(boardId: number): void {
     this.boardService.getBoardItemsByBoardId(boardId).subscribe(columns => {
-        this.columns = columns.map(column => ({
-            ...column,
-            items: column.boardItems.map(item => ({
-                ...item,
-                createdByFullName: item.createdByFullName, // Map full name
-                modifiedByFullName: item.modifiedByFullName // Map full name
-            }))
-        }));
+      this.columns = columns.map(column => ({
+        ...column,
+        boardItems: column.boardItems.map(item => ({
+          ...item,
+          createdByFullName: item.createdByFullName,
+          modifiedByFullName: item.modifiedByFullName
+        }))
+      }));
     });
-}
+  }
 
   get allColumnIds(): string[] {
     return this.columns.map(column => 'column-' + column.title);
@@ -101,7 +101,7 @@ export class BoardComponent implements OnInit {
   }
 
   onItemCreated(item: Item): void {
-    const column = this.columns.find(c => c.id === item.id);
+    const column = this.columns.find(c => c.id === item.boardColumnId);
     if (column) {
       column.boardItems.push(item);
     }
@@ -126,8 +126,8 @@ export class BoardComponent implements OnInit {
       this.openItemDetailSidebar(item);
     }
   }
-   // Method to open item detail dialog
-   openItemDetailDialog(item: Item): void {
+  // Method to open item detail dialog
+  openItemDetailDialog(item: Item): void {
     const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
       width: '400px',
       data: { item }
