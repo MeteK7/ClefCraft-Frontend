@@ -33,14 +33,10 @@ export class AddItemFormComponent {
   }
 
   createItem(): void {
-    const newItem = { title: this.title, description: this.description, boardColumnId: this.boardColumnId };
+    const newItem = { title: this.title, description: this.description, boardColumnId: this.boardColumnId, boardId: this.data.boardId, statusId: 1,priorityId: 1 };
     this.boardService.createBoardItem(newItem).subscribe(item => {
       // this.itemCreated.emit(item);
       this.dialogRef.close(item);
-      
-      this.title = '';
-      this.description = '';
-      this.boardColumnId = 1;
     });
   }
 }
