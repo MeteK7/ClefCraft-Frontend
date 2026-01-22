@@ -21,6 +21,7 @@ export interface Item {
     title: string;
     description: string;
     status: string;
+    boardId: number;
     boardColumnId: number;
     createdBy?: string; 
     modifiedBy?: string; 

@@ -9,7 +9,7 @@ import { Board, Column, Item, Tag } from '../models/board.model';
 export class BoardService {
   private apiUrl = 'https://localhost:7287/api'; // API base URL
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getBoards(): Observable<Board[]> {
     return this.http.get<Board[]>(`${this.apiUrl}/Boards`, { withCredentials: true });
@@ -39,15 +39,15 @@ export class BoardService {
     });
     return this.http.post<any>(`${this.apiUrl}/BoardItems/SwitchColumn`, item, { headers, withCredentials: true });
   }
-  
+
   deleteBoardItem(itemId: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/BoardItems/Delete/${itemId}`, { withCredentials: true });
   }
-  
+
   updateItem(item: Item): Observable<Item> {
     return this.http.put<Item>(`${this.apiUrl}/BoardItems/Update`, item, { withCredentials: true });
   }
-  
+
   deleteItem(itemId: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/BoardItems/Delete/${itemId}`, { withCredentials: true });
   }
@@ -58,10 +58,12 @@ export class BoardService {
 
   saveChanges(): void {
     // Logic to save the item changes
-  } 
-
-  getTags(): Observable<Tag[]> {
-    return this.http.get<Tag[]>(`${this.apiUrl}/BoardItems/GetTags`, { withCredentials: true });
   }
 
+  getTags(boardId: number): Observable<Tag[]> {
+    return this.http.get<Tag[]>(
+      `${this.apiUrl}/BoardItems/GetTags?boardId=${boardId}`,
+      { withCredentials: true }
+    );
+  }
 }

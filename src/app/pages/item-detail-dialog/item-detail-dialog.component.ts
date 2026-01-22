@@ -41,7 +41,7 @@ export class ItemDetailDialogComponent implements OnInit {
     private fb: FormBuilder,
     private boardService: BoardService,
     private calendarService: CalendarService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.originalItemData = structuredClone(this.data.item);
@@ -109,10 +109,11 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   fetchTags(): void {
-    this.boardService.getTags().subscribe(tags => {
+    const boardId = this.data.item.boardId;
+
+    this.boardService.getTags(boardId).subscribe(tags => {
       this.tags = tags;
 
-      // Ensure selected tags reference same instances
       const selected = this.form.get('tags')?.value ?? [];
       this.form.patchValue({
         tags: selected.map((t: Tag) =>
