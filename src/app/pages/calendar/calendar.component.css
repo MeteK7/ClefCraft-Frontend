@@ -94,6 +94,10 @@ button {
   font-weight: 500;
 }
 
+.outside-month {
+  opacity: 0.4;
+}
+
 /* =========================
    EVENTS CONTAINER
    ========================= */
