@@ -67,35 +67,43 @@ export class CalendarComponent implements OnInit {
 
 
   generateCalendarGrid(): void {
-    const currentMonth = this.selectedDate.getMonth();
-    const currentYear = this.selectedDate.getFullYear();
-    const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
-    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
-    const startDay = firstDayOfMonth.getDay();
-    const totalDays = lastDayOfMonth.getDate();
+    const year = this.selectedDate.getFullYear();
+    const month = this.selectedDate.getMonth();
+
+    const firstOfMonth = new Date(year, month, 1);
+    const lastOfMonth = new Date(year, month + 1, 0);
+
+    const startDay = firstOfMonth.getDay(); // 0–6
+    const daysInMonth = lastOfMonth.getDate();
 
     this.calendarGrid = [];
     let row: Date[] = [];
 
-    // Fill first row with empty cells before the start of the month
-    for (let i = 0; i < startDay; i++) {
-      row.push(new Date(0)); // Empty date
+    // 🔹 Previous month filler
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = startDay - 1; i >= 0; i--) {
+      row.push(new Date(year, month - 1, prevMonthLastDay - i));
     }
 
-    // Fill the calendar grid with actual days
-    for (let day = 1; day <= totalDays; day++) {
-      row.push(new Date(currentYear, currentMonth, day));
+    // 🔹 Current month
+    for (let day = 1; day <= daysInMonth; day++) {
+      row.push(new Date(year, month, day));
       if (row.length === 7) {
         this.calendarGrid.push(row);
         row = [];
       }
     }
 
-    // Push remaining days if any
-    if (row.length > 0) {
+    // 🔹 Next month filler
+    let nextMonthDay = 1;
+    while (row.length > 0 && row.length < 7) {
+      row.push(new Date(year, month + 1, nextMonthDay++));
+    }
+    if (row.length) {
       this.calendarGrid.push(row);
     }
   }
+
 
   getEventsForDay(date: Date): any[] {
     return this.events.filter((event) => {
