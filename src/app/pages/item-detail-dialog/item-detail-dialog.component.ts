@@ -6,7 +6,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
 
-import { Item, Tag } from '../../models/board.model';
+import { Item, Priority, Status, Tag } from '../../models/board.model';
 import { BoardService } from '../../_services/board.service';
 import { CalendarService } from '../../_services/calendar.service';
 
@@ -27,10 +27,10 @@ export class ItemDetailDialogComponent implements OnInit {
   form!: FormGroup;
 
   markAsWorkedHistory: { dateCreated: string; actionBy: string }[] = [];
-  priorities = ['Low', 'Medium', 'High'];
-  statuses = ['To Do', 'In Progress', 'Done'];
   availableAssignees = ['User 1', 'User 2', 'User 3'];
   tags: Tag[] = [];
+  statuses: Status[] = [];
+  priorities: Priority[] = [];
 
   hasUnsavedChanges = false;
   originalItemData!: Item;
@@ -48,6 +48,8 @@ export class ItemDetailDialogComponent implements OnInit {
 
     this.buildForm();
     this.fetchTags();
+    this.fetchStatuses();
+    this.fetchPriorities();
     this.fetchMarkAsWorkedHistory();
     this.trackFormChanges();
   }
@@ -58,9 +60,10 @@ export class ItemDetailDialogComponent implements OnInit {
     this.form = this.fb.group({
       title: [item.title],
       description: [item.description],
-      status: [item.status],
-      assignee: [item.assignee],
+      statusId: [item.statusId],
+      priorityId: [item.priorityId],
       tags: [item.tags ?? []],
+      assignee: [item.assignee],
       dueDate: [item.dueDate],
       estimatedTime: [item.estimatedTime],
       timeSpent: [item.timeSpent]
@@ -121,6 +124,18 @@ export class ItemDetailDialogComponent implements OnInit {
         )
       });
     });
+  }
+
+  fetchStatuses(): void {
+    this.boardService
+      .getStatuses(this.data.item.boardId)
+      .subscribe(data => this.statuses = data);
+  }
+
+  fetchPriorities(): void {
+    this.boardService
+      .getPriorities(this.data.item.boardId)
+      .subscribe(data => this.priorities = data);
   }
 
   fetchMarkAsWorkedHistory(): void {

@@ -11,31 +11,48 @@ export interface Column {
   boardItems: Item[];
 }
 
-export interface Tag{
+export interface Status {
+  id: number;
+  name: string;
+}
+
+export interface Priority {
+  id: number;
+  name: string;
+}
+
+export interface Tag {
   id: number;
   name: string;
 }
 
 export interface Item {
-    id: number;
-    title: string;
-    description: string;
-    status: string;
-    boardId: number;
-    boardColumnId: number;
-    createdBy?: string; 
-    modifiedBy?: string; 
-    createdByFullName:string;
-    modifiedByFullName:string;
-    dateCreated?: Date; 
-    dateModified?: Date; 
-    linkedItems?: Item[];
-    tags?: Tag[]; 
-    estimatedTime?: number; // Estimated time in hours
-    timeSpent?: number;     // Time spent in hours
-    assignee?: string;  
-    priority?: string; 
-    dueDate?: Date; 
-  }
-  
-  
+  id: number;
+  title: string;
+  description: string;
+
+  // ✅ persistence
+  statusId: number;
+  priorityId: number;
+
+  // ✅ display (optional)
+  status?: Status;
+  priority?: Priority;
+
+  boardId: number;
+  boardColumnId: number;
+
+  linkedItems?: Item[];
+  tags?: Tag[];
+  assignee?: string;
+  dueDate?: Date;
+  estimatedTime?: number;
+  timeSpent?: number;
+
+  createdByFullName: string;
+  modifiedByFullName: string;
+  dateCreated?: Date;
+  dateModified?: Date;
+  createdBy?: string;
+  modifiedBy?: string;
+}
