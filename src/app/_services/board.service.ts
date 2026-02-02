@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Board, Column, Item, Tag } from '../models/board.model';
+import { Board, Column, Item, Priority, Status, Tag } from '../models/board.model';
 
 @Injectable({
   providedIn: 'root'
@@ -63,6 +63,20 @@ export class BoardService {
   getTags(boardId: number): Observable<Tag[]> {
     return this.http.get<Tag[]>(
       `${this.apiUrl}/BoardItems/GetTags?boardId=${boardId}`,
+      { withCredentials: true }
+    );
+  }
+
+  getStatuses(boardId: number): Observable<Status[]> {
+    return this.http.get<Status[]>(
+      `${this.apiUrl}/BoardItems/GetStatuses?boardId=${boardId}`,
+      { withCredentials: true }
+    );
+  }
+
+  getPriorities(boardId: number): Observable<Priority[]> {
+    return this.http.get<Priority[]>(
+      `${this.apiUrl}/BoardItems/GetPriorities?boardId=${boardId}`,
       { withCredentials: true }
     );
   }
