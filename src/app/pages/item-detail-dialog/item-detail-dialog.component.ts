@@ -9,6 +9,8 @@ import { MatRadioModule } from '@angular/material/radio';
 import { Item, Priority, Status, Tag } from '../../models/board.model';
 import { BoardService } from '../../_services/board.service';
 import { CalendarService } from '../../_services/calendar.service';
+import { Assignee } from '../../models/assignee.model';
+import { UserService } from '../../_services/user.service';
 
 @Component({
   selector: 'app-item-detail-dialog',
@@ -27,7 +29,7 @@ export class ItemDetailDialogComponent implements OnInit {
   form!: FormGroup;
 
   markAsWorkedHistory: { dateCreated: string; actionBy: string }[] = [];
-  availableAssignees = ['User 1', 'User 2', 'User 3'];
+  assignees: Assignee[] = [];
   tags: Tag[] = [];
   statuses: Status[] = [];
   priorities: Priority[] = [];
@@ -40,6 +42,7 @@ export class ItemDetailDialogComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: { item: Item },
     private fb: FormBuilder,
     private boardService: BoardService,
+    private userService: UserService,
     private calendarService: CalendarService
   ) { }
 
@@ -50,6 +53,7 @@ export class ItemDetailDialogComponent implements OnInit {
     this.fetchTags();
     this.fetchStatuses();
     this.fetchPriorities();
+    this.fetchAssignees();
     this.fetchMarkAsWorkedHistory();
     this.trackFormChanges();
   }
@@ -60,9 +64,9 @@ export class ItemDetailDialogComponent implements OnInit {
     this.form = this.fb.group({
       title: [item.title],
       description: [item.description],
-      statusId: [item.statusId],
-      priorityId: [item.priorityId],
-      tags: [item.tags ?? []],
+      statusId: [item.status?.id ?? null],
+      priorityId: [item.priority?.id ?? null],
+      tags: [item.tags?.map(t => t.id) ?? []],
       assignee: [item.assignee],
       dueDate: [item.dueDate],
       estimatedTime: [item.estimatedTime],
@@ -86,7 +90,7 @@ export class ItemDetailDialogComponent implements OnInit {
     const updateData = {
       ...this.data.item,
       ...formValue,
-      tagIds: formValue.tags?.map((t: Tag) => t.id) ?? []
+      tagIds: formValue.tags
     };
 
     this.boardService.updateBoardItem(updateData).subscribe(() => {
@@ -112,18 +116,8 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   fetchTags(): void {
-    const boardId = this.data.item.boardId;
-
-    this.boardService.getTags(boardId).subscribe(tags => {
-      this.tags = tags;
-
-      const selected = this.form.get('tags')?.value ?? [];
-      this.form.patchValue({
-        tags: selected.map((t: Tag) =>
-          this.tags.find(tag => tag.id === t.id) || t
-        )
-      });
-    });
+    this.boardService.getTags(this.data.item.boardId)
+      .subscribe(tags => this.tags = tags);
   }
 
   fetchStatuses(): void {
@@ -136,6 +130,16 @@ export class ItemDetailDialogComponent implements OnInit {
     this.boardService
       .getPriorities(this.data.item.boardId)
       .subscribe(data => this.priorities = data);
+  }
+
+  fetchAssignees(): void {
+    this.userService.getAssignees().subscribe(data => {
+      this.assignees = data;
+
+      this.form.patchValue({
+        assignee: this.data.item.assignee
+      });
+    });
   }
 
   fetchMarkAsWorkedHistory(): void {

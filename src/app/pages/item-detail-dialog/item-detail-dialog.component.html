@@ -42,8 +42,8 @@
             <div class="form-group">
               <label>Assignee:</label>
               <mat-select formControlName="assignee">
-                <mat-option *ngFor="let assignee of availableAssignees" [value]="assignee">
-                  {{ assignee }}
+                <mat-option *ngFor="let a of assignees" [value]="a.id">
+                  {{ a.fullName }}
                 </mat-option>
               </mat-select>
             </div>
@@ -51,7 +51,7 @@
             <div class="form-group">
               <label>Tags:</label>
               <mat-select formControlName="tags" multiple>
-                <mat-option *ngFor="let tag of tags" [value]="tag">
+                <mat-option *ngFor="let tag of tags" [value]="tag.id">
                   {{ tag.name }}
                 </mat-option>
               </mat-select>
