@@ -67,7 +67,7 @@ export class ItemDetailDialogComponent implements OnInit {
       statusId: [item.status?.id ?? null],
       priorityId: [item.priority?.id ?? null],
       tags: [item.tags?.map(t => t.id) ?? []],
-      assignee: [item.assignee],
+      assigneeId: [item.assigneeId ?? null],
       dueDate: [item.dueDate],
       estimatedTime: [item.estimatedTime],
       timeSpent: [item.timeSpent]
@@ -87,9 +87,19 @@ export class ItemDetailDialogComponent implements OnInit {
 
     const formValue = this.form.value;
 
+    const selectedPriority = this.priorities.find(
+      p => p.id === formValue.priorityId
+    );
+
+    const selectedStatus = this.statuses.find(
+      s => s.id === formValue.statusId
+    );
+
     const updateData = {
       ...this.data.item,
       ...formValue,
+      priority: selectedPriority ?? undefined,
+      status: selectedStatus ?? undefined,
       tagIds: formValue.tags
     };
 
@@ -137,7 +147,7 @@ export class ItemDetailDialogComponent implements OnInit {
       this.assignees = data;
 
       this.form.patchValue({
-        assignee: this.data.item.assignee
+        assigneeId: this.data.item.assigneeId
       });
     });
   }

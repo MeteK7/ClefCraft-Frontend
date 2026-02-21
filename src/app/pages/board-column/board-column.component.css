@@ -14,18 +14,6 @@
   transform: scale(1.02);
 }
 
-/* .board-column {
-  flex: 1;
-  min-width: 300px;
-  max-width: 500px;
-  transition: all 0.3s ease;
-}
-
-.board-column:hover {
-  transform: scale(1.02);
-  background: rgba(223, 229, 248, 0.8);
-} */
-
 .board-column h2 {
   font-size: 1.5rem;
   margin-bottom: 15px;

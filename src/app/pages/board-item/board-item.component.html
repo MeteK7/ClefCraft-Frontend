@@ -1,5 +1,24 @@
-<!-- board-item.component.html -->
 <div class="board-item" (click)="onClick()">
-  <h4>{{ item.title }}</h4>
-  <p>{{ item.description }}</p>
+  <div class="item-header">
+    <h4>{{ item.title }}</h4>
+  </div>
+
+  <div class="tags">
+    <span class="tag" *ngFor="let tag of item.tags">
+      {{ tag.name }}
+    </span>
+  </div>
+
+  <div class="item-footer">
+    <div class="priority-container" *ngIf="item.priority?.id">
+      <span class="priority-indicator" [ngClass]="'priority-' + item.priority?.id">
+      </span>
+    </div>
+    <div class="assignee-container" *ngIf="fullName">
+      <span class="assignee">{{ fullName }}</span>
+      <div class="avatar">
+        {{ initials }}
+      </div>
+    </div>
+  </div>
 </div>

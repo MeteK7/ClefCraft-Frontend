@@ -41,7 +41,7 @@
 
             <div class="form-group">
               <label>Assignee:</label>
-              <mat-select formControlName="assignee">
+              <mat-select formControlName="assigneeId">
                 <mat-option *ngFor="let a of assignees" [value]="a.id">
                   {{ a.fullName }}
                 </mat-option>
