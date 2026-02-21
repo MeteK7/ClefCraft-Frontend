@@ -44,7 +44,11 @@ export interface Item {
 
   linkedItems?: Item[];
   tags?: Tag[];
-  assignee?: string;
+
+  assigneeId?: string;
+  assigneeFirstName?: string;
+  assigneeLastName?: string;
+
   dueDate?: Date;
   estimatedTime?: number;
   timeSpent?: number;
