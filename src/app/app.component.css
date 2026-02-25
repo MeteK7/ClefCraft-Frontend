@@ -15,7 +15,6 @@ app-footer {
 .layout {
   display: flex;
   flex-grow: 1; /* Take remaining space between header and footer */
-  overflow: hidden; /* Prevent unnecessary scroll */
 }
 
 app-sidebar {
@@ -29,4 +28,5 @@ main {
   padding: 20px;
   overflow-y: auto; /* Scroll only inside main if content is too long */
   background-color: #fff;
+  
 }
