@@ -1,32 +1,33 @@
 :host {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Full viewport height */
+  height: 100vh;
+  overflow: hidden; /* Prevent double scrollbars */
 }
 
 app-header {
-  flex-shrink: 0; /* Header stays fixed height */
+  flex-shrink: 0;
 }
 
 app-footer {
-  flex-shrink: 0; /* Footer stays fixed height */
+  flex-shrink: 0;
 }
 
 .layout {
   display: flex;
-  flex-grow: 1; /* Take remaining space between header and footer */
-  overflow: hidden; /* Prevent unnecessary scroll */
+  flex: 1;
+  min-height: 0; /* Important for nested scrolling */
+  min-width: 0;
 }
 
 app-sidebar {
-  width: 250px;
   background-color: #f8f9fa;
   border-right: 1px solid #ccc;
 }
 
-main {
-  flex-grow: 1;
+.main-content {
+  flex: 1;
+  overflow-y: auto; /* Main content scrolls independently */
   padding: 20px;
-  overflow-y: auto; /* Scroll only inside main if content is too long */
-  background-color: #fff;
+  min-width: 0;
 }

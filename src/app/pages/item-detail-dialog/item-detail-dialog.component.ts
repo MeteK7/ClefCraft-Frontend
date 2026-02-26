@@ -47,14 +47,15 @@ export class ItemDetailDialogComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    this.originalItemData = structuredClone(this.data.item);
-
     this.buildForm();
     this.fetchTags();
     this.fetchStatuses();
     this.fetchPriorities();
     this.fetchAssignees();
     this.fetchMarkAsWorkedHistory();
+
+    this.originalItemData = structuredClone(this.form.value);
+
     this.trackFormChanges();
   }
 
@@ -75,10 +76,10 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   private trackFormChanges(): void {
-    this.form.valueChanges.subscribe(value => {
-      const current = { ...this.originalItemData, ...value };
+    this.form.valueChanges.subscribe(currentValue => {
+      // Compare current value with original
       this.hasUnsavedChanges =
-        JSON.stringify(current) !== JSON.stringify(this.originalItemData);
+        JSON.stringify(currentValue) !== JSON.stringify(this.originalItemData);
     });
   }
 
@@ -146,9 +147,12 @@ export class ItemDetailDialogComponent implements OnInit {
     this.userService.getAssignees().subscribe(data => {
       this.assignees = data;
 
-      this.form.patchValue({
-        assigneeId: this.data.item.assigneeId
-      });
+      this.form.patchValue(
+        {
+          assigneeId: this.data.item.assigneeId
+        },
+        { emitEvent: false }
+      );
     });
   }
 
