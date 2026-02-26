@@ -133,6 +133,36 @@ export class BoardComponent implements OnInit {
       data: { item }
     });
 
+    const attemptClose = () => {
+      const componentInstance = dialogRef.componentInstance as ItemDetailDialogComponent;
+      const hasChanges = componentInstance?.hasUnsavedChanges;
+
+      if (!hasChanges) {
+        dialogRef.close();
+        return;
+      }
+
+      const confirmClose = window.confirm(
+        'You have unsaved changes.\n\nDiscard them?'
+      );
+
+      if (confirmClose) {
+        dialogRef.close();
+      }
+    };
+
+    // Handle ESC
+    dialogRef.keydownEvents().subscribe(event => {
+      if (event.key === 'Escape') {
+        attemptClose();
+      }
+    });
+
+    // Handle backdrop click
+    dialogRef.backdropClick().subscribe(() => {
+      attemptClose();
+    });
+
     dialogRef.afterClosed().subscribe((updatedItem: Item | undefined) => {
       if (updatedItem) {
         this.onItemUpdated(updatedItem);
