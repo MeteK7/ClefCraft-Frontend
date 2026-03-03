@@ -79,7 +79,7 @@ export class CalendarDialogComponent implements OnInit {
       location: [''],
       startDate: ['', Validators.required],
       endDate: ['', Validators.required],
-      allDay: [false],
+      allDayEvent: [false],
       importance: ['Normal'],
       comment: [''],
     });
