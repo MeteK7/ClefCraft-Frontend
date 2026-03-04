@@ -106,15 +106,14 @@ export class CalendarComponent implements OnInit {
 
 
   getEventsForDay(date: Date): any[] {
-    return this.events.filter((event) => {
-      const eventDate = new Date(
-        event.startDate.getFullYear(),
-        event.startDate.getMonth(),
-        event.startDate.getDate()
-      );
-      const selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    return this.events.filter(event => {
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
 
-      return eventDate.getTime() === selectedDate.getTime();
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      return event.startDate <= dayEnd && event.endDate >= dayStart;
     });
   }
 
