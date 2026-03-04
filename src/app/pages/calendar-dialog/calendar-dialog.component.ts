@@ -79,13 +79,31 @@ export class CalendarDialogComponent implements OnInit {
       location: [''],
       startDate: ['', Validators.required],
       endDate: ['', Validators.required],
-      allDay: [false],
+      startTime: [''],
+      endTime: [''],
+      allDayEvent: [false],
       importance: ['Normal'],
       comment: [''],
     });
   }
 
   ngOnInit(): void {
+    this.generalForm.get('allDayEvent')?.valueChanges.subscribe(isAllDay => {
+      const startTime = this.generalForm.get('startTime');
+      const endTime = this.generalForm.get('endTime');
+
+      if (!isAllDay) {
+        startTime?.setValidators([Validators.required]);
+        endTime?.setValidators([Validators.required]);
+      } else {
+        startTime?.clearValidators();
+        endTime?.clearValidators();
+      }
+
+      startTime?.updateValueAndValidity();
+      endTime?.updateValueAndValidity();
+    });
+
     if (this.data.eventData) {
       this.generalForm.patchValue(this.data.eventData);
       this.eventId = this.data.eventData.id;
@@ -184,6 +202,15 @@ export class CalendarDialogComponent implements OnInit {
     });
   }
 
+  private combineDateAndTime(date: Date, time: string): Date {
+    const [hours, minutes] = time.split(':').map(Number);
+
+    const result = new Date(date);
+    result.setHours(hours, minutes, 0, 0);
+
+    return result;
+  }
+
   // ============================
   // SAVE / CANCEL
   // ============================
@@ -194,8 +221,32 @@ export class CalendarDialogComponent implements OnInit {
       return;
     }
 
+    let startDate = this.generalForm.value.startDate;
+    let endDate = this.generalForm.value.endDate;
+
+    if (!this.generalForm.value.allDayEvent) {
+      startDate = this.combineDateAndTime(
+        startDate,
+        this.generalForm.value.startTime
+      );
+
+      endDate = this.combineDateAndTime(
+        endDate,
+        this.generalForm.value.endTime
+      );
+    } else {
+      // Normalize all-day to midnight UTC
+      startDate = new Date(startDate.setHours(0, 0, 0, 0));
+      endDate = new Date(endDate.setHours(23, 59, 59, 999));
+    }
+
     this.onSave.emit({
-      record: { ...this.generalForm.value, id: this.eventId },
+      record: {
+        ...this.generalForm.value,
+        startDate,
+        endDate,
+        id: this.eventId
+      },
       attachments: this.stagedAttachments
     });
 

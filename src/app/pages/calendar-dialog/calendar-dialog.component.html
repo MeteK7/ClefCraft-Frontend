@@ -65,7 +65,7 @@
             </div>
 
             <div class="form-row">
-              <mat-checkbox formControlName="allDay" class="checkbox">All Day</mat-checkbox>
+              <mat-checkbox formControlName="allDayEvent" class="checkbox">All Day</mat-checkbox>
               <mat-form-field class="half-width">
                 <mat-label>Importance</mat-label>
                 <mat-select formControlName="importance">
@@ -73,6 +73,18 @@
                     {{ level }}
                   </mat-option>
                 </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row" *ngIf="!generalForm.get('allDayEvent')?.value">
+              <mat-form-field class="half-width">
+                <mat-label>Start Time</mat-label>
+                <input matInput type="time" formControlName="startTime" />
+              </mat-form-field>
+
+              <mat-form-field class="half-width">
+                <mat-label>End Time</mat-label>
+                <input matInput type="time" formControlName="endTime" />
               </mat-form-field>
             </div>
           </div>
