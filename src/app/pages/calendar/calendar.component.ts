@@ -60,11 +60,9 @@ export class CalendarComponent implements OnInit {
     );
   }
 
-  convertToLocalDate(utcDate: string): Date {
-    const date = new Date(utcDate); // Parses as UTC
-    return new Date(date.getTime() - date.getTimezoneOffset() * 60000); // Convert to local time
+  convertToLocalDate(utcString: string): Date {
+    return new Date(utcString);
   }
-
 
   generateCalendarGrid(): void {
     const year = this.selectedDate.getFullYear();
@@ -113,7 +111,7 @@ export class CalendarComponent implements OnInit {
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
 
-      return event.startDate <= dayEnd && event.endDate >= dayStart;
+      return event.startDate < dayEnd && event.endDate > dayStart;
     });
   }
 

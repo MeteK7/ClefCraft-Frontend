@@ -105,16 +105,33 @@ export class CalendarDialogComponent implements OnInit {
     });
 
     if (this.data.eventData) {
-      this.generalForm.patchValue(this.data.eventData);
+
+      const start = new Date(this.data.eventData.startDate);
+      const end = new Date(this.data.eventData.endDate);
+
+      const startTime = start.toTimeString().slice(0, 5); // HH:mm
+      const endTime = end.toTimeString().slice(0, 5);
+
+      this.generalForm.patchValue({
+        ...this.data.eventData,
+        startDate: start,
+        endDate: end,
+        startTime,
+        endTime
+      });
+
       this.eventId = this.data.eventData.id;
       this.fetchAttachments(this.eventId!);
     } else {
+      const date = new Date(this.data.date);
+
       this.generalForm.patchValue({
-        startDate: this.data.date,
-        endDate: this.data.date
+        startDate: date,
+        endDate: date,
+        startTime: '09:00',
+        endTime: '10:00'
       });
     }
-
     this.originalFormValue = this.normalizeForm(this.generalForm.value);
     this.trackFormChanges();
   }
@@ -235,9 +252,12 @@ export class CalendarDialogComponent implements OnInit {
         this.generalForm.value.endTime
       );
     } else {
-      // Normalize all-day to midnight UTC
-      startDate = new Date(startDate.setHours(0, 0, 0, 0));
-      endDate = new Date(endDate.setHours(23, 59, 59, 999));
+      startDate = new Date(startDate);
+      startDate.setHours(0, 0, 0, 0);
+
+      endDate = new Date(endDate);
+      endDate.setHours(0, 0, 0, 0);
+      endDate.setDate(endDate.getDate() + 1);
     }
 
     this.onSave.emit({
