@@ -27,8 +27,8 @@
 <!-- Calendar Navigation -->
 <div class="calendar-navigation">
   <button mat-button (click)="goToPreviousMonth()">Previous</button>
-  <button mat-button (click)="goToNextMonth()">Next</button>
   <button mat-button (click)="goToToday()">Today</button>
+  <button mat-button (click)="goToNextMonth()">Next</button>
 </div>
 
 <!-- Calendar Grid -->
@@ -40,7 +40,9 @@
   </thead>
   <tbody>
     <tr *ngFor="let row of calendarGrid">
-      <td *ngFor="let date of row" class="calendar-day" [class.outside-month]="date.getMonth() !== selectedDate.getMonth()" [class.selected]="isSameDate(date, selectedDate)">
+      <td *ngFor="let date of row" class="calendar-day"
+        [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
+        [class.selected]="isSameDate(date, selectedDate)">
         <div class="day" (click)="onEmptyDayClicked(date)">
           <span>{{ date.getDate() }}</span>
 
