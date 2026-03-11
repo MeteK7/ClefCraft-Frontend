@@ -37,6 +37,23 @@
                 <input matInput formControlName="location" placeholder="Enter location" />
               </mat-form-field>
             </div>
+            <mat-form-field class="half-width">
+              <mat-label>Event Type</mat-label>
+              <mat-select formControlName="eventTypeId" (selectionChange)="onEventTypeChange($event.value)">
+
+                <!-- Trigger shows selected type with dot -->
+                <mat-select-trigger>
+                  <span *ngIf="eventColor" class="event-type-dot" [style.background]="eventColor"></span>
+                  {{ eventTypeName || 'Select event type' }}
+                </mat-select-trigger>
+
+                <!-- Options with dots -->
+                <mat-option *ngFor="let type of eventTypes" [value]="type.id">
+                  <span class="event-type-dot" [style.background]="type.color"></span>
+                  {{ type.name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
           </div>
 
           <!-- Schedule -->
@@ -92,10 +109,11 @@
 
         <!-- Notes (Full width below) -->
         <div class="notes-section">
-          <h3 class="section-title">Notes</h3>
+          <!-- <h3 class="section-title">Notes</h3> -->
           <div class="form-row">
-            <mat-form-field class="full-width">
-              <textarea matInput placeholder="Add a comment..." formControlName="comment"></textarea>
+            <mat-form-field class="full-width" subscriptSizing="dynamic">
+              <textarea matInput cdkTextareaAutosize formControlName="comment"
+                placeholder="Add a comment..."></textarea>
             </mat-form-field>
           </div>
         </div>

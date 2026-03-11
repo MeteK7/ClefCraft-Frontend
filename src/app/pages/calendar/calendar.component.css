@@ -5,8 +5,8 @@
 .calendar-top-bar {
   display: flex;
   gap: 24px;
-  padding: 1rem;
-  flex-wrap: wrap; /* responsive */
+  flex-wrap: wrap;
+  /* responsive */
 }
 
 /* Title + back button */
@@ -68,7 +68,7 @@ button {
 
 .calendar-grid th,
 .calendar-grid td {
-  padding: 10px;
+  padding-block: 5px;
   text-align: center;
   border: 1px solid #ccc;
   vertical-align: top;
@@ -86,11 +86,12 @@ button {
 .calendar-grid .day {
   position: relative;
   height: 100%;
-  overflow: hidden; /* prevents overlap */
+  overflow: hidden;
+  /* prevents overlap */
 }
 
 /* Day number */
-.calendar-grid .day > span {
+.calendar-grid .day>span {
   font-weight: 500;
 }
 
