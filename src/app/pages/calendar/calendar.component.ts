@@ -48,11 +48,13 @@ export class CalendarComponent implements OnInit {
 
   fetchEvents(): void {
     this.calendarService.getEvents().subscribe(
-      (events: CalendarEvent[]) => {
+      (events: any[]) => {
         this.events = events.map(event => ({
           ...event,
           startDate: this.convertToLocalDate(event.startDate),
           endDate: this.convertToLocalDate(event.endDate),
+          eventTypeName: event.eventTypeName,
+          eventColor: event.eventColor
         }));
         this.generateCalendarGrid();
       },
@@ -71,7 +73,7 @@ export class CalendarComponent implements OnInit {
     const firstOfMonth = new Date(year, month, 1);
     const lastOfMonth = new Date(year, month + 1, 0);
 
-    const startDay = (firstOfMonth.getDay() + 6) % 7; 
+    const startDay = (firstOfMonth.getDay() + 6) % 7;
     const daysInMonth = lastOfMonth.getDate();
 
     this.calendarGrid = [];
@@ -115,6 +117,10 @@ export class CalendarComponent implements OnInit {
     });
   }
 
+  getTooltip(event: CalendarEventUI): string {
+    const typeName = event.eventType?.name;
+    return typeName ? `${event.subject} — ${typeName}` : event.subject;
+  }
 
   //CONSIDER USING THE CODE BELOW IF YOU WANT
   /*

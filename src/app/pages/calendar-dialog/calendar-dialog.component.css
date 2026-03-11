@@ -322,6 +322,16 @@ textarea[matInput] {
   border-radius: 10px;
 }
 
+.event-type-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
 /* ================================
    RESPONSIVE
 ================================ */

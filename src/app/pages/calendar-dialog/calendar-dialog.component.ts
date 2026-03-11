@@ -26,6 +26,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
+import { EventType } from '../../models/event-type.model';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -63,6 +64,11 @@ export class CalendarDialogComponent implements OnInit {
   hasFormChanges = false;
   hasAttachmentChanges = false;
 
+
+  eventTypeName: string | null = null;
+  eventColor: string | null = null;
+  eventTypes: EventType[] = [];
+
   get hasUnsavedChanges(): boolean {
     return this.hasFormChanges || this.hasAttachmentChanges;
   }
@@ -84,6 +90,7 @@ export class CalendarDialogComponent implements OnInit {
       allDayEvent: [false],
       importance: ['Normal'],
       comment: [''],
+      eventTypeId: [null]
     });
   }
 
@@ -105,11 +112,10 @@ export class CalendarDialogComponent implements OnInit {
     });
 
     if (this.data.eventData) {
-
       const start = new Date(this.data.eventData.startDate);
       const end = new Date(this.data.eventData.endDate);
 
-      const startTime = start.toTimeString().slice(0, 5); // HH:mm
+      const startTime = start.toTimeString().slice(0, 5);
       const endTime = end.toTimeString().slice(0, 5);
 
       this.generalForm.patchValue({
@@ -117,8 +123,12 @@ export class CalendarDialogComponent implements OnInit {
         startDate: start,
         endDate: end,
         startTime,
-        endTime
+        endTime,
+        eventTypeId: this.data.eventData.eventTypeId
       });
+
+      this.eventTypeName = this.data.eventData.eventTypeName; // local field
+      this.eventColor = this.data.eventData.eventColor;
 
       this.eventId = this.data.eventData.id;
       this.fetchAttachments(this.eventId!);
@@ -132,8 +142,47 @@ export class CalendarDialogComponent implements OnInit {
         endTime: '10:00'
       });
     }
+
+    this.loadEventTypes();
+
+    // Patch eventTypeId if editing an existing event
+    if (this.data.eventData) {
+      this.generalForm.patchValue({
+        eventTypeId: this.data.eventData.eventTypeId
+      });
+    }
+
+    // Track form changes
     this.originalFormValue = this.normalizeForm(this.generalForm.value);
     this.trackFormChanges();
+  }
+
+  private loadEventTypes(): void {
+    this.calendarService.getEventTypes().subscribe((types) => {
+      this.eventTypes = types;
+
+      // If editing, make sure form shows the right type
+      if (this.data.eventData) {
+        const currentType = this.eventTypes.find(
+          t => t.id === this.data.eventData.eventTypeId
+        );
+        if (currentType) {
+          this.eventTypeName = currentType.name;
+          this.eventColor = currentType.color;
+        }
+      }
+    });
+  }
+
+  onEventTypeChange(selectedId: number): void {
+    const selectedType = this.eventTypes.find(t => t.id === selectedId);
+    if (selectedType) {
+      this.eventTypeName = selectedType.name;
+      this.eventColor = selectedType.color;
+    } else {
+      this.eventTypeName = null;
+      this.eventColor = null;
+    }
   }
 
   private trackFormChanges(): void {

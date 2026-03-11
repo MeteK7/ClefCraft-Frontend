@@ -1,3 +1,5 @@
+import { EventType } from '../../../models/event-type.model';
+
 export interface CalendarEventUI {
   id?: number;
   subject: string;
@@ -9,4 +11,5 @@ export interface CalendarEventUI {
   comment?: string;
   linkedBoardItemId?: number;
   linkedBoardItemTitle?: string; 
+  eventType?: EventType | null;
 }

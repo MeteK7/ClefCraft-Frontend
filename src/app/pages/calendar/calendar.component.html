@@ -48,7 +48,8 @@
 
           <div class="events">
             <div *ngFor="let event of getEventsForDay(date)" class="event" [class.linked]="event.linkedBoardItemId"
-              matTooltip="{{ event.subject }}" (click)="onEventClicked(event, $event)">
+              [ngStyle]="event.eventColor ? {'border-left': '6px solid ' + event.eventColor} : {}"
+              [matTooltip]="getTooltip(event)" (click)="onEventClicked(event, $event)">
               <span class="event-title">
                 <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
                 {{ event.subject }}

@@ -5,7 +5,8 @@
 .calendar-top-bar {
   display: flex;
   gap: 24px;
-  flex-wrap: wrap; /* responsive */
+  flex-wrap: wrap;
+  /* responsive */
 }
 
 /* Title + back button */
@@ -85,11 +86,12 @@ button {
 .calendar-grid .day {
   position: relative;
   height: 100%;
-  overflow: hidden; /* prevents overlap */
+  overflow: hidden;
+  /* prevents overlap */
 }
 
 /* Day number */
-.calendar-grid .day > span {
+.calendar-grid .day>span {
   font-weight: 500;
 }
 
