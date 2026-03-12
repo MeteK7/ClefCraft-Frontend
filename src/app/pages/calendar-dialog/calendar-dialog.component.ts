@@ -113,7 +113,12 @@ export class CalendarDialogComponent implements OnInit {
 
     if (this.data.eventData) {
       const start = new Date(this.data.eventData.startDate);
-      const end = new Date(this.data.eventData.endDate);
+      let end = new Date(this.data.eventData.endDate);
+
+      if (this.data.eventData.allDayEvent) {
+        end = new Date(end);
+        end.setDate(end.getDate() - 1); // convert exclusive end -> inclusive UI end
+      }
 
       const startTime = start.toTimeString().slice(0, 5);
       const endTime = end.toTimeString().slice(0, 5);
@@ -174,14 +179,18 @@ export class CalendarDialogComponent implements OnInit {
     });
   }
 
-  onEventTypeChange(selectedId: number): void {
+  onEventTypeChange(selectedId: number | null): void {
+    if (selectedId == null) {
+      this.eventTypeName = null;
+      this.eventColor = null;
+      this.generalForm.patchValue({ eventTypeId: null });
+      return;
+    }
+
     const selectedType = this.eventTypes.find(t => t.id === selectedId);
     if (selectedType) {
       this.eventTypeName = selectedType.name;
       this.eventColor = selectedType.color;
-    } else {
-      this.eventTypeName = null;
-      this.eventColor = null;
     }
   }
 
@@ -301,11 +310,14 @@ export class CalendarDialogComponent implements OnInit {
         this.generalForm.value.endTime
       );
     } else {
+      // Normalize both dates to midnight
       startDate = new Date(startDate);
-      startDate.setHours(0, 0, 0, 0);
-
       endDate = new Date(endDate);
+
+      startDate.setHours(0, 0, 0, 0);
       endDate.setHours(0, 0, 0, 0);
+
+      // Convert inclusive UI end date → exclusive DB end date
       endDate.setDate(endDate.getDate() + 1);
     }
 
