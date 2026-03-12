@@ -10,6 +10,8 @@ export interface CalendarEventUI {
   importance: 'Low' | 'Normal' | 'High';
   comment?: string;
   linkedBoardItemId?: number;
-  linkedBoardItemTitle?: string; 
-  eventType?: EventType | null;
+  linkedBoardItemTitle?: string;
+  eventTypeId?: number | null;
+  eventTypeName?: string | null;
+  eventColor?: string | null;
 }

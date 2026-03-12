@@ -118,8 +118,9 @@ export class CalendarComponent implements OnInit {
   }
 
   getTooltip(event: CalendarEventUI): string {
-    const typeName = event.eventType?.name;
-    return typeName ? `${event.subject} — ${typeName}` : event.subject;
+    return event.eventTypeName
+      ? `${event.subject} — ${event.eventTypeName}`
+      : event.subject;
   }
 
   //CONSIDER USING THE CODE BELOW IF YOU WANT

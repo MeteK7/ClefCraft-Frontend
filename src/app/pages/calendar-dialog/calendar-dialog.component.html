@@ -47,6 +47,9 @@
                   {{ eventTypeName || 'Select event type' }}
                 </mat-select-trigger>
 
+                <!-- Add a "None" option -->
+                <mat-option [value]="null">None</mat-option>
+
                 <!-- Options with dots -->
                 <mat-option *ngFor="let type of eventTypes" [value]="type.id">
                   <span class="event-type-dot" [style.background]="type.color"></span>
