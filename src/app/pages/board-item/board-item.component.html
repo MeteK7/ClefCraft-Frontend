@@ -11,14 +11,13 @@
 
   <div class="item-footer">
     <div class="priority-container" *ngIf="item.priority?.id">
-      <span class="priority-indicator" [ngClass]="'priority-' + item.priority?.id">
+      <span class="priority-indicator" [ngClass]="'priority-' + item.priority?.id" [matTooltip]="item.priority?.name"
+        matTooltipPosition="above">
       </span>
     </div>
     <div class="assignee-container" *ngIf="fullName">
       <span class="assignee">{{ fullName }}</span>
-      <div class="avatar">
-        {{ initials }}
-      </div>
+      <div class="avatar">{{ initials }}</div>
     </div>
   </div>
 </div>
