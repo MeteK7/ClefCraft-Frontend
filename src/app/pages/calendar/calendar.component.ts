@@ -105,15 +105,18 @@ export class CalendarComponent implements OnInit {
   }
 
 
-  getEventsForDay(date: Date): any[] {
+  getEventsForDay(date: Date): CalendarEventUI[] {
+    const day = new Date(date);
+    day.setHours(0, 0, 0, 0);
+
     return this.events.filter(event => {
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
+      const start = new Date(event.startDate);
+      const end = new Date(event.endDate);
 
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
 
-      return event.startDate < dayEnd && event.endDate > dayStart;
+      return start <= day && end >= day;
     });
   }
 
@@ -121,6 +124,13 @@ export class CalendarComponent implements OnInit {
     return event.eventTypeName
       ? `${event.subject} — ${event.eventTypeName}`
       : event.subject;
+  }
+
+  isToday(date: Date): boolean {
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear() &&
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate();
   }
 
   //CONSIDER USING THE CODE BELOW IF YOU WANT

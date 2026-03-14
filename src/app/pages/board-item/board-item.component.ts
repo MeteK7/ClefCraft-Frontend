@@ -2,11 +2,12 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Item } from '../../models/board.model';
 import { CommonModule } from '@angular/common';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-board-item',
   standalone: true,
-  imports: [CommonModule, DragDropModule],
+  imports: [CommonModule, DragDropModule, MatTooltipModule],
   templateUrl: './board-item.component.html',
   styleUrls: ['./board-item.component.css']
 })
