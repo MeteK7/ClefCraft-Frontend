@@ -40,36 +40,42 @@
   </thead>
   <tbody>
 
-    <tr *ngFor="let row of calendarGrid">
+    <ng-container *ngFor="let row of calendarGrid">
 
-      <td *ngFor="let date of row; let i = index" class="calendar-day"
-        [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
-        [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
-        (click)="onEmptyDayClicked(date)">
-
-        <div class="day">
-          <span>{{ date.getDate() }}</span>
-
-          <!-- WEEK EVENT LAYER (ONLY ON FIRST CELL) -->
-          <div *ngIf="i === 0" class="week-events-layer">
-
+      <!-- WEEK EVENTS ROW -->
+      <tr class="week-events-row">
+        <td colspan="7">
+          <div class="week-events-layer">
             <div class="week-events-container">
 
               <div *ngFor="let event of getEventsForWeek(row)" class="event span-event"
                 [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
-                [matTooltip]="getTooltip(event)" (click)="onEventClicked(event,$event); $event.stopPropagation()">
+                [matTooltip]="getTooltip(event)" (click)="onEventClicked(event,$event)">
                 {{ event.subject }}
               </div>
 
             </div>
+          </div>
+        </td>
+      </tr>
 
+      <!-- DAY CELLS ROW -->
+      <tr class="calendar-row">
+
+        <td *ngFor="let date of row" class="calendar-day"
+          [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
+          [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
+          (click)="onEmptyDayClicked(date)">
+
+          <div class="day">
+            <span>{{ date.getDate() }}</span>
           </div>
 
-        </div>
+        </td>
 
-      </td>
+      </tr>
 
-    </tr>
+    </ng-container>
 
   </tbody>
 </table>

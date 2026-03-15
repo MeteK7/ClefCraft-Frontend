@@ -161,17 +161,22 @@ button {
   -webkit-box-orient: vertical;
 }
 
+.week-events-row {
+  position: relative;
+  height: auto;
+  padding: 0;
+}
+
 .week-events-layer {
-  position: absolute;
-  left: 0;
-  top: 24px;
-  width: 700%;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+  gap: 2px;
 }
 
 .week-events-container {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  display: contents;
+  /* so grid-column on children works */
 }
 
 .span-event {
