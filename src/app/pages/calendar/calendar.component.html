@@ -39,25 +39,37 @@
     </tr>
   </thead>
   <tbody>
-    <tr *ngFor="let row of calendarGrid">
-      <td *ngFor="let date of row" class="calendar-day"
-        [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
-        [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)">
-        <div class="day" (click)="onEmptyDayClicked(date)">
-          <span>{{ date.getDate() }}</span>
 
-          <div class="events">
-            <div *ngFor="let event of getEventsForDay(date)" class="event" [class.linked]="event.linkedBoardItemId"
-              [ngStyle]="event.eventColor ? {'border-left': '6px solid ' + event.eventColor} : {}"
-              [matTooltip]="getTooltip(event)" (click)="onEventClicked(event, $event)">
-              <span class="event-title">
-                <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
-                <span>{{ event.subject }}</span>
-              </span>
+    <ng-container *ngFor="let row of calendarGrid">
+
+      <!-- WEEK EVENTS LAYER -->
+      <tr class="calendar-row">
+        <td colspan="7" class="week-events-overlay">
+          <div class="week-events-layer">
+            <div *ngFor="let event of getEventsForWeek(row)" class="event span-event"
+              [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
+              [matTooltip]="getTooltip(event)" (click)="onEventClicked(event,$event)">
+              {{ event.subject }}
             </div>
           </div>
-        </div>
-      </td>
-    </tr>
+        </td>
+      </tr>
+
+      <!-- DAYS ROW -->
+      <tr class="calendar-days-row">
+        <td *ngFor="let date of row" class="calendar-day"
+          [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
+          [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
+          (click)="onEmptyDayClicked(date)">
+
+          <div class="day">
+            <span>{{ date.getDate() }}</span>
+          </div>
+
+        </td>
+      </tr>
+
+    </ng-container>
+
   </tbody>
 </table>

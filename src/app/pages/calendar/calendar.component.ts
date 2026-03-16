@@ -318,4 +318,64 @@ export class CalendarComponent implements OnInit {
       date1.getDate() === date2.getDate();
   }
 
+  getEventsForWeek(week: Date[]): CalendarEventUI[] {
+
+    const weekStart = new Date(week[0])
+    const weekEnd = new Date(week[6])
+
+    weekStart.setHours(0, 0, 0, 0)
+    weekEnd.setHours(23, 59, 59, 999)
+
+    return this.events.filter(e => {
+
+      const start = new Date(e.startDate)
+      const end = new Date(e.endDate)
+
+      return start <= weekEnd && end >= weekStart
+    })
+  }
+
+  getEventColumnStart(event: CalendarEventUI, week: Date[]): number {
+
+    const start = new Date(event.startDate)
+    start.setHours(0, 0, 0, 0)
+
+    const weekStart = new Date(week[0])
+    weekStart.setHours(0, 0, 0, 0)
+
+    const effectiveStart = start < weekStart ? weekStart : start
+
+    const diffDays = Math.floor(
+      (effectiveStart.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)
+    )
+
+    return diffDays + 1
+  }
+
+  getEventSpan(event: CalendarEventUI, week: Date[]): number {
+
+    const start = new Date(event.startDate)
+    const end = new Date(event.endDate)
+
+    start.setHours(0, 0, 0, 0)
+    end.setHours(0, 0, 0, 0)
+
+    // end date is exclusive
+    end.setDate(end.getDate() - 1)
+
+    const weekStart = new Date(week[0])
+    const weekEnd = new Date(week[6])
+
+    weekStart.setHours(0, 0, 0, 0)
+    weekEnd.setHours(0, 0, 0, 0)
+
+    const effectiveStart = start < weekStart ? weekStart : start
+    const effectiveEnd = end > weekEnd ? weekEnd : end
+
+    const diff = Math.floor(
+      (effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
+    )
+
+    return diff + 1
+  }
 }
