@@ -47,9 +47,16 @@
         <td colspan="7" class="week-events-overlay">
           <div class="week-events-layer">
             <div *ngFor="let event of getEventsForWeek(row)" class="event span-event"
+              [class.linked]="event.linkedBoardItemId"
               [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
+              [ngStyle]="event.eventColor ? {'border-left': '6px solid ' + event.eventColor} : {}"
               [matTooltip]="getTooltip(event)" (click)="onEventClicked(event,$event)">
-              {{ event.subject }}
+
+              <span class="event-title">
+                <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
+                {{ event.subject }}
+              </span>
+
             </div>
           </div>
         </td>

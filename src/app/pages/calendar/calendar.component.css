@@ -219,13 +219,13 @@ button {
 }
 
 /* Linked board item styling */
-.calendar-grid .event.linked {
+.calendar-grid .span-event.linked {
   background: #ede7f6;
   border-left: 3px solid #673ab7;
 }
 
 .calendar-grid .event.linked .event-title {
-  padding-left: 18px;
+  padding-left: 22px;
 }
 
 /* =========================
