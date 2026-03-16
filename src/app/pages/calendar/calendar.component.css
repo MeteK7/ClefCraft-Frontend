@@ -135,7 +135,7 @@ button {
    ========================= */
 
 .calendar-grid .event {
-  background: #e3f2fd;
+  background: #bbe1fd;
   border-radius: 4px;
   padding: 4px 6px;
   cursor: pointer;
@@ -167,16 +167,30 @@ button {
   padding: 0;
 }
 
+.calendar-row {
+  position: relative;
+}
+
+.week-events-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 22px;
+  border: none !important;
+  padding: 0;
+  z-index: 5;
+
+  pointer-events: none;
+}
+
 .week-events-layer {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   width: 100%;
-  gap: 2px;
 }
 
 .week-events-container {
   display: contents;
-  /* so grid-column on children works */
 }
 
 .span-event {
@@ -189,6 +203,9 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: auto;
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 /* Linked icon */

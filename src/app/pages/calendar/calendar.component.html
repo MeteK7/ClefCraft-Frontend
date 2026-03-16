@@ -42,26 +42,21 @@
 
     <ng-container *ngFor="let row of calendarGrid">
 
-      <!-- WEEK EVENTS ROW -->
-      <tr class="week-events-row">
-        <td colspan="7">
+      <!-- WEEK EVENTS LAYER -->
+      <tr class="calendar-row">
+        <td colspan="7" class="week-events-overlay">
           <div class="week-events-layer">
-            <div class="week-events-container">
-
-              <div *ngFor="let event of getEventsForWeek(row)" class="event span-event"
-                [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
-                [matTooltip]="getTooltip(event)" (click)="onEventClicked(event,$event)">
-                {{ event.subject }}
-              </div>
-
+            <div *ngFor="let event of getEventsForWeek(row)" class="event span-event"
+              [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
+              [matTooltip]="getTooltip(event)" (click)="onEventClicked(event,$event)">
+              {{ event.subject }}
             </div>
           </div>
         </td>
       </tr>
 
-      <!-- DAY CELLS ROW -->
-      <tr class="calendar-row">
-
+      <!-- DAYS ROW -->
+      <tr class="calendar-days-row">
         <td *ngFor="let date of row" class="calendar-day"
           [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
           [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
@@ -72,7 +67,6 @@
           </div>
 
         </td>
-
       </tr>
 
     </ng-container>

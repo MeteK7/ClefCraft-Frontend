@@ -360,6 +360,9 @@ export class CalendarComponent implements OnInit {
     start.setHours(0, 0, 0, 0)
     end.setHours(0, 0, 0, 0)
 
+    // end date is exclusive
+    end.setDate(end.getDate() - 1)
+
     const weekStart = new Date(week[0])
     const weekEnd = new Date(week[6])
 
