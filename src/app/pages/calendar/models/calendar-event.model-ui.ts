@@ -6,7 +6,7 @@ export interface CalendarEventUI {
   location?: string;
   startDate: Date;
   endDate: Date;
-  allDay: boolean;
+  allDayEvent: boolean;
   importance: 'Low' | 'Normal' | 'High';
   comment?: string;
   linkedBoardItemId?: number;
