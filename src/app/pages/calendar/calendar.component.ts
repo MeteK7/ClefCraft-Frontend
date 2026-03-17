@@ -372,11 +372,53 @@ export class CalendarComponent implements OnInit {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   }
 
-  getEventRowIndex(event: CalendarEventUI, weekEvents: CalendarEventUI[]): number {
+  getEventRowIndex(event: CalendarEventUI, weekEvents: CalendarEventUI[], week: Date[]): number {
+
+    const lanes: CalendarEventUI[][] = [];
+
     const sorted = [...weekEvents].sort((a, b) =>
       new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     );
 
-    return sorted.findIndex(e => e.id === event.id);
+    for (const e of sorted) {
+
+      let placed = false;
+
+      for (let i = 0; i < lanes.length; i++) {
+
+        const lane = lanes[i];
+
+        const overlaps = lane.some(existing =>
+          this.eventsOverlap(existing, e, week)
+        );
+
+        if (!overlaps) {
+          lane.push(e);
+          placed = true;
+
+          if (e.id === event.id) return i;
+          break;
+        }
+      }
+
+      if (!placed) {
+        lanes.push([e]);
+
+        if (e.id === event.id) return lanes.length - 1;
+      }
+    }
+
+    return 0;
+  }
+
+  eventsOverlap(a: CalendarEventUI, b: CalendarEventUI, week: Date[]): boolean {
+
+    const aStart = this.getEventColumnStart(a, week);
+    const aEnd = aStart + this.getEventSpan(a, week) - 1;
+
+    const bStart = this.getEventColumnStart(b, week);
+    const bEnd = bStart + this.getEventSpan(b, week) - 1;
+
+    return !(aEnd < bStart || bEnd < aStart);
   }
 }
