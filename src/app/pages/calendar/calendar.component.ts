@@ -106,15 +106,11 @@ export class CalendarComponent implements OnInit {
 
 
   getEventsForDay(date: Date): CalendarEventUI[] {
-    const day = new Date(date);
-    day.setHours(0, 0, 0, 0);
+    const day = this.toDateOnly(date);
 
     return this.events.filter(event => {
-      const start = new Date(event.startDate);
-      const end = new Date(event.endDate);
-
-      start.setHours(0, 0, 0, 0);
-      end.setHours(0, 0, 0, 0);
+      const start = this.toDateOnly(new Date(event.startDate));
+      const end = this.toDateOnly(new Date(event.endDate));
 
       return start <= day && end >= day;
     });
@@ -337,45 +333,92 @@ export class CalendarComponent implements OnInit {
 
   getEventColumnStart(event: CalendarEventUI, week: Date[]): number {
 
-    const start = new Date(event.startDate)
-    start.setHours(0, 0, 0, 0)
+    const start = this.toDateOnly(new Date(event.startDate));
+    const weekStart = this.toDateOnly(new Date(week[0]));
 
-    const weekStart = new Date(week[0])
-    weekStart.setHours(0, 0, 0, 0)
-
-    const effectiveStart = start < weekStart ? weekStart : start
+    const effectiveStart = Math.max(start, weekStart);
 
     const diffDays = Math.floor(
-      (effectiveStart.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)
-    )
+      (effectiveStart - weekStart) / (1000 * 60 * 60 * 24)
+    );
 
-    return diffDays + 1
+    return diffDays + 1;
   }
 
   getEventSpan(event: CalendarEventUI, week: Date[]): number {
 
-    const start = new Date(event.startDate)
-    const end = new Date(event.endDate)
+    const start = this.toDateOnly(new Date(event.startDate));
+    let end = this.toDateOnly(new Date(event.endDate));
 
-    start.setHours(0, 0, 0, 0)
-    end.setHours(0, 0, 0, 0)
+    // only subtract 1 day for ALL-DAY events
+    if (event.allDayEvent) {
+      end -= (1000 * 60 * 60 * 24);
+    }
 
-    // end date is exclusive
-    end.setDate(end.getDate() - 1)
+    const weekStart = this.toDateOnly(new Date(week[0]));
+    const weekEnd = this.toDateOnly(new Date(week[6]));
 
-    const weekStart = new Date(week[0])
-    const weekEnd = new Date(week[6])
-
-    weekStart.setHours(0, 0, 0, 0)
-    weekEnd.setHours(0, 0, 0, 0)
-
-    const effectiveStart = start < weekStart ? weekStart : start
-    const effectiveEnd = end > weekEnd ? weekEnd : end
+    const effectiveStart = Math.max(start, weekStart);
+    const effectiveEnd = Math.min(end, weekEnd);
 
     const diff = Math.floor(
-      (effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
-    )
+      (effectiveEnd - effectiveStart) / (1000 * 60 * 60 * 24)
+    );
 
-    return diff + 1
+    return diff + 1;
+  }
+
+  toDateOnly(date: Date): number {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  }
+
+  getEventRowIndex(event: CalendarEventUI, weekEvents: CalendarEventUI[], week: Date[]): number {
+
+    const lanes: CalendarEventUI[][] = [];
+
+    const sorted = [...weekEvents].sort((a, b) =>
+      new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    );
+
+    for (const e of sorted) {
+
+      let placed = false;
+
+      for (let i = 0; i < lanes.length; i++) {
+
+        const lane = lanes[i];
+
+        const overlaps = lane.some(existing =>
+          this.eventsOverlap(existing, e, week)
+        );
+
+        if (!overlaps) {
+          lane.push(e);
+          placed = true;
+
+          if (e.id === event.id) return i;
+          break;
+        }
+      }
+
+      if (!placed) {
+        lanes.push([e]);
+
+        if (e.id === event.id) return lanes.length - 1;
+      }
+    }
+
+    return 0;
+  }
+
+  eventsOverlap(a: CalendarEventUI, b: CalendarEventUI, week: Date[]): boolean {
+
+    const aStart = this.getEventColumnStart(a, week);
+    const aEnd = aStart + this.getEventSpan(a, week) - 1;
+
+    const bStart = this.getEventColumnStart(b, week);
+    const bEnd = bStart + this.getEventSpan(b, week) - 1;
+
+    return !(aEnd < bStart || bEnd < aStart);
   }
 }
