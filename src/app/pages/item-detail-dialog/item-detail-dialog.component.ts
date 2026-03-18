@@ -171,15 +171,17 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   markAsWorked(): void {
-    const currentDate = new Date().toISOString();
+    const currentDate = new Date();
+    const endDate = new Date(currentDate.getTime() + 1); // +1 millisecond
+
     const formValue = this.form.value;
 
     const calendarEvent = {
       subject: formValue.title,
       comment: formValue.description,
       startDate: currentDate,
-      endDate: currentDate,
-      allDayEvent: true,
+      endDate: endDate,
+      allDayEvent: false,
       importance: 'Normal',
       linkedBoardItemId: this.data.item.id,
       userId: '944d0156-cb3d-466f-a1ea-5f53e3a10f8e'
@@ -187,7 +189,7 @@ export class ItemDetailDialogComponent implements OnInit {
 
     this.calendarService.saveEvent(calendarEvent).subscribe(() => {
       this.markAsWorkedHistory.push({
-        dateCreated: currentDate,
+        dateCreated: currentDate.toString(),
         actionBy: 'Current User'
       });
       this.dialogRef.close();
