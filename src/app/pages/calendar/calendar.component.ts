@@ -38,6 +38,7 @@ export class CalendarComponent implements OnInit {
   userId: string = '944d0156-cb3d-466f-a1ea-5f53e3a10f8e';  // TEST
   calendarGrid: Date[][] = [];
   weekdays: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  readonly MAX_VISIBLE_LANES = 5;
 
   constructor(private calendarService: CalendarService, private dialog: MatDialog) { }
 
@@ -420,5 +421,29 @@ export class CalendarComponent implements OnInit {
     const bEnd = bStart + this.getEventSpan(b, week) - 1;
 
     return !(aEnd < bStart || bEnd < aStart);
+  }
+
+  getHiddenEventCountForDay(date: Date, week: Date[]): number {
+    const day = this.toDateOnly(date);
+
+    const weekEvents = this.getEventsForWeek(week);
+
+    let hidden = 0;
+
+    for (const event of weekEvents) {
+
+      const lane = this.getEventRowIndex(event, weekEvents, week);
+
+      if (lane < this.MAX_VISIBLE_LANES) continue;
+
+      const start = this.toDateOnly(new Date(event.startDate));
+      const end = this.toDateOnly(new Date(event.endDate));
+
+      if (start <= day && end >= day) {
+        hidden++;
+      }
+    }
+
+    return hidden;
   }
 }
