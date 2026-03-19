@@ -46,18 +46,21 @@
       <tr class="calendar-row">
         <td colspan="7" class="week-events-overlay">
           <div class="week-events-layer">
-            <div *ngFor="let event of getEventsForWeek(row)" class="event span-event"
-              [class.linked]="event.linkedBoardItemId"
-              [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
-              [style.grid-row]="getEventRowIndex(event, getEventsForWeek(row), row) + 1"
-              [ngStyle]="event.eventColor ? {'border-left': '6px solid ' + event.eventColor} : {}"
-              [matTooltip]="getTooltip(event)" (click)="onEventClicked(event,$event)">
-              <span class="event-title">
-                <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
-                {{ event.subject }}
-              </span>
+            <ng-container *ngFor="let event of getEventsForWeek(row)">
+              <div *ngIf="getEventRowIndex(event, getEventsForWeek(row), row) < MAX_VISIBLE_LANES"
+                class="event span-event" [class.linked]="event.linkedBoardItemId"
+                [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
+                [style.grid-row]="getEventRowIndex(event, getEventsForWeek(row), row) + 1"
+                [ngStyle]="event.eventColor ? {'border-left': '6px solid ' + event.eventColor} : {}"
+                [matTooltip]="getTooltip(event)" (click)="onEventClicked(event,$event)">
 
-            </div>
+                <span class="event-title">
+                  <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
+                  {{ event.subject }}
+                </span>
+
+              </div>
+            </ng-container>
           </div>
         </td>
       </tr>
@@ -72,7 +75,9 @@
           <div class="day">
             <span>{{ date.getDate() }}</span>
           </div>
-
+          <div class="more-indicator" *ngIf="getHiddenEventCountForDay(date, row) > 0">
+            +{{ getHiddenEventCountForDay(date, row) }} more
+          </div>
         </td>
       </tr>
 
