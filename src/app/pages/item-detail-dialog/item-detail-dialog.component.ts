@@ -184,14 +184,11 @@ export class ItemDetailDialogComponent implements OnInit {
       allDayEvent: false,
       importance: 'Normal',
       linkedBoardItemId: this.data.item.id,
-      userId: '944d0156-cb3d-466f-a1ea-5f53e3a10f8e'
     };
 
     this.calendarService.saveEvent(calendarEvent).subscribe(() => {
-      this.markAsWorkedHistory.push({
-        dateCreated: currentDate.toString(),
-        actionBy: 'Current User'
-      });
+      // After saving, optionally refresh history from backend
+      this.fetchMarkAsWorkedHistory();
       this.dialogRef.close();
     });
   }
