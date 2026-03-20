@@ -446,4 +446,17 @@ export class CalendarComponent implements OnInit {
 
     return hidden;
   }
+  onMoreClicked(date: Date, week: Date[]): void {
+    const hiddenEvents = this.getEventsForWeek(week).filter(event => {
+      const lane = this.getEventRowIndex(event, this.getEventsForWeek(week), week);
+      const start = this.toDateOnly(new Date(event.startDate));
+      const end = this.toDateOnly(new Date(event.endDate));
+      const day = this.toDateOnly(date);
+
+      return lane >= this.MAX_VISIBLE_LANES && start <= day && end >= day;
+    });
+
+    this.openDialog({ date, hiddenEvents });
+  }
+
 }
