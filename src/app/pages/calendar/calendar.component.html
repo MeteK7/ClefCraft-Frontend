@@ -75,9 +75,11 @@
           <div class="day">
             <span>{{ date.getDate() }}</span>
           </div>
-          <div class="more-indicator" *ngIf="getHiddenEventCountForDay(date, row) > 0">
+          <div class="more-indicator" *ngIf="getHiddenEventCountForDay(date, row) > 0"
+            (click)="onMoreClicked(date, row)">
             +{{ getHiddenEventCountForDay(date, row) }} more
           </div>
+
         </td>
       </tr>
 
