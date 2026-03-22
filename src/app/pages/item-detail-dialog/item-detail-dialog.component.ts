@@ -104,9 +104,9 @@ export class ItemDetailDialogComponent implements OnInit {
       tagIds: formValue.tags
     };
 
-    this.boardService.updateBoardItem(updateData).subscribe(() => {
+    this.boardService.updateBoardItem(updateData).subscribe((updatedItemFromApi) => {
       this.hasUnsavedChanges = false;
-      this.dialogRef.close(updateData);
+      this.dialogRef.close(updatedItemFromApi); // ✅ USE API RESPONSE
     });
   }
 

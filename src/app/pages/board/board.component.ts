@@ -175,16 +175,19 @@ export class BoardComponent implements OnInit {
     //this.selectedItem = item; // Set the selected item
     this.isSidebarOpen = true; // Mark the sidebar flag as true in case the user opens sidebar.
   }
-
-  onItemUpdated(updatedItem: Item): void {
-    const column = this.columns.find(c => c.id === updatedItem.boardColumnId);
-    if (column) {
-      const itemIndex = column.boardItems.findIndex(i => i.id === updatedItem.id);
-      if (itemIndex !== -1) {
-        column.boardItems[itemIndex] = updatedItem; // Update the item in the column
-      }
-    }
-  }
+  
+onItemUpdated(updatedItem: Item): void {
+  this.columns = this.columns.map(c =>
+    c.id === updatedItem.boardColumnId
+      ? {
+          ...c,
+          boardItems: c.boardItems.map(i =>
+            i.id === updatedItem.id ? updatedItem : i
+          )
+        }
+      : c
+  );
+}
 
   toggleViewMode(): void {
     this.viewMode = this.viewMode === 'dialog' ? 'sidebar' : 'dialog';
