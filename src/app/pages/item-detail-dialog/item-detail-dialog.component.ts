@@ -106,7 +106,10 @@ export class ItemDetailDialogComponent implements OnInit {
 
     this.boardService.updateBoardItem(updateData).subscribe((updatedItemFromApi) => {
       this.hasUnsavedChanges = false;
-      this.dialogRef.close(updatedItemFromApi); // ✅ USE API RESPONSE
+      this.dialogRef.close({
+        ...updatedItemFromApi,
+        boardColumnId: this.data.item.boardColumnId
+      });
     });
   }
 
