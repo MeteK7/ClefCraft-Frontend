@@ -11,6 +11,7 @@ import { BoardService } from '../../_services/board.service';
 import { CalendarService } from '../../_services/calendar.service';
 import { Assignee } from '../../models/assignee.model';
 import { UserService } from '../../_services/user.service';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-item-detail-dialog',
@@ -20,7 +21,8 @@ import { UserService } from '../../_services/user.service';
     ReactiveFormsModule,
     MatTabsModule,
     MatSelectModule,
-    MatRadioModule
+    MatRadioModule,
+    MatTooltipModule
   ],
   templateUrl: './item-detail-dialog.component.html',
   styleUrl: './item-detail-dialog.component.css'
@@ -195,4 +197,24 @@ export class ItemDetailDialogComponent implements OnInit {
       this.dialogRef.close();
     });
   }
+
+  get selectedTags(): Tag[] {
+    const selectedIds = this.form.value.tags || [];
+    return this.tags.filter(t => selectedIds.includes(t.id));
+  }
+
+  get visibleTags(): Tag[] {
+    return this.selectedTags.slice(0, 3); // show max 3
+  }
+
+  get hiddenTagCount(): number {
+    return Math.max(this.selectedTags.length - 3, 0);
+  }
+
+  get hiddenTagsTooltip(): string {
+  return this.selectedTags
+    .slice(3)
+    .map(t => t.name)
+    .join(', ');
+}
 }

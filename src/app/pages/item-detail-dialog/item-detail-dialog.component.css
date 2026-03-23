@@ -56,14 +56,16 @@ mat-tab-group {
 }
 
 ::ng-deep .mat-mdc-dialog-surface {
-    max-width: none !important;
-    width: 50vw !important; /* Adjust the width */
-    height: 80vh !important; /* Adjust the height */
-    position: absolute !important;
-    left: auto !important;
-    top: auto !important;
-    transform: none !important;
-    will-change: auto !important;
+  max-width: none !important;
+  width: 50vw !important;
+  /* Adjust the width */
+  height: 80vh !important;
+  /* Adjust the height */
+  position: absolute !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  will-change: auto !important;
 }
 
 /* Make dialog content fill available space */
@@ -191,27 +193,41 @@ mat-tab-group {
   border-bottom: 1px solid #ffeeba;
 }
 
+.tag-chip {
+  display: inline-block;
+  background: #e0e0e0;
+  border-radius: 12px;
+  padding: 2px 8px;
+  margin-right: 6px; /* 👈 spacing between tags */
+  font-size: 12px;
+}
+
+.more-tags {
+  color: #666;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .form-row {
     flex-direction: column;
     gap: 1.5em;
   }
-  
+
   .dialog-actions {
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .dialog-actions .btn {
     flex: 1;
     min-width: auto;
     margin: 4px;
   }
-  
+
   .info-group {
     flex-direction: column;
     gap: 8px;
   }
-  
 }
