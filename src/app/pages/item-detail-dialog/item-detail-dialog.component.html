@@ -51,9 +51,23 @@
             <div class="form-group">
               <label>Tags:</label>
               <mat-select formControlName="tags" multiple>
+
+                <!-- ✅ CUSTOM DISPLAY -->
+                <mat-select-trigger>
+                  <ng-container *ngFor="let tag of visibleTags">
+                    <span class="tag-chip">{{ tag.name }}</span>
+                  </ng-container>
+
+                  <span *ngIf="hiddenTagCount > 0" class="more-tags" [matTooltip]="hiddenTagsTooltip">
+                    +{{ hiddenTagCount }} more
+                  </span>
+                </mat-select-trigger>
+
+                <!-- OPTIONS -->
                 <mat-option *ngFor="let tag of tags" [value]="tag.id">
                   {{ tag.name }}
                 </mat-option>
+
               </mat-select>
             </div>
           </div>
