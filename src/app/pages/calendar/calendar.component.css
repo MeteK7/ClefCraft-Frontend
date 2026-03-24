@@ -183,7 +183,7 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
 
-  max-height: calc(1.35em * 2);
+  flex: 1;
 }
 
 /* Event content layout */
@@ -220,7 +220,7 @@ button {
 .week-events-layer {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(5, 1fr);
+  grid-template-rows: repeat(6, 1fr);
 
   height: 100%;
   padding: 24px 4px 4px 4px;
@@ -244,10 +244,9 @@ button {
 
   display: flex;
   align-items: center;
+  justify-content: center; /* ✅ THIS is the key */
 
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .more-indicator {
