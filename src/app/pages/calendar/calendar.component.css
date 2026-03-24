@@ -117,7 +117,7 @@ button {
    TODAY INDICATOR
    ========================= */
 
-.calendar-day.today .day > span {
+.calendar-day.today .day>span {
   border: 2px solid #2196f3;
   border-radius: 20%;
   padding: 2px 6px;
@@ -145,7 +145,7 @@ button {
   position: relative;
 }
 
-.day > span {
+.day>span {
   font-weight: 500;
 }
 
@@ -206,7 +206,8 @@ button {
 
 .calendar-row {
   position: relative;
-  height: calc(100vh / 7); /* SAME as td */
+  height: calc(100vh / 7);
+  /* SAME as td */
 }
 
 .week-events-overlay {
@@ -222,7 +223,8 @@ button {
   grid-template-rows: repeat(5, 1fr);
 
   height: 100%;
-  padding: 24px 4px 4px 4px; /* leave space for day number */
+  padding: 24px 4px 4px 4px;
+  /* leave space for day number */
   box-sizing: border-box;
 
   column-gap: 6px;
@@ -261,6 +263,21 @@ button {
   text-align: left;
   cursor: pointer;
   z-index: 10;
+}
+
+.more-indicator-overlay {
+  font-size: 12px;
+  color: #1976d2;
+  font-weight: 500;
+  cursor: pointer;
+
+  align-self: end;
+  /* push to bottom of cell */
+  justify-self: start;
+
+  pointer-events: auto;
+  /* IMPORTANT (overlay blocks clicks otherwise) */
+  z-index: 6;
 }
 
 /* Linked icon */

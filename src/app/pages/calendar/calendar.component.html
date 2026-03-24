@@ -46,24 +46,12 @@
 
     <!-- DAYS GRID -->
     <div class="days-grid">
-      <div
-        *ngFor="let date of row"
-        class="calendar-day"
+      <div *ngFor="let date of row" class="calendar-day"
         [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
-        [class.selected]="isSameDate(date, selectedDate)"
-        [class.today]="isToday(date)"
-        (click)="onEmptyDayClicked(date)"
-      >
+        [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
+        (click)="onEmptyDayClicked(date)">
         <div class="day">
           <span>{{ date.getDate() }}</span>
-        </div>
-
-        <div
-          class="more-indicator"
-          *ngIf="getHiddenEventCountForDay(date, row) > 0"
-          (click)="onMoreClicked(date, row)"
-        >
-          +{{ getHiddenEventCountForDay(date, row) }} more
         </div>
       </div>
     </div>
@@ -72,20 +60,22 @@
     <div class="week-events-overlay">
       <div class="week-events-layer">
         <ng-container *ngFor="let event of getEventsForWeek(row)">
-          <div
-            *ngIf="getEventRowIndex(event, getEventsForWeek(row), row) < MAX_VISIBLE_LANES"
-            class="event span-event"
+          <div *ngIf="getEventRowIndex(event, getEventsForWeek(row), row) < MAX_VISIBLE_LANES" class="event span-event"
             [class.linked]="event.linkedBoardItemId"
             [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
             [style.grid-row]="getEventRowIndex(event, getEventsForWeek(row), row) + 1"
             [ngStyle]="event.eventColor ? {'border-left': '6px solid ' + event.eventColor} : {}"
-            [matTooltip]="getTooltip(event)"
-            (click)="onEventClicked(event, $event)"
-          >
+            [matTooltip]="getTooltip(event)" (click)="onEventClicked(event, $event)">
             <span class="event-title">
               <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
               {{ event.subject }}
             </span>
+          </div>
+        </ng-container>
+        <ng-container *ngFor="let date of row; let col = index">
+          <div *ngIf="getHiddenEventCountForDay(date, row) > 0" class="more-indicator-overlay"
+            [style.grid-column]="col + 1" [style.grid-row]="MAX_VISIBLE_LANES + 1" (click)="onMoreClicked(date, row)">
+            +{{ getHiddenEventCountForDay(date, row) }} more
           </div>
         </ng-container>
       </div>
