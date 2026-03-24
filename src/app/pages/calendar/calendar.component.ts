@@ -459,4 +459,21 @@ export class CalendarComponent implements OnInit {
     this.openDialog({ date, hiddenEvents });
   }
 
+  getEventHeightForDay(event: CalendarEventUI, week: Date[]): string {
+    // Find all events that happen on the same start day as this event
+    const day = new Date(event.startDate);
+    const eventsForDay = this.getEventsForDay(day);
+
+    if (eventsForDay.length <= this.MAX_VISIBLE_LANES) {
+      return 'auto'; // enough space, no shrink
+    }
+
+    // Otherwise shrink height to fit max visible lanes
+    return `${100 / this.MAX_VISIBLE_LANES}%`;
+  }
+
+  getDayCellHeight(): number {
+    // This returns pixel height of the day cell (from DOM or calculated)
+    return 100; // example, replace with actual calculation
+  }
 }

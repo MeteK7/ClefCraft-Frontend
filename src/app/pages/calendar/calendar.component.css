@@ -61,9 +61,25 @@ button {
    ========================= */
 
 .calendar-grid {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-header-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-header-cell {
+  text-align: center;
+  padding: 8px;
+  font-weight: 500;
+  border: 1px solid #ccc;
+}
+
+.calendar-week {
+  position: relative;
+  height: calc(100vh / 7);
 }
 
 .calendar-grid th,
@@ -104,15 +120,33 @@ button {
 .calendar-day.today .day>span {
   border: 2px solid #2196f3;
   border-radius: 20%;
-  width: 24px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  padding: 2px 6px;
+}
+
+.calendar-day.selected {
+  border: 2px solid #2196f3;
+  box-shadow: 0 0 6px rgba(33, 150, 243, 0.6);
 }
 
 .calendar-day {
-  position: relative; /* 🔥 REQUIRED */
+  border: 1px solid #ccc;
+  position: relative;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  height: 100%;
+}
+
+.day {
+  position: relative;
+}
+
+.day>span {
+  font-weight: 500;
 }
 
 /* =========================
@@ -149,7 +183,7 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
 
-  max-height: calc(1.35em * 2);
+  flex: 1;
 }
 
 /* Event content layout */
@@ -172,32 +206,30 @@ button {
 
 .calendar-row {
   position: relative;
+  height: calc(100vh / 7);
+  /* SAME as td */
 }
 
 .week-events-overlay {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 22px;
-  border: none !important;
-  padding: 0;
+  inset: 0;
   z-index: 5;
-
   pointer-events: none;
 }
 
 .week-events-layer {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(5, 1fr); /* exactly 5 equal rows */
-  height: 100%; 
-  padding: 0 4px;
+  grid-template-rows: repeat(6, 1fr);
+
+  height: 100%;
+  padding: 24px 4px 4px 4px;
+  /* leave space for day number */
   box-sizing: border-box;
+
   column-gap: 6px;
   row-gap: 2px;
-  overflow: hidden;
 }
-
 
 .week-events-container {
   display: contents;
@@ -209,17 +241,14 @@ button {
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
 
-  /* 🔹 Force equal height distribution */
-  height: 100%;
-  min-height: 0;
   display: flex;
   align-items: center;
+  justify-content: center; /* ✅ THIS is the key */
+
+  overflow: hidden;
 }
+
 .more-indicator {
   position: absolute;
   bottom: 4px;
@@ -231,10 +260,23 @@ button {
   font-weight: 500;
 
   text-align: left;
-  pointer-events: auto;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.more-indicator-overlay {
+  font-size: 12px;
+  color: #1976d2;
+  font-weight: 500;
   cursor: pointer;
 
-  z-index: 10;
+  align-self: end;
+  /* push to bottom of cell */
+  justify-self: start;
+
+  pointer-events: auto;
+  /* IMPORTANT (overlay blocks clicks otherwise) */
+  z-index: 6;
 }
 
 /* Linked icon */
@@ -255,6 +297,16 @@ button {
 
 .calendar-grid .event.linked .event-title {
   padding-left: 22px;
+}
+
+.span-event.linked {
+  background: #ede7f6;
+  border-left: 3px solid #673ab7;
+}
+
+.linked-icon {
+  margin-right: 4px;
+  font-size: 16px;
 }
 
 /* =========================
