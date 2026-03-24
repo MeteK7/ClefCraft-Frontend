@@ -32,58 +32,64 @@
 </div>
 
 <!-- Calendar Grid -->
-<table class="calendar-grid">
-  <thead>
-    <tr>
-      <th *ngFor="let day of weekdays">{{ day }}</th>
-    </tr>
-  </thead>
-  <tbody>
+<div class="calendar-grid">
 
-    <ng-container *ngFor="let row of calendarGrid">
+  <!-- WEEK HEADER -->
+  <div class="calendar-header-row">
+    <div class="calendar-header-cell" *ngFor="let day of weekdays">
+      {{ day }}
+    </div>
+  </div>
 
-      <!-- WEEK EVENTS LAYER -->
-      <tr class="calendar-row">
-        <td colspan="7" class="week-events-overlay">
-          <div class="week-events-layer">
-            <ng-container *ngFor="let event of getEventsForWeek(row)">
-              <div *ngIf="getEventRowIndex(event, getEventsForWeek(row), row) < MAX_VISIBLE_LANES"
-                class="event span-event" [class.linked]="event.linkedBoardItemId"
-                [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
-                [style.grid-row]="getEventRowIndex(event, getEventsForWeek(row), row) + 1"
-                [ngStyle]="event.eventColor ? {'border-left': '6px solid ' + event.eventColor} : {}"
-                [matTooltip]="getTooltip(event)" (click)="onEventClicked(event,$event)">
+  <!-- WEEKS -->
+  <div class="calendar-week" *ngFor="let row of calendarGrid">
 
-                <span class="event-title">
-                  <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
-                  {{ event.subject }}
-                </span>
+    <!-- DAYS GRID -->
+    <div class="days-grid">
+      <div
+        *ngFor="let date of row"
+        class="calendar-day"
+        [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
+        [class.selected]="isSameDate(date, selectedDate)"
+        [class.today]="isToday(date)"
+        (click)="onEmptyDayClicked(date)"
+      >
+        <div class="day">
+          <span>{{ date.getDate() }}</span>
+        </div>
 
-              </div>
-            </ng-container>
+        <div
+          class="more-indicator"
+          *ngIf="getHiddenEventCountForDay(date, row) > 0"
+          (click)="onMoreClicked(date, row)"
+        >
+          +{{ getHiddenEventCountForDay(date, row) }} more
+        </div>
+      </div>
+    </div>
+
+    <!-- EVENTS OVERLAY -->
+    <div class="week-events-overlay">
+      <div class="week-events-layer">
+        <ng-container *ngFor="let event of getEventsForWeek(row)">
+          <div
+            *ngIf="getEventRowIndex(event, getEventsForWeek(row), row) < MAX_VISIBLE_LANES"
+            class="event span-event"
+            [class.linked]="event.linkedBoardItemId"
+            [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
+            [style.grid-row]="getEventRowIndex(event, getEventsForWeek(row), row) + 1"
+            [ngStyle]="event.eventColor ? {'border-left': '6px solid ' + event.eventColor} : {}"
+            [matTooltip]="getTooltip(event)"
+            (click)="onEventClicked(event, $event)"
+          >
+            <span class="event-title">
+              <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
+              {{ event.subject }}
+            </span>
           </div>
-        </td>
-      </tr>
+        </ng-container>
+      </div>
+    </div>
 
-      <!-- DAYS ROW -->
-      <tr class="calendar-days-row">
-        <td *ngFor="let date of row" class="calendar-day"
-          [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
-          [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
-          (click)="onEmptyDayClicked(date)">
-
-          <div class="day">
-            <span>{{ date.getDate() }}</span>
-          </div>
-          <div class="more-indicator" *ngIf="getHiddenEventCountForDay(date, row) > 0"
-            (click)="onMoreClicked(date, row)">
-            +{{ getHiddenEventCountForDay(date, row) }} more
-          </div>
-
-        </td>
-      </tr>
-
-    </ng-container>
-
-  </tbody>
-</table>
+  </div>
+</div>
