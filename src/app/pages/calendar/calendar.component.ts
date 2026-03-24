@@ -38,7 +38,7 @@ export class CalendarComponent implements OnInit {
   userId: string = '944d0156-cb3d-466f-a1ea-5f53e3a10f8e';  // TEST
   calendarGrid: Date[][] = [];
   weekdays: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  readonly MAX_VISIBLE_LANES = 5;
+  readonly MAX_VISIBLE_LANES = 3;
 
   constructor(private calendarService: CalendarService, private dialog: MatDialog) { }
 
@@ -459,21 +459,4 @@ export class CalendarComponent implements OnInit {
     this.openDialog({ date, hiddenEvents });
   }
 
-  getEventHeightForDay(event: CalendarEventUI, week: Date[]): string {
-    // Find all events that happen on the same start day as this event
-    const day = new Date(event.startDate);
-    const eventsForDay = this.getEventsForDay(day);
-
-    if (eventsForDay.length <= this.MAX_VISIBLE_LANES) {
-      return 'auto'; // enough space, no shrink
-    }
-
-    // Otherwise shrink height to fit max visible lanes
-    return `${100 / this.MAX_VISIBLE_LANES}%`;
-  }
-
-  getDayCellHeight(): number {
-    // This returns pixel height of the day cell (from DOM or calculated)
-    return 100; // example, replace with actual calculation
-  }
 }
