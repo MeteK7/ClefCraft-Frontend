@@ -13,6 +13,7 @@ import { SavePayload } from './models/save-payload.model';
 import { CalendarEvent } from './models/calendar-event.model';
 import { CalendarEventUI } from './models/calendar-event.model-ui';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 
 @Component({
   selector: 'app-calendar',
@@ -26,6 +27,7 @@ import { MatIconModule } from '@angular/material/icon';
     MatButtonModule,
     MatInputModule,
     MatIconModule,
+    MatMenuModule,
     CalendarDialogComponent,
   ],
   templateUrl: './calendar.component.html',
@@ -39,6 +41,8 @@ export class CalendarComponent implements OnInit {
   calendarGrid: Date[][] = [];
   weekdays: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   readonly MAX_VISIBLE_LANES = 3;
+  selectedMoreEvents: CalendarEventUI[] = [];
+  selectedMoreDate: Date | null = null;
 
   constructor(private calendarService: CalendarService, private dialog: MatDialog) { }
 
@@ -446,17 +450,22 @@ export class CalendarComponent implements OnInit {
 
     return hidden;
   }
-  onMoreClicked(date: Date, week: Date[]): void {
-    const hiddenEvents = this.getEventsForWeek(week).filter(event => {
-      const lane = this.getEventRowIndex(event, this.getEventsForWeek(week), week);
-      const start = this.toDateOnly(new Date(event.startDate));
-      const end = this.toDateOnly(new Date(event.endDate));
+
+  onMoreClicked(date: Date, week: Date[], event: MouseEvent): void {
+    event.stopPropagation();
+
+    const weekEvents = this.getEventsForWeek(week);
+
+    this.selectedMoreEvents = weekEvents.filter(e => {
+      const lane = this.getEventRowIndex(e, weekEvents, week);
+
+      const start = this.toDateOnly(new Date(e.startDate));
+      const end = this.toDateOnly(new Date(e.endDate));
       const day = this.toDateOnly(date);
 
       return lane >= this.MAX_VISIBLE_LANES && start <= day && end >= day;
     });
 
-    this.openDialog({ date, hiddenEvents });
+    this.selectedMoreDate = date;
   }
-
 }
