@@ -150,6 +150,48 @@ button {
 }
 
 /* =========================
+   POPOVER MENU (More Menu)
+   ========================= */
+
+.more-menu {
+  min-width: 220px;
+  background: #f9fbff;
+  /* soft background */
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 6px 0;
+}
+
+/* Header styling */
+.more-menu-header {
+  font-weight: 600;
+  font-size: 0.95em;
+  color: #1976d2;
+  padding: 8px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #e3f2fd;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Menu items */
+.more-menu button.mat-menu-item {
+  font-size: 0.9em;
+  padding: 8px 16px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.more-menu button.mat-menu-item:hover {
+  background: #e3f2fd;
+  color: #0d47a1;
+}
+
+/* Active/selected event highlight */
+.more-menu button.mat-menu-item:active {
+  background: #bbdefb;
+  color: #0d47a1;
+}
+
+/* =========================
    EVENTS CONTAINER
    ========================= */
 
