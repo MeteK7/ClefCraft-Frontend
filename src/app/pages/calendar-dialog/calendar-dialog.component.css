@@ -73,6 +73,45 @@
   min-width: 120px;
 }
 
+/* ================================
+   QUILL NOTES
+================================ */
+
+.quill-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Toolbar */
+::ng-deep .ql-toolbar {
+  border-radius: 8px 8px 0 0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fafafa;
+}
+
+/* Editor */
+::ng-deep .ql-container {
+  flex: 1;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-top: none;
+  font-family: inherit;
+}
+
+/* Editor content */
+::ng-deep .ql-editor {
+  min-height: 120px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Focus effect */
+::ng-deep .ql-container.ql-snow:focus-within {
+  border-color: #52affb;
+}
+
 
 /* ================================
    DIALOG ACTIONS

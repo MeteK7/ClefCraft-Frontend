@@ -28,6 +28,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
 import { EventType } from '../../models/event-type.model';
 import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
+import { QuillModule } from 'ngx-quill';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -45,7 +46,8 @@ import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
     MatDividerModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    NgxMatTimepickerModule
+    NgxMatTimepickerModule,
+    QuillModule
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
@@ -70,6 +72,19 @@ export class CalendarDialogComponent implements OnInit {
   eventTypeName: string | null = null;
   eventColor: string | null = null;
   eventTypes: EventType[] = [];
+
+  quillModules = {
+    toolbar: [
+      ['bold', 'italic', 'underline'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['link'],
+      ['clean']
+    ]
+  };
+
+  clearNotes(): void {
+    this.generalForm.get('comment')?.setValue('');
+  }
 
   get hasUnsavedChanges(): boolean {
     return this.hasFormChanges || this.hasAttachmentChanges;
