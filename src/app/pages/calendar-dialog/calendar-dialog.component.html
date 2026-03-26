@@ -87,12 +87,20 @@
             <div class="form-row time-row" *ngIf="!generalForm.get('allDayEvent')?.value">
               <mat-form-field class="half-width">
                 <mat-label>Start Time</mat-label>
-                <input matInput type="time" formControlName="startTime" />
+
+                <input matInput [ngxMatTimepicker]="startPicker" formControlName="startTime" readonly />
+
+                <ngx-mat-timepicker-toggle matSuffix [for]="startPicker"></ngx-mat-timepicker-toggle>
+                <ngx-mat-timepicker #startPicker [format]="24"></ngx-mat-timepicker>
               </mat-form-field>
 
               <mat-form-field class="half-width">
                 <mat-label>End Time</mat-label>
-                <input matInput type="time" formControlName="endTime" />
+
+                <input matInput [ngxMatTimepicker]="endPicker" formControlName="endTime" readonly />
+
+                <ngx-mat-timepicker-toggle matSuffix [for]="endPicker"></ngx-mat-timepicker-toggle>
+                <ngx-mat-timepicker #endPicker [format]="24"></ngx-mat-timepicker>
               </mat-form-field>
             </div>
 

@@ -27,6 +27,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
 import { EventType } from '../../models/event-type.model';
+import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -43,7 +44,8 @@ import { EventType } from '../../models/event-type.model';
     MatIconModule,
     MatDividerModule,
     MatDatepickerModule,
-    MatNativeDateModule
+    MatNativeDateModule,
+    NgxMatTimepickerModule
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
