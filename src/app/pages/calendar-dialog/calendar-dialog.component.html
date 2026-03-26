@@ -118,14 +118,25 @@
           </div>
         </div>
 
-        <!-- Notes (Full width below) -->
-        <div class="notes-section">
-          <!-- <h3 class="section-title">Notes</h3> -->
-          <div class="form-row">
-            <mat-form-field class="full-width" subscriptSizing="dynamic">
-              <textarea matInput cdkTextareaAutosize formControlName="comment"
-                placeholder="Add a comment..."></textarea>
-            </mat-form-field>
+        <!-- Notes (Quill Editor) -->
+        <div class="notes-section enhanced">
+          <div class="notes-header">
+            <div class="notes-title">
+              <mat-icon>notes</mat-icon>
+              <span>Notes</span>
+            </div>
+
+            <!-- <div class="notes-actions">
+              <button mat-icon-button matTooltip="Clear" (click)="clearNotes()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div> -->
+          </div>
+
+          <div class="notes-body">
+            <quill-editor formControlName="comment" [modules]="quillModules"
+              placeholder="Write notes, meeting minutes, ideas..." class="quill-container">
+            </quill-editor>
           </div>
         </div>
       </form>
