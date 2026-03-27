@@ -23,7 +23,7 @@
           <div class="section half-section">
             <h3 class="section-title">Event Details</h3>
             <div class="form-row">
-              <mat-form-field class="full-width highlight-field">
+              <mat-form-field appearance="outline" color="primary" class="full-width highlight-field">
                 <mat-label>Subject</mat-label>
                 <input matInput formControlName="subject" placeholder="Enter event subject" />
                 <mat-error *ngIf="generalForm.get('subject')?.hasError('required')">
@@ -32,12 +32,18 @@
               </mat-form-field>
             </div>
             <div class="form-row">
-              <mat-form-field class="full-width">
+              <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Location</mat-label>
-                <input matInput formControlName="location" placeholder="Enter location" />
+                <input matInput formControlName="location" [matAutocomplete]="auto" placeholder="Enter location" />
+
+                <mat-autocomplete #auto="matAutocomplete">
+                  <mat-option *ngFor="let option of filteredLocations" [value]="option">
+                    {{ option }}
+                  </mat-option>
+                </mat-autocomplete>
               </mat-form-field>
             </div>
-            <mat-form-field class="half-width">
+            <mat-form-field appearance="outline" color="primary" class="half-width">
               <mat-label>Event Type</mat-label>
               <mat-select formControlName="eventTypeId" (selectionChange)="onEventTypeChange($event.value)">
 
@@ -63,7 +69,7 @@
           <div class="section half-section">
             <h3 class="section-title">Schedule</h3>
             <div class="form-row date-row">
-              <mat-form-field class="half-width">
+              <mat-form-field appearance="outline" color="primary" class="half-width">
                 <mat-label>Start Date</mat-label>
                 <input matInput [matDatepicker]="picker1" formControlName="startDate" />
                 <mat-datepicker-toggle matSuffix [for]="picker1"></mat-datepicker-toggle>
@@ -73,7 +79,7 @@
                 </mat-error>
               </mat-form-field>
 
-              <mat-form-field class="half-width">
+              <mat-form-field appearance="outline" color="primary" class="half-width">
                 <mat-label>End Date</mat-label>
                 <input matInput [matDatepicker]="picker2" formControlName="endDate" />
                 <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
@@ -85,7 +91,7 @@
             </div>
 
             <div class="form-row time-row" *ngIf="!generalForm.get('allDayEvent')?.value">
-              <mat-form-field class="half-width">
+              <mat-form-field appearance="outline" color="primary" class="half-width">
                 <mat-label>Start Time</mat-label>
 
                 <input matInput [ngxMatTimepicker]="startPicker" formControlName="startTime" readonly />
@@ -94,7 +100,7 @@
                 <ngx-mat-timepicker #startPicker [format]="24"></ngx-mat-timepicker>
               </mat-form-field>
 
-              <mat-form-field class="half-width">
+              <mat-form-field appearance="outline" color="primary" class="half-width">
                 <mat-label>End Time</mat-label>
 
                 <input matInput [ngxMatTimepicker]="endPicker" formControlName="endTime" readonly />
@@ -106,7 +112,7 @@
 
             <div class="form-row">
               <mat-checkbox formControlName="allDayEvent" class="checkbox">All Day</mat-checkbox>
-              <mat-form-field class="half-width">
+              <mat-form-field appearance="outline" color="primary" class="half-width">
                 <mat-label>Importance</mat-label>
                 <mat-select formControlName="importance">
                   <mat-option *ngFor="let level of importanceLevels" [value]="level">
