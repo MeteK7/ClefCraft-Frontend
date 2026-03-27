@@ -15,6 +15,11 @@
   flex-direction: column;
 }
 
+.notes-title {
+  display: flex;
+  align-items: center; /* ✅ vertical centering */
+  gap: 6px;
+}
 
 /* ================================
    LAYOUT
@@ -111,7 +116,6 @@
 ::ng-deep .ql-container.ql-snow:focus-within {
   border-color: #52affb;
 }
-
 
 /* ================================
    DIALOG ACTIONS
