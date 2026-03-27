@@ -29,6 +29,7 @@ import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dia
 import { EventType } from '../../models/event-type.model';
 import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { QuillModule } from 'ngx-quill';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -47,7 +48,8 @@ import { QuillModule } from 'ngx-quill';
     MatDatepickerModule,
     MatNativeDateModule,
     NgxMatTimepickerModule,
-    QuillModule
+    QuillModule,
+    MatAutocompleteModule,
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
@@ -81,6 +83,9 @@ export class CalendarDialogComponent implements OnInit {
       ['clean']
     ]
   };
+
+  filteredLocations: string[] = [];
+  allLocations: string[] = [];
 
   clearNotes(): void {
     this.generalForm.get('comment')?.setValue('');
@@ -177,6 +182,12 @@ export class CalendarDialogComponent implements OnInit {
     // Track form changes
     this.originalFormValue = this.normalizeForm(this.generalForm.value);
     this.trackFormChanges();
+
+    this.allLocations = ['Istanbul', 'Ankara', 'Berlin', 'London'];
+
+    this.generalForm.get('location')?.valueChanges.subscribe(value => {
+      this.filteredLocations = this.filterLocations(value || '');
+    });
   }
 
   private loadEventTypes(): void {
@@ -194,6 +205,13 @@ export class CalendarDialogComponent implements OnInit {
         }
       }
     });
+  }
+
+  private filterLocations(value: string): string[] {
+    const filterValue = value.toLowerCase();
+    return this.allLocations.filter(loc =>
+      loc.toLowerCase().includes(filterValue)
+    );
   }
 
   onEventTypeChange(selectedId: number | null): void {
