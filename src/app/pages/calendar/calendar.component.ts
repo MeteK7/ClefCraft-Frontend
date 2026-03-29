@@ -52,7 +52,10 @@ export class CalendarComponent implements OnInit {
   }
 
   fetchEvents(): void {
-    this.calendarService.getEvents().subscribe(
+    const start = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1);
+    const end = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth() + 1, 0);
+
+    this.calendarService.getEvents(start, end).subscribe(
       (events: any[]) => {
         this.events = events.map(event => ({
           ...event,
