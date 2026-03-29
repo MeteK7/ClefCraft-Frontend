@@ -12,8 +12,16 @@ export class CalendarService {
   constructor(private http: HttpClient) { }
 
   // Fetch events with userId parameter
-  getEvents(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/events`);
+  getEvents(rangeStart: Date, rangeEnd: Date): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/events`,
+      {
+        params: {
+          rangeStart: rangeStart.toISOString(),
+          rangeEnd: rangeEnd.toISOString()
+        }
+      }
+    );
   }
 
   // Save event to the backend

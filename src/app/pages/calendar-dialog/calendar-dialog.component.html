@@ -13,10 +13,11 @@
       </button>
     </div>
   </div>
-  <mat-tab-group animationDuration="300ms" class="tab-container">
-    <!-- General Tab -->
-    <mat-tab label="General">
-      <form [formGroup]="generalForm" class="form-container">
+  <form [formGroup]="generalForm" class="form-container">
+    <mat-tab-group animationDuration="300ms" class="tab-container">
+      <!-- General Tab -->
+      <mat-tab label="General">
+
 
         <div class="form-section-row">
           <!-- Event Details -->
@@ -145,74 +146,111 @@
             </quill-editor>
           </div>
         </div>
-      </form>
-    </mat-tab>
 
-    <!-- Attachments Tab -->
-    <mat-tab label="Attachments">
-      <div class="attachment-section">
+      </mat-tab>
 
-        <!-- Upload -->
-        <div class="upload-card">
-          <button mat-raised-button color="primary" class="upload-btn" (click)="fileInput.click()">
-            <mat-icon>upload</mat-icon>
-            Add files
-          </button>
+      <!-- Attachments Tab -->
+      <mat-tab label="Attachments">
+        <div class="attachment-section">
 
-          <span class="upload-hint">
-            You can attach multiple files
-          </span>
+          <!-- Upload -->
+          <div class="upload-card">
+            <button mat-raised-button color="primary" class="upload-btn" (click)="fileInput.click()">
+              <mat-icon>upload</mat-icon>
+              Add files
+            </button>
 
-          <input #fileInput type="file" multiple hidden (change)="onFileSelected($event)" />
+            <span class="upload-hint">
+              You can attach multiple files
+            </span>
+
+            <input #fileInput type="file" multiple hidden (change)="onFileSelected($event)" />
+          </div>
+
+          <!-- Pending -->
+          <ng-container *ngIf="stagedAttachments.length > 0">
+            <h4 class="attachment-title">Pending uploads</h4>
+
+            <ul class="attachment-list">
+              <li *ngFor="let file of stagedAttachments" class="attachment-item pending">
+                <div class="attachment-left">
+                  <mat-icon color="warn">schedule</mat-icon>
+                  <span>{{ file.name }}</span>
+                </div>
+
+                <button mat-icon-button (click)="removeStagedFile(file)" matTooltip="Remove">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </li>
+            </ul>
+          </ng-container>
+
+          <!-- Existing -->
+          <ng-container *ngIf="existingAttachments.length > 0">
+            <h4 class="attachment-title">Uploaded files</h4>
+
+            <ul class="attachment-list">
+              <li *ngFor="let a of existingAttachments" class="attachment-item">
+                <div class="attachment-left attachment-link" (click)="downloadAttachment(a)">
+                  <mat-icon>insert_drive_file</mat-icon>
+                  <span>{{ a.fileName }}</span>
+                </div>
+
+                <button mat-icon-button color="warn" (click)="deleteAttachment(a.id)" matTooltip="Delete">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </li>
+            </ul>
+          </ng-container>
+
+          <!-- Empty state -->
+          <div *ngIf="stagedAttachments.length === 0 && existingAttachments.length === 0" class="empty-attachments">
+            <mat-icon>attach_file</mat-icon>
+            <p>No attachments yet</p>
+          </div>
+
         </div>
+      </mat-tab>
+      <mat-tab label="Recurrence">
+        <mat-checkbox formControlName="isRecurring">Repeat</mat-checkbox>
 
-        <!-- Pending -->
-        <ng-container *ngIf="stagedAttachments.length > 0">
-          <h4 class="attachment-title">Pending uploads</h4>
+        <div *ngIf="generalForm.get('isRecurring')?.value">
 
-          <ul class="attachment-list">
-            <li *ngFor="let file of stagedAttachments" class="attachment-item pending">
-              <div class="attachment-left">
-                <mat-icon color="warn">schedule</mat-icon>
-                <span>{{ file.name }}</span>
-              </div>
+          <mat-form-field appearance="outline">
+            <mat-label>Frequency</mat-label>
+            <mat-select formControlName="frequency">
+              <mat-option value="DAILY">Daily</mat-option>
+              <mat-option value="WEEKLY">Weekly</mat-option>
+              <mat-option value="MONTHLY">Monthly</mat-option>
+              <mat-option value="YEARLY">Yearly</mat-option>
+            </mat-select>
+          </mat-form-field>
 
-              <button mat-icon-button (click)="removeStagedFile(file)" matTooltip="Remove">
-                <mat-icon>close</mat-icon>
-              </button>
-            </li>
-          </ul>
-        </ng-container>
+          <mat-form-field appearance="outline">
+            <mat-label>Repeat every</mat-label>
+            <input matInput type="number" formControlName="interval" />
+          </mat-form-field>
 
-        <!-- Existing -->
-        <ng-container *ngIf="existingAttachments.length > 0">
-          <h4 class="attachment-title">Uploaded files</h4>
+          <!-- Weekly options -->
+          <div *ngIf="generalForm.get('frequency')?.value === 'WEEKLY'">
+            <mat-checkbox *ngFor="let d of weekdays; let i = index" [checked]="generalForm.value.daysOfWeek.includes(i)"
+              (change)="toggleDay(i)">
+              {{ d }}
+            </mat-checkbox>
+          </div>
 
-          <ul class="attachment-list">
-            <li *ngFor="let a of existingAttachments" class="attachment-item">
-              <div class="attachment-left attachment-link" (click)="downloadAttachment(a)">
-                <mat-icon>insert_drive_file</mat-icon>
-                <span>{{ a.fileName }}</span>
-              </div>
+          <!-- End condition -->
+          <mat-radio-group formControlName="endType">
+            <mat-radio-button value="never">Never</mat-radio-button>
+            <mat-radio-button value="until">Until date</mat-radio-button>
+            <mat-radio-button value="count">After X times</mat-radio-button>
+          </mat-radio-group>
 
-              <button mat-icon-button color="warn" (click)="deleteAttachment(a.id)" matTooltip="Delete">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </li>
-          </ul>
-        </ng-container>
-
-        <!-- Empty state -->
-        <div *ngIf="stagedAttachments.length === 0 && existingAttachments.length === 0" class="empty-attachments">
-          <mat-icon>attach_file</mat-icon>
-          <p>No attachments yet</p>
         </div>
-
-      </div>
-    </mat-tab>
-    <mat-tab label="Recurrence">Recurrence options here...</mat-tab>
-    <mat-tab label="History">History logs here...</mat-tab>
-  </mat-tab-group>
+      </mat-tab>
+      <mat-tab label="History">History logs here...</mat-tab>
+    </mat-tab-group>
+  </form>
 
   <div class="dialog-actions fixed-actions">
     <div class="validation-hint" *ngIf="generalForm.invalid && generalForm.touched">

@@ -30,6 +30,7 @@ import { EventType } from '../../models/event-type.model';
 import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { QuillModule } from 'ngx-quill';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatRadioModule } from '@angular/material/radio';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -50,6 +51,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
     NgxMatTimepickerModule,
     QuillModule,
     MatAutocompleteModule,
+    MatRadioModule
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
@@ -74,6 +76,8 @@ export class CalendarDialogComponent implements OnInit {
   eventTypeName: string | null = null;
   eventColor: string | null = null;
   eventTypes: EventType[] = [];
+
+  weekdays: string[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   quillModules = {
     toolbar: [
@@ -114,7 +118,14 @@ export class CalendarDialogComponent implements OnInit {
       allDayEvent: [false],
       importance: ['Normal'],
       comment: [''],
-      eventTypeId: [null]
+      eventTypeId: [null],
+      isRecurring: [false],
+      frequency: ['WEEKLY'],
+      interval: [1],
+      daysOfWeek: [[]],
+      endType: ['never'],
+      recurrenceEndDate: [null],
+      recurrenceCount: [null]
     });
   }
 
@@ -257,6 +268,20 @@ export class CalendarDialogComponent implements OnInit {
     });
   }
 
+  toggleDay(index: number) {
+    const days = this.generalForm.value.daysOfWeek || [];
+
+    if (days.includes(index)) {
+      this.generalForm.patchValue({
+        daysOfWeek: days.filter((d: number) => d !== index)
+      });
+    } else {
+      this.generalForm.patchValue({
+        daysOfWeek: [...days, index]
+      });
+    }
+  }
+
   /*uploadAttachments(): void {
     if (!this.eventId) return;
 
@@ -358,12 +383,24 @@ export class CalendarDialogComponent implements OnInit {
       endDate.setDate(endDate.getDate() + 1);
     }
 
+    const recurrenceRule = this.generalForm.value.isRecurring
+      ? {
+        frequency: this.generalForm.value.frequency,
+        interval: this.generalForm.value.interval,
+        daysOfWeek: this.generalForm.value.daysOfWeek,
+        endDate: this.generalForm.value.recurrenceEndDate,
+        count: this.generalForm.value.recurrenceCount
+      }
+      : null;
+
     this.onSave.emit({
       record: {
         ...this.generalForm.value,
         startDate,
         endDate,
-        id: this.eventId
+        id: this.eventId,
+        isRecurring: this.generalForm.value.isRecurring,
+        recurrenceRuleJson: JSON.stringify(recurrenceRule)
       },
       attachments: this.stagedAttachments
     });
