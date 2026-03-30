@@ -385,11 +385,11 @@ export class CalendarDialogComponent implements OnInit {
 
     const recurrenceRule = this.generalForm.value.isRecurring
       ? {
-        frequency: this.generalForm.value.frequency,
-        interval: this.generalForm.value.interval,
-        daysOfWeek: this.generalForm.value.daysOfWeek,
-        endDate: this.generalForm.value.recurrenceEndDate,
-        count: this.generalForm.value.recurrenceCount
+        Frequency: this.generalForm.value.frequency,
+        Interval: this.generalForm.value.interval,
+        DaysOfWeek: this.generalForm.value.daysOfWeek,
+        EndDate: this.generalForm.value.recurrenceEndDate,
+        Count: this.generalForm.value.recurrenceCount
       }
       : null;
 
@@ -400,7 +400,9 @@ export class CalendarDialogComponent implements OnInit {
         endDate,
         id: this.eventId,
         isRecurring: this.generalForm.value.isRecurring,
-        recurrenceRuleJson: JSON.stringify(recurrenceRule)
+        recurrenceRuleJson: this.generalForm.value.isRecurring
+          ? JSON.stringify(recurrenceRule)
+          : null
       },
       attachments: this.stagedAttachments
     });
