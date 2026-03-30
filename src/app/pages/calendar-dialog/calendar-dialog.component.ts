@@ -436,4 +436,44 @@ export class CalendarDialogComponent implements OnInit {
       }
     });
   }
+
+  get recurrenceSummary(): string {
+  if (!this.generalForm.value.isRecurring) return '';
+
+  const { frequency, interval, daysOfWeek, endType, recurrenceEndDate, recurrenceCount } =
+    this.generalForm.value;
+
+  let text = 'Repeats every ';
+
+  // Interval + frequency
+  const freqMap: any = {
+    DAILY: 'day',
+    WEEKLY: 'week',
+    MONTHLY: 'month',
+    YEARLY: 'year'
+  };
+
+  text += `${interval} ${freqMap[frequency]}${interval > 1 ? 's' : ''}`;
+
+  // Weekly days
+  if (frequency === 'WEEKLY' && daysOfWeek?.length) {
+    const selectedDays = daysOfWeek
+      .sort()
+      .map((d: number) => this.weekdays[d].slice(0, 3));
+
+    text += ` on ${selectedDays.join(', ')}`;
+  }
+
+  // End condition
+  if (endType === 'until' && recurrenceEndDate) {
+    const date = new Date(recurrenceEndDate).toLocaleDateString();
+    text += ` until ${date}`;
+  }
+
+  if (endType === 'count' && recurrenceCount) {
+    text += ` for ${recurrenceCount} times`;
+  }
+
+  return text;
+}
 }
