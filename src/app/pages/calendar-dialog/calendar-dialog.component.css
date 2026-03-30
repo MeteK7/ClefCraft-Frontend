@@ -226,6 +226,109 @@ textarea[matInput] {
 }
 
 /* ================================
+   RECURRENCE
+================================ */
+
+.recurrence-header {
+  padding: 12px 4px;
+}
+
+.recurrence-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 4px;
+}
+
+.recurrence-card {
+  padding: 16px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.recurrence-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.recurrence-text {
+  font-size: 14px;
+  color: #444;
+}
+
+.interval-field {
+  width: 80px;
+}
+
+.frequency-field {
+  min-width: 140px;
+}
+
+/* Weekday buttons */
+.weekday-picker {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.day-chip {
+  border: 1px solid #ddd;
+  background: #fafafa;
+  border-radius: 20px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.day-chip:hover {
+  background: #eee;
+}
+
+.day-chip.selected {
+  background: #1976d2;
+  color: white;
+  border-color: #1976d2;
+}
+
+/* End section */
+.recurrence-subtitle {
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+  color: #444;
+}
+
+.end-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.end-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.count-field {
+  width: 100px;
+}
+
+.recurrence-summary {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #555;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* ================================
    ATTACHMENTS
 ================================ */
 

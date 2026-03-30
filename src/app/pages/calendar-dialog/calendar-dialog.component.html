@@ -212,39 +212,85 @@
         </div>
       </mat-tab>
       <mat-tab label="Recurrence">
-        <mat-checkbox formControlName="isRecurring">Repeat</mat-checkbox>
 
-        <div *ngIf="generalForm.get('isRecurring')?.value">
+        <!-- Toggle -->
+        <div class="recurrence-header">
+          <mat-checkbox formControlName="isRecurring">
+            <strong>Repeat event</strong>
+          </mat-checkbox>
+        </div>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Frequency</mat-label>
-            <mat-select formControlName="frequency">
-              <mat-option value="DAILY">Daily</mat-option>
-              <mat-option value="WEEKLY">Weekly</mat-option>
-              <mat-option value="MONTHLY">Monthly</mat-option>
-              <mat-option value="YEARLY">Yearly</mat-option>
-            </mat-select>
-          </mat-form-field>
+        <div *ngIf="generalForm.get('isRecurring')?.value" class="recurrence-container">
 
-          <mat-form-field appearance="outline">
-            <mat-label>Repeat every</mat-label>
-            <input matInput type="number" formControlName="interval" />
-          </mat-form-field>
+          <!-- Rule Builder -->
+          <div class="recurrence-card">
 
-          <!-- Weekly options -->
-          <div *ngIf="generalForm.get('frequency')?.value === 'WEEKLY'">
-            <mat-checkbox *ngFor="let d of weekdays; let i = index" [checked]="generalForm.value.daysOfWeek.includes(i)"
-              (change)="toggleDay(i)">
-              {{ d }}
-            </mat-checkbox>
+            <div class="recurrence-row">
+
+              <span class="recurrence-text">Repeat every</span>
+
+              <mat-form-field appearance="outline" class="interval-field">
+                <input matInput type="number" formControlName="interval" min="1" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="frequency-field">
+                <mat-select formControlName="frequency">
+                  <mat-option value="DAILY">Day(s)</mat-option>
+                  <mat-option value="WEEKLY">Week(s)</mat-option>
+                  <mat-option value="MONTHLY">Month(s)</mat-option>
+                  <mat-option value="YEARLY">Year(s)</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+            </div>
+
+            <!-- Weekly Picker -->
+            <div class="weekday-picker" *ngIf="generalForm.get('frequency')?.value === 'WEEKLY'">
+              <button *ngFor="let d of weekdays; let i = index" type="button" class="day-chip"
+                [class.selected]="generalForm.value.daysOfWeek.includes(i)" (click)="toggleDay(i)">
+                {{ d.slice(0, 3) }}
+              </button>
+            </div>
+
           </div>
 
-          <!-- End condition -->
-          <mat-radio-group formControlName="endType">
-            <mat-radio-button value="never">Never</mat-radio-button>
-            <mat-radio-button value="until">Until date</mat-radio-button>
-            <mat-radio-button value="count">After X times</mat-radio-button>
-          </mat-radio-group>
+          <!-- End Condition -->
+          <div class="recurrence-card">
+
+            <h4 class="recurrence-subtitle">Ends</h4>
+
+            <mat-radio-group formControlName="endType" class="end-group">
+
+              <mat-radio-button value="never">Never</mat-radio-button>
+
+              <div class="end-option">
+                <mat-radio-button value="until">On date</mat-radio-button>
+
+                <mat-form-field *ngIf="generalForm.get('endType')?.value === 'until'" appearance="outline">
+                  <input matInput [matDatepicker]="endPicker" formControlName="recurrenceEndDate" />
+                  <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+                  <mat-datepicker #endPicker></mat-datepicker>
+                </mat-form-field>
+              </div>
+
+              <div class="end-option">
+                <mat-radio-button value="count">After</mat-radio-button>
+
+                <mat-form-field *ngIf="generalForm.get('endType')?.value === 'count'" appearance="outline"
+                  class="count-field">
+                  <input matInput type="number" formControlName="recurrenceCount" />
+                </mat-form-field>
+
+                <span *ngIf="generalForm.get('endType')?.value === 'count'">
+                  occurrences
+                </span>
+              </div>
+              <div class="recurrence-summary" *ngIf="generalForm.get('isRecurring')?.value">
+                {{ recurrenceSummary }}
+              </div>
+            </mat-radio-group>
+
+          </div>
 
         </div>
       </mat-tab>
