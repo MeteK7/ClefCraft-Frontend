@@ -295,9 +295,12 @@ export class CalendarComponent implements OnInit {
   saveEvent(record: any): void {
     const event = {
       ...record,
-      startDate: new Date(record.startDate).toISOString(),
-      endDate: new Date(record.endDate).toISOString(),
-      //dateModified: new Date().toISOString()
+      startDate: record.startDate
+        ? new Date(record.startDate).toISOString()
+        : null,
+      endDate: record.endDate
+        ? new Date(record.endDate).toISOString()
+        : null
     };
 
     if (record.id) {
