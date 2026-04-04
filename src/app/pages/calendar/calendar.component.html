@@ -71,6 +71,11 @@
               <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
               {{ event.subject }}
             </span>
+
+            <!-- ⭐ NEW -->
+            <div class="attendance-indicator" *ngIf="event.attendanceScore != null"
+              [style.background]="getAttendanceColor(event.attendanceScore)">
+            </div>
           </div>
         </ng-container>
 

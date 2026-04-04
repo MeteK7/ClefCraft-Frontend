@@ -13,6 +13,23 @@
       </button>
     </div>
   </div>
+  <!-- AI Insights -->
+  <div class="ai-insights-card">
+    <mat-icon color="primary">auto_awesome</mat-icon>
+
+    <div>
+      <div class="ai-section-label">AI Insight</div>
+
+      <div class="ai-row">
+        <span>Attendance Prediction:</span>
+
+        <div class="ai-verdict" [style.color]="getAttendanceColor(data.eventData.attendanceScore)">
+          {{ getAttendanceLabel(data.eventData.attendanceScore) }}
+          ({{ (data.eventData.attendanceScore * 100) | number:'1.0-0' }}%)
+        </div>
+      </div>
+    </div>
+  </div>
   <form [formGroup]="generalForm" class="form-container">
     <mat-tab-group animationDuration="300ms" class="tab-container">
       <!-- General Tab -->
