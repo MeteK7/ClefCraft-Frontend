@@ -79,6 +79,8 @@ export class CalendarDialogComponent implements OnInit {
 
   weekdays: string[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+  aiComment: string | null = null;
+
   quillModules = {
     toolbar: [
       [{ header: [1, 2, 3, false] }],
@@ -218,6 +220,24 @@ export class CalendarDialogComponent implements OnInit {
         }
       }
     });
+  }
+
+  getAttendanceLabel(score?: number): string {
+    if (score == null) return '';
+    if (score > 0.8) return 'Very Likely';
+    if (score > 0.6) return 'Likely';
+    if (score > 0.4) return 'Uncertain';
+    if (score > 0.2) return 'Unlikely';
+    return 'Very Unlikely';
+  }
+
+  getAttendanceColor(score?: number): string {
+    if (score == null) return '#999';
+    if (score > 0.8) return '#2ecc71';
+    if (score > 0.6) return '#27ae60';
+    if (score > 0.4) return '#f39c12';
+    if (score > 0.2) return '#e67e22';
+    return '#e74c3c';
   }
 
   private filterLocations(value: string): string[] {
@@ -438,42 +458,42 @@ export class CalendarDialogComponent implements OnInit {
   }
 
   get recurrenceSummary(): string {
-  if (!this.generalForm.value.isRecurring) return '';
+    if (!this.generalForm.value.isRecurring) return '';
 
-  const { frequency, interval, daysOfWeek, endType, recurrenceEndDate, recurrenceCount } =
-    this.generalForm.value;
+    const { frequency, interval, daysOfWeek, endType, recurrenceEndDate, recurrenceCount } =
+      this.generalForm.value;
 
-  let text = 'Repeats every ';
+    let text = 'Repeats every ';
 
-  // Interval + frequency
-  const freqMap: any = {
-    DAILY: 'day',
-    WEEKLY: 'week',
-    MONTHLY: 'month',
-    YEARLY: 'year'
-  };
+    // Interval + frequency
+    const freqMap: any = {
+      DAILY: 'day',
+      WEEKLY: 'week',
+      MONTHLY: 'month',
+      YEARLY: 'year'
+    };
 
-  text += `${interval} ${freqMap[frequency]}${interval > 1 ? 's' : ''}`;
+    text += `${interval} ${freqMap[frequency]}${interval > 1 ? 's' : ''}`;
 
-  // Weekly days
-  if (frequency === 'WEEKLY' && daysOfWeek?.length) {
-    const selectedDays = daysOfWeek
-      .sort()
-      .map((d: number) => this.weekdays[d].slice(0, 3));
+    // Weekly days
+    if (frequency === 'WEEKLY' && daysOfWeek?.length) {
+      const selectedDays = daysOfWeek
+        .sort()
+        .map((d: number) => this.weekdays[d].slice(0, 3));
 
-    text += ` on ${selectedDays.join(', ')}`;
+      text += ` on ${selectedDays.join(', ')}`;
+    }
+
+    // End condition
+    if (endType === 'until' && recurrenceEndDate) {
+      const date = new Date(recurrenceEndDate).toLocaleDateString();
+      text += ` until ${date}`;
+    }
+
+    if (endType === 'count' && recurrenceCount) {
+      text += ` for ${recurrenceCount} times`;
+    }
+
+    return text;
   }
-
-  // End condition
-  if (endType === 'until' && recurrenceEndDate) {
-    const date = new Date(recurrenceEndDate).toLocaleDateString();
-    text += ` until ${date}`;
-  }
-
-  if (endType === 'count' && recurrenceCount) {
-    text += ` for ${recurrenceCount} times`;
-  }
-
-  return text;
-}
 }

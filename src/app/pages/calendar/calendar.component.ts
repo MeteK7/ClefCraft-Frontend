@@ -10,8 +10,7 @@ import { Item } from '../../models/board.model';
 import { CalendarService } from '../../_services/calendar.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SavePayload } from './models/save-payload.model';
-import { CalendarEvent } from './models/calendar-event.model';
-import { CalendarEventUI } from './models/calendar-event.model-ui';
+import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 
@@ -62,7 +61,8 @@ export class CalendarComponent implements OnInit {
           startDate: this.convertToLocalDate(event.startDate),
           endDate: this.convertToLocalDate(event.endDate),
           eventTypeName: event.eventTypeName,
-          eventColor: event.eventColor
+          eventColor: event.eventColor,
+          attendanceScore: event.attendanceScore
         }));
         this.generateCalendarGrid();
       },
@@ -72,6 +72,26 @@ export class CalendarComponent implements OnInit {
 
   convertToLocalDate(utcString: string): Date {
     return new Date(utcString);
+  }
+
+  getAttendanceLabel(score?: number): string {
+    if (score == null) return '';
+
+    if (score > 0.8) return 'Very Likely';
+    if (score > 0.6) return 'Likely';
+    if (score > 0.4) return 'Uncertain';
+    if (score > 0.2) return 'Unlikely';
+    return 'Very Unlikely';
+  }
+
+  getAttendanceColor(score?: number): string {
+    if (score == null) return '#999';
+
+    if (score > 0.8) return '#2ecc71'; // green
+    if (score > 0.6) return '#27ae60';
+    if (score > 0.4) return '#f39c12'; // orange
+    if (score > 0.2) return '#e67e22';
+    return '#e74c3c'; // red
   }
 
   generateCalendarGrid(): void {
@@ -125,9 +145,16 @@ export class CalendarComponent implements OnInit {
   }
 
   getTooltip(event: CalendarEventUI): string {
-    return event.eventTypeName
+    let base = event.eventTypeName
       ? `${event.subject} — ${event.eventTypeName}`
       : event.subject;
+
+    if (event.attendanceScore != null) {
+      const label = this.getAttendanceLabel(event.attendanceScore);
+      base += `\nAttendance: ${label} (${(event.attendanceScore * 100).toFixed(0)}%)`;
+    }
+
+    return base;
   }
 
   isToday(date: Date): boolean {
@@ -216,7 +243,7 @@ export class CalendarComponent implements OnInit {
           ? this.calendarService.updateEvent(record.id, record)
           : this.calendarService.saveEvent(record);
 
-        save$.subscribe((savedEvent: CalendarEvent) => {
+        save$.subscribe((savedEvent: CalendarEventUI) => {
           if (attachments.length > 0) {
             const formData = new FormData();
             attachments.forEach((f: File) => formData.append('files', f));

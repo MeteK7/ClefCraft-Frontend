@@ -16,4 +16,11 @@ export interface CalendarEventUI {
   allDayEvent?: boolean;
 
   eventType?: EventType | null;
+
+  location?: string;
+
+  importance: 'Low' | 'Normal' | 'High';
+  comment?: string;
+
+  attendanceScore?: number;
 }
