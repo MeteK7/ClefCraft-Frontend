@@ -14,7 +14,7 @@
     </div>
   </div>
   <!-- AI Insights -->
-  <div class="ai-insights-card">
+  <div class="ai-insights-card" *ngIf="data?.eventData">
     <mat-icon color="primary">auto_awesome</mat-icon>
 
     <div>
@@ -23,7 +23,9 @@
       <div class="ai-row">
         <span>Attendance Prediction:</span>
 
-        <div class="ai-verdict" [style.color]="getAttendanceColor(data.eventData.attendanceScore)">
+        <div class="ai-verdict" *ngIf="data?.eventData?.attendanceScore != null"
+          [style.color]="getAttendanceColor(data.eventData.attendanceScore)">
+
           {{ getAttendanceLabel(data.eventData.attendanceScore) }}
           ({{ (data.eventData.attendanceScore * 100) | number:'1.0-0' }}%)
         </div>

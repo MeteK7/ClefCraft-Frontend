@@ -282,6 +282,18 @@ export class CalendarDialogComponent implements OnInit {
     };
   }
 
+  private normalizeTime(time: string): string {
+    if (!time) return time;
+
+    // Convert 12h → 24h if needed
+    if (time.toLowerCase().includes('am') || time.toLowerCase().includes('pm')) {
+      const date = new Date(`1970-01-01 ${time}`);
+      return date.toTimeString().slice(0, 5); // "HH:mm"
+    }
+
+    return time;
+  }
+
   fetchAttachments(eventId: number): void {
     this.calendarService.getAttachments(eventId).subscribe(a => {
       this.existingAttachments = a;
@@ -384,12 +396,12 @@ export class CalendarDialogComponent implements OnInit {
     if (!this.generalForm.value.allDayEvent) {
       startDate = this.combineDateAndTime(
         startDate,
-        this.generalForm.value.startTime
+        this.normalizeTime(this.generalForm.value.startTime)
       );
 
       endDate = this.combineDateAndTime(
         endDate,
-        this.generalForm.value.endTime
+        this.normalizeTime(this.generalForm.value.endTime)
       );
     } else {
       // Normalize both dates to midnight
