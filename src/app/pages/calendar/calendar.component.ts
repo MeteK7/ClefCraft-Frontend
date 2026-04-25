@@ -353,20 +353,19 @@ export class CalendarComponent implements OnInit {
   }
 
   getEventsForWeek(week: Date[]): CalendarEventUI[] {
-
-    const weekStart = new Date(week[0])
-    const weekEnd = new Date(week[6])
-
-    weekStart.setHours(0, 0, 0, 0)
-    weekEnd.setHours(23, 59, 59, 999)
+    const weekStart = this.toDateOnly(week[0]);
+    const weekEnd = this.toDateOnly(week[6]);
 
     return this.events.filter(e => {
+      const start = this.toDateOnly(new Date(e.startDate));
+      let end = this.toDateOnly(new Date(e.endDate));
 
-      const start = new Date(e.startDate)
-      const end = new Date(e.endDate)
+      if (e.allDayEvent) {
+        end -= (1000 * 60 * 60 * 24);
+      }
 
-      return start <= weekEnd && end >= weekStart
-    })
+      return start <= weekEnd && end >= weekStart;
+    });
   }
 
   getEventColumnStart(event: CalendarEventUI, week: Date[]): number {
