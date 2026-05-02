@@ -26,7 +26,7 @@ export class CalendarService {
 
   // Save event to the backend
   saveEvent(event: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/create`, event);
+    return this.http.post<any>(`${this.apiUrl}`, event);
   }
 
   updateEvent(id: number, event: any): Observable<any> {
