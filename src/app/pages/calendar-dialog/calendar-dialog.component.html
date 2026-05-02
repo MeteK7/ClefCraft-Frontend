@@ -24,9 +24,9 @@
         <span>Attendance Prediction:</span>
 
         <div class="ai-verdict" *ngIf="data?.eventData?.attendanceScore != null"
-          [style.color]="getAttendanceColor(data.eventData.attendanceScore)">
+          [style.color]="attendanceColor(data.eventData.attendanceScore)">
 
-          {{ getAttendanceLabel(data.eventData.attendanceScore) }}
+          {{ attendanceLabel(data.eventData.attendanceScore) }}
           ({{ (data.eventData.attendanceScore * 100) | number:'1.0-0' }}%)
         </div>
       </div>

@@ -31,6 +31,7 @@ import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { QuillModule } from 'ngx-quill';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatRadioModule } from '@angular/material/radio';
+import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -94,6 +95,9 @@ export class CalendarDialogComponent implements OnInit {
 
   filteredLocations: string[] = [];
   allLocations: string[] = [];
+
+  attendanceLabel = getAttendanceLabel;
+  attendanceColor = getAttendanceColor;
 
   clearNotes(): void {
     this.generalForm.get('comment')?.setValue('');
@@ -220,24 +224,6 @@ export class CalendarDialogComponent implements OnInit {
         }
       }
     });
-  }
-
-  getAttendanceLabel(score?: number): string {
-    if (score == null) return '';
-    if (score > 0.8) return 'Very Likely';
-    if (score > 0.6) return 'Likely';
-    if (score > 0.4) return 'Uncertain';
-    if (score > 0.2) return 'Unlikely';
-    return 'Very Unlikely';
-  }
-
-  getAttendanceColor(score?: number): string {
-    if (score == null) return '#999';
-    if (score > 0.8) return '#2ecc71';
-    if (score > 0.6) return '#27ae60';
-    if (score > 0.4) return '#f39c12';
-    if (score > 0.2) return '#e67e22';
-    return '#e74c3c';
   }
 
   private filterLocations(value: string): string[] {

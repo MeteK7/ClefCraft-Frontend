@@ -13,6 +13,7 @@ import { SavePayload } from './models/save-payload.model';
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
 
 @Component({
   selector: 'app-calendar',
@@ -42,6 +43,8 @@ export class CalendarComponent implements OnInit {
   readonly MAX_VISIBLE_LANES = 3;
   selectedMoreEvents: CalendarEventUI[] = [];
   selectedMoreDate: Date | null = null;
+  attendanceLabel = getAttendanceLabel;
+  attendanceColor = getAttendanceColor;
 
   constructor(private calendarService: CalendarService, private dialog: MatDialog) { }
 
@@ -72,26 +75,6 @@ export class CalendarComponent implements OnInit {
 
   convertToLocalDate(utcString: string): Date {
     return new Date(utcString);
-  }
-
-  getAttendanceLabel(score?: number): string {
-    if (score == null) return '';
-
-    if (score > 0.8) return 'Very Likely';
-    if (score > 0.6) return 'Likely';
-    if (score > 0.4) return 'Uncertain';
-    if (score > 0.2) return 'Unlikely';
-    return 'Very Unlikely';
-  }
-
-  getAttendanceColor(score?: number): string {
-    if (score == null) return '#999';
-
-    if (score > 0.8) return '#2ecc71'; // green
-    if (score > 0.6) return '#27ae60';
-    if (score > 0.4) return '#f39c12'; // orange
-    if (score > 0.2) return '#e67e22';
-    return '#e74c3c'; // red
   }
 
   generateCalendarGrid(): void {
@@ -150,7 +133,7 @@ export class CalendarComponent implements OnInit {
       : event.subject;
 
     if (event.attendanceScore != null) {
-      const label = this.getAttendanceLabel(event.attendanceScore);
+      const label = this.attendanceLabel(event.attendanceScore);
       base += `\nAttendance: ${label} (${(event.attendanceScore * 100).toFixed(0)}%)`;
     }
 

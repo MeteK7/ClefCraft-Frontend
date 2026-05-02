@@ -74,7 +74,7 @@
 
             <!-- ⭐ NEW -->
             <div class="attendance-indicator" *ngIf="event.attendanceScore != null"
-              [style.background]="getAttendanceColor(event.attendanceScore)">
+              [style.background]="attendanceColor(event.attendanceScore)">
             </div>
           </div>
         </ng-container>
