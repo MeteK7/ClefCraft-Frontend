@@ -222,17 +222,30 @@ export class CalendarComponent implements OnInit {
 
     dialogRef.componentInstance.onSave.subscribe(
       ({ record, attachments }: SavePayload) => {
-        const save$ = record.id
-          ? this.calendarService.updateEvent(record.id, record)
-          : this.calendarService.saveEvent(record);
 
-        save$.subscribe((savedEvent: CalendarEventUI) => {
-          if (attachments.length > 0) {
+        // A recurring occurrence has a virtual Id that differs from its real BaseEventId
+        const isOccurrence = record.isRecurring && record.id !== record.baseEventId;
+
+        const save$ = isOccurrence
+          ? this.calendarService.updateSingleOccurrence({
+            eventId: record.baseEventId,                           // real DB row
+            occurrenceDate: record.startDate,                      // identifies which occurrence
+            subject: record.subject,
+            comment: record.comment,
+            startDate: record.startDate,
+            endDate: record.endDate,
+          })
+          : record.id
+            ? this.calendarService.updateEvent(record.id, record)   // normal update
+            : this.calendarService.saveEvent(record);               // create
+
+        save$.subscribe((savedEvent: any) => {
+          const eventId = isOccurrence ? record.baseEventId : savedEvent?.id;
+
+          if (attachments?.length > 0 && eventId) {
             const formData = new FormData();
             attachments.forEach((f: File) => formData.append('files', f));
-
-            this.calendarService
-              .uploadAttachments(savedEvent.id!, formData)
+            this.calendarService.uploadAttachments(eventId, formData)
               .subscribe(() => this.fetchEvents());
           } else {
             this.fetchEvents();

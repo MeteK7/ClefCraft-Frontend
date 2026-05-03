@@ -7,4 +7,6 @@ export interface CalendarEvent {
   allDay: boolean;
   importance: 'Low' | 'Normal' | 'High';
   comment?: string;
+  isRecurring?: boolean;
+  baseEventId: number;
 }
