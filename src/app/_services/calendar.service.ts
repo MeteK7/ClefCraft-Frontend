@@ -57,4 +57,16 @@ export class CalendarService {
   deleteAttachment(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/attachments/${id}`);
   }
+
+  updateSingleOccurrence(payload: {
+    eventId: number;
+    occurrenceDate: string;   // ISO date string, parsed to DateOnly on the API
+    subject?: string;
+    comment?: string;
+    startDate?: string;
+    endDate?: string;
+    isCancelled?: boolean;
+  }): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/occurrence`, payload);
+  }
 }
