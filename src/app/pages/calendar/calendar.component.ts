@@ -54,8 +54,17 @@ export class CalendarComponent implements OnInit {
   }
 
   fetchEvents(): void {
-    const start = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1);
-    const end = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth() + 1, 0);
+    const start = new Date(
+      this.selectedDate.getFullYear(),
+      this.selectedDate.getMonth(),
+      1
+    );
+
+    const end = new Date(
+      this.selectedDate.getFullYear(),
+      this.selectedDate.getMonth() + 1,
+      1 // FIRST DAY OF NEXT MONTH
+    );
 
     this.calendarService.getEvents(start, end).subscribe(
       (events: any[]) => {
