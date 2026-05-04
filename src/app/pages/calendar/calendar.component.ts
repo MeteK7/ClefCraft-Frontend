@@ -193,7 +193,7 @@ export class CalendarComponent implements OnInit {
   // Datepicker now only navigates calendar
   onDateSelectedFromPicker(date: Date): void {
     this.selectedDate = date;
-    this.generateCalendarGrid(); // Update calendar view to the selected month
+    this.fetchEvents();
   }
 
   onEmptyDayClicked(date: Date): void {
@@ -322,19 +322,19 @@ export class CalendarComponent implements OnInit {
     const currentMonth = this.selectedDate.getMonth();
     const currentYear = this.selectedDate.getFullYear();
     this.selectedDate = new Date(currentYear, currentMonth - 1, 1);
-    this.generateCalendarGrid();
+    this.fetchEvents();
   }
 
   goToNextMonth(): void {
     const currentMonth = this.selectedDate.getMonth();
     const currentYear = this.selectedDate.getFullYear();
     this.selectedDate = new Date(currentYear, currentMonth + 1, 1);
-    this.generateCalendarGrid();
+    this.fetchEvents();
   }
 
   goToToday(): void {
     this.selectedDate = new Date();
-    this.generateCalendarGrid();
+    this.fetchEvents();
   }
 
   handleDialogCancel(): void {
