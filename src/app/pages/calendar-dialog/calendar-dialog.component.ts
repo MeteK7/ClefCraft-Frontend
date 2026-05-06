@@ -64,12 +64,17 @@ export class CalendarDialogComponent implements OnInit {
 
   generalForm: FormGroup;
 
-  importanceLevels = ['Low', 'Normal', 'High'];
+  importanceLevels = [
+  { label: 'Low', value: 1 },
+  { label: 'Normal', value: 2 },
+  { label: 'High', value: 3 }
+];
 
   existingAttachments: any[] = [];
   stagedAttachments: File[] = [];
 
   eventId: number | null = null;
+  baseEventId: number | null = null;
   hasFormChanges = false;
   hasAttachmentChanges = false;
 
@@ -122,7 +127,7 @@ export class CalendarDialogComponent implements OnInit {
       startTime: [''],
       endTime: [''],
       allDayEvent: [false],
-      importance: ['Normal'],
+      importance: [2], // Normal
       comment: [''],
       eventTypeId: [null],
       isRecurring: [false],
@@ -177,6 +182,8 @@ export class CalendarDialogComponent implements OnInit {
       this.eventColor = this.data.eventData.eventColor;
 
       this.eventId = this.data.eventData.id;
+      this.baseEventId = this.data.eventData.baseEventId;
+
       this.fetchAttachments(this.eventId!);
     } else {
       const date = new Date(this.data.date);
@@ -417,6 +424,7 @@ export class CalendarDialogComponent implements OnInit {
         startDate,
         endDate,
         id: this.eventId,
+        baseEventId: this.baseEventId,
         isRecurring: this.generalForm.value.isRecurring,
         recurrenceRuleJson: this.generalForm.value.isRecurring
           ? JSON.stringify(recurrenceRule)

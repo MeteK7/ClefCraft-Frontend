@@ -19,7 +19,7 @@ export interface CalendarEventUI {
 
   location?: string;
 
-  importance: 'Low' | 'Normal' | 'High';
+  importance: 1 | 2 | 3;
   comment?: string;
 
   attendanceScore?: number;
