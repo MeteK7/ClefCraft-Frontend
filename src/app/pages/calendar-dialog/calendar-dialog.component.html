@@ -135,8 +135,8 @@
               <mat-form-field appearance="outline" color="primary" class="half-width">
                 <mat-label>Importance</mat-label>
                 <mat-select formControlName="importance">
-                  <mat-option *ngFor="let level of importanceLevels" [value]="level">
-                    {{ level }}
+                  <mat-option *ngFor="let level of importanceLevels" [value]="level.value">
+                    {{ level.label }}
                   </mat-option>
                 </mat-select>
               </mat-form-field>

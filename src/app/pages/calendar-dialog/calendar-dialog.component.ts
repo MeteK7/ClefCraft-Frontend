@@ -64,7 +64,11 @@ export class CalendarDialogComponent implements OnInit {
 
   generalForm: FormGroup;
 
-  importanceLevels = ['Low', 'Normal', 'High'];
+  importanceLevels = [
+  { label: 'Low', value: 1 },
+  { label: 'Normal', value: 2 },
+  { label: 'High', value: 3 }
+];
 
   existingAttachments: any[] = [];
   stagedAttachments: File[] = [];
@@ -123,7 +127,7 @@ export class CalendarDialogComponent implements OnInit {
       startTime: [''],
       endTime: [''],
       allDayEvent: [false],
-      importance: ['Normal'],
+      importance: [2], // Normal
       comment: [''],
       eventTypeId: [null],
       isRecurring: [false],
