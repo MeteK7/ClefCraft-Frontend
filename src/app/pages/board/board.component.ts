@@ -9,11 +9,12 @@ import { FormsModule } from '@angular/forms';
 import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
 import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-sidebar.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [CommonModule, FormsModule, BoardColumnComponent, DragDropModule, AddItemFormComponent, ItemDetailSidebarComponent],
+  imports: [CommonModule, FormsModule, BoardColumnComponent, DragDropModule, AddItemFormComponent, ItemDetailSidebarComponent, MatIconModule],
   templateUrl: './board.component.html',
   styleUrls: ['./board.component.css']
 })
