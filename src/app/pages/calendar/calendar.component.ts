@@ -394,6 +394,35 @@ export class CalendarComponent implements OnInit {
       });
 
     dialogRef.componentInstance.onCancel.subscribe(() => dialogRef.close());
+
+    const attemptClose = () => {
+      const hasChanges = dialogRef.componentInstance.hasUnsavedChanges;
+
+      if (!hasChanges) {
+        dialogRef.close();
+        return;
+      }
+
+      const confirm = window.confirm(
+        'You have unsaved changes.\n\nDiscard them?'
+      );
+
+      if (confirm) {
+        dialogRef.close();
+      }
+    };
+
+    // BACKDROP
+    dialogRef.backdropClick().subscribe(() => {
+      attemptClose();
+    });
+
+    // ESC
+    dialogRef.keydownEvents().subscribe(event => {
+      if (event.key === 'Escape') {
+        attemptClose();
+      }
+    });
   }
 
   goToPreviousMonth(): void {
