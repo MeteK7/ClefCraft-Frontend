@@ -41,22 +41,6 @@
 }
 
 /* =========================
-   CALENDAR NAVIGATION
-   ========================= */
-
-.calendar-navigation {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 1rem;
-}
-
-button {
-  margin: 0 5px;
-}
-
-/* =========================
    CALENDAR GRID
    ========================= */
 
@@ -288,7 +272,8 @@ button {
   border-radius: 4px;
   font-size: 13px;
   display: flex;
-  align-items: flex-start;   /* 🔥 top align */
+  align-items: flex-start;
+  /* 🔥 top align */
   justify-content: flex-start;
   padding: 2px 6px;
   overflow: hidden;
@@ -364,6 +349,202 @@ button {
   border-radius: 5px;
   box-shadow: 0 0 8px 2px rgba(33, 150, 243, 0.6);
   animation: flashBorder 2s ease forwards;
+}
+
+/* =========================
+   CALENDAR CONTROLS BAR
+   ========================= */
+
+.calendar-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 16px;
+  margin-bottom: 14px;
+
+  flex-wrap: wrap;
+}
+
+/* =========================
+   NAVIGATION
+   ========================= */
+
+.calendar-navigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-btn,
+.today-btn {
+  min-width: 90px;
+  height: 38px;
+
+  border-radius: 8px !important;
+  font-weight: 500;
+  text-transform: none !important;
+}
+
+.today-btn {
+  box-shadow: none !important;
+}
+
+/* =========================
+   VIEW MODES
+   ========================= */
+
+.view-mode-selector {
+  display: flex;
+  align-items: center;
+
+  border: 1px solid #d6d6d6;
+  border-radius: 10px;
+
+  overflow: hidden;
+
+  background: white;
+}
+
+/* Individual buttons */
+
+.view-btn {
+  min-width: 90px;
+  height: 38px;
+
+  border-radius: 0 !important;
+  text-transform: none !important;
+
+  font-weight: 500;
+  color: #444 !important;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+/* separator */
+
+.view-btn:not(:last-child) {
+  border-right: 1px solid #e2e2e2;
+}
+
+/* active state */
+
+.view-btn.active-view {
+  background: #1976d2;
+  color: white !important;
+}
+
+/* hover */
+
+.view-btn:hover {
+  background: #f3f6fa;
+}
+
+.view-btn.active-view:hover {
+  background: #1565c0;
+}
+
+/* =========================
+   WEEK VIEW
+   ========================= */
+
+.week-view-container {
+  width: 100%;
+}
+
+.week-view-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px;
+}
+
+.week-view-day {
+  border: 1px solid #dcdcdc;
+  border-radius: 10px;
+  min-height: 500px;
+  background: white;
+  overflow: hidden;
+}
+
+.week-view-header {
+  padding: 12px;
+  text-align: center;
+  border-bottom: 1px solid #ececec;
+  font-weight: 600;
+  background: #fafafa;
+}
+
+.week-view-header.today {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.week-view-events {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.week-view-event {
+  background: #e3f2fd;
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: transform 0.15s ease;
+}
+
+.week-view-event:hover {
+  transform: scale(1.02);
+}
+
+/* =========================
+   DAY VIEW
+   ========================= */
+
+.day-view-container {
+  max-width: 900px;
+  margin: auto;
+}
+
+.day-view-header {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.day-view-events {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.day-view-event {
+  background: #f5f9ff;
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  border: 1px solid #d8e8ff;
+}
+
+.day-view-event-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.day-view-event-time {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #666;
+}
+
+.no-events {
+  padding: 20px;
+  text-align: center;
+  color: #888;
 }
 
 @keyframes flashBorder {

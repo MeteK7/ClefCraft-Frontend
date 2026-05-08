@@ -1,28 +1,35 @@
 <!-- components/board/board.component.html -->
 <div class="board-header">
-  <label for="boardId">Select Board:</label>
+  <label for="boardId">Board:</label>
   <select id="boardId" [(ngModel)]="selectedBoardId" name="boardId" (change)="onBoardSelection(selectedBoardId)">
     <option *ngFor="let board of boards" [value]="board.id">{{ board.title }}</option>
   </select>
-  <button (click)="toggleViewMode()">
-    Switch to {{ viewMode === 'dialog' ? 'Sidebar' : 'Dialog' }} View
-  </button>
+  <div class="view-toggle">
+    <button [class.active]="viewMode === 'dialog'" (click)="viewMode = 'dialog'">
+      Dialog
+    </button>
+
+    <button [class.active]="viewMode === 'sidebar'" (click)="viewMode = 'sidebar'">
+      Sidebar
+    </button>
+  </div>
 </div>
 
-<div class="view-options">
+<!-- <div class="view-options">
   <label>View Item Details:</label>
   <select [(ngModel)]="viewMode">
     <option value="sidebar">Sidebar</option>
     <option value="dialog">Dialog</option>
   </select>
-</div>
+</div> -->
 
 <button class="add-item-btn" (click)="openAddItemDialog()">Add New Item</button>
 
 <div class="board-columns">
-  <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds" (itemClicked)="onItemClick($event)"></app-board-column>
+  <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds"
+    (itemClicked)="onItemClick($event)"></app-board-column>
 </div>
 
 <!-- Sidebar View -->
-<app-item-detail-sidebar *ngIf="viewMode === 'sidebar' && selectedItem" [item]="selectedItem" (itemUpdated)="onItemUpdated($event)"></app-item-detail-sidebar>
-
+<app-item-detail-sidebar *ngIf="viewMode === 'sidebar' && selectedItem" [item]="selectedItem"
+  (itemUpdated)="onItemUpdated($event)"></app-item-detail-sidebar>
