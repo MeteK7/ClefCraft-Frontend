@@ -41,22 +41,6 @@
 }
 
 /* =========================
-   CALENDAR NAVIGATION
-   ========================= */
-
-.calendar-navigation {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 1rem;
-}
-
-button {
-  margin: 0 5px;
-}
-
-/* =========================
    CALENDAR GRID
    ========================= */
 
@@ -368,14 +352,98 @@ button {
 }
 
 /* =========================
-   VIEW MODE SELECTOR
+   CALENDAR CONTROLS BAR
+   ========================= */
+
+.calendar-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 16px;
+  margin-bottom: 14px;
+
+  flex-wrap: wrap;
+}
+
+/* =========================
+   NAVIGATION
+   ========================= */
+
+.calendar-navigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-btn,
+.today-btn {
+  min-width: 90px;
+  height: 38px;
+
+  border-radius: 8px !important;
+  font-weight: 500;
+  text-transform: none !important;
+}
+
+.today-btn {
+  box-shadow: none !important;
+}
+
+/* =========================
+   VIEW MODES
    ========================= */
 
 .view-mode-selector {
   display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 20px;
+  align-items: center;
+
+  border: 1px solid #d6d6d6;
+  border-radius: 10px;
+
+  overflow: hidden;
+
+  background: white;
+}
+
+/* Individual buttons */
+
+.view-btn {
+  min-width: 90px;
+  height: 38px;
+
+  border-radius: 0 !important;
+  text-transform: none !important;
+
+  font-weight: 500;
+  color: #444 !important;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+/* separator */
+
+.view-btn:not(:last-child) {
+  border-right: 1px solid #e2e2e2;
+}
+
+/* active state */
+
+.view-btn.active-view {
+  background: #1976d2;
+  color: white !important;
+}
+
+/* hover */
+
+.view-btn:hover {
+  background: #f3f6fa;
+}
+
+.view-btn.active-view:hover {
+  background: #1565c0;
 }
 
 /* =========================

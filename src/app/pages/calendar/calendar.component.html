@@ -23,26 +23,45 @@
   </div>
 </div>
 
-<!-- Calendar Navigation -->
-<div class="calendar-navigation">
-  <button mat-button (click)="goToPreviousMonth()">Previous</button>
-  <button mat-button (click)="goToToday()">Today</button>
-  <button mat-button (click)="goToNextMonth()">Next</button>
-</div>
-<!-- VIEW MODES -->
-<div class="view-mode-selector">
+<!-- CALENDAR CONTROLS -->
+<div class="calendar-controls">
 
-  <button mat-raised-button [color]="viewMode === 'month' ? 'primary' : undefined" (click)="setViewMode('month')">
-    Month
-  </button>
+  <!-- LEFT: NAVIGATION -->
+  <div class="calendar-navigation">
 
-  <button mat-raised-button [color]="viewMode === 'week' ? 'primary' : undefined" (click)="setViewMode('week')">
-    Week
-  </button>
+    <button mat-stroked-button class="nav-btn" (click)="goToPreviousMonth()">
+      Previous
+    </button>
 
-  <button mat-raised-button [color]="viewMode === 'day' ? 'primary' : undefined" (click)="setViewMode('day')">
-    Day
-  </button>
+    <button mat-flat-button class="today-btn" (click)="goToToday()">
+      Today
+    </button>
+
+    <button mat-stroked-button class="nav-btn" (click)="goToNextMonth()">
+      Next
+    </button>
+
+  </div>
+
+  <!-- RIGHT: VIEW MODES -->
+  <div class="view-mode-selector">
+
+    <button mat-button class="view-btn" [class.active-view]="viewMode === 'month'" (click)="setViewMode('month')">
+
+      Month
+    </button>
+
+    <button mat-button class="view-btn" [class.active-view]="viewMode === 'week'" (click)="setViewMode('week')">
+
+      Week
+    </button>
+
+    <button mat-button class="view-btn" [class.active-view]="viewMode === 'day'" (click)="setViewMode('day')">
+
+      Day
+    </button>
+
+  </div>
 
 </div>
 
