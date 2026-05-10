@@ -132,68 +132,79 @@
 </div>
 
 <!-- WEEK VIEW -->
-<div *ngIf="viewMode === 'week'" class="week-time-grid">
+<div *ngIf="viewMode === 'week'" class="week-view-wrapper">
 
-  <!-- Time Column -->
-  <div class="time-column">
+  <!-- Sticky Header Row -->
+  <div class="week-header-row">
 
+    <!-- Empty top-left corner -->
     <div class="time-header"></div>
 
+    <!-- Day headers -->
     <div
-      *ngFor="let hour of hours"
-      class="time-slot-label">
+      *ngFor="let date of weekViewDates"
+      class="week-day-header"
+      [class.today]="isToday(date)">
 
-      {{ formatHour(hour) }}
+      <div>{{ date | date:'EEE' }}</div>
+      <div>{{ date | date:'d' }}</div>
 
     </div>
 
   </div>
 
-  <!-- Days -->
-  <div class="week-days-container">
+  <!-- Shared Scroll Area -->
+  <div class="week-scroll-area">
 
-    <div
-      *ngFor="let date of weekViewDates"
-      class="week-day-column">
+    <!-- Time Column -->
+    <div class="time-column">
 
-      <!-- Header -->
       <div
-        class="week-day-header"
-        [class.today]="isToday(date)">
+        *ngFor="let hour of hours"
+        class="time-slot-label">
 
-        <div>{{ date | date:'EEE' }}</div>
-        <div>{{ date | date:'d' }}</div>
+        {{ formatHour(hour) }}
 
       </div>
 
-      <!-- Grid -->
-      <div class="week-day-grid">
+    </div>
 
-        <!-- Hour Lines -->
-        <div
-          *ngFor="let hour of hours"
-          class="hour-row">
-        </div>
+    <!-- Day Columns -->
+    <div class="week-days-container">
 
-        <!-- Events -->
-        <div
-          *ngFor="let block of getTimeBlocksForDay(date)"
-          class="time-block-event"
-          [style.top.px]="block.top"
-          [style.height.px]="block.height"
-          [style.left.%]="block.left"
-          [style.width.%]="block.width"
-          [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
-          (click)="onEventClicked(block, $event)">
+      <div
+        *ngFor="let date of weekViewDates"
+        class="week-day-column">
 
-          <div class="time-block-title">
-            {{ block.subject }}
+        <div class="week-day-grid">
+
+          <!-- Hour Lines -->
+          <div
+            *ngFor="let hour of hours"
+            class="hour-row">
           </div>
 
-          <div class="time-block-time">
-            {{ block.startDate | date:'HH:mm' }}
-            -
-            {{ block.endDate | date:'HH:mm' }}
+          <!-- Events -->
+          <div
+            *ngFor="let block of getTimeBlocksForDay(date)"
+            class="time-block-event"
+            [style.top.px]="block.top"
+            [style.height.px]="block.height"
+            [style.left.%]="block.left"
+            [style.width.%]="block.width"
+            [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
+            (click)="onEventClicked(block, $event)">
+
+            <div class="time-block-title">
+              {{ block.subject }}
+            </div>
+
+            <div class="time-block-time">
+              {{ block.startDate | date:'HH:mm' }}
+              -
+              {{ block.endDate | date:'HH:mm' }}
+            </div>
+
           </div>
 
         </div>
