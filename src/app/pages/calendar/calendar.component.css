@@ -715,6 +715,26 @@
   background: #f3f7ff;
 }
 
+/* =========================
+   DAY VIEW (TIME LAYOUT)
+   ========================= */
+
+.day-time-layout {
+  display: flex;
+  height: calc(100vh - 220px); /* same budget as week view */
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  background: white;
+  box-sizing: border-box;
+}
+
+.day-timeline {
+  position: relative;
+  flex: 1;
+  height: calc(24 * 80px); /* exactly 24 hour-rows, no extras */
+  box-sizing: border-box;
+}
+
 @keyframes flashBorder {
   0% {
     border-color: #2196f3;
