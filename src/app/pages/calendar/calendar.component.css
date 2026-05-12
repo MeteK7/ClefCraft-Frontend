@@ -45,6 +45,9 @@
    ========================= */
 
 .calendar-grid {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -63,7 +66,8 @@
 
 .calendar-week {
   position: relative;
-  height: calc(100vh / 7);
+  flex: 1;
+  min-height: 80px;    /* prevents collapse on short viewports */
 }
 
 .calendar-grid th,
@@ -75,7 +79,7 @@
 }
 
 .calendar-grid td {
-  height: calc(100vh / 7);
+  height: 100%;
   cursor: pointer;
 }
 
@@ -579,6 +583,9 @@
    ========================= */
 
 .week-view-wrapper {
+  flex: 1;
+  min-height: 0;
+  height: 0;
   display: flex;
   flex-direction: column;
   height: calc(100vh - 220px);
@@ -592,7 +599,8 @@
   display: grid;
   grid-template-columns: 70px repeat(7, 1fr);
   flex-shrink: 0;
-  position: sticky;         /* ← add these two */
+  position: sticky;
+  /* ← add these two */
   top: 0;
   border-bottom: 1px solid #ddd;
   background: white;
@@ -628,7 +636,8 @@
 /* SHARED SCROLL AREA */
 .week-scroll-area {
   display: flex;
-  flex-direction: column;   /* ← changed from default row */
+  flex-direction: column;
+  /* ← changed from default row */
   flex: 1;
   overflow-y: auto;
 }
@@ -662,7 +671,8 @@
 
 .week-day-grid {
   position: relative;
-  height: calc(24 * 80px); /* 24 hours */
+  height: calc(24 * 80px);
+  /* 24 hours */
   box-sizing: border-box;
 }
 
@@ -720,8 +730,11 @@
    ========================= */
 
 .day-time-layout {
+  flex: 1;
+  min-height: 0;
+  height: 0;
   display: flex;
-  height: calc(100vh - 220px); /* same budget as week view */
+  /* same budget as week view */
   overflow-y: auto;
   border: 1px solid #ddd;
   background: white;
@@ -731,8 +744,17 @@
 .day-timeline {
   position: relative;
   flex: 1;
-  height: calc(24 * 80px); /* exactly 24 hour-rows, no extras */
+  height: calc(24 * 80px);
+  /* exactly 24 hour-rows, no extras */
   box-sizing: border-box;
+}
+
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 @keyframes flashBorder {
