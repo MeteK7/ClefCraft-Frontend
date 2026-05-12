@@ -17,6 +17,10 @@
   white-space: nowrap;
 }
 
+.calendar-header h1 {
+  font-size: 3rem;
+}
+
 /* Selected date summary (center area) */
 .selected-date-summary {
   flex: 1;
@@ -67,7 +71,8 @@
 .calendar-week {
   position: relative;
   flex: 1;
-  min-height: 80px;    /* prevents collapse on short viewports */
+  min-height: 80px;
+  /* prevents collapse on short viewports */
 }
 
 .calendar-grid th,
@@ -382,7 +387,6 @@
 
 .nav-btn,
 .today-btn {
-  min-width: 90px;
   height: 38px;
 
   border-radius: 8px !important;
@@ -390,10 +394,15 @@
   text-transform: none !important;
 }
 
-.today-btn {
-  box-shadow: none !important;
+.nav-btn {
+  min-width: 42px;
+  width: 42px;
+  padding: 0;
 }
 
+.today-btn {
+  min-width: 90px;
+}
 /* =========================
    VIEW MODES
    ========================= */
