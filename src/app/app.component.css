@@ -1,8 +1,8 @@
 :host {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  overflow: hidden; /* Prevent double scrollbars */
+  height: 100vh;        /* ← must be explicit here, flex:1 doesn't work at root level */
+  overflow: hidden;
 }
 
 app-header {
@@ -16,18 +16,22 @@ app-footer {
 .layout {
   display: flex;
   flex: 1;
-  min-height: 0; /* Important for nested scrolling */
+  min-height: 0;
   min-width: 0;
 }
 
 app-sidebar {
   background-color: #f8f9fa;
   border-right: 1px solid #ccc;
+  flex-shrink: 0;
 }
 
 .main-content {
   flex: 1;
-  overflow-y: auto; /* Main content scrolls independently */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 20px;
   min-width: 0;
+  box-sizing: border-box;
 }
