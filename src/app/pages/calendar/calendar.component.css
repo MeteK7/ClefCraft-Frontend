@@ -460,6 +460,32 @@
 }
 
 /* =========================
+   NOW INDICATOR
+   ========================= */
+
+.now-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #e53935;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.now-indicator::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e53935;
+}
+
+/* =========================
    WEEK VIEW
    ========================= */
 

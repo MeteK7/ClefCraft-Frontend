@@ -140,10 +140,7 @@
     <!-- Sticky Header Row (moved inside scroll area) -->
     <div class="week-header-row">
       <div class="time-header"></div>
-      <div
-        *ngFor="let date of weekViewDates"
-        class="week-day-header"
-        [class.today]="isToday(date)">
+      <div *ngFor="let date of weekViewDates" class="week-day-header" [class.today]="isToday(date)">
         <div>{{ date | date:'EEE' }}</div>
         <div>{{ date | date:'d' }}</div>
       </div>
@@ -162,13 +159,11 @@
         <div *ngFor="let date of weekViewDates" class="week-day-column">
           <div class="week-day-grid">
             <div *ngFor="let hour of hours" class="hour-row"></div>
-            <div
-              *ngFor="let block of getTimeBlocksForDay(date)"
-              class="time-block-event"
-              [style.top.px]="block.top"
-              [style.height.px]="block.height"
-              [style.left.%]="block.left"
-              [style.width.%]="block.width"
+            <!-- Week view: now indicator (today's column only) -->
+            <div *ngIf="isToday(date)" class="now-indicator" [style.top.px]="nowIndicatorTop">
+            </div>
+            <div *ngFor="let block of getTimeBlocksForDay(date)" class="time-block-event" [style.top.px]="block.top"
+              [style.height.px]="block.height" [style.left.%]="block.left" [style.width.%]="block.width"
               [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
               (click)="onEventClicked(block, $event)">
               <div class="time-block-title">{{ block.subject }}</div>
@@ -190,9 +185,7 @@
   <!-- Time labels -->
   <div class="time-column">
 
-    <div
-      *ngFor="let hour of hours"
-      class="time-slot-label">
+    <div *ngFor="let hour of hours" class="time-slot-label">
 
       {{ formatHour(hour) }}
 
@@ -204,19 +197,13 @@
   <div class="day-timeline">
 
     <!-- Grid -->
-    <div
-      *ngFor="let hour of hours"
-      class="hour-row">
+    <div *ngFor="let hour of hours" class="hour-row">
     </div>
+    <div *ngIf="isToday(selectedDate)" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
 
     <!-- Events -->
-    <div
-      *ngFor="let block of dayViewBlocks"
-      class="time-block-event"
-      [style.top.px]="block.top"
-      [style.height.px]="block.height"
-      [style.left.%]="block.left"
-      [style.width.%]="block.width"
+    <div *ngFor="let block of dayViewBlocks" class="time-block-event" [style.top.px]="block.top"
+      [style.height.px]="block.height" [style.left.%]="block.left" [style.width.%]="block.width"
       [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
       (click)="onEventClicked(block, $event)">
 

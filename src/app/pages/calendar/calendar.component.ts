@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -35,7 +35,7 @@ import { CalendarTimeBlock } from './models/calendar-time-block.model';
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.css'],
 })
-export class CalendarComponent implements OnInit {
+export class CalendarComponent implements OnInit, OnDestroy {
 
   events: CalendarEventUI[] = [];
 
@@ -73,6 +73,12 @@ export class CalendarComponent implements OnInit {
 
   dayViewBlocks: CalendarTimeBlock[] = [];
 
+  nowIndicatorTop: number = 0;
+
+  readonly HOUR_HEIGHT = 80;
+
+  private nowTimer: any;
+
   constructor(
     private calendarService: CalendarService,
     private dialog: MatDialog
@@ -81,8 +87,17 @@ export class CalendarComponent implements OnInit {
   ngOnInit(): void {
     this.generateCurrentView();
     this.fetchEvents();
+    this.updateNowIndicator();
+    this.nowTimer = setInterval(() => this.updateNowIndicator(), 60_000);
   }
-
+  ngOnDestroy(): void {
+    clearInterval(this.nowTimer);
+  }
+  updateNowIndicator(): void {
+    const now = new Date();
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    this.nowIndicatorTop = (minutes / 60) * this.HOUR_HEIGHT;
+  }
   // =========================
   // VIEW MODE METHODS
   // =========================
@@ -697,8 +712,6 @@ export class CalendarComponent implements OnInit {
 
     const blocks: CalendarTimeBlock[] = [];
 
-    const HOUR_HEIGHT = 80;
-
     for (let i = 0; i < events.length; i++) {
 
       const event = events[i];
@@ -715,10 +728,10 @@ export class CalendarComponent implements OnInit {
       const duration = endMinutes - startMinutes;
 
       const top =
-        (startMinutes / 60) * HOUR_HEIGHT;
+        (startMinutes / 60) * this.HOUR_HEIGHT;
 
       const height =
-        (duration / 60) * HOUR_HEIGHT;
+        (duration / 60) * this.HOUR_HEIGHT;
 
       const overlapping = events.filter(e => {
 
