@@ -1,11 +1,11 @@
 import { CalendarLayoutItem }
-from '../models/calendar-layout-item.model';
+  from '../models/calendar-layout-item.model';
 
 import { EngineEvent }
-from '../models/engine-event.model';
+  from '../models/engine-event.model';
 
 import { CollisionEngine }
-from './collision-engine';
+  from './collision-engine';
 
 export class TimeBlockLayoutEngine {
 
@@ -29,6 +29,7 @@ export class TimeBlockLayoutEngine {
 
       const lanes: EngineEvent<T>[][] = [];
 
+      // PASS 1
       for (const event of group) {
 
         let placedLane = -1;
@@ -57,50 +58,57 @@ export class TimeBlockLayoutEngine {
         }
 
         if (placedLane === -1) {
-
           lanes.push([event]);
-
-          placedLane = lanes.length - 1;
         }
+      }
 
-        const startDate =
-          new Date(event.start);
+      // PASS 2
+      const laneCount = lanes.length;
 
-        const endDate =
-          new Date(event.end);
+      for (let laneIndex = 0;
+        laneIndex < lanes.length;
+        laneIndex++) {
 
-        const startMinutes =
-          startDate.getHours() * 60 +
-          startDate.getMinutes();
+        const lane = lanes[laneIndex];
 
-        const endMinutes =
-          endDate.getHours() * 60 +
-          endDate.getMinutes();
+        for (const event of lane) {
 
-        const top =
-          (startMinutes / 60) *
-          this.HOUR_HEIGHT;
+          const startDate =
+            new Date(event.start);
 
-        const height =
-          ((endMinutes - startMinutes) / 60) *
-          this.HOUR_HEIGHT;
+          const endDate =
+            new Date(event.end);
 
-        layout.push({
+          const startMinutes =
+            startDate.getHours() * 60 +
+            startDate.getMinutes();
 
-          event: event.original,
+          const endMinutes =
+            endDate.getHours() * 60 +
+            endDate.getMinutes();
 
-          top,
-          height,
+          layout.push({
 
-          lane: placedLane,
-          laneCount: lanes.length,
+            event: event.original,
 
-          left:
-            (placedLane / lanes.length) * 100,
+            top:
+              (startMinutes / 60) *
+              this.HOUR_HEIGHT,
 
-          width:
-            100 / lanes.length
-        });
+            height:
+              ((endMinutes - startMinutes) / 60) *
+              this.HOUR_HEIGHT,
+
+            lane: laneIndex,
+            laneCount,
+
+            left:
+              (laneIndex / laneCount) * 100,
+
+            width:
+              100 / laneCount
+          });
+        }
       }
     }
 
