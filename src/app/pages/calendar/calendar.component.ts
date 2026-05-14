@@ -16,6 +16,8 @@ import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.u
 import { CalendarViewMode } from './types/calendar-view-mode.type';
 import { CalendarEventUI } from './models/calendar-event.model-ui';
 import { CalendarTimeBlock } from './models/calendar-time-block.model';
+import { EventNormalizer } from '../../calendar-engine/utils/event-normalizer';
+import { TimeBlockLayoutEngine } from '../../calendar-engine/layout/time-block-layout-engine';
 
 @Component({
   selector: 'app-calendar',
@@ -144,8 +146,55 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   generateDayView(): void {
 
+    const dayEvents =
+      this.getEventsForDay(
+        this.selectedDate
+      );
+
+    const normalized =
+      EventNormalizer.normalize(dayEvents);
+
     this.dayViewBlocks =
-      this.getTimeBlocksForDay(this.selectedDate);
+      TimeBlockLayoutEngine.generate(
+        normalized
+      ).map(layout => ({
+
+        ...layout.event,
+
+        top: layout.top,
+        height: layout.height,
+
+        left: layout.left,
+        width: layout.width,
+
+        overlapIndex: layout.lane,
+        overlapCount: layout.laneCount
+      }));
+  }
+
+  getWeekDayLayouts(date: Date): CalendarTimeBlock[] {
+
+    const events =
+      this.getEventsForDay(date);
+
+    const normalized =
+      EventNormalizer.normalize(events);
+
+    return TimeBlockLayoutEngine
+      .generate(normalized)
+      .map(layout => ({
+
+        ...layout.event,
+
+        top: layout.top,
+        height: layout.height,
+
+        left: layout.left,
+        width: layout.width,
+
+        overlapIndex: layout.lane,
+        overlapCount: layout.laneCount
+      }));
   }
 
   // =========================
@@ -699,73 +748,5 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (hour === 0) return '00:00';
 
     return `${hour.toString().padStart(2, '0')}:00`;
-  }
-
-  getTimeBlocksForDay(date: Date): CalendarTimeBlock[] {
-
-    const events = this.getEventsForDay(date)
-      .filter(e => !e.allDayEvent)
-      .sort((a, b) =>
-        new Date(a.startDate).getTime() -
-        new Date(b.startDate).getTime()
-      );
-
-    const blocks: CalendarTimeBlock[] = [];
-
-    for (let i = 0; i < events.length; i++) {
-
-      const event = events[i];
-
-      const start = new Date(event.startDate);
-      const end = new Date(event.endDate);
-
-      const startMinutes =
-        start.getHours() * 60 + start.getMinutes();
-
-      const endMinutes =
-        end.getHours() * 60 + end.getMinutes();
-
-      const duration = endMinutes - startMinutes;
-
-      const top =
-        (startMinutes / 60) * this.HOUR_HEIGHT;
-
-      const height =
-        (duration / 60) * this.HOUR_HEIGHT;
-
-      const overlapping = events.filter(e => {
-
-        if (e.id === event.id) return false;
-
-        const s = new Date(e.startDate).getTime();
-        const en = new Date(e.endDate).getTime();
-
-        return start.getTime() < en &&
-          end.getTime() > s;
-      });
-
-      const overlapCount = overlapping.length + 1;
-
-      const overlapIndex = overlapping.filter(e =>
-        new Date(e.startDate).getTime() <
-        start.getTime()
-      ).length;
-
-      const width = 100 / overlapCount;
-
-      const left = overlapIndex * width;
-
-      blocks.push({
-        ...event,
-        top,
-        height,
-        overlapIndex,
-        overlapCount,
-        left,
-        width
-      });
-    }
-
-    return blocks;
   }
 }

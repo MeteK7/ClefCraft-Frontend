@@ -162,7 +162,7 @@
             <!-- Week view: now indicator (today's column only) -->
             <div *ngIf="isToday(date)" class="now-indicator" [style.top.px]="nowIndicatorTop">
             </div>
-            <div *ngFor="let block of getTimeBlocksForDay(date)" class="time-block-event" [style.top.px]="block.top"
+            <div *ngFor="let block of getWeekDayLayouts(date)" class="time-block-event" [style.top.px]="block.top"
               [style.height.px]="block.height" [style.left.%]="block.left" [style.width.%]="block.width"
               [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
               (click)="onEventClicked(block, $event)">
