@@ -89,6 +89,8 @@
             [style.grid-row]="item.lane + 1"
             [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
             [matTooltip]="getTooltip(item.event)"
+            matTooltipShowDelay="400"
+            matTooltipHideDelay="100"
             (click)="onEventClicked(item.event, $event)">
 
             <span class="event-title">
