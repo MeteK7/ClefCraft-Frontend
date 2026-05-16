@@ -1,5 +1,5 @@
 <div class="calendar-top-bar">
-  <!-- Title + back -->
+  <!-- Title -->
   <div class="calendar-header">
     <h1>Calendar</h1>
   </div>
@@ -28,116 +28,98 @@
 
   <!-- LEFT: NAVIGATION -->
   <div class="calendar-navigation">
-
-    <button mat-stroked-button class="nav-btn" (click)="goToPreviousMonth()">
-      &lt;
-    </button>
-
-    <button mat-flat-button class="today-btn" (click)="goToToday()">
-      Today
-    </button>
-
-    <button mat-stroked-button class="nav-btn" (click)="goToNextMonth()">
-      &gt;
-    </button>
-
+    <button mat-stroked-button class="nav-btn" (click)="goToPreviousMonth()">&lt;</button>
+    <button mat-flat-button   class="today-btn" (click)="goToToday()">Today</button>
+    <button mat-stroked-button class="nav-btn" (click)="goToNextMonth()">&gt;</button>
   </div>
 
   <!-- RIGHT: VIEW MODES -->
   <div class="view-mode-selector">
-
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'month'" (click)="setViewMode('month')">
-
-      Month
-    </button>
-
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'week'" (click)="setViewMode('week')">
-
-      Week
-    </button>
-
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'day'" (click)="setViewMode('day')">
-
-      Day
-    </button>
-
+    <button mat-button class="view-btn" [class.active-view]="viewMode === 'month'" (click)="setViewMode('month')">Month</button>
+    <button mat-button class="view-btn" [class.active-view]="viewMode === 'week'"  (click)="setViewMode('week')">Week</button>
+    <button mat-button class="view-btn" [class.active-view]="viewMode === 'day'"   (click)="setViewMode('day')">Day</button>
   </div>
 
 </div>
 
-<!-- Calendar Grid -->
-<!-- MONTH VIEW -->
+<!-- ==================== MONTH VIEW ==================== -->
 <div *ngIf="viewMode === 'month'" class="calendar-grid">
 
+  <!-- Day-of-week header -->
   <div class="calendar-header-row">
-    <div class="calendar-header-cell" *ngFor="let day of weekdays">
-      {{ day }}
-    </div>
+    <div class="calendar-header-cell" *ngFor="let day of weekdays">{{ day }}</div>
   </div>
 
+  <!-- Week rows -->
   <div class="calendar-week" *ngFor="let row of calendarGrid">
 
+    <!-- Day cell grid (day numbers + "more" indicators) -->
     <div class="days-grid">
-
-      <div *ngFor="let date of row" class="calendar-day"
+      <div
+        *ngFor="let date of row"
+        class="calendar-day"
         [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
-        [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
+        [class.selected]="isSameDate(date, selectedDate)"
+        [class.today]="isToday(date)"
         (click)="onEmptyDayClicked(date)">
 
         <div class="day">
           <span>{{ date.getDate() }}</span>
         </div>
+        <span
+          *ngIf="getHiddenCountForDay(date, row) > 0"
+          class="more-indicator"
+          [matMenuTriggerFor]="moreMenu"
+          (click)="onMoreClicked(date, row, $event)">
+          +{{ getHiddenCountForDay(date, row) }} more
+        </span>
 
       </div>
-
     </div>
 
+    <!-- Multi-day / spanning events overlay -->
     <div class="week-events-overlay">
-
       <div class="week-events-layer">
-
-        <ng-container *ngFor="let event of getEventsForWeek(row)">
-
-          <div *ngIf="getEventRowIndex(event, getEventsForWeek(row), row) < MAX_VISIBLE_LANES" class="event span-event"
-            [class.linked]="event.linkedBoardItemId"
-            [style.grid-column]="getEventColumnStart(event,row) + ' / span ' + getEventSpan(event,row)"
-            [style.grid-row]="getEventRowIndex(event, getEventsForWeek(row), row) + 1"
-            [ngStyle]="event.eventColor ? {'border-left': '6px solid ' + event.eventColor} : {}"
-            [matTooltip]="getTooltip(event)" (click)="onEventClicked(event, $event)">
+        <ng-container *ngFor="let item of getWeekLayout(row)">
+          <div
+            *ngIf="item.lane < MAX_VISIBLE_LANES"
+            class="event span-event"
+            [class.linked]="item.event.linkedBoardItemId"
+            [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan"
+            [style.grid-row]="item.lane + 1"
+            [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
+            [matTooltip]="getTooltip(item.event)"
+            matTooltipShowDelay="400"
+            matTooltipHideDelay="100"
+            (click)="onEventClicked(item.event, $event)">
 
             <span class="event-title">
-
-              <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">
-                link
-              </mat-icon>
-
-              {{ event.subject }}
-
+              <mat-icon *ngIf="item.event.linkedBoardItemId" class="linked-icon">link</mat-icon>
+              {{ item.event.subject }}
             </span>
 
-            <div class="attendance-indicator" *ngIf="event.attendanceScore != null"
-              [style.background]="attendanceColor(event.attendanceScore)">
+            <div
+              class="attendance-indicator"
+              *ngIf="item.event.attendanceScore != null"
+              [style.background]="attendanceColor(item.event.attendanceScore)">
             </div>
 
           </div>
-
         </ng-container>
 
       </div>
-
     </div>
 
   </div>
 
 </div>
 
-<!-- WEEK VIEW -->
+<!-- ==================== WEEK VIEW ==================== -->
 <div *ngIf="viewMode === 'week'" class="week-view-wrapper">
 
-  <!-- Single scroll area containing both header and body -->
   <div class="week-scroll-area">
 
-    <!-- Sticky Header Row (moved inside scroll area) -->
+    <!-- Sticky header -->
     <div class="week-header-row">
       <div class="time-header"></div>
       <div *ngFor="let date of weekViewDates" class="week-day-header" [class.today]="isToday(date)">
@@ -146,85 +128,81 @@
       </div>
     </div>
 
-    <!-- Body: time column + day columns -->
+    <!-- Body -->
     <div class="week-body">
 
       <div class="time-column">
-        <div *ngFor="let hour of hours" class="time-slot-label">
-          {{ formatHour(hour) }}
-        </div>
+        <div *ngFor="let hour of hours" class="time-slot-label">{{ formatHour(hour) }}</div>
       </div>
 
       <div class="week-days-container">
-        <div *ngFor="let date of weekViewDates" class="week-day-column">
+        <div *ngFor="let date of weekViewDates" class="week-day-column" [class.today]="isToday(date)">
           <div class="week-day-grid">
+
             <div *ngFor="let hour of hours" class="hour-row"></div>
-            <!-- Week view: now indicator (today's column only) -->
-            <div *ngIf="isToday(date)" class="now-indicator" [style.top.px]="nowIndicatorTop">
-            </div>
-            <div *ngFor="let block of getWeekDayLayouts(date)" class="time-block-event" [style.top.px]="block.top"
-              [style.height.px]="block.height" [style.left.%]="block.left" [style.width.%]="block.width"
+
+            <!-- Now indicator (today only) -->
+            <div *ngIf="isToday(date)" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
+
+            <!-- Positioned time-block events -->
+            <div
+              *ngFor="let block of getWeekDayLayouts(date)"
+              class="time-block-event"
+              [style.top.px]="block.top"
+              [style.height.px]="block.height"
+              [style.left.%]="block.left"
+              [style.width.%]="block.width"
               [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
               (click)="onEventClicked(block, $event)">
               <div class="time-block-title">{{ block.subject }}</div>
-              <div class="time-block-time">
-                {{ block.startDate | date:'HH:mm' }} - {{ block.endDate | date:'HH:mm' }}
-              </div>
+              <div class="time-block-time">{{ block.startDate | date:'HH:mm' }} – {{ block.endDate | date:'HH:mm' }}</div>
             </div>
+
           </div>
         </div>
       </div>
 
     </div>
   </div>
+
 </div>
 
-<!-- DAY VIEW -->
+<!-- ==================== DAY VIEW ==================== -->
 <div *ngIf="viewMode === 'day'" class="day-time-layout">
 
   <!-- Time labels -->
   <div class="time-column">
-
-    <div *ngFor="let hour of hours" class="time-slot-label">
-
-      {{ formatHour(hour) }}
-
-    </div>
-
+    <div *ngFor="let hour of hours" class="time-slot-label">{{ formatHour(hour) }}</div>
   </div>
 
   <!-- Day timeline -->
   <div class="day-timeline">
 
-    <!-- Grid -->
-    <div *ngFor="let hour of hours" class="hour-row">
-    </div>
+    <div *ngFor="let hour of hours" class="hour-row"></div>
+
+    <!-- Now indicator -->
     <div *ngIf="isToday(selectedDate)" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
 
-    <!-- Events -->
-    <div *ngFor="let block of dayViewBlocks" class="time-block-event" [style.top.px]="block.top"
-      [style.height.px]="block.height" [style.left.%]="block.left" [style.width.%]="block.width"
+    <!-- Positioned time-block events -->
+    <div
+      *ngFor="let block of dayViewBlocks"
+      class="time-block-event"
+      [style.top.px]="block.top"
+      [style.height.px]="block.height"
+      [style.left.%]="block.left"
+      [style.width.%]="block.width"
       [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
       (click)="onEventClicked(block, $event)">
-
-      <div class="time-block-title">
-        {{ block.subject }}
-      </div>
-
-      <div class="time-block-time">
-        {{ block.startDate | date:'HH:mm' }}
-        -
-        {{ block.endDate | date:'HH:mm' }}
-      </div>
-
+      <div class="time-block-title">{{ block.subject }}</div>
+      <div class="time-block-time">{{ block.startDate | date:'HH:mm' }} – {{ block.endDate | date:'HH:mm' }}</div>
     </div>
 
   </div>
 
 </div>
 
-<!-- 🔽 POPOVER MENU -->
 <mat-menu #moreMenu="matMenu" class="more-menu">
+
   <div class="more-menu-header">
     {{ selectedMoreDate | date: 'EEE, MMM d' }}
   </div>
@@ -232,4 +210,5 @@
   <button mat-menu-item *ngFor="let event of selectedMoreEvents" (click)="onEventClicked(event, $event)">
     {{ event.subject }}
   </button>
+
 </mat-menu>
