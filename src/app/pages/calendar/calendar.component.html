@@ -66,12 +66,6 @@
         <div class="day">
           <span>{{ date.getDate() }}</span>
         </div>
-
-        <!--
-          "More" indicator — shown when events overflow MAX_VISIBLE_LANES.
-          FIX: was defined in the template (mat-menu) but never triggered.
-          Now wired with [matMenuTriggerFor] + onMoreClicked().
-        -->
         <span
           *ngIf="getHiddenCountForDay(date, row) > 0"
           class="more-indicator"
@@ -86,12 +80,6 @@
     <!-- Multi-day / spanning events overlay -->
     <div class="week-events-overlay">
       <div class="week-events-layer">
-
-        <!--
-          FIX: previously called getEventsForWeek(row) + getEventRowIndex/Span/ColumnStart
-          per event in the template (O(n²) per week row, duplicated MonthLayoutEngine logic).
-          Now uses pre-computed getWeekLayout(row) — a single Map lookup, O(1).
-        -->
         <ng-container *ngFor="let item of getWeekLayout(row)">
           <div
             *ngIf="item.lane < MAX_VISIBLE_LANES"
@@ -211,11 +199,6 @@
 
 </div>
 
-<!-- ==================== "MORE" POPOVER MENU ==================== -->
-<!--
-  FIX: this menu existed before but had no trigger in the template.
-  Trigger is now on the .more-indicator <span> inside each .calendar-day.
--->
 <mat-menu #moreMenu="matMenu" class="more-menu">
 
   <div class="more-menu-header">
