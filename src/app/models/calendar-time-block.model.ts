@@ -1,4 +1,4 @@
-import { CalendarEventUI } from './calendar-event.model-ui';
+import { CalendarEventUI } from "./calendar-event.model-ui";
 
 /**
  * A CalendarEventUI enriched with absolute pixel-positioning data
