@@ -201,6 +201,71 @@
 
 </div>
 
+<!-- ==================== AGENDA VIEW ==================== -->
+<div *ngIf="viewMode === 'agenda'" class="agenda-view">
+
+  <div *ngIf="agendaDayGroups.length === 0" class="agenda-empty">
+    <mat-icon class="agenda-empty-icon">event_available</mat-icon>
+    <p>No events in the next 30 days.</p>
+  </div>
+
+  <div *ngFor="let group of agendaDayGroups" class="agenda-day-group">
+
+    <!-- Day header -->
+    <div class="agenda-day-header" [class.agenda-today]="isToday(group.date)">
+      <span class="agenda-day-name">{{ group.date | date:'EEE' }}</span>
+      <span class="agenda-day-number">{{ group.date | date:'d' }}</span>
+      <span class="agenda-month-year">{{ group.date | date:'MMM y' }}</span>
+      <span *ngIf="isToday(group.date)" class="agenda-today-badge">Today</span>
+    </div>
+
+    <!-- Events for the day -->
+    <div class="agenda-events">
+      <div
+        *ngFor="let event of group.events"
+        class="agenda-event"
+        [class.linked]="event.linkedBoardItemId"
+        [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
+        [matTooltip]="getTooltip(event)"
+        matTooltipShowDelay="400"
+        matTooltipHideDelay="100"
+        (click)="onEventClicked(event, $event)">
+
+        <!-- Time column -->
+        <div class="agenda-event-time">
+          <ng-container *ngIf="event.allDayEvent; else timedEvent">
+            <span class="agenda-allday-badge">All day</span>
+          </ng-container>
+          <ng-template #timedEvent>
+            <span class="agenda-time-start">{{ event.startDate | date:'HH:mm' }}</span>
+            <span class="agenda-time-sep">–</span>
+            <span class="agenda-time-end">{{ event.endDate | date:'HH:mm' }}</span>
+          </ng-template>
+        </div>
+
+        <!-- Content column -->
+        <div class="agenda-event-content">
+          <div class="agenda-event-title">
+            <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
+            {{ event.subject }}
+          </div>
+          <div *ngIf="event.eventTypeName" class="agenda-event-type">{{ event.eventTypeName }}</div>
+        </div>
+
+        <!-- Attendance dot -->
+        <div
+          *ngIf="event.attendanceScore != null"
+          class="agenda-attendance-dot"
+          [style.background]="attendanceColor(event.attendanceScore)">
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
 <mat-menu #moreMenu="matMenu" class="more-menu">
 
   <div class="more-menu-header">
