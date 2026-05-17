@@ -791,6 +791,191 @@
   overflow: hidden;
 }
 
+/* ==================== AGENDA VIEW ==================== */
+
+.agenda-view {
+  padding: 0 0 2rem;
+}
+
+.agenda-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  color: var(--mdc-theme-text-secondary-on-background, #888);
+  gap: 0.75rem;
+}
+
+.agenda-empty-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  opacity: 0.35;
+}
+
+.agenda-day-group {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  min-height: 56px;
+}
+
+.agenda-day-group:first-child {
+  border-top: none;
+}
+
+/* Day header */
+.agenda-day-header {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 20px 14px 0;
+  gap: 1px;
+  position: sticky;
+  top: 0;
+  background: var(--mdc-theme-background, #fafafa);
+  align-self: start;
+}
+
+.agenda-today .agenda-day-number {
+  color: #1a73e8;
+  font-weight: 600;
+}
+
+.agenda-day-name {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  font-weight: 500;
+}
+
+.agenda-day-number {
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
+  color: #333;
+}
+
+.agenda-month-year {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.agenda-today-badge {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: #1a73e8;
+  border-radius: 4px;
+  padding: 2px 6px;
+  width: fit-content;
+}
+
+/* Events column */
+.agenda-events {
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agenda-event {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-left: 4px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.agenda-event:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.agenda-event.linked {
+  opacity: 0.9;
+}
+
+/* Time column */
+.agenda-event-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 80px;
+  flex-shrink: 0;
+  gap: 1px;
+}
+
+.agenda-time-start,
+.agenda-time-end {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+
+.agenda-time-sep {
+  font-size: 11px;
+  color: #bbb;
+}
+
+.agenda-allday-badge {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+/* Content column */
+.agenda-event-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.agenda-event-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.agenda-event-title .linked-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: #888;
+  flex-shrink: 0;
+}
+
+.agenda-event-type {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+/* Attendance dot */
+.agenda-attendance-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 @keyframes flashBorder {
   0% {
     border-color: #2196f3;
