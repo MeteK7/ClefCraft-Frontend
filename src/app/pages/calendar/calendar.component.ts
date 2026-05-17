@@ -13,15 +13,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 
 import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
-import { CalendarViewMode } from './types/calendar-view-mode.type';
-import { CalendarEventUI } from './models/calendar-event.model-ui';
-import { CalendarTimeBlock } from './models/calendar-time-block.model';
-import { SavePayload } from './models/save-payload.model';
+import { CalendarEventUI } from '../../calendar-engine/models/calendar-event.model-ui';
+import { CalendarTimeBlock } from '../../calendar-engine/models/calendar-time-block.model';
+import { SavePayload } from '../../calendar-engine/models/save-payload.model';
 
 import { EventNormalizer } from '../../calendar-engine/utils/event-normalizer';
 import { TimeBlockLayoutEngine } from '../../calendar-engine/layout/time-block-layout-engine';
 import { MonthLayoutEngine, MonthLayoutItem } from '../../calendar-engine/layout/month-layout-engine';
 import { DateUtils } from '../../calendar-engine/utils/date.utils';
+import { AgendaDayGroup } from '../../calendar-engine/models/agenda-day-group.model';
+import { CalendarViewMode } from '../../calendar-engine/types/calendar-view-model.type';
 
 @Component({
   selector: 'app-calendar',
@@ -55,13 +56,18 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   weekdays: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  agendaDayGroups: AgendaDayGroup[] = [];
+  
   readonly MAX_VISIBLE_LANES = 3;
+  readonly AGENDA_DAYS = 30;
 
   selectedMoreEvents: CalendarEventUI[] = [];
   selectedMoreDate: Date | null = null;
 
   attendanceLabel = getAttendanceLabel;
   attendanceColor = getAttendanceColor;
+
+
 
   // =========================
   // VIEW MODES
@@ -131,6 +137,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       case 'month': this.generateCalendarGrid(); break;
       case 'week':  this.generateWeekView();     break;
       case 'day':   this.generateDayView();      break;
+      case 'agenda': this.generateAgendaView();   break;
     }
   }
 
@@ -159,6 +166,30 @@ export class CalendarComponent implements OnInit, OnDestroy {
       overlapIndex: layout.lane,
       overlapCount: layout.laneCount,
     }));
+  }
+
+    generateAgendaView(): void {
+    const groups: AgendaDayGroup[] = [];
+ 
+    for (let i = 0; i < this.AGENDA_DAYS; i++) {
+      const date = new Date(this.selectedDate);
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() + i);
+ 
+      const events = this.getEventsForDay(date)
+        .slice()
+        .sort((a, b) => {
+          if (a.allDayEvent && !b.allDayEvent) return -1;
+          if (!a.allDayEvent && b.allDayEvent) return 1;
+          return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+        });
+ 
+      if (events.length > 0) {
+        groups.push({ date, events });
+      }
+    }
+ 
+    this.agendaDayGroups = groups;
   }
 
   getWeekDayLayouts(date: Date): CalendarTimeBlock[] {

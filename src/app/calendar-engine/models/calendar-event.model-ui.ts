@@ -1,4 +1,4 @@
-import { EventType } from "../../../models/event-type.model";
+import { EventType } from "../../models/event-type.model";
 
 export interface CalendarEventUI {
   id: number;
