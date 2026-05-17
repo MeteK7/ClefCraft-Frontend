@@ -11,18 +11,16 @@ import { CalendarService } from '../../_services/calendar.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-
 import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
-import { CalendarEventUI } from '../../calendar-engine/models/calendar-event.model-ui';
-import { CalendarTimeBlock } from '../../calendar-engine/models/calendar-time-block.model';
-import { SavePayload } from '../../calendar-engine/models/save-payload.model';
-
 import { EventNormalizer } from '../../calendar-engine/utils/event-normalizer';
 import { TimeBlockLayoutEngine } from '../../calendar-engine/layout/time-block-layout-engine';
 import { MonthLayoutEngine, MonthLayoutItem } from '../../calendar-engine/layout/month-layout-engine';
 import { DateUtils } from '../../calendar-engine/utils/date.utils';
-import { AgendaDayGroup } from '../../calendar-engine/models/agenda-day-group.model';
+import { AgendaDayGroup } from '../../models/agenda-day-group.model';
 import { CalendarViewMode } from '../../calendar-engine/types/calendar-view-model.type';
+import { CalendarEventUI } from '../../models/calendar-event.model-ui';
+import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
+import { SavePayload } from '../../models/save-payload.model';
 
 @Component({
   selector: 'app-calendar',
@@ -57,7 +55,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   weekdays: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   agendaDayGroups: AgendaDayGroup[] = [];
-  
+
   readonly MAX_VISIBLE_LANES = 3;
   readonly AGENDA_DAYS = 30;
 
@@ -135,9 +133,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
   generateCurrentView(): void {
     switch (this.viewMode) {
       case 'month': this.generateCalendarGrid(); break;
-      case 'week':  this.generateWeekView();     break;
-      case 'day':   this.generateDayView();      break;
-      case 'agenda': this.generateAgendaView();   break;
+      case 'week': this.generateWeekView(); break;
+      case 'day': this.generateDayView(); break;
+      case 'agenda': this.generateAgendaView(); break;
     }
   }
 
@@ -154,28 +152,28 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   generateDayView(): void {
-    const dayEvents  = this.getEventsForDay(this.selectedDate);
+    const dayEvents = this.getEventsForDay(this.selectedDate);
     const normalized = EventNormalizer.normalize(dayEvents);
 
     this.dayViewBlocks = TimeBlockLayoutEngine.generate(normalized).map(layout => ({
       ...layout.event,
-      top:    layout.top,
+      top: layout.top,
       height: layout.height,
-      left:   layout.left,
-      width:  layout.width,
+      left: layout.left,
+      width: layout.width,
       overlapIndex: layout.lane,
       overlapCount: layout.laneCount,
     }));
   }
 
-    generateAgendaView(): void {
+  generateAgendaView(): void {
     const groups: AgendaDayGroup[] = [];
- 
+
     for (let i = 0; i < this.AGENDA_DAYS; i++) {
       const date = new Date(this.selectedDate);
       date.setHours(0, 0, 0, 0);
       date.setDate(date.getDate() + i);
- 
+
       const events = this.getEventsForDay(date)
         .slice()
         .sort((a, b) => {
@@ -183,25 +181,25 @@ export class CalendarComponent implements OnInit, OnDestroy {
           if (!a.allDayEvent && b.allDayEvent) return 1;
           return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
         });
- 
+
       if (events.length > 0) {
         groups.push({ date, events });
       }
     }
- 
+
     this.agendaDayGroups = groups;
   }
 
   getWeekDayLayouts(date: Date): CalendarTimeBlock[] {
-    const events     = this.getEventsForDay(date);
+    const events = this.getEventsForDay(date);
     const normalized = EventNormalizer.normalize(events);
 
     return TimeBlockLayoutEngine.generate(normalized).map(layout => ({
       ...layout.event,
-      top:    layout.top,
+      top: layout.top,
       height: layout.height,
-      left:   layout.left,
-      width:  layout.width,
+      left: layout.left,
+      width: layout.width,
       overlapIndex: layout.lane,
       overlapCount: layout.laneCount,
     }));
@@ -219,12 +217,12 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
       case 'month':
         start = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1);
-        end   = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth() + 1, 1);
+        end = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth() + 1, 1);
         break;
 
       case 'week':
         start = new Date(this.weekViewDates[0]);
-        end   = new Date(this.weekViewDates[6]);
+        end = new Date(this.weekViewDates[6]);
         end.setDate(end.getDate() + 1);
         break;
 
@@ -237,7 +235,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
       default:
         start = new Date();
-        end   = new Date();
+        end = new Date();
         break;
     }
 
@@ -245,10 +243,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
       (events: any[]) => {
         this.events = events.map(event => ({
           ...event,
-          startDate:     this.convertToLocalDate(event.startDate),
-          endDate:       this.convertToLocalDate(event.endDate),
+          startDate: this.convertToLocalDate(event.startDate),
+          endDate: this.convertToLocalDate(event.endDate),
           eventTypeName: event.eventTypeName,
-          eventColor:    event.eventColor,
+          eventColor: event.eventColor,
           attendanceScore: event.attendanceScore,
         }));
 
@@ -267,14 +265,14 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // =========================
 
   generateCalendarGrid(): void {
-    const year  = this.selectedDate.getFullYear();
+    const year = this.selectedDate.getFullYear();
     const month = this.selectedDate.getMonth();
 
-    const firstOfMonth   = new Date(year, month, 1);
-    const lastOfMonth    = new Date(year, month + 1, 0);
-    const startDay       = (firstOfMonth.getDay() + 6) % 7;
-    const daysInMonth    = lastOfMonth.getDate();
-    const prevMonthLast  = new Date(year, month, 0).getDate();
+    const firstOfMonth = new Date(year, month, 1);
+    const lastOfMonth = new Date(year, month + 1, 0);
+    const startDay = (firstOfMonth.getDay() + 6) % 7;
+    const daysInMonth = lastOfMonth.getDate();
+    const prevMonthLast = new Date(year, month, 0).getDate();
 
     this.calendarGrid = [];
     let row: Date[] = [];
@@ -335,9 +333,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
    * cover a specific day cell within the week.
    */
   getHiddenCountForDay(date: Date, week: Date[]): number {
-    const dayMs      = this.toDateOnly(date);
+    const dayMs = this.toDateOnly(date);
     const weekStartMs = this.toDateOnly(week[0]);
-    const colIdx     = Math.floor((dayMs - weekStartMs) / DateUtils.DAY_MS) + 1; // 1-based
+    const colIdx = Math.floor((dayMs - weekStartMs) / DateUtils.DAY_MS) + 1; // 1-based
 
     return this.getWeekLayout(week).filter(item =>
       item.lane >= this.MAX_VISIBLE_LANES &&
@@ -355,7 +353,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
     return this.events.filter(event => {
       const start = this.toDateOnly(new Date(event.startDate));
-      const end   = this.toDateOnly(new Date(event.endDate));
+      const end = this.toDateOnly(new Date(event.endDate));
       return start <= day && end >= day;
     });
   }
@@ -377,8 +375,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const today = new Date();
     return (
       date.getFullYear() === today.getFullYear() &&
-      date.getMonth()    === today.getMonth()    &&
-      date.getDate()     === today.getDate()
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate()
     );
   }
 
@@ -409,8 +407,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
   isSameDate(date1: Date, date2: Date): boolean {
     return (
       date1.getFullYear() === date2.getFullYear() &&
-      date1.getMonth()    === date2.getMonth()    &&
-      date1.getDate()     === date2.getDate()
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
     );
   }
 
@@ -496,9 +494,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
   onMoreClicked(date: Date, week: Date[], e: MouseEvent): void {
     e.stopPropagation();
 
-    const dayMs       = this.toDateOnly(date);
+    const dayMs = this.toDateOnly(date);
     const weekStartMs = this.toDateOnly(week[0]);
-    const colIdx      = Math.floor((dayMs - weekStartMs) / DateUtils.DAY_MS) + 1;
+    const colIdx = Math.floor((dayMs - weekStartMs) / DateUtils.DAY_MS) + 1;
 
     this.selectedMoreEvents = this.getWeekLayout(week)
       .filter(item =>
@@ -526,13 +524,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
       const save$ = isOccurrence
         ? this.calendarService.updateSingleOccurrence({
-            eventId:        record.baseEventId,
-            occurrenceDate: record.startDate,
-            subject:        record.subject,
-            comment:        record.comment,
-            startDate:      record.startDate,
-            endDate:        record.endDate,
-          })
+          eventId: record.baseEventId!,
+          occurrenceDate: new Date(record.startDate).toISOString(),
+          subject: record.subject,
+          comment: record.comment,
+          startDate: new Date(record.startDate).toISOString(),
+          endDate: new Date(record.endDate).toISOString(),
+        })
         : record.id
           ? this.calendarService.updateEvent(record.id, record)
           : this.calendarService.saveEvent(record);
