@@ -1,10 +1,6 @@
 <div class="calendar-top-bar">
-  <!-- Title -->
-  <div class="calendar-header">
-    <h1>Calendar</h1>
-  </div>
 
-  <!-- Selected date summary -->
+  <!-- LEFT: Selected date summary -->
   <div class="selected-date-summary">
     <h3>{{ selectedDate | date: 'EEEE, MMMM d, y' }}</h3>
     <p>
@@ -12,33 +8,57 @@
     </p>
   </div>
 
+  <!-- Navigation -->
+  <div class="calendar-navigation">
+    <button mat-stroked-button class="nav-btn" (click)="goToPreviousMonth()">&lt;</button>
+    <button mat-flat-button class="today-btn" (click)="goToToday()">Today</button>
+    <button mat-stroked-button class="nav-btn" (click)="goToNextMonth()">&gt;</button>
+  </div>
+
+  <!-- Spacer -->
+  <div class="top-bar-spacer"></div>
+
+  <!-- View modes -->
+  <div class="view-mode-selector">
+    <button mat-button class="view-btn"
+      [class.active-view]="viewMode === 'month'"
+      (click)="setViewMode('month')">
+      Month
+    </button>
+
+    <button mat-button class="view-btn"
+      [class.active-view]="viewMode === 'week'"
+      (click)="setViewMode('week')">
+      Week
+    </button>
+
+    <button mat-button class="view-btn"
+      [class.active-view]="viewMode === 'day'"
+      (click)="setViewMode('day')">
+      Day
+    </button>
+
+    <button mat-button class="view-btn"
+      [class.active-view]="viewMode === 'agenda'"
+      (click)="setViewMode('agenda')">
+      Agenda
+    </button>
+  </div>
+
   <!-- Datepicker -->
   <div class="calendar-container">
     <mat-form-field appearance="outline">
       <mat-label>Select a date</mat-label>
-      <input matInput [matDatepicker]="picker" (dateChange)="onDateSelectedFromPicker($event.value)" />
+
+      <input
+        matInput
+        [matDatepicker]="picker"
+        (dateChange)="onDateSelectedFromPicker($event.value)" />
+
       <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+
       <mat-datepicker #picker></mat-datepicker>
     </mat-form-field>
-  </div>
-</div>
-
-<!-- CALENDAR CONTROLS -->
-<div class="calendar-controls">
-
-  <!-- LEFT: NAVIGATION -->
-  <div class="calendar-navigation">
-    <button mat-stroked-button class="nav-btn" (click)="goToPreviousMonth()">&lt;</button>
-    <button mat-flat-button   class="today-btn" (click)="goToToday()">Today</button>
-    <button mat-stroked-button class="nav-btn" (click)="goToNextMonth()">&gt;</button>
-  </div>
-
-  <!-- RIGHT: VIEW MODES -->
-  <div class="view-mode-selector">
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'month'" (click)="setViewMode('month')">Month</button>
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'week'"  (click)="setViewMode('week')">Week</button>
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'day'"   (click)="setViewMode('day')">Day</button>
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'agenda'" (click)="setViewMode('agenda')">Agenda</button>
   </div>
 
 </div>
