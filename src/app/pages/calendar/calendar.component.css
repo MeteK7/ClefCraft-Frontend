@@ -4,9 +4,14 @@
 
 .calendar-top-bar {
   display: flex;
-  gap: 24px;
+  align-items: center;
+  gap: 16px;
   flex-wrap: wrap;
-  /* responsive */
+}
+
+
+.top-bar-spacer {
+  flex: 1;
 }
 
 /* Title + back button */
@@ -23,7 +28,7 @@
 
 /* Selected date summary (center area) */
 .selected-date-summary {
-  flex: 1;
+  flex: 0 0 auto;
   text-align: left;
   margin: 0;
 }
@@ -357,21 +362,6 @@
   border-radius: 5px;
   box-shadow: 0 0 8px 2px rgba(33, 150, 243, 0.6);
   animation: flashBorder 2s ease forwards;
-}
-
-/* =========================
-   CALENDAR CONTROLS BAR
-   ========================= */
-
-.calendar-controls {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  gap: 16px;
-  margin-bottom: 14px;
-
-  flex-wrap: wrap;
 }
 
 /* =========================
