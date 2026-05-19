@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../_services/auth.service';
 import { ToastrService } from 'ngx-toastr';
@@ -8,29 +8,52 @@ import { ToastrService } from 'ngx-toastr';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent {
-  email: string = '';
-  password: string = '';
+  isLoading = false;
+  showPassword = false;
 
-  constructor(private authService: AuthService, private router: Router, private toastr: ToastrService) {}
+  form = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required, Validators.minLength(6)]]
+  });
 
-  onSubmit(): void {
-    this.authService.login(this.email, this.password).subscribe(
-      response => {
-        console.log('Login successful', response);
-        // Display message and navigate to the homepage
-        this.toastr.success('Login successful', 'Success');
-        localStorage.setItem('token', response.token); //TEST
+  constructor(
+    private fb: FormBuilder,
+    private authService: AuthService,
+    private router: Router,
+    private toastr: ToastrService
+  ) { }
+
+  togglePassword(): void {
+    this.showPassword = !this.showPassword;
+  }
+
+  submit(): void {
+    if (this.form.invalid) return;
+
+    this.isLoading = true;
+
+    const { email, password } = this.form.value;
+
+    this.authService.login(email!, password!).subscribe({
+      next: (res) => {
+        this.isLoading = false;
+
+        // ✅ single responsibility: component stores token
+        this.authService.setToken(res.token);
+
+        this.toastr.success('Welcome back!', 'Login successful');
+
         this.router.navigate(['/home']);
       },
-      error => {
-        console.error('Login failed', error);
-        this.toastr.error('Login failed', 'Error');
+      error: () => {
+        this.isLoading = false;
+        this.toastr.error('Invalid email or password', 'Login failed');
       }
-    );
+    });
   }
 }

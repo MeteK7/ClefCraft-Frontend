@@ -1,18 +1,48 @@
-<div class="login-container">
+<div class="auth-container">
+  <div class="auth-card">
+
     <h2>Login</h2>
-    <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
-      <div>
-        <label for="email">Email</label>
-        <input type="email" id="email" [(ngModel)]="email" name="email" required />
+    <p class="subtitle">Welcome back! Please sign in.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+
+      <!-- Email -->
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" formControlName="email" placeholder="Enter email" />
+
+        <small class="error" *ngIf="form.controls.email.touched && form.controls.email.invalid">
+          Valid email is required
+        </small>
       </div>
-      <div>
-        <label for="password">Password</label>
-        <input type="password" id="password" [(ngModel)]="password" name="password" required />
+
+      <!-- Password -->
+      <div class="form-group">
+        <label>Password</label>
+
+        <div class="password-wrapper">
+          <input [type]="showPassword ? 'text' : 'password'" formControlName="password" placeholder="Enter password" />
+
+          <button type="button" class="toggle" (click)="togglePassword()">
+            {{ showPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+
+        <small class="error" *ngIf="form.controls.password.touched && form.controls.password.invalid">
+          Password must be at least 6 characters
+        </small>
       </div>
-      <button type="submit" [disabled]="!loginForm.form.valid">Login</button>
+
+      <!-- Submit -->
+      <button type="submit" [disabled]="form.invalid || isLoading">
+        {{ isLoading ? 'Logging in...' : 'Login' }}
+      </button>
+
     </form>
-    <div class="sign-up">
-        <p>New member? <a routerLink="/registration">Sign up!</a></p>
+
+    <div class="footer">
+      <p>New user? <a routerLink="/registration">Create account</a></p>
     </div>
+
+  </div>
 </div>
-  
