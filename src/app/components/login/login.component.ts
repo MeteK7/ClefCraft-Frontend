@@ -26,7 +26,7 @@ export class LoginComponent {
     private authService: AuthService,
     private router: Router,
     private toastr: ToastrService
-  ) {}
+  ) { }
 
   togglePassword(): void {
     this.showPassword = !this.showPassword;
@@ -43,9 +43,10 @@ export class LoginComponent {
       next: (res) => {
         this.isLoading = false;
 
-        this.toastr.success('Welcome back!', 'Login successful');
-
+        // ✅ single responsibility: component stores token
         this.authService.setToken(res.token);
+
+        this.toastr.success('Welcome back!', 'Login successful');
 
         this.router.navigate(['/home']);
       },
