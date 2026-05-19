@@ -17,15 +17,11 @@
       </div>
 
       <!-- Password -->
-      <div class="form-group password-group">
+      <div class="form-group">
         <label>Password</label>
 
         <div class="password-wrapper">
-          <input
-            [type]="showPassword ? 'text' : 'password'"
-            formControlName="password"
-            placeholder="Enter password"
-          />
+          <input [type]="showPassword ? 'text' : 'password'" formControlName="password" placeholder="Enter password" />
 
           <button type="button" class="toggle" (click)="togglePassword()">
             {{ showPassword ? 'Hide' : 'Show' }}
