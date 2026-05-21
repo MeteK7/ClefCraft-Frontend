@@ -21,6 +21,10 @@ import { CalendarViewMode } from '../../calendar-engine/types/calendar-view-mode
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
 import { SavePayload } from '../../models/save-payload.model';
+import { DragSession } from '../../calendar-engine/interactions/drag/drag-session.model';
+import { ResizeSession } from '../../calendar-engine/interactions/resize/resize-session.model';
+import { EventDragEngine } from '../../calendar-engine/interactions/drag/event-drag-engine';
+import { EventResizeEngine } from '../../calendar-engine/interactions/resize/event-resize-engine';
 
 @Component({
   selector: 'app-calendar',
@@ -65,7 +69,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
   attendanceLabel = getAttendanceLabel;
   attendanceColor = getAttendanceColor;
 
+  dragSession: DragSession | null = null;
 
+  resizeSession: ResizeSession | null = null;
 
   // =========================
   // VIEW MODES
@@ -576,5 +582,128 @@ export class CalendarComponent implements OnInit, OnDestroy {
   formatHour(hour: number): string {
     if (hour === 0) return '00:00';
     return `${hour.toString().padStart(2, '0')}:00`;
+  }
+
+  startDrag(
+    e: MouseEvent,
+    block: CalendarTimeBlock,
+    date: Date
+  ): void {
+
+    e.stopPropagation();
+
+    this.dragSession = {
+      event: block,
+      startMouseY: e.clientY,
+      startMouseX: e.clientX,
+      originalStart: new Date(block.startDate),
+      originalEnd: new Date(block.endDate),
+      originalTop: block.top,
+      sourceDate: date,
+    };
+
+    window.addEventListener('mousemove', this.onDragging);
+    window.addEventListener('mouseup', this.stopDrag);
+  }
+
+  onDragging = (e: MouseEvent): void => {
+
+    if (!this.dragSession) return;
+
+    const deltaY =
+      e.clientY - this.dragSession.startMouseY;
+
+    const minuteDelta =
+      EventDragEngine.calculateMinuteDelta(deltaY);
+
+    const updated =
+      EventDragEngine.moveDates(
+        this.dragSession.originalStart,
+        this.dragSession.originalEnd,
+        minuteDelta
+      );
+
+    this.dragSession.event.startDate = updated.start;
+    this.dragSession.event.endDate = updated.end;
+
+    this.generateCurrentView();
+  };
+
+  stopDrag = (): void => {
+
+    if (!this.dragSession) return;
+
+    const event = this.dragSession.event;
+
+    this.calendarService.updateEvent(event.id, event)
+      .subscribe();
+
+    this.dragSession = null;
+
+    window.removeEventListener('mousemove', this.onDragging);
+    window.removeEventListener('mouseup', this.stopDrag);
+  }
+
+  startResize(
+    e: MouseEvent,
+    block: CalendarTimeBlock,
+    direction: 'top' | 'bottom'
+  ): void {
+
+    e.stopPropagation();
+
+    this.resizeSession = {
+      event: block,
+      direction,
+      startMouseY: e.clientY,
+      originalStart: new Date(block.startDate),
+      originalEnd: new Date(block.endDate),
+      originalTop: block.top,
+      originalHeight: block.height,
+    };
+
+    window.addEventListener('mousemove', this.onResizing);
+    window.addEventListener('mouseup', this.stopResize);
+  }
+
+  onResizing = (e: MouseEvent): void => {
+
+    if (!this.resizeSession) return;
+
+    const deltaY =
+      e.clientY - this.resizeSession.startMouseY;
+
+    const updated =
+      this.resizeSession.direction === 'top'
+        ? EventResizeEngine.resizeTop(
+          this.resizeSession.originalStart,
+          this.resizeSession.originalEnd,
+          deltaY
+        )
+        : EventResizeEngine.resizeBottom(
+          this.resizeSession.originalStart,
+          this.resizeSession.originalEnd,
+          deltaY
+        );
+
+    this.resizeSession.event.startDate = updated.start;
+    this.resizeSession.event.endDate = updated.end;
+
+    this.generateCurrentView();
+  };
+
+  stopResize = (): void => {
+
+    if (!this.resizeSession) return;
+
+    const event = this.resizeSession.event;
+
+    this.calendarService.updateEvent(event.id, event)
+      .subscribe();
+
+    this.resizeSession = null;
+
+    window.removeEventListener('mousemove', this.onResizing);
+    window.removeEventListener('mouseup', this.stopResize);
   }
 }

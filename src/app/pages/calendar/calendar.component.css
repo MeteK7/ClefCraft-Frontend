@@ -392,6 +392,7 @@
 .today-btn {
   min-width: 90px;
 }
+
 /* =========================
    VIEW MODES
    ========================= */
@@ -964,6 +965,30 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  z-index: 20;
+}
+
+.resize-handle.top {
+  top: 0;
+  cursor: ns-resize;
+}
+
+.resize-handle.bottom {
+  bottom: 0;
+  cursor: ns-resize;
+}
+
+.time-block-event.dragging {
+  opacity: 0.85;
+  transform: scale(1.02);
+  z-index: 100;
 }
 
 @keyframes flashBorder {

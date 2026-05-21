@@ -1,60 +1,102 @@
-.registration-container {
-    max-width: 400px;
-    margin: 0 auto;
-    padding: 1em;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  }
-  
-  h2 {
-    text-align: center;
-  }
-  
-  form div {
-    margin-bottom: 1em;
-  }
-  
-  label {
-    display: block;
-    margin-bottom: 0.5em;
-  }
-  
-  input {
-    width: 100%;
-    padding: 0.5em;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-sizing: border-box;
-  }
-  
-  button {
-    width: 100%;
-    padding: 0.7em;
-    border: none;
-    border-radius: 5px;
-    background-color: #007bff;
-    color: white;
-    font-size: 1em;
-  }
+.auth-container {
+  height: 90vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
-  .login {
-    text-align: center;
-    margin-top: 1em;
-  }
-  
-  .login a {
-    color: #007bff;
-    text-decoration: none;
-  }
-  
-  .login a:hover {
-    text-decoration: underline;
-  }  
-  
-  .error-message {
-    color: red;
-    margin-top: 1em;
-    text-align: center;
-  }
-  
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border: 1px solid #ccc;
+}
+
+h2 {
+  margin-bottom: 0.3rem;
+}
+
+.subtitle {
+  color: #666;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+label {
+  font-weight: 500;
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+input {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+input:focus {
+  border-color: #007bff;
+}
+
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 70px;
+  box-sizing: border-box;
+}
+
+.toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #007bff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+button[type="submit"] {
+  width: 100%;
+  padding: 0.8rem;
+  border: none;
+  border-radius: 8px;
+  background: #007bff;
+  color: white;
+  font-size: 1rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  color: red;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 1rem;
+}

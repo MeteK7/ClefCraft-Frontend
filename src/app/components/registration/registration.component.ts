@@ -14,49 +14,76 @@ import { ToastrService } from 'ngx-toastr';
   styleUrls: ['./registration.component.css']
 })
 export class RegistrationComponent {
-  firstName: string = '';
-  lastName: string = '';
-  email: string = '';
-  userName: string = '';
-  password: string = '';
-  errorMessage: string = '';
 
-  constructor(private authService: AuthService, private router: Router, private toastr: ToastrService) {}
+  firstName = '';
+  lastName = '';
+  email = '';
+  userName = '';
+  password = '';
+
+  errorMessage = '';
+  isLoading = false;
+  showPassword = false;
+
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private toastr: ToastrService
+  ) {}
+
+  togglePassword(): void {
+    this.showPassword = !this.showPassword;
+  }
 
   onSubmit(): void {
-    this.authService.register(this.firstName, this.lastName, this.email, this.userName, this.password).subscribe(
-      response => {
+
+    this.isLoading = true;
+
+    this.authService.register(
+      this.firstName,
+      this.lastName,
+      this.email,
+      this.userName,
+      this.password
+    ).subscribe({
+      next: (response) => {
+
+        this.isLoading = false;
+
         console.log('Registration successful', response);
+
         this.toastr.success('Registration successful', 'Success');
+
         this.router.navigate(['/home']);
       },
-      error => {
+
+      error: (error) => {
+
+        this.isLoading = false;
+
         console.error('Registration failed', error);
+
         this.handleErrorResponse(error);
-        //You can use the codes below if you want to show errors using Toastr animations.
-//      const errorMessage = this.handleErrorResponseToastr(error);
-//      this.toastr.error(errorMessage, 'Error');
+
+        this.toastr.error(this.errorMessage, 'Registration failed');
       }
-    );
+    });
   }
 
   private handleErrorResponse(error: HttpErrorResponse): void {
-    if (error.status === 400 && error.error && error.error.errors) {
+
+    if (error.status === 400 && error.error?.errors) {
+
       const validationErrors = error.error.errors;
-      const errorMessages = Object.keys(validationErrors).map(key => `${key}: ${validationErrors[key].join(' ')}`);
+
+      const errorMessages = Object.keys(validationErrors)
+        .map(key => `${key}: ${validationErrors[key].join(' ')}`);
+
       this.errorMessage = errorMessages.join(' ');
+
     } else {
+
       this.errorMessage = 'An unexpected error occurred. Please try again.';
     }
   }
-
-//  private handleErrorResponseToastr(error: HttpErrorResponse): string {
-//    let errorMessage = 'An unexpected error occurred. Please try again.';
-//    if (error.status === 400 && error.error && error.error.errors) {
-//      const validationErrors = error.error.errors;
-//      const errorMessages = Object.keys(validationErrors).map(key => `${key}: ${validationErrors[key].join(' ')}`);
-//      errorMessage = errorMessages.join(' ');
-//    }
-//    return errorMessage;
-//  }
 }
