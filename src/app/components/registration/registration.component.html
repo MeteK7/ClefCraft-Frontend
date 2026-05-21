@@ -1,33 +1,131 @@
-<div class="registration-container">
-    <h2>Register</h2>
+<div class="auth-container">
+  <div class="auth-card">
+
+    <h2>Create Account</h2>
+    <p class="subtitle">Fill in the details to get started.</p>
+
     <form (ngSubmit)="onSubmit()" #registrationForm="ngForm">
-      <div>
+
+      <!-- First Name -->
+      <div class="form-group">
         <label for="firstName">First Name</label>
-        <input type="text" id="firstName" [(ngModel)]="firstName" name="firstName" required />
+
+        <input
+          type="text"
+          id="firstName"
+          [(ngModel)]="firstName"
+          name="firstName"
+          required
+          #firstNameRef="ngModel"
+          placeholder="Enter first name"
+        />
+
+        <small class="error" *ngIf="firstNameRef.invalid && firstNameRef.touched">
+          First name is required
+        </small>
       </div>
-      <div>
+
+      <!-- Last Name -->
+      <div class="form-group">
         <label for="lastName">Last Name</label>
-        <input type="text" id="lastName" [(ngModel)]="lastName" name="lastName" required />
+
+        <input
+          type="text"
+          id="lastName"
+          [(ngModel)]="lastName"
+          name="lastName"
+          required
+          #lastNameRef="ngModel"
+          placeholder="Enter last name"
+        />
+
+        <small class="error" *ngIf="lastNameRef.invalid && lastNameRef.touched">
+          Last name is required
+        </small>
       </div>
-      <div>
+
+      <!-- Email -->
+      <div class="form-group">
         <label for="email">Email</label>
-        <input type="email" id="email" [(ngModel)]="email" name="email" required />
+
+        <input
+          type="email"
+          id="email"
+          [(ngModel)]="email"
+          name="email"
+          required
+          email
+          #emailRef="ngModel"
+          placeholder="Enter email"
+        />
+
+        <small class="error" *ngIf="emailRef.invalid && emailRef.touched">
+          Valid email is required
+        </small>
       </div>
-      <div>
+
+      <!-- Username -->
+      <div class="form-group">
         <label for="userName">Username</label>
-        <input type="text" id="userName" [(ngModel)]="userName" name="userName" required />
+
+        <input
+          type="text"
+          id="userName"
+          [(ngModel)]="userName"
+          name="userName"
+          required
+          #userNameRef="ngModel"
+          placeholder="Enter username"
+        />
+
+        <small class="error" *ngIf="userNameRef.invalid && userNameRef.touched">
+          Username is required
+        </small>
       </div>
-      <div>
+
+      <!-- Password -->
+      <div class="form-group">
         <label for="password">Password</label>
-        <input type="password" id="password" [(ngModel)]="password" name="password" required />
+
+        <div class="password-wrapper">
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            id="password"
+            [(ngModel)]="password"
+            name="password"
+            required
+            minlength="6"
+            #passwordRef="ngModel"
+            placeholder="Enter password"
+          />
+
+          <button
+            type="button"
+            class="toggle"
+            (click)="togglePassword()"
+          >
+            {{ showPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+
+        <small class="error" *ngIf="passwordRef.invalid && passwordRef.touched">
+          Password must be at least 6 characters
+        </small>
       </div>
-      <button type="submit" [disabled]="!registrationForm.form.valid">Register</button>
+
+      <!-- Submit -->
+      <button
+        type="submit"
+        [disabled]="!registrationForm.form.valid || isLoading"
+      >
+        {{ isLoading ? 'Creating account...' : 'Register' }}
+      </button>
+
     </form>
-    <div class="login">
-      <p>Already a member? <a routerLink="/login">Login!</a></p>
+
+    <div class="footer">
+      <p>Already a member? <a routerLink="/login">Login</a></p>
+    </div>
+
   </div>
-    <div *ngIf="errorMessage" class="error-message">
-        {{ errorMessage }}
-      </div>
-  </div>
-  
+</div>
