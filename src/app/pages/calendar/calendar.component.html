@@ -192,7 +192,7 @@
     <div *ngFor="let block of dayViewBlocks" class="time-block-event" [style.top.px]="block.top"
       [style.height.px]="block.height" [style.left.%]="block.left" [style.width.%]="block.width"
       [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
-      (click)="onEventClicked(block, $event)">
+      (click)="onEventClicked(block, $event)" (mousedown)="startDrag($event, block, selectedDate)">
       <div class="time-block-title">{{ block.subject }}</div>
       <div class="time-block-time">{{ block.startDate | date:'HH:mm' }} – {{ block.endDate | date:'HH:mm' }}</div>
     </div>
