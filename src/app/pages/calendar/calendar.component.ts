@@ -623,8 +623,16 @@ export class CalendarComponent implements OnInit, OnDestroy {
         minuteDelta
       );
 
-    this.dragSession.event.startDate = updated.start;
-    this.dragSession.event.endDate = updated.end;
+    // IMPORTANT:
+    // Update the REAL event in this.events
+    const sourceEvent = this.events.find(
+      x => x.id === this.dragSession!.event.id
+    );
+
+    if (!sourceEvent) return;
+
+    sourceEvent.startDate = updated.start;
+    sourceEvent.endDate = updated.end;
 
     this.generateCurrentView();
   };
@@ -686,8 +694,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
           deltaY
         );
 
-    this.resizeSession.event.startDate = updated.start;
-    this.resizeSession.event.endDate = updated.end;
+    // IMPORTANT:
+    const sourceEvent = this.events.find(
+      x => x.id === this.resizeSession!.event.id
+    );
+
+    if (!sourceEvent) return;
+
+    sourceEvent.startDate = updated.start;
+    sourceEvent.endDate = updated.end;
 
     this.generateCurrentView();
   };
