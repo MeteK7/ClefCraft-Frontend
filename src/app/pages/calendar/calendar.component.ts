@@ -590,6 +590,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     date: Date
   ): void {
 
+    e.preventDefault();
     e.stopPropagation();
 
     this.dragSession = {
@@ -623,8 +624,16 @@ export class CalendarComponent implements OnInit, OnDestroy {
         minuteDelta
       );
 
-    this.dragSession.event.startDate = updated.start;
-    this.dragSession.event.endDate = updated.end;
+    // IMPORTANT:
+    // Update the REAL event in this.events
+    const sourceEvent = this.events.find(
+      x => x.id === this.dragSession!.event.id
+    );
+
+    if (!sourceEvent) return;
+
+    sourceEvent.startDate = updated.start;
+    sourceEvent.endDate = updated.end;
 
     this.generateCurrentView();
   };
@@ -633,10 +642,21 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
     if (!this.dragSession) return;
 
-    const event = this.dragSession.event;
+    const updatedEvent = this.events.find(
+      x => x.id === this.dragSession!.event.id
+    );
 
-    this.calendarService.updateEvent(event.id, event)
-      .subscribe();
+    if (!updatedEvent) return;
+
+    this.calendarService.updateEvent(updatedEvent.id, updatedEvent)
+      .subscribe({
+        next: () => {
+          this.fetchEvents();
+        },
+        error: err => {
+          console.error('Failed to update dragged event', err);
+        }
+      });
 
     this.dragSession = null;
 
@@ -650,6 +670,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     direction: 'top' | 'bottom'
   ): void {
 
+    e.preventDefault();
     e.stopPropagation();
 
     this.resizeSession = {
@@ -686,8 +707,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
           deltaY
         );
 
-    this.resizeSession.event.startDate = updated.start;
-    this.resizeSession.event.endDate = updated.end;
+    // IMPORTANT:
+    const sourceEvent = this.events.find(
+      x => x.id === this.resizeSession!.event.id
+    );
+
+    if (!sourceEvent) return;
+
+    sourceEvent.startDate = updated.start;
+    sourceEvent.endDate = updated.end;
 
     this.generateCurrentView();
   };
@@ -696,10 +724,21 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
     if (!this.resizeSession) return;
 
-    const event = this.resizeSession.event;
+    const updatedEvent = this.events.find(
+      x => x.id === this.resizeSession!.event.id
+    );
 
-    this.calendarService.updateEvent(event.id, event)
-      .subscribe();
+    if (!updatedEvent) return;
+
+    this.calendarService.updateEvent(updatedEvent.id, updatedEvent)
+      .subscribe({
+        next: () => {
+          this.fetchEvents();
+        },
+        error: err => {
+          console.error('Failed to resize event', err);
+        }
+      });
 
     this.resizeSession = null;
 
