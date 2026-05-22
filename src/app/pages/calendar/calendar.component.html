@@ -193,12 +193,26 @@
       [style.height.px]="block.height" [style.left.%]="block.left" [style.width.%]="block.width"
       [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
       (click)="onEventClicked(block, $event)" (mousedown)="startDrag($event, block, selectedDate)">
-      <div class="time-block-title">{{ block.subject }}</div>
-      <div class="time-block-time">{{ block.startDate | date:'HH:mm' }} – {{ block.endDate | date:'HH:mm' }}</div>
+
+      <!-- TOP RESIZE -->
+      <div class="resize-handle top" (mousedown)="startResize($event, block, 'top')">
+      </div>
+
+      <div class="time-block-title">
+        {{ block.subject }}
+      </div>
+
+      <div class="time-block-time">
+        {{ block.startDate | date:'HH:mm' }}
+        –
+        {{ block.endDate | date:'HH:mm' }}
+      </div>
+
+      <!-- BOTTOM RESIZE -->
+      <div class="resize-handle bottom" (mousedown)="startResize($event, block, 'bottom')">
+      </div>
     </div>
-
   </div>
-
 </div>
 
 <!-- ==================== AGENDA VIEW ==================== -->
