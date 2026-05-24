@@ -25,6 +25,13 @@ import { DragSession } from '../../calendar-engine/interactions/drag/drag-sessio
 import { ResizeSession } from '../../calendar-engine/interactions/resize/resize-session.model';
 import { EventDragEngine } from '../../calendar-engine/interactions/drag/event-drag-engine';
 import { EventResizeEngine } from '../../calendar-engine/interactions/resize/event-resize-engine';
+import { Observable } from 'rxjs';
+
+// ── Recurrence scope ────────────────────────────────────────────────────────
+import {
+  RecurrenceScopeDialogComponent,
+  RecurrenceUpdateScope,
+} from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 
 @Component({
   selector: 'app-calendar',
@@ -306,16 +313,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
       this.calendarGrid.push(row);
     }
 
-    // (Re-)compute layout for all week rows now that both grid and events are set.
     this.computeMonthLayouts();
   }
 
   // ── Month layout helpers ───────────────────────────────────────────────────
 
-  /**
-   * Pre-computes MonthLayoutItem arrays for every week row in the grid.
-   * Called after the grid is built and after events are (re-)fetched.
-   */
   private computeMonthLayouts(): void {
     this.weekLayoutMap.clear();
     for (const week of this.calendarGrid) {
@@ -326,22 +328,14 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Returns the pre-computed layout items for a week row.
-   * O(1) – just a Map lookup.
-   */
   getWeekLayout(week: Date[]): MonthLayoutItem<CalendarEventUI>[] {
     return this.weekLayoutMap.get(week[0].getTime()) ?? [];
   }
 
-  /**
-   * Returns the number of events hidden (lane ≥ MAX_VISIBLE_LANES) that
-   * cover a specific day cell within the week.
-   */
   getHiddenCountForDay(date: Date, week: Date[]): number {
     const dayMs = this.toDateOnly(date);
     const weekStartMs = this.toDateOnly(week[0]);
-    const colIdx = Math.floor((dayMs - weekStartMs) / DateUtils.DAY_MS) + 1; // 1-based
+    const colIdx = Math.floor((dayMs - weekStartMs) / DateUtils.DAY_MS) + 1;
 
     return this.getWeekLayout(week).filter(item =>
       item.lane >= this.MAX_VISIBLE_LANES &&
@@ -493,10 +487,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.openDialog(event);
   }
 
-  /**
-   * Populates the "more" popover with the hidden events for the clicked day.
-   * Relies on the pre-computed week layout map — no re-sorting needed.
-   */
   onMoreClicked(date: Date, week: Date[], e: MouseEvent): void {
     e.stopPropagation();
 
@@ -524,39 +514,36 @@ export class CalendarComponent implements OnInit, OnDestroy {
       data: { date: this.selectedDate, eventData },
     });
 
+    // ── Save handler ─────────────────────────────────────────────────────────
     dialogRef.componentInstance.onSave.subscribe(({ record, attachments }: SavePayload) => {
 
       const isOccurrence = record.isRecurring && record.id !== record.baseEventId;
 
-      const save$ = isOccurrence
-        ? this.calendarService.updateSingleOccurrence({
-          eventId: record.baseEventId!,
-          occurrenceDate: new Date(record.startDate).toISOString(),
-          subject: record.subject,
-          comment: record.comment,
-          startDate: new Date(record.startDate).toISOString(),
-          endDate: new Date(record.endDate).toISOString(),
-        })
-        : record.id
+      if (!isOccurrence) {
+        // New event, or editing the series root / a non-recurring event directly
+        const save$ = record.id
           ? this.calendarService.updateEvent(record.id, record)
           : this.calendarService.saveEvent(record);
 
-      save$.subscribe((savedEvent: any) => {
-        const eventId = isOccurrence ? record.baseEventId : savedEvent?.id;
+        this.executeSave(save$, record, attachments, dialogRef);
+        return;
+      }
 
-        if (attachments?.length > 0 && eventId) {
-          const formData = new FormData();
-          attachments.forEach((f: File) => formData.append('files', f));
-          this.calendarService.uploadAttachments(eventId, formData)
-            .subscribe(() => this.fetchEvents());
-        } else {
-          this.fetchEvents();
-        }
+      // ── Recurring occurrence: always ask the user which scope to apply ────
+      const scopeRef = this.dialog.open(RecurrenceScopeDialogComponent, {
+        width: '480px',
+        disableClose: true,
+      });
 
-        dialogRef.close();
+      scopeRef.afterClosed().subscribe((scope: RecurrenceUpdateScope | null) => {
+        if (!scope) return; // user dismissed the scope dialog — keep the edit dialog open
+
+        const save$ = this.buildOccurrenceSave(record, scope);
+        this.executeSave(save$, record, attachments, dialogRef);
       });
     });
 
+    // ── Cancel handler ────────────────────────────────────────────────────────
     dialogRef.componentInstance.onCancel.subscribe(() => dialogRef.close());
 
     const attemptClose = () => {
@@ -572,6 +559,103 @@ export class CalendarComponent implements OnInit, OnDestroy {
     dialogRef.backdropClick().subscribe(() => attemptClose());
     dialogRef.keydownEvents().subscribe(event => {
       if (event.key === 'Escape') attemptClose();
+    });
+  }
+
+  // =========================
+  // RECURRENCE SAVE HELPERS
+  // =========================
+
+  /**
+   * Builds the correct service Observable based on the scope the user chose
+   * in the RecurrenceScopeDialogComponent.
+   *
+   * record.originalOccurrenceDate is the *original* scheduled date of the
+   * occurrence as it came from the server — before the user may have edited
+   * startDate. It is set by CalendarDialogComponent.handleSave().
+   */
+  private buildOccurrenceSave(
+    record: any,
+    scope: RecurrenceUpdateScope
+  ): Observable<any> {
+
+    // Use the original occurrence date (set by the dialog) as the key that
+    // identifies which occurrence is being targeted. Falling back to
+    // record.startDate is kept for safety but shouldn't normally be needed.
+    const originalDate: string = record.originalOccurrenceDate
+      ? new Date(record.originalOccurrenceDate).toISOString()
+      : new Date(record.startDate).toISOString();
+
+    switch (scope) {
+
+      case 'this':
+        return this.calendarService.updateSingleOccurrence({
+          eventId:        record.baseEventId!,
+          occurrenceDate: originalDate,
+          subject:        record.subject,
+          comment:        record.comment,
+          startDate:      new Date(record.startDate).toISOString(),
+          endDate:        new Date(record.endDate).toISOString(),
+        });
+
+      case 'thisAndFollowing':
+        // Splits the series at this occurrence: occurrences before it are
+        // untouched; from this point on the new values apply.
+        // Backend contract: POST/PATCH with scope indicator — see
+        // calendar.service.additions.ts for the required method signature.
+        return this.calendarService.updateFromOccurrence(
+          record.baseEventId!,
+          originalDate,
+          record
+        );
+
+      case 'allPreserve':
+        // Updates every occurrence that is still "inherited" (no individual
+        // override). Occurrences with existing exceptions are skipped.
+        // Backend contract: see calendar.service.additions.ts.
+        return this.calendarService.updateSeriesPreserveExceptions(
+          record.baseEventId!,
+          record
+        );
+
+      case 'allOverride':
+        // Updates every occurrence including those with individual exceptions,
+        // effectively resetting the whole series to the new values.
+        // Backend contract: see calendar.service.additions.ts.
+        return this.calendarService.updateSeriesOverrideAll(
+          record.baseEventId!,
+          record
+        );
+    }
+  }
+
+  /**
+   * Shared finalisation logic: subscribes to a save observable, handles
+   * attachment upload, refreshes the view, and closes the edit dialog.
+   */
+  private executeSave(
+    save$: Observable<any>,
+    record: any,
+    attachments: File[],
+    dialogRef: any
+  ): void {
+    save$.subscribe({
+      next: (savedEvent: any) => {
+        const isOccurrence = record.isRecurring && record.id !== record.baseEventId;
+        const eventId = isOccurrence ? record.baseEventId : savedEvent?.id;
+
+        if (attachments?.length > 0 && eventId) {
+          const formData = new FormData();
+          attachments.forEach((f: File) => formData.append('files', f));
+          this.calendarService.uploadAttachments(eventId, formData)
+            .subscribe(() => this.fetchEvents());
+        } else {
+          this.fetchEvents();
+        }
+
+        dialogRef.close();
+      },
+      error: (err: any) => console.error('Failed to save event:', err),
     });
   }
 
@@ -624,8 +708,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
         minuteDelta
       );
 
-    // IMPORTANT:
-    // Update the REAL event in this.events
     const sourceEvent = this.events.find(
       x => x.id === this.dragSession!.event.id
     );
@@ -707,7 +789,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
           deltaY
         );
 
-    // IMPORTANT:
     const sourceEvent = this.events.find(
       x => x.id === this.resizeSession!.event.id
     );

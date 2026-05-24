@@ -65,10 +65,10 @@ export class CalendarDialogComponent implements OnInit {
   generalForm: FormGroup;
 
   importanceLevels = [
-  { label: 'Low', value: 1 },
-  { label: 'Normal', value: 2 },
-  { label: 'High', value: 3 }
-];
+    { label: 'Low', value: 1 },
+    { label: 'Normal', value: 2 },
+    { label: 'High', value: 3 }
+  ];
 
   existingAttachments: any[] = [];
   stagedAttachments: File[] = [];
@@ -78,6 +78,16 @@ export class CalendarDialogComponent implements OnInit {
   hasFormChanges = false;
   hasAttachmentChanges = false;
 
+  /**
+   * Captures the occurrence's original scheduled start date at the moment
+   * the dialog opens — before the user makes any edits.
+   *
+   * This is used as the stable key for identifying which occurrence is being
+   * targeted when the user saves. It is emitted inside the save payload so
+   * that CalendarComponent can pass it to the correct CalendarService method,
+   * regardless of whether the user also changed the startDate field.
+   */
+  originalOccurrenceDate: Date | null = null;
 
   eventTypeName: string | null = null;
   eventColor: string | null = null;
@@ -111,6 +121,7 @@ export class CalendarDialogComponent implements OnInit {
   get hasUnsavedChanges(): boolean {
     return this.hasFormChanges || this.hasAttachmentChanges;
   }
+
   private originalFormValue!: any;
 
   constructor(
@@ -127,7 +138,7 @@ export class CalendarDialogComponent implements OnInit {
       startTime: [''],
       endTime: [''],
       allDayEvent: [false],
-      importance: [2], // Normal
+      importance: [2],
       comment: [''],
       eventTypeId: [null],
       isRecurring: [false],
@@ -163,7 +174,7 @@ export class CalendarDialogComponent implements OnInit {
 
       if (this.data.eventData.allDayEvent) {
         end = new Date(end);
-        end.setDate(end.getDate() - 1); // convert exclusive end -> inclusive UI end
+        end.setDate(end.getDate() - 1);
       }
 
       const startTime = start.toTimeString().slice(0, 5);
@@ -178,11 +189,22 @@ export class CalendarDialogComponent implements OnInit {
         eventTypeId: this.data.eventData.eventTypeId
       });
 
-      this.eventTypeName = this.data.eventData.eventTypeName; // local field
+      this.eventTypeName = this.data.eventData.eventTypeName;
       this.eventColor = this.data.eventData.eventColor;
 
       this.eventId = this.data.eventData.id;
       this.baseEventId = this.data.eventData.baseEventId;
+
+      // ── Capture original occurrence date ──────────────────────────────────
+      // Store this now, before the user edits startDate, so we have a stable
+      // key to identify the occurrence on the server side.
+      const isOccurrence =
+        this.data.eventData.isRecurring &&
+        this.data.eventData.id !== this.data.eventData.baseEventId;
+
+      if (isOccurrence) {
+        this.originalOccurrenceDate = new Date(this.data.eventData.startDate);
+      }
 
       this.fetchAttachments(this.eventId!);
     } else {
@@ -198,14 +220,12 @@ export class CalendarDialogComponent implements OnInit {
 
     this.loadEventTypes();
 
-    // Patch eventTypeId if editing an existing event
     if (this.data.eventData) {
       this.generalForm.patchValue({
         eventTypeId: this.data.eventData.eventTypeId
       });
     }
 
-    // Track form changes
     this.originalFormValue = this.normalizeForm(this.generalForm.value);
     this.trackFormChanges();
 
@@ -220,7 +240,6 @@ export class CalendarDialogComponent implements OnInit {
     this.calendarService.getEventTypes().subscribe((types) => {
       this.eventTypes = types;
 
-      // If editing, make sure form shows the right type
       if (this.data.eventData) {
         const currentType = this.eventTypes.find(
           t => t.id === this.data.eventData.eventTypeId
@@ -278,10 +297,9 @@ export class CalendarDialogComponent implements OnInit {
   private normalizeTime(time: string): string {
     if (!time) return time;
 
-    // Convert 12h → 24h if needed
     if (time.toLowerCase().includes('am') || time.toLowerCase().includes('pm')) {
       const date = new Date(`1970-01-01 ${time}`);
-      return date.toTimeString().slice(0, 5); // "HH:mm"
+      return date.toTimeString().slice(0, 5);
     }
 
     return time;
@@ -306,21 +324,6 @@ export class CalendarDialogComponent implements OnInit {
       });
     }
   }
-
-  /*uploadAttachments(): void {
-    if (!this.eventId) return;
-
-    const formData = new FormData();
-    this.attachments.forEach(file => formData.append('files', file));
-
-    this.calendarService.uploadAttachments(this.eventId, formData).subscribe(
-      () => {
-        this.fetchAttachments(this.eventId!);
-        this.attachments = [];
-      },
-      (error: any) => console.error('Upload failed', error) // Explicitly type 'error'
-    );
-  }*/
 
   downloadAttachment(attachment: any): void {
     this.calendarService.downloadAttachment(attachment.id).subscribe(
@@ -373,10 +376,6 @@ export class CalendarDialogComponent implements OnInit {
     return result;
   }
 
-  // ============================
-  // SAVE / CANCEL
-  // ============================
-
   handleSave(): void {
     if (this.generalForm.invalid) {
       this.generalForm.markAllAsTouched();
@@ -397,14 +396,12 @@ export class CalendarDialogComponent implements OnInit {
         this.normalizeTime(this.generalForm.value.endTime)
       );
     } else {
-      // Normalize both dates to midnight
       startDate = new Date(startDate);
       endDate = new Date(endDate);
 
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(0, 0, 0, 0);
 
-      // Convert inclusive UI end date → exclusive DB end date
       endDate.setDate(endDate.getDate() + 1);
     }
 
@@ -428,7 +425,12 @@ export class CalendarDialogComponent implements OnInit {
         isRecurring: this.generalForm.value.isRecurring,
         recurrenceRuleJson: this.generalForm.value.isRecurring
           ? JSON.stringify(recurrenceRule)
-          : null
+          : null,
+        // ── Stable occurrence key ─────────────────────────────────────────
+        // Passed through to CalendarComponent so the correct service method
+        // can identify the occurrence being targeted, even if the user also
+        // changed the startDate field in this form.
+        originalOccurrenceDate: this.originalOccurrenceDate,
       },
       attachments: this.stagedAttachments
     });
@@ -437,7 +439,6 @@ export class CalendarDialogComponent implements OnInit {
     this.hasFormChanges = false;
     this.hasAttachmentChanges = false;
   }
-
 
   handleCancel(): void {
     if (!this.hasUnsavedChanges) {
@@ -471,7 +472,6 @@ export class CalendarDialogComponent implements OnInit {
 
     let text = 'Repeats every ';
 
-    // Interval + frequency
     const freqMap: any = {
       DAILY: 'day',
       WEEKLY: 'week',
@@ -481,7 +481,6 @@ export class CalendarDialogComponent implements OnInit {
 
     text += `${interval} ${freqMap[frequency]}${interval > 1 ? 's' : ''}`;
 
-    // Weekly days
     if (frequency === 'WEEKLY' && daysOfWeek?.length) {
       const selectedDays = daysOfWeek
         .sort()
@@ -490,7 +489,6 @@ export class CalendarDialogComponent implements OnInit {
       text += ` on ${selectedDays.join(', ')}`;
     }
 
-    // End condition
     if (endType === 'until' && recurrenceEndDate) {
       const date = new Date(recurrenceEndDate).toLocaleDateString();
       text += ` until ${date}`;
