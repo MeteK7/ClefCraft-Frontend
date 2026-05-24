@@ -1,18 +1,18 @@
 <div class="calendar-top-bar">
 
-  <!-- LEFT: Selected date summary -->
+    <!--  LEFT: Navigation -->
+  <div class="calendar-navigation">
+    <button mat-stroked-button class="nav-btn" (click)="goToPreviousMonth()">&lt;</button>
+    <button mat-flat-button class="today-btn" (click)="goToToday()">Today</button>
+    <button mat-stroked-button class="nav-btn" (click)="goToNextMonth()">&gt;</button>
+  </div>
+
+  <!-- Selected date summary -->
   <div class="selected-date-summary">
     <h3>{{ selectedDate | date: 'EEEE, MMMM d, y' }}</h3>
     <p>
       Week {{ getWeekNumber(selectedDate) }}, day {{ getDayOfYear(selectedDate) }} of the year
     </p>
-  </div>
-
-  <!-- Navigation -->
-  <div class="calendar-navigation">
-    <button mat-stroked-button class="nav-btn" (click)="goToPreviousMonth()">&lt;</button>
-    <button mat-flat-button class="today-btn" (click)="goToToday()">Today</button>
-    <button mat-stroked-button class="nav-btn" (click)="goToNextMonth()">&gt;</button>
   </div>
 
   <!-- Spacer -->
