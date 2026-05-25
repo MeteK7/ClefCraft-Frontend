@@ -1,0 +1,126 @@
+<div class="scope-dialog">
+
+  <!-- ── Header ───────────────────────────────────────────────────────────── -->
+  <div class="scope-header">
+    <div class="scope-header-icon">
+      <mat-icon>event_repeat</mat-icon>
+    </div>
+    <div>
+      <h2 class="scope-title">Edit Recurring Event</h2>
+      <p class="scope-subtitle">How would you like to apply this change?</p>
+    </div>
+  </div>
+
+  <!-- ── Override confirmation warning (shown after first "Continue" click) ── -->
+  <ng-container *ngIf="confirmingOverride; else scopeSelection">
+    <div class="override-warning">
+      <mat-icon color="warn">warning_amber</mat-icon>
+      <div class="override-warning-text">
+        <strong>This will overwrite all existing customizations</strong>
+        <p>
+          Any occurrences in this series that were previously edited individually
+          will be permanently overwritten. This cannot be undone.
+        </p>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ── Scope selection ───────────────────────────────────────────────────── -->
+  <ng-template #scopeSelection>
+    <mat-radio-group
+      [(ngModel)]="scope"
+      (ngModelChange)="onScopeChange()"
+      class="scope-options">
+
+      <!-- 1. Only this occurrence -->
+      <label class="scope-option" [class.selected]="scope === 'this'">
+        <mat-radio-button value="this">
+          <div class="option-content">
+            <span class="option-label">Only this occurrence</span>
+            <span class="option-desc">Changes apply to this date only</span>
+          </div>
+        </mat-radio-button>
+      </label>
+
+      <!-- 2. This and all following -->
+      <label class="scope-option" [class.selected]="scope === 'thisAndFollowing'">
+        <mat-radio-button value="thisAndFollowing">
+          <div class="option-content">
+            <span class="option-label">This and all following</span>
+            <span class="option-desc">Changes apply from this occurrence onward</span>
+          </div>
+        </mat-radio-button>
+      </label>
+
+      <!-- 3. Entire series -->
+      <label class="scope-option" [class.selected]="scope === 'all'">
+        <mat-radio-button value="all">
+          <div class="option-content">
+            <span class="option-label">Entire series</span>
+            <span class="option-desc">Changes apply to all occurrences</span>
+          </div>
+        </mat-radio-button>
+      </label>
+
+    </mat-radio-group>
+
+    <!-- ── Series sub-options (visible when "Entire series" is selected) ── -->
+    <div *ngIf="scope === 'all'" class="series-suboptions">
+      <mat-divider></mat-divider>
+      <p class="suboption-heading">For previously customized occurrences:</p>
+
+      <mat-radio-group
+        [(ngModel)]="seriesMode"
+        (ngModelChange)="onSeriesModeChange()"
+        class="series-mode-group">
+
+        <!-- Preserve exceptions (default) -->
+        <label class="scope-option sub" [class.selected]="seriesMode === 'preserve'">
+          <mat-radio-button value="preserve">
+            <div class="option-content">
+              <span class="option-label">
+                Preserve existing exceptions
+                <span class="badge-default">Default</span>
+              </span>
+              <span class="option-desc">
+                Only occurrences still using series defaults will be updated
+              </span>
+            </div>
+          </mat-radio-button>
+        </label>
+
+        <!-- Override all (destructive) -->
+        <label
+          class="scope-option sub destructive"
+          [class.selected]="seriesMode === 'override'">
+          <mat-radio-button value="override">
+            <div class="option-content">
+              <span class="option-label destructive-label">
+                <mat-icon class="warn-inline">warning_amber</mat-icon>
+                Override all occurrences
+              </span>
+              <span class="option-desc">
+                All individual customizations in this series will be overwritten
+              </span>
+            </div>
+          </mat-radio-button>
+        </label>
+
+      </mat-radio-group>
+    </div>
+  </ng-template>
+
+  <!-- ── Actions ──────────────────────────────────────────────────────────── -->
+  <div class="scope-actions">
+    <button mat-button (click)="cancel()">
+      {{ cancelButtonLabel }}
+    </button>
+    <button
+      mat-raised-button
+      [color]="isDestructive ? 'warn' : 'primary'"
+      (click)="confirm()">
+      {{ confirmButtonLabel }}
+    </button>
+  </div>
+
+</div>
