@@ -9,7 +9,7 @@
       <!-- Email -->
       <div class="form-group">
         <label>Email</label>
-        <input type="email" formControlName="email" placeholder="Enter email" />
+        <input type="email" formControlName="email" placeholder="Enter email" autocomplete="email"/>
 
         <small class="error" *ngIf="form.controls.email.touched && form.controls.email.invalid">
           Valid email is required
