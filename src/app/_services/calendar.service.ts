@@ -81,53 +81,45 @@ export class CalendarService {
   }
 
 
-  updateFromOccurrence(
-    baseEventId: number,
-    occurrenceDate: string, 
-    record: any              
-  ): Observable<any> {
-    return this.http.patch<any>(
-      `${this.apiUrl}/events/${baseEventId}/occurrences/from`,
-      {
-        occurrenceDate,
-        subject: record.subject,
-        comment: record.comment,
-        startDate: record.startDate,
-        endDate: record.endDate,
-        location: record.location,
-      }
+  updateFromOccurrence(payload: {
+    seriesUid: string;
+    occurrenceDate: string;
+
+    subject?: string;
+    comment?: string;
+    startDate?: string;
+    endDate?: string;
+    location?: string | null;
+  }): Observable<void> {
+    return this.http.put<void>(
+      `${this.apiUrl}/occurrence/from`,
+      payload
     );
   }
 
-  updateSeriesPreserveExceptions(
-    baseEventId: number,
-    record: any
-  ): Observable<any> {
-    return this.http.patch<any>(
-      `${this.apiUrl}/events/${baseEventId}/series`,
-      {
-        subject: record.subject,
-        comment: record.comment,
-        location: record.location,
-        recurrenceRuleJson: record.recurrenceRuleJson,
-        preserveExceptions: true,   // tells the backend to skip existing exceptions
-      }
+  updateSeriesPreserveExceptions(payload: {
+    seriesUid: string;
+    subject?: string;
+    comment?: string;
+    location?: string;
+    recurrenceRuleJson: string;
+  }): Observable<void> {
+    return this.http.put<void>(
+      `${this.apiUrl}/series/preserve-exceptions`,
+      payload
     );
   }
 
-  updateSeriesOverrideAll(
-    baseEventId: number,
-    record: any
-  ): Observable<any> {
-    return this.http.patch<any>(
-      `${this.apiUrl}/events/${baseEventId}/series`,
-      {
-        subject: record.subject,
-        comment: record.comment,
-        location: record.location,
-        recurrenceRuleJson: record.recurrenceRuleJson,
-        preserveExceptions: false,   // tells the backend to overwrite all exceptions
-      }
+  updateSeriesOverrideAll(payload: {
+    seriesUid: string;
+    subject?: string;
+    comment?: string;
+    location?: string;
+    recurrenceRuleJson: string;
+  }): Observable<void> {
+    return this.http.put<void>(
+      `${this.apiUrl}/series/override-all`,
+      payload
     );
   }
 }

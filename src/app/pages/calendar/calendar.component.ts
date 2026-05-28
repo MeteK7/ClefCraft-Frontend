@@ -517,30 +517,29 @@ export class CalendarComponent implements OnInit, OnDestroy {
     // ── Save handler ─────────────────────────────────────────────────────────
     dialogRef.componentInstance.onSave.subscribe(({ record, attachments }: SavePayload) => {
 
-      const isOccurrence = record.isRecurring && record.id !== record.baseEventId;
+      const recurrenceScope = record.recurrenceScope as RecurrenceUpdateScope | null;
 
-      if (!isOccurrence) {
-        // New event, or editing the series root / a non-recurring event directly
-        const save$ = record.id
-          ? this.calendarService.updateEvent(record.id, record)
-          : this.calendarService.saveEvent(record);
+      // =========================================================
+      // RECURRING EVENT UPDATE
+      // =========================================================
+
+      if (record.isRecurring && record.id && recurrenceScope) {
+
+        const save$ = this.buildOccurrenceSave(record, recurrenceScope);
 
         this.executeSave(save$, record, attachments, dialogRef);
         return;
       }
 
-      // ── Recurring occurrence: always ask the user which scope to apply ────
-      const scopeRef = this.dialog.open(RecurrenceScopeDialogComponent, {
-        width: '480px',
-        disableClose: true,
-      });
+      // =========================================================
+      // NORMAL EVENT CREATE / UPDATE
+      // =========================================================
 
-      scopeRef.afterClosed().subscribe((scope: RecurrenceUpdateScope | null) => {
-        if (!scope) return; // user dismissed the scope dialog — keep the edit dialog open
+      const save$ = record.id
+        ? this.calendarService.updateEvent(record.id, record)
+        : this.calendarService.saveEvent(record);
 
-        const save$ = this.buildOccurrenceSave(record, scope);
-        this.executeSave(save$, record, attachments, dialogRef);
-      });
+      this.executeSave(save$, record, attachments, dialogRef);
     });
 
     // ── Cancel handler ────────────────────────────────────────────────────────
@@ -566,73 +565,99 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // RECURRENCE SAVE HELPERS
   // =========================
 
-  /**
-   * Builds the correct service Observable based on the scope the user chose
-   * in the RecurrenceScopeDialogComponent.
-   *
-   * record.originalOccurrenceDate is the *original* scheduled date of the
-   * occurrence as it came from the server — before the user may have edited
-   * startDate. It is set by CalendarDialogComponent.handleSave().
-   */
   private buildOccurrenceSave(
     record: any,
     scope: RecurrenceUpdateScope
   ): Observable<any> {
 
-    // Use the original occurrence date (set by the dialog) as the key that
-    // identifies which occurrence is being targeted. Falling back to
-    // record.startDate is kept for safety but shouldn't normally be needed.
-    const originalDate: string = record.originalOccurrenceDate
-      ? new Date(record.originalOccurrenceDate).toISOString()
-      : new Date(record.startDate).toISOString();
+    const occurrenceDate =
+      record.originalOccurrenceDate
+        ? new Date(record.originalOccurrenceDate).toISOString()
+        : new Date(record.startDate).toISOString();
 
     switch (scope) {
 
+      // =====================================================
+      // THIS OCCURRENCE ONLY
+      // =====================================================
+
       case 'this':
+
         return this.calendarService.updateSingleOccurrence({
-          eventId:        record.baseEventId!,
-          occurrenceDate: originalDate,
-          subject:        record.subject,
-          comment:        record.comment,
-          startDate:      new Date(record.startDate).toISOString(),
-          endDate:        new Date(record.endDate).toISOString(),
+          seriesUid: record.seriesUid,
+          occurrenceDate,
+
+          subject: record.subject,
+          comment: record.comment,
+
+          startDate: new Date(record.startDate).toISOString(),
+          endDate: new Date(record.endDate).toISOString(),
+
+          location: record.location,
+
+          eventTypeId: record.eventTypeId,
+
+          isCancelled: false
         });
 
+      // =====================================================
+      // THIS + FOLLOWING
+      // =====================================================
+
       case 'thisAndFollowing':
-        // Splits the series at this occurrence: occurrences before it are
-        // untouched; from this point on the new values apply.
-        // Backend contract: POST/PATCH with scope indicator — see
-        // calendar.service.additions.ts for the required method signature.
-        return this.calendarService.updateFromOccurrence(
-          record.baseEventId!,
-          originalDate,
-          record
-        );
+
+        return this.calendarService.updateFromOccurrence({
+          seriesUid: record.seriesUid,
+          occurrenceDate,
+
+          subject: record.subject,
+          comment: record.comment,
+
+          startDate: new Date(record.startDate).toISOString(),
+          endDate: new Date(record.endDate).toISOString(),
+
+          location: record.location
+        });
+
+      // =====================================================
+      // ALL PRESERVE
+      // =====================================================
 
       case 'allPreserve':
-        // Updates every occurrence that is still "inherited" (no individual
-        // override). Occurrences with existing exceptions are skipped.
-        // Backend contract: see calendar.service.additions.ts.
-        return this.calendarService.updateSeriesPreserveExceptions(
-          record.baseEventId!,
-          record
-        );
+
+        return this.calendarService.updateSeriesPreserveExceptions({
+          seriesUid: record.seriesUid,
+
+          subject: record.subject,
+          comment: record.comment,
+
+          location: record.location,
+
+          recurrenceRuleJson: record.recurrenceRuleJson
+        });
+
+      // =====================================================
+      // ALL OVERRIDE
+      // =====================================================
 
       case 'allOverride':
-        // Updates every occurrence including those with individual exceptions,
-        // effectively resetting the whole series to the new values.
-        // Backend contract: see calendar.service.additions.ts.
-        return this.calendarService.updateSeriesOverrideAll(
-          record.baseEventId!,
-          record
-        );
+
+        return this.calendarService.updateSeriesOverrideAll({
+          seriesUid: record.seriesUid,
+
+          subject: record.subject,
+          comment: record.comment,
+
+          location: record.location,
+
+          recurrenceRuleJson: record.recurrenceRuleJson
+        });
+
+      default:
+        throw new Error(`Unsupported recurrence scope: ${scope}`);
     }
   }
 
-  /**
-   * Shared finalisation logic: subscribes to a save observable, handles
-   * attachment upload, refreshes the view, and closes the edit dialog.
-   */
   private executeSave(
     save$: Observable<any>,
     record: any,
@@ -641,7 +666,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
   ): void {
     save$.subscribe({
       next: (savedEvent: any) => {
-        const isOccurrence = record.isRecurring && record.id !== record.baseEventId;
+        const isOccurrence =
+          !!record.seriesUid &&
+          record.id !== record.baseEventId;
         const eventId = isOccurrence ? record.baseEventId : savedEvent?.id;
 
         if (attachments?.length > 0 && eventId) {
@@ -730,15 +757,48 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
     if (!updatedEvent) return;
 
-    this.calendarService.updateEvent(updatedEvent.id, updatedEvent)
-      .subscribe({
-        next: () => {
-          this.fetchEvents();
-        },
-        error: err => {
-          console.error('Failed to update dragged event', err);
-        }
-      });
+    // =====================================================
+    // RECURRING EVENT
+    // =====================================================
+
+    if (updatedEvent.isRecurring) {
+
+      const occurrenceDate = new Date(
+        this.dragSession.originalStart
+      ).toISOString();
+
+      this.calendarService.updateSingleOccurrence({
+        seriesUid: updatedEvent.seriesUid,
+        occurrenceDate,
+
+        subject: updatedEvent.subject,
+        comment: updatedEvent.comment,
+
+        startDate: new Date(updatedEvent.startDate).toISOString(),
+        endDate: new Date(updatedEvent.endDate).toISOString(),
+
+        location: updatedEvent.location,
+        eventTypeId: updatedEvent.eventTypeId,
+
+        isCancelled: false
+      })
+        .subscribe({
+          next: () => this.fetchEvents(),
+          error: err => console.error('Failed to update recurring drag event', err)
+        });
+
+    } else {
+
+      // =====================================================
+      // NORMAL EVENT
+      // =====================================================
+
+      this.calendarService.updateEvent(updatedEvent.id, updatedEvent)
+        .subscribe({
+          next: () => this.fetchEvents(),
+          error: err => console.error('Failed to update dragged event', err)
+        });
+    }
 
     this.dragSession = null;
 
@@ -801,29 +861,58 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.generateCurrentView();
   };
 
-  stopResize = (): void => {
+ stopResize = (): void => {
 
-    if (!this.resizeSession) return;
+  if (!this.resizeSession) return;
 
-    const updatedEvent = this.events.find(
-      x => x.id === this.resizeSession!.event.id
-    );
+  const updatedEvent = this.events.find(
+    x => x.id === this.resizeSession!.event.id
+  );
 
-    if (!updatedEvent) return;
+  if (!updatedEvent) return;
+
+  // =====================================================
+  // RECURRING EVENT
+  // =====================================================
+
+  if (updatedEvent.isRecurring) {
+
+    const occurrenceDate = new Date(
+      this.resizeSession.originalStart
+    ).toISOString();
+
+    this.calendarService.updateSingleOccurrence({
+      seriesUid: updatedEvent.seriesUid,
+      occurrenceDate,
+
+      subject: updatedEvent.subject,
+      comment: updatedEvent.comment,
+
+      startDate: new Date(updatedEvent.startDate).toISOString(),
+      endDate: new Date(updatedEvent.endDate).toISOString(),
+
+      location: updatedEvent.location,
+      eventTypeId: updatedEvent.eventTypeId,
+
+      isCancelled: false
+    })
+    .subscribe({
+      next: () => this.fetchEvents(),
+      error: err => console.error('Failed to resize recurring event', err)
+    });
+
+  } else {
 
     this.calendarService.updateEvent(updatedEvent.id, updatedEvent)
       .subscribe({
-        next: () => {
-          this.fetchEvents();
-        },
-        error: err => {
-          console.error('Failed to resize event', err);
-        }
+        next: () => this.fetchEvents(),
+        error: err => console.error('Failed to resize event', err)
       });
-
-    this.resizeSession = null;
-
-    window.removeEventListener('mousemove', this.onResizing);
-    window.removeEventListener('mouseup', this.stopResize);
   }
+
+  this.resizeSession = null;
+
+  window.removeEventListener('mousemove', this.onResizing);
+  window.removeEventListener('mouseup', this.stopResize);
+}
 }
