@@ -1,0 +1,64 @@
+<div class="warning-dialog">
+
+  <div class="warning-header">
+
+    <div class="warning-icon">
+      <mat-icon>event_repeat</mat-icon>
+    </div>
+
+    <div>
+      <h2 class="warning-title">
+        Update This and Following Occurrences?
+      </h2>
+
+      <p class="warning-subtitle">
+        This change will affect future events in the series.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="warning-panel">
+
+    <mat-icon color="warn">
+      warning_amber
+    </mat-icon>
+
+    <div>
+
+      <strong>
+        Future occurrences may be modified
+      </strong>
+
+      <p>
+        Applying changes to this occurrence and all following occurrences
+        may regenerate future events in the series.
+      </p>
+
+      <p>
+        Previously customized future occurrences could be affected depending
+        on how recurrence exceptions are configured.
+      </p>
+
+    </div>
+
+  </div>
+
+  <div class="warning-actions">
+
+    <button
+      mat-button
+      (click)="cancel()">
+      Back
+    </button>
+
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="continue()">
+      Continue
+    </button>
+
+  </div>
+
+</div>
