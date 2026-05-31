@@ -12,25 +12,55 @@
   </div>
 
   <!-- ── Override confirmation warning (shown after first "Continue" click) ── -->
-  <ng-container *ngIf="confirmingOverride; else scopeSelection">
-    <div class="override-warning">
+  <ng-container *ngIf="confirmationMode !== 'none'; else scopeSelection">
+    <!-- THIS AND FOLLOWING WARNING -->
+    <div *ngIf="confirmationMode === 'thisAndFollowing'" class="override-warning">
+
       <mat-icon color="warn">warning_amber</mat-icon>
+
       <div class="override-warning-text">
-        <strong>This will overwrite all existing customizations</strong>
+        <strong>This will split the recurring series</strong>
+
         <p>
-          Any occurrences in this series that were previously edited individually
-          will be permanently overwritten. This cannot be undone.
+          Changes will be applied to this occurrence and all future occurrences.
+          Earlier occurrences will remain unchanged.
+        </p>
+<br>
+        <p>
+          However, any previously edited future occurrences will be overwritten.
+        </p>
+        <br>
+        <p class="warning-emphasis">
+          This action cannot be undone.
         </p>
       </div>
+
+    </div>
+
+    <!-- OVERRIDE ALL WARNING -->
+    <div *ngIf="confirmationMode === 'allOverride'" class="override-warning">
+
+      <mat-icon color="warn">warning_amber</mat-icon>
+
+      <div class="override-warning-text">
+        <strong>This will overwrite all existing customizations</strong>
+
+        <p>
+          Any occurrences in this series that were previously edited individually
+          will be permanently overwritten.
+        </p>
+        <br>
+        <p class="warning-emphasis">
+          This action cannot be undone.
+        </p>
+      </div>
+
     </div>
   </ng-container>
 
   <!-- ── Scope selection ───────────────────────────────────────────────────── -->
   <ng-template #scopeSelection>
-    <mat-radio-group
-      [(ngModel)]="scope"
-      (ngModelChange)="onScopeChange()"
-      class="scope-options">
+    <mat-radio-group [(ngModel)]="scope" (ngModelChange)="onScopeChange()" class="scope-options">
 
       <!-- 1. Only this occurrence -->
       <label class="scope-option" [class.selected]="scope === 'this'">
@@ -69,10 +99,7 @@
       <mat-divider></mat-divider>
       <p class="suboption-heading">For previously customized occurrences:</p>
 
-      <mat-radio-group
-        [(ngModel)]="seriesMode"
-        (ngModelChange)="onSeriesModeChange()"
-        class="series-mode-group">
+      <mat-radio-group [(ngModel)]="seriesMode" (ngModelChange)="onSeriesModeChange()" class="series-mode-group">
 
         <!-- Preserve exceptions (default) -->
         <label class="scope-option sub" [class.selected]="seriesMode === 'preserve'">
@@ -90,9 +117,7 @@
         </label>
 
         <!-- Override all (destructive) -->
-        <label
-          class="scope-option sub destructive"
-          [class.selected]="seriesMode === 'override'">
+        <label class="scope-option sub destructive" [class.selected]="seriesMode === 'override'">
           <mat-radio-button value="override">
             <div class="option-content">
               <span class="option-label destructive-label">
@@ -115,10 +140,7 @@
     <button mat-button (click)="cancel()">
       {{ cancelButtonLabel }}
     </button>
-    <button
-      mat-raised-button
-      [color]="isDestructive ? 'warn' : 'primary'"
-      (click)="confirm()">
+    <button mat-raised-button [color]="isDestructive ? 'warn' : 'primary'" (click)="confirm()">
       {{ confirmButtonLabel }}
     </button>
   </div>
