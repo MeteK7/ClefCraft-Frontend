@@ -71,6 +71,16 @@ export class CalendarDialogComponent implements OnInit {
     { label: 'High', value: 3 }
   ];
 
+  reminderOptions = [
+    { label: 'At time of event', value: 0 },
+    { label: '5 minutes before', value: 5 },
+    { label: '15 minutes before', value: 15 },
+    { label: '30 minutes before', value: 30 },
+    { label: '1 hour before', value: 60 },
+    { label: '2 hours before', value: 120 },
+    { label: '1 day before', value: 1440 }
+  ];
+
   existingAttachments: any[] = [];
   stagedAttachments: File[] = [];
 
@@ -148,7 +158,8 @@ export class CalendarDialogComponent implements OnInit {
       daysOfWeek: [[]],
       endType: ['never'],
       recurrenceEndDate: [null],
-      recurrenceCount: [null]
+      recurrenceCount: [null],
+      reminderMinutes: [[]]
     });
   }
 
@@ -187,7 +198,8 @@ export class CalendarDialogComponent implements OnInit {
         endDate: end,
         startTime,
         endTime,
-        eventTypeId: this.data.eventData.eventTypeId
+        eventTypeId: this.data.eventData.eventTypeId,
+        reminderMinutes: this.data.eventData.reminderMinutes || []
       });
 
       this.eventTypeName = this.data.eventData.eventTypeName;
@@ -377,95 +389,96 @@ export class CalendarDialogComponent implements OnInit {
     return result;
   }
 
-handleSave(): void {
-  if (this.generalForm.invalid) {
-    this.generalForm.markAllAsTouched();
-    return;
-  }
-
-  // 1. Determine if this is an edit to a recurring series instance
-  const isRecurringInstance = 
-    this.data.eventData?.isRecurring || 
-    this.generalForm.value.isRecurring;
-
-  // We check if it has an ID, meaning it's an existing event being updated, not a brand new event creation
-  if (this.eventId && isRecurringInstance) {
-    // Open the recurrence scope prompt dialog
-    const dialogRef = this.dialog.open(RecurrenceScopeDialogComponent, {
-      disableClose: true // Prevents accidental closing by clicking backdrop
-    });
-
-    dialogRef.afterClosed().subscribe((scope: RecurrenceUpdateScope | null) => {
-      // If the user cancelled out of the recurrence dialog, abort saving completely
-      if (!scope) {
-        return;
-      }
-      
-      // Proceed with the save payload, attaching the chosen scope choice
-      this.executeSave(scope);
-    });
-  } else {
-    // It's a regular single event or a brand new recurring series initialization
-    this.executeSave();
-  }
-}
-
-// 2. Move your existing save logic into a separate reusable helper function
-private executeSave(recurrenceScope: RecurrenceUpdateScope | null = null): void {
-  let startDate = this.generalForm.value.startDate;
-  let endDate = this.generalForm.value.endDate;
-
-  if (!this.generalForm.value.allDayEvent) {
-    startDate = this.combineDateAndTime(
-      startDate,
-      this.normalizeTime(this.generalForm.value.startTime)
-    );
-
-    endDate = this.combineDateAndTime(
-      endDate,
-      this.normalizeTime(this.generalForm.value.endTime)
-    );
-  } else {
-    startDate = new Date(startDate);
-    endDate = new Date(endDate);
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(0, 0, 0, 0);
-    endDate.setDate(endDate.getDate() + 1);
-  }
-
-  const recurrenceRule = this.generalForm.value.isRecurring
-    ? {
-      Frequency: this.generalForm.value.frequency,
-      Interval: this.generalForm.value.interval,
-      DaysOfWeek: this.generalForm.value.daysOfWeek,
-      EndDate: this.generalForm.value.recurrenceEndDate,
-      Count: this.generalForm.value.recurrenceCount
+  handleSave(): void {
+    if (this.generalForm.invalid) {
+      this.generalForm.markAllAsTouched();
+      return;
     }
-    : null;
 
-  // Emit the data, now safely including the user's chosen recurrence selection scope
-  this.onSave.emit({
-    record: {
-      ...this.generalForm.value,
-      startDate,
-      endDate,
-      id: this.eventId,
-      baseEventId: this.baseEventId,
-      seriesUid: this.data.eventData?.seriesUid ?? null,
-      isRecurring: this.generalForm.value.isRecurring,
-      recurrenceRuleJson: this.generalForm.value.isRecurring
-        ? JSON.stringify(recurrenceRule)
-        : null,
-      originalOccurrenceDate: this.originalOccurrenceDate,
-      recurrenceScope: recurrenceScope // This will pass 'this', 'thisAndFollowing', 'allPreserve', or 'allOverride'
-    },
-    attachments: this.stagedAttachments
-  });
+    // 1. Determine if this is an edit to a recurring series instance
+    const isRecurringInstance =
+      this.data.eventData?.isRecurring ||
+      this.generalForm.value.isRecurring;
 
-  this.originalFormValue = this.normalizeForm(this.generalForm.value);
-  this.hasFormChanges = false;
-  this.hasAttachmentChanges = false;
-}
+    // We check if it has an ID, meaning it's an existing event being updated, not a brand new event creation
+    if (this.eventId && isRecurringInstance) {
+      // Open the recurrence scope prompt dialog
+      const dialogRef = this.dialog.open(RecurrenceScopeDialogComponent, {
+        disableClose: true // Prevents accidental closing by clicking backdrop
+      });
+
+      dialogRef.afterClosed().subscribe((scope: RecurrenceUpdateScope | null) => {
+        // If the user cancelled out of the recurrence dialog, abort saving completely
+        if (!scope) {
+          return;
+        }
+
+        // Proceed with the save payload, attaching the chosen scope choice
+        this.executeSave(scope);
+      });
+    } else {
+      // It's a regular single event or a brand new recurring series initialization
+      this.executeSave();
+    }
+  }
+
+  // 2. Move your existing save logic into a separate reusable helper function
+  private executeSave(recurrenceScope: RecurrenceUpdateScope | null = null): void {
+    let startDate = this.generalForm.value.startDate;
+    let endDate = this.generalForm.value.endDate;
+
+    if (!this.generalForm.value.allDayEvent) {
+      startDate = this.combineDateAndTime(
+        startDate,
+        this.normalizeTime(this.generalForm.value.startTime)
+      );
+
+      endDate = this.combineDateAndTime(
+        endDate,
+        this.normalizeTime(this.generalForm.value.endTime)
+      );
+    } else {
+      startDate = new Date(startDate);
+      endDate = new Date(endDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      endDate.setDate(endDate.getDate() + 1);
+    }
+
+    const recurrenceRule = this.generalForm.value.isRecurring
+      ? {
+        Frequency: this.generalForm.value.frequency,
+        Interval: this.generalForm.value.interval,
+        DaysOfWeek: this.generalForm.value.daysOfWeek,
+        EndDate: this.generalForm.value.recurrenceEndDate,
+        Count: this.generalForm.value.recurrenceCount
+      }
+      : null;
+
+    // Emit the data, now safely including the user's chosen recurrence selection scope
+    this.onSave.emit({
+      record: {
+        ...this.generalForm.value,
+        startDate,
+        endDate,
+        id: this.eventId,
+        baseEventId: this.baseEventId,
+        seriesUid: this.data.eventData?.seriesUid ?? null,
+        isRecurring: this.generalForm.value.isRecurring,
+        recurrenceRuleJson: this.generalForm.value.isRecurring,
+        reminderMinutes: this.generalForm.value.reminderMinutes
+          ? JSON.stringify(recurrenceRule)
+          : null,
+        originalOccurrenceDate: this.originalOccurrenceDate,
+        recurrenceScope: recurrenceScope // This will pass 'this', 'thisAndFollowing', 'allPreserve', or 'allOverride'
+      },
+      attachments: this.stagedAttachments
+    });
+
+    this.originalFormValue = this.normalizeForm(this.generalForm.value);
+    this.hasFormChanges = false;
+    this.hasAttachmentChanges = false;
+  }
 
   handleCancel(): void {
     if (!this.hasUnsavedChanges) {
