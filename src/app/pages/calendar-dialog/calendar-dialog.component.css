@@ -86,6 +86,21 @@
   min-width: 120px;
 }
 
+.importance-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.importance-row .checkbox {
+  flex: 0 0 auto;
+}
+
+.importance-row .half-width {
+  flex: 1;
+  min-width: 0;
+}
 /* ================================
    QUILL NOTES
 ================================ */

@@ -52,37 +52,35 @@
               </mat-form-field>
             </div>
             <div class="form-row">
-              <mat-form-field appearance="outline" class="full-width">
+              <mat-form-field appearance="outline" class="half-width">
                 <mat-label>Location</mat-label>
-                <input matInput formControlName="location" [matAutocomplete]="auto" placeholder="Enter location" />
 
-                <mat-autocomplete #auto="matAutocomplete">
-                  <mat-option *ngFor="let option of filteredLocations" [value]="option">
-                    {{ option }}
+                <input matInput formControlName="location" [matAutocomplete]="auto" />
+              </mat-form-field>
+
+              <mat-autocomplete #auto="matAutocomplete">
+                <mat-option *ngFor="let option of filteredLocations" [value]="option">
+                  {{ option }}
+                </mat-option>
+              </mat-autocomplete>
+
+              <mat-form-field appearance="outline" color="primary" class="half-width">
+                <mat-label>Event Type</mat-label>
+                <mat-select formControlName="eventTypeId" (selectionChange)="onEventTypeChange($event.value)">
+                  <mat-select-trigger>
+                    <span *ngIf="eventColor" class="event-type-dot" [style.background]="eventColor"></span>
+                    {{ eventTypeName || 'Select event type' }}
+                  </mat-select-trigger>
+
+                  <mat-option [value]="null">None</mat-option>
+
+                  <mat-option *ngFor="let type of eventTypes" [value]="type.id">
+                    <span class="event-type-dot" [style.background]="type.color"></span>
+                    {{ type.name }}
                   </mat-option>
-                </mat-autocomplete>
+                </mat-select>
               </mat-form-field>
             </div>
-            <mat-form-field appearance="outline" color="primary" class="half-width">
-              <mat-label>Event Type</mat-label>
-              <mat-select formControlName="eventTypeId" (selectionChange)="onEventTypeChange($event.value)">
-
-                <!-- Trigger shows selected type with dot -->
-                <mat-select-trigger>
-                  <span *ngIf="eventColor" class="event-type-dot" [style.background]="eventColor"></span>
-                  {{ eventTypeName || 'Select event type' }}
-                </mat-select-trigger>
-
-                <!-- Add a "None" option -->
-                <mat-option [value]="null">None</mat-option>
-
-                <!-- Options with dots -->
-                <mat-option *ngFor="let type of eventTypes" [value]="type.id">
-                  <span class="event-type-dot" [style.background]="type.color"></span>
-                  {{ type.name }}
-                </mat-option>
-              </mat-select>
-            </mat-form-field>
           </div>
 
           <!-- Schedule -->
@@ -129,14 +127,25 @@
                 <ngx-mat-timepicker #endPicker [format]="24"></ngx-mat-timepicker>
               </mat-form-field>
             </div>
+            <div class="form-row importance-row">
+              <mat-checkbox formControlName="allDayEvent" class="checkbox">
+                All Day
+              </mat-checkbox>
 
-            <div class="form-row">
-              <mat-checkbox formControlName="allDayEvent" class="checkbox">All Day</mat-checkbox>
               <mat-form-field appearance="outline" color="primary" class="half-width">
                 <mat-label>Importance</mat-label>
                 <mat-select formControlName="importance">
                   <mat-option *ngFor="let level of importanceLevels" [value]="level.value">
                     {{ level.label }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" color="primary" class="half-width">
+                <mat-label>Reminders</mat-label>
+                <mat-select formControlName="reminderMinutes" multiple>
+                  <mat-option *ngFor="let option of reminderOptions" [value]="option.value">
+                    {{ option.label }}
                   </mat-option>
                 </mat-select>
               </mat-form-field>
