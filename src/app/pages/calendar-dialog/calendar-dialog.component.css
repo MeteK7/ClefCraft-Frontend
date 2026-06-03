@@ -41,7 +41,7 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 0 16px 16px 16px;
+  padding: 0 16px 3px 16px;
   flex: 1;
   min-height: 0; /* ← allows flex child to shrink and not blow past parent */
 }
@@ -101,6 +101,39 @@
   flex: 1;
   min-width: 0;
 }
+
+.datetime-row {
+  display: flex;
+  gap: 3px;
+  flex-wrap: nowrap;   /* keep one row */
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.date-field {
+  flex: 1.6 1 0;
+  min-width: 0;        /* allow shrinking */
+}
+
+.time-field {
+  flex: 1.4 1 0;
+  min-width: 0;        /* allow shrinking */
+}
+
+/* Each field takes 50% of the row inside half-section */
+.datetime-row .half-width {
+  flex: 1 1 calc(50% - 16px);
+  min-width: 140px;  /* ✅ smaller min-width so they fit */
+}
+
+/* Optional: On larger screens, force all four in one row */
+@media (min-width: 900px) {
+  .datetime-row .quarter-width {
+    flex: 1 1 calc(25% - 16px);
+    min-width: 120px;
+  }
+}
+
 /* ================================
    QUILL NOTES
 ================================ */
@@ -181,10 +214,10 @@ textarea[matInput] {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 0 2%;
+  padding: 0 1%;
   background: #fff;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -203,7 +236,7 @@ textarea[matInput] {
 .form-section-row {
   display: flex;
   flex-direction: row;
-  gap: 24px;
+  gap: 3px;
   align-items: flex-start;
 }
 
@@ -220,9 +253,10 @@ textarea[matInput] {
   flex-direction: column;
   min-height: 0;
   flex-grow: 1;
-  padding: 2%;
+  padding: 1% 1%;
   background: #fff;
   border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }

@@ -86,46 +86,36 @@
           <!-- Schedule -->
           <div class="section half-section">
             <h3 class="section-title">Schedule</h3>
-            <div class="form-row date-row">
-              <mat-form-field appearance="outline" color="primary" class="half-width">
+            <div class="form-row datetime-row">
+
+              <mat-form-field appearance="outline" color="primary" class="date-field">
                 <mat-label>Start Date</mat-label>
                 <input matInput [matDatepicker]="picker1" formControlName="startDate" />
                 <mat-datepicker-toggle matSuffix [for]="picker1"></mat-datepicker-toggle>
                 <mat-datepicker #picker1></mat-datepicker>
-                <mat-error *ngIf="generalForm.get('startDate')?.hasError('required')">
-                  Start date is required
-                </mat-error>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" color="primary" class="half-width">
-                <mat-label>End Date</mat-label>
-                <input matInput [matDatepicker]="picker2" formControlName="endDate" />
-                <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
-                <mat-datepicker #picker2></mat-datepicker>
-                <mat-error *ngIf="generalForm.get('endDate')?.hasError('required')">
-                  End date is required
-                </mat-error>
-              </mat-form-field>
-            </div>
-
-            <div class="form-row time-row" *ngIf="!generalForm.get('allDayEvent')?.value">
-              <mat-form-field appearance="outline" color="primary" class="half-width">
+              <mat-form-field appearance="outline" color="primary" class="time-field">
                 <mat-label>Start Time</mat-label>
-
                 <input matInput [ngxMatTimepicker]="startPicker" formControlName="startTime" readonly />
-
                 <ngx-mat-timepicker-toggle matSuffix [for]="startPicker"></ngx-mat-timepicker-toggle>
                 <ngx-mat-timepicker #startPicker [format]="24"></ngx-mat-timepicker>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" color="primary" class="half-width">
+              <mat-form-field appearance="outline" color="primary" class="date-field">
+                <mat-label>End Date</mat-label>
+                <input matInput [matDatepicker]="picker2" formControlName="endDate" />
+                <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
+                <mat-datepicker #picker2></mat-datepicker>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" color="primary" class="time-field">
                 <mat-label>End Time</mat-label>
-
                 <input matInput [ngxMatTimepicker]="endPicker" formControlName="endTime" readonly />
-
                 <ngx-mat-timepicker-toggle matSuffix [for]="endPicker"></ngx-mat-timepicker-toggle>
                 <ngx-mat-timepicker #endPicker [format]="24"></ngx-mat-timepicker>
               </mat-form-field>
+
             </div>
             <div class="form-row importance-row">
               <mat-checkbox formControlName="allDayEvent" class="checkbox">
