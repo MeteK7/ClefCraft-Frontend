@@ -101,6 +101,39 @@
   flex: 1;
   min-width: 0;
 }
+
+.datetime-row {
+  display: flex;
+  gap: 3px;
+  flex-wrap: nowrap;   /* keep one row */
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.date-field {
+  flex: 1.6 1 0;
+  min-width: 0;        /* allow shrinking */
+}
+
+.time-field {
+  flex: 1.4 1 0;
+  min-width: 0;        /* allow shrinking */
+}
+
+/* Each field takes 50% of the row inside half-section */
+.datetime-row .half-width {
+  flex: 1 1 calc(50% - 16px);
+  min-width: 140px;  /* ✅ smaller min-width so they fit */
+}
+
+/* Optional: On larger screens, force all four in one row */
+@media (min-width: 900px) {
+  .datetime-row .quarter-width {
+    flex: 1 1 calc(25% - 16px);
+    min-width: 120px;
+  }
+}
+
 /* ================================
    QUILL NOTES
 ================================ */
@@ -203,7 +236,7 @@ textarea[matInput] {
 .form-section-row {
   display: flex;
   flex-direction: row;
-  gap: 24px;
+  gap: 3px;
   align-items: flex-start;
 }
 
