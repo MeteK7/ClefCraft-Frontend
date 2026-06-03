@@ -41,7 +41,7 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 0 16px 16px 16px;
+  padding: 0 16px 3px 16px;
   flex: 1;
   min-height: 0; /* ← allows flex child to shrink and not blow past parent */
 }
@@ -214,10 +214,10 @@ textarea[matInput] {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 0 2%;
+  padding: 0 1%;
   background: #fff;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -253,9 +253,10 @@ textarea[matInput] {
   flex-direction: column;
   min-height: 0;
   flex-grow: 1;
-  padding: 2%;
+  padding: 1% 1%;
   background: #fff;
   border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
