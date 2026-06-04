@@ -465,10 +465,10 @@ export class CalendarDialogComponent implements OnInit {
         baseEventId: this.baseEventId,
         seriesUid: this.data.eventData?.seriesUid ?? null,
         isRecurring: this.generalForm.value.isRecurring,
-        recurrenceRuleJson: this.generalForm.value.isRecurring,
-        reminderMinutes: this.generalForm.value.reminderMinutes
+        recurrenceRuleJson: recurrenceRule
           ? JSON.stringify(recurrenceRule)
           : null,
+        reminderMinutes: this.generalForm.value.reminderMinutes ?? [],
         originalOccurrenceDate: this.originalOccurrenceDate,
         recurrenceScope: recurrenceScope // This will pass 'this', 'thisAndFollowing', 'allPreserve', or 'allOverride'
       },
