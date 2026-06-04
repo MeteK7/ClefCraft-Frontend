@@ -33,6 +33,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatRadioModule } from '@angular/material/radio';
 import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
 import { RecurrenceScopeDialogComponent, RecurrenceUpdateScope } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -134,6 +135,7 @@ export class CalendarDialogComponent implements OnInit {
   }
 
   private originalFormValue!: any;
+  private startChangesSubscription!: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -239,14 +241,63 @@ export class CalendarDialogComponent implements OnInit {
       });
     }
 
+    // Initialize your form tracking tracking after data is patched
     this.originalFormValue = this.normalizeForm(this.generalForm.value);
     this.trackFormChanges();
 
-    this.allLocations = ['Istanbul', 'Ankara', 'Berlin', 'London'];
+    // Setup the Proactive Time-Shift Syncing
+    this.setupDateTimeInterlocking();
 
+    this.allLocations = ['Istanbul', 'Ankara', 'Berlin', 'London'];
     this.generalForm.get('location')?.valueChanges.subscribe(value => {
       this.filteredLocations = this.filterLocations(value || '');
     });
+  }
+
+  /**
+ * Monitors start date/time changes and intelligently slides 
+ * the end date/time forward to maintain duration and prevent validation errors.
+ */
+  private setupDateTimeInterlocking(): void {
+    // Combine value changes of startDate and startTime to handle them atomically
+    this.generalForm.get('startDate')?.valueChanges.subscribe(() => this.adjustEndTimeWindow());
+    this.generalForm.get('startTime')?.valueChanges.subscribe(() => this.adjustEndTimeWindow());
+  }
+
+  private adjustEndTimeWindow(): void {
+    const formValues = this.generalForm.getRawValue();
+
+    if (!formValues.startDate || !formValues.startTime) return;
+
+    // Convert current UI state into concrete Date objects
+    const currentStart = this.combineDateAndTime(formValues.startDate, this.normalizeTime(formValues.startTime));
+    let currentEnd: Date;
+
+    if (formValues.endDate && formValues.endTime) {
+      currentEnd = this.combineDateAndTime(formValues.endDate, this.normalizeTime(formValues.endTime));
+    } else {
+      // Fallback if end time wasn't set yet
+      currentEnd = new Date(currentStart.getTime() + 60 * 60 * 1000);
+    }
+
+    // If the user picked a start time that is now ahead of or equal to the end time
+    if (currentStart >= currentEnd) {
+      // Default fallback: Move end time exactly 1 hour ahead of the new start time
+      const registrationBufferMs = 60 * 60 * 1000;
+      const targetEndDateTime = new Date(currentStart.getTime() + registrationBufferMs);
+
+      // Format new targets back into UI control inputs
+      const updatedEndDate = new Date(targetEndDateTime);
+      updatedEndDate.setHours(0, 0, 0, 0); // Match MatDatepicker normalization
+
+      const updatedEndTime = targetEndDateTime.toTimeString().slice(0, 5);
+
+      // Emit values silently to avoid triggering cyclic valueChanges cascades loop
+      this.generalForm.patchValue({
+        endDate: updatedEndDate,
+        endTime: updatedEndTime
+      }, { emitEvent: false });
+    }
   }
 
   private loadEventTypes(): void {
@@ -465,10 +516,10 @@ export class CalendarDialogComponent implements OnInit {
         baseEventId: this.baseEventId,
         seriesUid: this.data.eventData?.seriesUid ?? null,
         isRecurring: this.generalForm.value.isRecurring,
-        recurrenceRuleJson: this.generalForm.value.isRecurring,
-        reminderMinutes: this.generalForm.value.reminderMinutes
+        recurrenceRuleJson: recurrenceRule
           ? JSON.stringify(recurrenceRule)
           : null,
+        reminderMinutes: this.generalForm.value.reminderMinutes ?? [],
         originalOccurrenceDate: this.originalOccurrenceDate,
         recurrenceScope: recurrenceScope // This will pass 'this', 'thisAndFollowing', 'allPreserve', or 'allOverride'
       },
@@ -539,5 +590,11 @@ export class CalendarDialogComponent implements OnInit {
     }
 
     return text;
+  }
+
+  ngOnDestroy(): void {
+    if (this.startChangesSubscription) {
+      this.startChangesSubscription.unsubscribe();
+    }
   }
 }
