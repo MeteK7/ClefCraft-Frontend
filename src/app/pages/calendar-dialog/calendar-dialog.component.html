@@ -104,7 +104,8 @@
 
               <mat-form-field appearance="outline" color="primary" class="date-field">
                 <mat-label>End Date</mat-label>
-                <input matInput [matDatepicker]="picker2" formControlName="endDate" />
+                <input matInput [matDatepicker]="picker2" formControlName="endDate"
+                  [min]="generalForm.get('startDate')?.value" />
                 <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
                 <mat-datepicker #picker2></mat-datepicker>
               </mat-form-field>
