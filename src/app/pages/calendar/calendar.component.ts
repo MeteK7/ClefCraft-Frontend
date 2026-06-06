@@ -25,13 +25,15 @@ import { DragSession } from '../../calendar-engine/interactions/drag/drag-sessio
 import { ResizeSession } from '../../calendar-engine/interactions/resize/resize-session.model';
 import { EventDragEngine } from '../../calendar-engine/interactions/drag/event-drag-engine';
 import { EventResizeEngine } from '../../calendar-engine/interactions/resize/event-resize-engine';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 // ── Recurrence scope ────────────────────────────────────────────────────────
 import {
   RecurrenceScopeDialogComponent,
   RecurrenceUpdateScope,
 } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
+import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
 
 @Component({
   selector: 'app-calendar',
@@ -47,6 +49,7 @@ import {
     MatIconModule,
     MatMenuModule,
     CalendarDialogComponent,
+    MatSnackBarModule
   ],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.css'],
@@ -97,6 +100,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   readonly HOUR_HEIGHT = 80;
 
   private nowTimer: any;
+  private reminderSubscription!: Subscription;
 
   // =========================
   // MONTH LAYOUT CACHE
@@ -114,7 +118,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   constructor(
     private calendarService: CalendarService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private notificationService: NotificationRealtimeService,
+    private snackBar: MatSnackBar
   ) { }
 
   ngOnInit(): void {
@@ -122,6 +128,41 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.fetchEvents();
     this.updateNowIndicator();
     this.nowTimer = setInterval(() => this.updateNowIndicator(), 60_000);
+    this.listenForLiveReminders();
+  }
+
+  private listenForLiveReminders(): void {
+    this.reminderSubscription = this.notificationService.reminders$.subscribe({
+      next: (reminder) => {
+        this.displayInteractiveReminder(reminder.message, reminder.eventId);
+      },
+      error: (err) => console.error('Real-time channel broadcast error:', err)
+    });
+  }
+
+  private displayInteractiveReminder(message: string, eventId: number): void {
+    const snackBarRef = this.snackBar.open(message, 'View Event', {
+      duration: 10000, // Stays visible for 10 seconds
+      horizontalPosition: 'right',
+      verticalPosition: 'top',
+      panelClass: ['reminder-snackbar']
+    });
+
+    // When interactive reminder action is clicked, open the target Event Dialog instantly
+    snackBarRef.onAction().subscribe(() => {
+      this.openEventById(eventId);
+    });
+  }
+
+  private openEventById(eventId: number): void {
+    // Find the target layout model configuration from local memory state
+    const matchedEvent = this.events.find(e => e.id === eventId);
+    if (matchedEvent) {
+      this.openDialog(matchedEvent);
+    } else {
+      // Fallback: If event is out of scope in current month viewport, pull fresh data and display
+      console.log(`Event item context #${eventId} out of date viewport scope.`);
+    }
   }
 
   ngOnDestroy(): void {
