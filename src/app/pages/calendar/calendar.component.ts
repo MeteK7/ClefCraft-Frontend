@@ -34,6 +34,7 @@ import {
   RecurrenceUpdateScope,
 } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
+import { AuthService } from '../../_services/auth.service';
 
 @Component({
   selector: 'app-calendar',
@@ -62,7 +63,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   linkedRecord: Item | null = null;
 
-  userId: string = '944d0156-cb3d-466f-a1ea-5f53e3a10f8e';
+  userId: string | undefined;
 
   calendarGrid: Date[][] = [];
 
@@ -120,10 +121,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
     private calendarService: CalendarService,
     private dialog: MatDialog,
     private notificationService: NotificationRealtimeService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private authService: AuthService
   ) { }
 
   ngOnInit(): void {
+    const activeId = this.authService.getUserId();
+    if (activeId) {
+      this.userId = activeId;
+    }
     this.generateCurrentView();
     this.fetchEvents();
     this.updateNowIndicator();
@@ -902,58 +908,58 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.generateCurrentView();
   };
 
- stopResize = (): void => {
+  stopResize = (): void => {
 
-  if (!this.resizeSession) return;
+    if (!this.resizeSession) return;
 
-  const updatedEvent = this.events.find(
-    x => x.id === this.resizeSession!.event.id
-  );
+    const updatedEvent = this.events.find(
+      x => x.id === this.resizeSession!.event.id
+    );
 
-  if (!updatedEvent) return;
+    if (!updatedEvent) return;
 
-  // =====================================================
-  // RECURRING EVENT
-  // =====================================================
+    // =====================================================
+    // RECURRING EVENT
+    // =====================================================
 
-  if (updatedEvent.isRecurring) {
+    if (updatedEvent.isRecurring) {
 
-    const occurrenceDate = new Date(
-      this.resizeSession.originalStart
-    ).toISOString();
+      const occurrenceDate = new Date(
+        this.resizeSession.originalStart
+      ).toISOString();
 
-    this.calendarService.updateSingleOccurrence({
-      seriesUid: updatedEvent.seriesUid,
-      occurrenceDate,
+      this.calendarService.updateSingleOccurrence({
+        seriesUid: updatedEvent.seriesUid,
+        occurrenceDate,
 
-      subject: updatedEvent.subject,
-      comment: updatedEvent.comment,
+        subject: updatedEvent.subject,
+        comment: updatedEvent.comment,
 
-      startDate: new Date(updatedEvent.startDate).toISOString(),
-      endDate: new Date(updatedEvent.endDate).toISOString(),
+        startDate: new Date(updatedEvent.startDate).toISOString(),
+        endDate: new Date(updatedEvent.endDate).toISOString(),
 
-      location: updatedEvent.location,
-      eventTypeId: updatedEvent.eventTypeId,
+        location: updatedEvent.location,
+        eventTypeId: updatedEvent.eventTypeId,
 
-      isCancelled: false
-    })
-    .subscribe({
-      next: () => this.fetchEvents(),
-      error: err => console.error('Failed to resize recurring event', err)
-    });
+        isCancelled: false
+      })
+        .subscribe({
+          next: () => this.fetchEvents(),
+          error: err => console.error('Failed to resize recurring event', err)
+        });
 
-  } else {
+    } else {
 
-    this.calendarService.updateEvent(updatedEvent.id, updatedEvent)
-      .subscribe({
-        next: () => this.fetchEvents(),
-        error: err => console.error('Failed to resize event', err)
-      });
+      this.calendarService.updateEvent(updatedEvent.id, updatedEvent)
+        .subscribe({
+          next: () => this.fetchEvents(),
+          error: err => console.error('Failed to resize event', err)
+        });
+    }
+
+    this.resizeSession = null;
+
+    window.removeEventListener('mousemove', this.onResizing);
+    window.removeEventListener('mouseup', this.stopResize);
   }
-
-  this.resizeSession = null;
-
-  window.removeEventListener('mousemove', this.onResizing);
-  window.removeEventListener('mouseup', this.stopResize);
-}
 }

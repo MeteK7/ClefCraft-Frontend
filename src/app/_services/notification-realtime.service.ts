@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Subject, Observable } from 'rxjs';
+import { AuthService } from './auth.service';  // ← adjust path if needed
 
 export interface ReminderPayload {
   eventId: number;
@@ -14,22 +15,20 @@ export class NotificationRealtimeService {
   private hubConnection!: signalR.HubConnection;
   private reminderSubject = new Subject<ReminderPayload>();
 
-  // Expose an explicit stream for components or layout setups to subscribe to
   public reminders$: Observable<ReminderPayload> = this.reminderSubject.asObservable();
 
-  constructor() {
+  constructor(private authService: AuthService) {  // ← inject AuthService
     this.startConnection();
     this.registerReminderListener();
   }
 
   private startConnection(): void {
-    // Matches the mapping endpoint defined in your API's Program.cs
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl('https://localhost:7287/hubs/notifications', {
-        // Essential if your API uses authorization context cookie tokens or specific client headers
-        withCredentials: true 
+        accessTokenFactory: () => this.authService.getToken() ?? '',  // ← pass JWT
+        withCredentials: true
       })
-      .withAutomaticReconnect() // Automatically recovers if network status shifts
+      .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Information)
       .build();
 
@@ -40,7 +39,6 @@ export class NotificationRealtimeService {
   }
 
   private registerReminderListener(): void {
-    // Binds directly to the payload signature expected by your C# NotificationHubService
     this.hubConnection.on('ReceiveReminder', (payload: { eventId: number, message: string }) => {
       this.reminderSubject.next({
         eventId: payload.eventId,
@@ -49,7 +47,6 @@ export class NotificationRealtimeService {
     });
   }
 
-  // Lifecycle utility to close socket cleanly if required
   public stopConnection(): void {
     if (this.hubConnection) {
       this.hubConnection.stop();
