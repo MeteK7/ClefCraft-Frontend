@@ -10,7 +10,7 @@ export class AuthService {
 
   private apiUrl = 'https://localhost:7287/api/Auth';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   // =========================
   // AUTH API CALLS
@@ -77,8 +77,10 @@ export class AuthService {
     return decoded?.role || null;
   }
 
+  // auth.service.ts
   getUserId(): string | null {
     const decoded = this.decodeToken();
-    return decoded?.sub || null;
+    // Return the custom uid claim set up by the .NET Token Engine
+    return decoded?.uid || null;
   }
 }
