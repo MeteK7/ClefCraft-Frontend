@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -58,30 +58,19 @@ import { AuthService } from '../../_services/auth.service';
 export class CalendarComponent implements OnInit, OnDestroy {
 
   events: CalendarEventUI[] = [];
-
   selectedDate: Date = new Date();
-
   linkedRecord: Item | null = null;
-
   userId: string | undefined;
-
   calendarGrid: Date[][] = [];
-
   weekdays: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
   agendaDayGroups: AgendaDayGroup[] = [];
-
   readonly MAX_VISIBLE_LANES = 3;
   readonly AGENDA_DAYS = 30;
-
   selectedMoreEvents: CalendarEventUI[] = [];
   selectedMoreDate: Date | null = null;
-
   attendanceLabel = getAttendanceLabel;
   attendanceColor = getAttendanceColor;
-
   dragSession: DragSession | null = null;
-
   resizeSession: ResizeSession | null = null;
 
   // =========================
@@ -89,17 +78,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // =========================
 
   viewMode: CalendarViewMode = 'month';
-
   weekViewDates: Date[] = [];
-
   hours: number[] = Array.from({ length: 24 }, (_, i) => i);
-
   dayViewBlocks: CalendarTimeBlock[] = [];
-
   nowIndicatorTop: number = 0;
-
   readonly HOUR_HEIGHT = 80;
-
   private nowTimer: any;
   private reminderSubscription!: Subscription;
 
@@ -122,7 +105,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private notificationService: NotificationRealtimeService,
     private snackBar: MatSnackBar,
-    private authService: AuthService
+    private authService: AuthService,
+    private zone: NgZone
   ) { }
 
   ngOnInit(): void {
@@ -147,16 +131,18 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   private displayInteractiveReminder(message: string, eventId: number): void {
-    const snackBarRef = this.snackBar.open(message, 'View Event', {
-      duration: 10000, // Stays visible for 10 seconds
-      horizontalPosition: 'right',
-      verticalPosition: 'top',
-      panelClass: ['reminder-snackbar']
-    });
+    // Force execution back inside the Angular Zone to guarantee immediate UI rendering
+    this.zone.run(() => {
+      const snackBarRef = this.snackBar.open(message, 'View Event', {
+        duration: 10000,
+        horizontalPosition: 'right',
+        verticalPosition: 'top',
+        panelClass: ['reminder-snackbar']
+      });
 
-    // When interactive reminder action is clicked, open the target Event Dialog instantly
-    snackBarRef.onAction().subscribe(() => {
-      this.openEventById(eventId);
+      snackBarRef.onAction().subscribe(() => {
+        this.openEventById(eventId);
+      });
     });
   }
 
