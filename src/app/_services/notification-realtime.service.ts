@@ -4,52 +4,88 @@ import { Subject, Observable } from 'rxjs';
 import { AuthService } from './auth.service';  // ← adjust path if needed
 
 export interface ReminderPayload {
-  eventId: number;
-  message: string;
+    eventId: number;
+    message: string;
 }
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class NotificationRealtimeService {
-  private hubConnection!: signalR.HubConnection;
-  private reminderSubject = new Subject<ReminderPayload>();
+    private hubConnection!: signalR.HubConnection;
+    private reminderSubject = new Subject<ReminderPayload>();
 
-  public reminders$: Observable<ReminderPayload> = this.reminderSubject.asObservable();
+    public reminders$: Observable<ReminderPayload> = this.reminderSubject.asObservable();
 
-  constructor(private authService: AuthService) {  // ← inject AuthService
-    this.startConnection();
-    this.registerReminderListener();
-  }
-
-  private startConnection(): void {
-    this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl('https://localhost:7287/hubs/notifications', {
-        accessTokenFactory: () => this.authService.getToken() ?? '',  // ← pass JWT
-        withCredentials: true
-      })
-      .withAutomaticReconnect()
-      .configureLogging(signalR.LogLevel.Information)
-      .build();
-
-    this.hubConnection
-      .start()
-      .then(() => console.log('Successfully synchronized with Notification Hub.'))
-      .catch(err => console.error('Error establishing SignalR connection:', err));
-  }
-
-  private registerReminderListener(): void {
-    this.hubConnection.on('ReceiveReminder', (payload: { eventId: number, message: string }) => {
-      this.reminderSubject.next({
-        eventId: payload.eventId,
-        message: payload.message
-      });
-    });
-  }
-
-  public stopConnection(): void {
-    if (this.hubConnection) {
-      this.hubConnection.stop();
+    constructor(private authService: AuthService) {  // ← inject AuthService
+        this.startConnection();
+        this.registerReminderListener();
     }
-  }
+
+    private startConnection(): void {
+
+        this.hubConnection = new signalR.HubConnectionBuilder()
+            .withUrl('https://localhost:7287/hubs/notifications', {
+                accessTokenFactory: () => this.authService.getToken() ?? '',
+                withCredentials: true
+            })
+            .withAutomaticReconnect()
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        this.hubConnection.onreconnecting(error => {
+            console.log('SignalR reconnecting', error);
+        });
+
+        this.hubConnection.onreconnected(connectionId => {
+            console.log('SignalR reconnected', connectionId);
+        });
+
+        this.hubConnection.onclose(error => {
+            console.log('SignalR closed', error);
+        });
+
+        this.hubConnection
+            .start()
+            .then(() => {
+                console.log('Successfully synchronized with Notification Hub.');
+
+                console.log(
+                    'Connection State:',
+                    this.hubConnection.state
+                );
+
+                console.log(
+                    'Connection Id:',
+                    this.hubConnection.connectionId
+                );
+            })
+            .catch(err =>
+                console.error(
+                    'Error establishing SignalR connection:',
+                    err
+                )
+            );
+    }
+
+    private registerReminderListener(): void {
+        this.hubConnection.on(
+            'ReceiveReminder',
+            (payload: { eventId: number; message: string }) => {
+
+                console.log('REMINDER RECEIVED', payload);
+
+                this.reminderSubject.next({
+                    eventId: payload.eventId,
+                    message: payload.message
+                });
+            }
+        );
+    }
+
+    public stopConnection(): void {
+        if (this.hubConnection) {
+            this.hubConnection.stop();
+        }
+    }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -35,6 +35,7 @@ import {
 } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
 import { AuthService } from '../../_services/auth.service';
+import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
 
 @Component({
   selector: 'app-calendar',
@@ -58,30 +59,19 @@ import { AuthService } from '../../_services/auth.service';
 export class CalendarComponent implements OnInit, OnDestroy {
 
   events: CalendarEventUI[] = [];
-
   selectedDate: Date = new Date();
-
   linkedRecord: Item | null = null;
-
   userId: string | undefined;
-
   calendarGrid: Date[][] = [];
-
   weekdays: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
   agendaDayGroups: AgendaDayGroup[] = [];
-
   readonly MAX_VISIBLE_LANES = 3;
   readonly AGENDA_DAYS = 30;
-
   selectedMoreEvents: CalendarEventUI[] = [];
   selectedMoreDate: Date | null = null;
-
   attendanceLabel = getAttendanceLabel;
   attendanceColor = getAttendanceColor;
-
   dragSession: DragSession | null = null;
-
   resizeSession: ResizeSession | null = null;
 
   // =========================
@@ -89,17 +79,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // =========================
 
   viewMode: CalendarViewMode = 'month';
-
   weekViewDates: Date[] = [];
-
   hours: number[] = Array.from({ length: 24 }, (_, i) => i);
-
   dayViewBlocks: CalendarTimeBlock[] = [];
-
   nowIndicatorTop: number = 0;
-
   readonly HOUR_HEIGHT = 80;
-
   private nowTimer: any;
   private reminderSubscription!: Subscription;
 
@@ -122,7 +106,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private notificationService: NotificationRealtimeService,
     private snackBar: MatSnackBar,
-    private authService: AuthService
+    private authService: AuthService,
+    private zone: NgZone
   ) { }
 
   ngOnInit(): void {
@@ -146,19 +131,31 @@ export class CalendarComponent implements OnInit, OnDestroy {
     });
   }
 
-  private displayInteractiveReminder(message: string, eventId: number): void {
-    const snackBarRef = this.snackBar.open(message, 'View Event', {
-      duration: 10000, // Stays visible for 10 seconds
+private displayInteractiveReminder(message: string, eventId: number): void {
+  this.zone.run(() => {
+    // Dynamically query your local list state to see if a matching event color is active
+    const matchedEvent = this.events.find(e => e.id === eventId);
+    const eventColor = matchedEvent?.eventColor || '#e74c3c';
+
+    // Open custom component via overlay engine infrastructure configuration settings
+    const snackBarRef = this.snackBar.openFromComponent(LiveReminderToastComponent, {
+      duration: 12000, // 12 seconds
       horizontalPosition: 'right',
       verticalPosition: 'top',
-      panelClass: ['reminder-snackbar']
+      panelClass: ['clean-reminder-viewport-override'], // Clean global container definition
+      data: { 
+        message: message, 
+        eventId: eventId,
+        color: eventColor
+      }
     });
 
-    // When interactive reminder action is clicked, open the target Event Dialog instantly
+    // Handle interactive overlay modal dialog routing upon click confirmation
     snackBarRef.onAction().subscribe(() => {
       this.openEventById(eventId);
     });
-  }
+  });
+}
 
   private openEventById(eventId: number): void {
     // Find the target layout model configuration from local memory state

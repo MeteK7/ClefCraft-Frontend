@@ -1,0 +1,19 @@
+<div class="live-reminder-card">
+  <div class="reminder-accent-bar" [style.background-color]="data.color || '#e74c3c'"></div>
+  
+  <div class="reminder-icon-column">
+    <mat-icon class="reminder-bell-icon">notification_important</mat-icon>
+  </div>
+
+  <div class="reminder-text-column">
+    <span class="reminder-badge">Upcoming Reminder</span>
+    <p class="reminder-message-body">{{ data.message }}</p>
+  </div>
+
+  <div class="reminder-action-column">
+    <button mat-flat-button class="reminder-action-btn" (click)="onActionClicked()">
+      <mat-icon>open_in_new</mat-icon>
+      View
+    </button>
+  </div>
+</div>
