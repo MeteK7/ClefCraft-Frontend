@@ -35,6 +35,7 @@ import {
 } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
 import { AuthService } from '../../_services/auth.service';
+import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
 
 @Component({
   selector: 'app-calendar',
@@ -130,21 +131,31 @@ export class CalendarComponent implements OnInit, OnDestroy {
     });
   }
 
-  private displayInteractiveReminder(message: string, eventId: number): void {
-    // Force execution back inside the Angular Zone to guarantee immediate UI rendering
-    this.zone.run(() => {
-      const snackBarRef = this.snackBar.open(message, 'View Event', {
-        duration: 10000,
-        horizontalPosition: 'right',
-        verticalPosition: 'top',
-        panelClass: ['reminder-snackbar']
-      });
+private displayInteractiveReminder(message: string, eventId: number): void {
+  this.zone.run(() => {
+    // Dynamically query your local list state to see if a matching event color is active
+    const matchedEvent = this.events.find(e => e.id === eventId);
+    const eventColor = matchedEvent?.eventColor || '#e74c3c';
 
-      snackBarRef.onAction().subscribe(() => {
-        this.openEventById(eventId);
-      });
+    // Open custom component via overlay engine infrastructure configuration settings
+    const snackBarRef = this.snackBar.openFromComponent(LiveReminderToastComponent, {
+      duration: 12000, // 12 seconds
+      horizontalPosition: 'right',
+      verticalPosition: 'top',
+      panelClass: ['clean-reminder-viewport-override'], // Clean global container definition
+      data: { 
+        message: message, 
+        eventId: eventId,
+        color: eventColor
+      }
     });
-  }
+
+    // Handle interactive overlay modal dialog routing upon click confirmation
+    snackBarRef.onAction().subscribe(() => {
+      this.openEventById(eventId);
+    });
+  });
+}
 
   private openEventById(eventId: number): void {
     // Find the target layout model configuration from local memory state
