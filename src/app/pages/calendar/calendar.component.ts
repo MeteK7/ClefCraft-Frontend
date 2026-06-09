@@ -133,27 +133,30 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
 private displayInteractiveReminder(message: string, eventId: number): void {
   this.zone.run(() => {
-    // Dynamically query your local list state to see if a matching event color is active
     const matchedEvent = this.events.find(e => e.id === eventId);
-    const eventColor = matchedEvent?.eventColor || '#e74c3c';
+    const eventColor = matchedEvent?.eventColor || '#4f87f5';
 
-    // Open custom component via overlay engine infrastructure configuration settings
+    // Derive a human-readable "starts in X minutes" string if event data is available
+    let timeUntil: string | undefined;
+    if (matchedEvent?.startDate) {
+      const diffMs = new Date(matchedEvent.startDate).getTime() - Date.now();
+      const diffMin = Math.round(diffMs / 60000);
+      const timeStr = new Date(matchedEvent.startDate)
+        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      timeUntil = diffMin > 0
+        ? `Starts in ${diffMin} minute${diffMin !== 1 ? 's' : ''} · ${timeStr}`
+        : `Starting now · ${timeStr}`;
+    }
+
     const snackBarRef = this.snackBar.openFromComponent(LiveReminderToastComponent, {
-      duration: 12000, // 12 seconds
+      duration: 12000,
       horizontalPosition: 'right',
       verticalPosition: 'top',
-      panelClass: ['clean-reminder-viewport-override'], // Clean global container definition
-      data: { 
-        message: message, 
-        eventId: eventId,
-        color: eventColor
-      }
+      panelClass: ['clean-reminder-viewport-override'],
+      data: { message, eventId, color: eventColor, timeUntil }
     });
 
-    // Handle interactive overlay modal dialog routing upon click confirmation
-    snackBarRef.onAction().subscribe(() => {
-      this.openEventById(eventId);
-    });
+    snackBarRef.onAction().subscribe(() => this.openEventById(eventId));
   });
 }
 

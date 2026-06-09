@@ -2,3 +2,18 @@
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+/* Remove Material's own snackbar chrome */
+.clean-reminder-viewport-override .mdc-snackbar__surface {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+  min-width: unset !important;
+}
+
+.clean-reminder-viewport-override .mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: transparent;
+  --mdc-snackbar-supporting-text-color: inherit;
+  padding: 0 !important;
+  box-shadow: none !important;
+}

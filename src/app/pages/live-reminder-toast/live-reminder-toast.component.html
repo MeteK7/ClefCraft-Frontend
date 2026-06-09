@@ -1,19 +1,65 @@
-<div class="live-reminder-card">
-  <div class="reminder-accent-bar" [style.background-color]="data.color || '#e74c3c'"></div>
-  
-  <div class="reminder-icon-column">
-    <mat-icon class="reminder-bell-icon">notification_important</mat-icon>
+<div
+  class="reminder-toast"
+  role="alertdialog"
+  aria-live="assertive"
+  aria-label="Event reminder"
+  [class.reminder-toast--entering]="isEntering">
+
+  <!-- Left color bar, driven entirely by event color -->
+  <div class="reminder-color-bar" [style.background]="data.color || defaultColor"></div>
+
+  <!-- Dismiss X -->
+  <button
+    class="reminder-close"
+    mat-icon-button
+    aria-label="Dismiss reminder"
+    (click)="onDismiss()">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <div class="reminder-body">
+
+    <!-- Icon column, tinted to event color -->
+    <div class="reminder-icon-wrap" [style.background]="colorWithAlpha(data.color, 0.1)">
+      <mat-icon class="reminder-icon" [style.color]="data.color || defaultColor">
+        alarm
+      </mat-icon>
+    </div>
+
+    <!-- Text column -->
+    <div class="reminder-content">
+      <span class="reminder-eyebrow">Reminder</span>
+      <p class="reminder-message">{{ data.message }}</p>
+      <div class="reminder-meta" *ngIf="data.timeUntil">
+        <mat-icon class="reminder-meta-icon">schedule</mat-icon>
+        {{ data.timeUntil }}
+      </div>
+      <div class="reminder-actions">
+        <button
+          mat-stroked-button
+          class="reminder-btn-view"
+          (click)="onActionClicked()">
+          <mat-icon>open_in_new</mat-icon>
+          View event
+        </button>
+        <button
+          mat-button
+          class="reminder-btn-dismiss"
+          (click)="onDismiss()">
+          Dismiss
+        </button>
+      </div>
+    </div>
+
   </div>
 
-  <div class="reminder-text-column">
-    <span class="reminder-badge">Upcoming Reminder</span>
-    <p class="reminder-message-body">{{ data.message }}</p>
+  <!-- Auto-dismiss progress bar -->
+  <div class="reminder-progress-track">
+    <div
+      class="reminder-progress-fill"
+      [style.background]="data.color || defaultColor"
+      [style.animation-duration]="duration + 'ms'">
+    </div>
   </div>
 
-  <div class="reminder-action-column">
-    <button mat-flat-button class="reminder-action-btn" (click)="onActionClicked()">
-      <mat-icon>open_in_new</mat-icon>
-      View
-    </button>
-  </div>
 </div>
