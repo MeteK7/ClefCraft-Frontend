@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-
 import { CalendarLayoutItem } from '../models/calendar-layout-item.model';
 import { MonthEventInput, MonthLayoutEngine, MonthLayoutItem } from '../layout/month-layout-engine';
 import { TimeBlockLayoutEngine } from '../layout/time-block-layout-engine';
@@ -9,6 +8,15 @@ import {
   RecurrenceException,
   RecurrenceExceptionEngine,
 } from '../recurrence/recurrence-exception-engine';
+import { MonthViewGenerator } from '../generators/month-view.generator';
+import { MonthViewModel } from '../models/month-view.model';
+import { WeekViewGenerator } from '../generators/week-view.generator';
+import { WeekViewModel } from '../models/week-view.model';
+import { DayViewGenerator } from '../generators/day-view.generator';
+import { DayViewModel } from '../models/day-view.model';
+import { AgendaViewGenerator } from '../generators/agenda-view.generator';
+import { AgendaDayGroup } from '../../models/agenda-day-group.model';
+import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 
 export interface TimeGridEventInput {
   id: number;
@@ -83,5 +91,21 @@ export class CalendarEngineService {
   ): MonthLayoutItem<T>[] {
 
     return MonthLayoutEngine.generate(events, week);
+  }
+
+  buildMonthView(selectedDate: Date, events: CalendarEventUI[]): MonthViewModel {
+    return MonthViewGenerator.generate(selectedDate, events);
+  }
+
+  buildWeekView(selectedDate: Date, events: CalendarEventUI[]): WeekViewModel {
+    return WeekViewGenerator.generate(selectedDate, events);
+  }
+
+  buildDayView(selectedDate: Date, events: CalendarEventUI[]): DayViewModel {
+    return DayViewGenerator.generate(selectedDate, events);
+  }
+
+  buildAgendaView(selectedDate: Date, events: CalendarEventUI[]): AgendaDayGroup[] {
+    return AgendaViewGenerator.generate(selectedDate, events);
   }
 }
