@@ -10,10 +10,6 @@ import {
   RecurrenceExceptionEngine,
 } from '../recurrence/recurrence-exception-engine';
 
-/**
- * Minimum shape required for time-grid (day / week) layout.
- * The concrete event type used by the app (CalendarEventUI) satisfies this.
- */
 export interface TimeGridEventInput {
   id: number;
   startDate: Date;
@@ -21,36 +17,13 @@ export interface TimeGridEventInput {
   allDayEvent?: boolean;
 }
 
-/**
- * Minimum shape required for recurrence expansion.
- */
 export interface RecurringEventInput extends TimeGridEventInput {
   recurrenceRule?: string;
 }
 
-/**
- * Orchestrates the calendar-engine pipeline:
- *
- *  1. Recurrence expansion   – turn a base event + rule into N occurrences
- *  2. Exception application  – suppress/patch individual occurrences
- *  3. Normalisation          – convert domain dates to EngineEvent timestamps
- *  4. Layout generation      – produce pixel-positioned CalendarLayoutItem[]
- *                              or column-positioned MonthLayoutItem[]
- *
- * All methods are generic so the service stays independent of any
- * specific UI model (CalendarEventUI lives in the pages layer, not here).
- */
 @Injectable({ providedIn: 'root' })
 export class CalendarEngineService {
 
-  // ── Recurrence ─────────────────────────────────────────────────────────────
-
-  /**
-   * Expands every recurring event in `events` into individual occurrences
-   * within [rangeStart, rangeEnd], and leaves non-recurring events as-is.
-   *
-   * Optionally applies `exceptions` to filter/patch the expanded occurrences.
-   */
   expandRecurring<T extends RecurringEventInput>(
     events: T[],
     rangeStart: Date,
@@ -89,15 +62,6 @@ export class CalendarEngineService {
     return result;
   }
 
-  // ── Layout: day / week (time-grid) ─────────────────────────────────────────
-
-  /**
-   * Returns pixel-positioned layout items for rendering events in a
-   * day-view or week-view time column.
-   *
-   * All-day events are excluded from the output (they belong in the
-   * all-day banner above the grid).
-   */
   getDayTimeLayouts<T extends TimeGridEventInput>(
     events: T[]
   ): CalendarLayoutItem<T>[] {
@@ -105,8 +69,6 @@ export class CalendarEngineService {
     const normalized = EventNormalizer.normalize(events);
     return TimeBlockLayoutEngine.generate(normalized) as CalendarLayoutItem<T>[];
   }
-
-  // ── Layout: month ──────────────────────────────────────────────────────────
 
   /**
    * Returns column/lane-positioned layout items for rendering multi-day
