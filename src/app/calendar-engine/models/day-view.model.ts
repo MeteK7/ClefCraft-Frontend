@@ -1,7 +1,8 @@
-import { CalendarTimeBlock } from '../../models/calendar-time-block';
+import { CalendarLayoutItem } from '../models/calendar-layout-item.model';
+import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 
-export interface DayViewModel<T> {
+export interface DayViewModel {
   date: Date;
-  blocks: CalendarTimeBlock[];
-  events: T[];
+  isToday: boolean;
+  layoutItems: CalendarLayoutItem<CalendarEventUI>[];
 }

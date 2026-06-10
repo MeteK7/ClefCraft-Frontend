@@ -1,9 +1,14 @@
-export interface MonthDayCell<T> {
-  date: Date;
-  isCurrentMonth: boolean;
-  events: T[];
+import { MonthLayoutItem } from '../layout/month-layout-engine';
+import { CalendarEventUI } from '../../models/calendar-event.model-ui';
+
+export interface MonthWeekRow {
+  weekStartTimestamp: number;
+  dates: Date[];
+  layoutItems: MonthLayoutItem<CalendarEventUI>[];
 }
 
-export interface MonthViewModel<T> {
-  weeks: MonthDayCell<T>[][];
+export interface MonthViewModel {
+  viewStartDate: Date;
+  viewEndDate: Date;
+  weeks: MonthWeekRow[];
 }

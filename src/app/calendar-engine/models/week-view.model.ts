@@ -1,6 +1,14 @@
-import { CalendarLayoutItem } from '../layout/calendar-layout-item';
+import { CalendarLayoutItem } from '../models/calendar-layout-item.model';
+import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 
-export interface WeekViewModel<T> {
-  dates: Date[];
-  layoutItems: CalendarLayoutItem<T>[];
+export interface WeekDayColumn {
+  date: Date;
+  isToday: boolean;
+  layoutItems: CalendarLayoutItem<CalendarEventUI>[];
+}
+
+export interface WeekViewModel {
+  viewStartDate: Date;
+  viewEndDate: Date;
+  columns: WeekDayColumn[];
 }
