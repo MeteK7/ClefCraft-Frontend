@@ -1,27 +1,11 @@
-/**
- * Describes a single exception to a recurrence series.
- *
- * - 'deleted'  – this occurrence should be completely suppressed.
- * - 'modified' – this occurrence should use the overridden fields
- *                supplied in `override`.
- */
 export interface RecurrenceException {
   /** The id of the base (root) recurring event. */
   baseEventId: number;
 
-  /**
-   * The *original* start date of the occurrence being excepted
-   * (i.e. the date it would have had without the exception).
-   * Used as the key for matching.
-   */
   originalDate: Date;
 
   type: 'deleted' | 'modified';
 
-  /**
-   * Fields to merge into the occurrence when type === 'modified'.
-   * Only the listed fields are overridable to keep the surface small.
-   */
   override?: {
     subject?: string;
     comment?: string;
@@ -30,18 +14,6 @@ export interface RecurrenceException {
   };
 }
 
-/**
- * Applies a set of exceptions to an already-expanded list of occurrences.
- *
- * Call this after RecurrenceExpander.expand() to suppress deleted
- * occurrences and replace fields for modified ones.
- *
- * Usage:
- * ```ts
- * const raw = RecurrenceExpander.expand(…);
- * const dates = RecurrenceExceptionEngine.applyExceptions(raw, exceptions);
- * ```
- */
 export class RecurrenceExceptionEngine {
 
   /**
@@ -81,11 +53,6 @@ export class RecurrenceExceptionEngine {
       });
   }
 
-  /**
-   * Convenience: filters exception records to only those relevant to a
-   * specific base event, then applies them. Useful when a single array
-   * holds exceptions for multiple events.
-   */
   static applyForBaseEvent<T extends { startDate: Date; endDate: Date }>(
     occurrences: T[],
     baseEventId: number,
@@ -98,8 +65,6 @@ export class RecurrenceExceptionEngine {
 
     return this.applyExceptions(occurrences, relevant);
   }
-
-  // ── Private helpers ────────────────────────────────────────────────────────
 
   private static isSameDay(a: Date, b: Date): boolean {
     return (
