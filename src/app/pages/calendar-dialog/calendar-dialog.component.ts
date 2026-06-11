@@ -432,11 +432,19 @@ export class CalendarDialogComponent implements OnInit {
   }
 
   private combineDateAndTime(date: Date, time: string): Date {
+    const result = new Date(date);
+
+    if (!time || !time.includes(':')) {
+      result.setHours(0, 0, 0, 0);
+      return result;
+    }
+
     const [hours, minutes] = time.split(':').map(Number);
 
-    const result = new Date(date);
-    result.setHours(hours, minutes, 0, 0);
+    const safeHours = isNaN(hours) ? 0 : hours;
+    const safeMinutes = isNaN(minutes) ? 0 : minutes;
 
+    result.setHours(safeHours, safeMinutes, 0, 0);
     return result;
   }
 

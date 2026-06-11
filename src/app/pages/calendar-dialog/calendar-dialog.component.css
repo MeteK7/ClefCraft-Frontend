@@ -120,6 +120,15 @@
   min-width: 0;        /* allow shrinking */
 }
 
+.time-field input {
+  cursor: pointer;
+  caret-color: transparent;
+}
+
+::ng-deep .timepicker-dial__control {
+  caret-color: transparent;
+}
+
 /* Each field takes 50% of the row inside half-section */
 .datetime-row .half-width {
   flex: 1 1 calc(50% - 16px);

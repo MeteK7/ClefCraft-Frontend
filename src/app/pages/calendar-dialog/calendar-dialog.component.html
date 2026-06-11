@@ -97,9 +97,9 @@
 
               <mat-form-field appearance="outline" color="primary" class="time-field">
                 <mat-label>Start Time</mat-label>
-                <input matInput [ngxMatTimepicker]="startPicker" formControlName="startTime" readonly />
+                <input matInput [ngxMatTimepicker]="startPicker" formControlName="startTime" />
                 <ngx-mat-timepicker-toggle matSuffix [for]="startPicker"></ngx-mat-timepicker-toggle>
-                <ngx-mat-timepicker #startPicker [format]="24"></ngx-mat-timepicker>
+                <ngx-mat-timepicker #startPicker [format]="24" [enableKeyboardInput]="true"></ngx-mat-timepicker>
               </mat-form-field>
 
               <mat-form-field appearance="outline" color="primary" class="date-field">
@@ -112,9 +112,9 @@
 
               <mat-form-field appearance="outline" color="primary" class="time-field">
                 <mat-label>End Time</mat-label>
-                <input matInput [ngxMatTimepicker]="endPicker" formControlName="endTime" readonly />
+                <input matInput [ngxMatTimepicker]="endPicker" formControlName="endTime" />
                 <ngx-mat-timepicker-toggle matSuffix [for]="endPicker"></ngx-mat-timepicker-toggle>
-                <ngx-mat-timepicker #endPicker [format]="24"></ngx-mat-timepicker>
+                <ngx-mat-timepicker #endPicker [format]="24" [enableKeyboardInput]="true"></ngx-mat-timepicker>
               </mat-form-field>
 
             </div>
