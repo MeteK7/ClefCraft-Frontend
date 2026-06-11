@@ -1,6 +1,6 @@
 <div class="calendar-top-bar">
 
-    <!--  LEFT: Navigation -->
+  <!-- LEFT: Navigation -->
   <div class="calendar-navigation">
     <button mat-stroked-button class="nav-btn" (click)="goToPreviousMonth()">&lt;</button>
     <button mat-flat-button class="today-btn" (click)="goToToday()">Today</button>
@@ -10,42 +10,25 @@
   <!-- Selected date summary -->
   <div class="selected-date-summary">
     <h3>{{ selectedDate | date: 'EEEE, MMMM d, y' }}</h3>
-    <p>
-      Week {{ getWeekNumber(selectedDate) }}, day {{ getDayOfYear(selectedDate) }} of the year
-    </p>
+    <p>Week {{ getWeekNumber(selectedDate) }}, day {{ getDayOfYear(selectedDate) }} of the year</p>
   </div>
 
-  <!-- Spacer -->
   <div class="top-bar-spacer"></div>
 
-  <!-- View modes -->
+  <!-- View mode selector -->
   <div class="view-mode-selector">
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'month'" (click)="setViewMode('month')">
-      Month
-    </button>
-
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'week'" (click)="setViewMode('week')">
-      Week
-    </button>
-
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'day'" (click)="setViewMode('day')">
-      Day
-    </button>
-
-    <button mat-button class="view-btn" [class.active-view]="viewMode === 'agenda'" (click)="setViewMode('agenda')">
-      Agenda
-    </button>
+    <button mat-button class="view-btn" [class.active-view]="viewMode === 'month'" (click)="setViewMode('month')">Month</button>
+    <button mat-button class="view-btn" [class.active-view]="viewMode === 'week'"  (click)="setViewMode('week')">Week</button>
+    <button mat-button class="view-btn" [class.active-view]="viewMode === 'day'"   (click)="setViewMode('day')">Day</button>
+    <button mat-button class="view-btn" [class.active-view]="viewMode === 'agenda'" (click)="setViewMode('agenda')">Agenda</button>
   </div>
 
   <!-- Datepicker -->
   <div class="calendar-container">
     <mat-form-field appearance="outline">
       <mat-label>Select a date</mat-label>
-
       <input matInput [matDatepicker]="picker" (dateChange)="onDateSelectedFromPicker($event.value)" />
-
       <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-
       <mat-datepicker #picker></mat-datepicker>
     </mat-form-field>
   </div>
@@ -55,41 +38,48 @@
 <!-- ==================== MONTH VIEW ==================== -->
 <div *ngIf="viewMode === 'month'" class="calendar-grid">
 
-  <!-- Day-of-week header -->
   <div class="calendar-header-row">
     <div class="calendar-header-cell" *ngFor="let day of weekdays">{{ day }}</div>
   </div>
 
-  <!-- Week rows -->
-  <div class="calendar-week" *ngFor="let row of calendarGrid">
+  <div *ngFor="let row of monthView.weeks" class="calendar-week">
 
-    <!-- Day cell grid (day numbers + "more" indicators) -->
+    <!-- Day cells (numbers + overflow indicators) -->
     <div class="days-grid">
-      <div *ngFor="let date of row" class="calendar-day"
+      <div
+        *ngFor="let date of row.dates"
+        class="calendar-day"
         [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
-        [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
+        [class.selected]="isSameDate(date, selectedDate)"
+        [class.today]="isToday(date)"
         (click)="onEmptyDayClicked(date)">
 
-        <div class="day">
-          <span>{{ date.getDate() }}</span>
-        </div>
-        <span *ngIf="getHiddenCountForDay(date, row) > 0" class="more-indicator" [matMenuTriggerFor]="moreMenu"
+        <div class="day"><span>{{ date.getDate() }}</span></div>
+
+        <span
+          *ngIf="getHiddenCountForDay(date, row) > 0"
+          class="more-indicator"
+          [matMenuTriggerFor]="moreMenu"
           (click)="onMoreClicked(date, row, $event)">
           +{{ getHiddenCountForDay(date, row) }} more
         </span>
-
       </div>
     </div>
 
-    <!-- Multi-day / spanning events overlay -->
+    <!-- Spanning-event overlay -->
     <div class="week-events-overlay">
       <div class="week-events-layer">
-        <ng-container *ngFor="let item of getWeekLayout(row)">
-          <div *ngIf="item.lane < MAX_VISIBLE_LANES" class="event span-event"
+        <ng-container *ngFor="let item of row.layoutItems">
+          <div
+            *ngIf="item.lane < MAX_VISIBLE_LANES"
+            class="event span-event"
             [class.linked]="item.event.linkedBoardItemId"
-            [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan" [style.grid-row]="item.lane + 1"
+            [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan"
+            [style.grid-row]="item.lane + 1"
             [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
-            [matTooltip]="getTooltip(item.event)" matTooltipShowDelay="400" matTooltipHideDelay="100"
+            [matTooltip]="getTooltip(item.event)"
+            matTooltipShowDelay="400"
+            matTooltipHideDelay="100"
             (click)="onEventClicked(item.event, $event)">
 
             <span class="event-title">
@@ -97,120 +87,108 @@
               {{ item.event.subject }}
             </span>
 
-            <div class="attendance-indicator" *ngIf="item.event.attendanceScore != null"
+            <div
+              class="attendance-indicator"
+              *ngIf="item.event.attendanceScore != null"
               [style.background]="attendanceColor(item.event.attendanceScore)">
             </div>
-
           </div>
         </ng-container>
-
       </div>
     </div>
 
   </div>
-
 </div>
 
 <!-- ==================== WEEK VIEW ==================== -->
 <div *ngIf="viewMode === 'week'" class="week-view-wrapper">
-
   <div class="week-scroll-area">
 
     <!-- Sticky header -->
     <div class="week-header-row">
       <div class="time-header"></div>
-      <div *ngFor="let date of weekViewDates" class="week-day-header" [class.today]="isToday(date)">
-        <div>{{ date | date:'EEE' }}</div>
-        <div>{{ date | date:'d' }}</div>
+      <div *ngFor="let col of weekView.columns" class="week-day-header" [class.today]="col.isToday">
+        <div>{{ col.date | date:'EEE' }}</div>
+        <div>{{ col.date | date:'d' }}</div>
       </div>
     </div>
 
     <!-- Body -->
     <div class="week-body">
-
       <div class="time-column">
         <div *ngFor="let hour of hours" class="time-slot-label">{{ formatHour(hour) }}</div>
       </div>
 
       <div class="week-days-container">
-        <div *ngFor="let date of weekViewDates" class="week-day-column" [class.today]="isToday(date)">
+        <div *ngFor="let col of weekView.columns" class="week-day-column" [class.today]="col.isToday">
           <div class="week-day-grid">
 
             <div *ngFor="let hour of hours" class="hour-row"></div>
 
-            <!-- Now indicator (today only) -->
-            <div *ngIf="isToday(date)" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
+            <div *ngIf="col.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
 
-            <!-- Positioned time-block events -->
-            <div *ngFor="let block of getWeekDayLayouts(date)" class="time-block-event" [style.top.px]="block.top"
-              [style.height.px]="block.height" [style.left.%]="block.left" [style.width.%]="block.width"
-              [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
-              (mousedown)="startDrag($event, block, date)">
+            <div
+              *ngFor="let item of col.layoutItems"
+              class="time-block-event"
+              [style.top.px]="item.top"
+              [style.height.px]="item.height"
+              [style.left.%]="item.left"
+              [style.width.%]="item.width"
+              [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
+              (click)="onEventClicked(item.event, $event)"
+              (mousedown)="startDrag($event, item, col.date)">
 
-              <div class="resize-handle top" (mousedown)="startResize($event, block, 'top')">
-              </div>
+              <div class="resize-handle top" (mousedown)="startResize($event, item, 'top')"></div>
 
-              <div class="time-block-title">
-                {{ block.subject }}
-              </div>
+              <div class="time-block-title">{{ item.event.subject }}</div>
 
               <div class="time-block-time">
-                {{ block.startDate | date:'HH:mm' }}
-                –
-                {{ block.endDate | date:'HH:mm' }}
+                {{ item.event.startDate | date:'HH:mm' }} – {{ item.event.endDate | date:'HH:mm' }}
               </div>
 
-              <div class="resize-handle bottom" (mousedown)="startResize($event, block, 'bottom')">
-              </div>
+              <div class="resize-handle bottom" (mousedown)="startResize($event, item, 'bottom')"></div>
             </div>
+
           </div>
         </div>
       </div>
-
     </div>
-  </div>
 
+  </div>
 </div>
 
 <!-- ==================== DAY VIEW ==================== -->
 <div *ngIf="viewMode === 'day'" class="day-time-layout">
 
-  <!-- Time labels -->
   <div class="time-column">
     <div *ngFor="let hour of hours" class="time-slot-label">{{ formatHour(hour) }}</div>
   </div>
 
-  <!-- Day timeline -->
   <div class="day-timeline">
-
     <div *ngFor="let hour of hours" class="hour-row"></div>
 
-    <!-- Now indicator -->
-    <div *ngIf="isToday(selectedDate)" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
+    <div *ngIf="dayView.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
 
-    <!-- Positioned time-block events -->
-    <div *ngFor="let block of dayViewBlocks" class="time-block-event" [style.top.px]="block.top"
-      [style.height.px]="block.height" [style.left.%]="block.left" [style.width.%]="block.width"
-      [ngStyle]="block.eventColor ? {'border-left': '6px solid ' + block.eventColor} : {}"
-      (click)="onEventClicked(block, $event)" (mousedown)="startDrag($event, block, selectedDate)">
+    <div
+      *ngFor="let item of dayView.layoutItems"
+      class="time-block-event"
+      [style.top.px]="item.top"
+      [style.height.px]="item.height"
+      [style.left.%]="item.left"
+      [style.width.%]="item.width"
+      [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
+      (click)="onEventClicked(item.event, $event)"
+      (mousedown)="startDrag($event, item, selectedDate)">
 
-      <!-- TOP RESIZE -->
-      <div class="resize-handle top" (mousedown)="startResize($event, block, 'top')">
-      </div>
+      <div class="resize-handle top" (mousedown)="startResize($event, item, 'top')"></div>
 
-      <div class="time-block-title">
-        {{ block.subject }}
-      </div>
+      <div class="time-block-title">{{ item.event.subject }}</div>
 
       <div class="time-block-time">
-        {{ block.startDate | date:'HH:mm' }}
-        –
-        {{ block.endDate | date:'HH:mm' }}
+        {{ item.event.startDate | date:'HH:mm' }} – {{ item.event.endDate | date:'HH:mm' }}
       </div>
 
-      <!-- BOTTOM RESIZE -->
-      <div class="resize-handle bottom" (mousedown)="startResize($event, block, 'bottom')">
-      </div>
+      <div class="resize-handle bottom" (mousedown)="startResize($event, item, 'bottom')"></div>
     </div>
   </div>
 </div>
@@ -218,14 +196,13 @@
 <!-- ==================== AGENDA VIEW ==================== -->
 <div *ngIf="viewMode === 'agenda'" class="agenda-view">
 
-  <div *ngIf="agendaDayGroups.length === 0" class="agenda-empty">
+  <div *ngIf="agendaView.length === 0" class="agenda-empty">
     <mat-icon class="agenda-empty-icon">event_available</mat-icon>
     <p>No events in the next 30 days.</p>
   </div>
 
-  <div *ngFor="let group of agendaDayGroups" class="agenda-day-group">
+  <div *ngFor="let group of agendaView" class="agenda-day-group">
 
-    <!-- Day header -->
     <div class="agenda-day-header" [class.agenda-today]="isToday(group.date)">
       <span class="agenda-day-name">{{ group.date | date:'EEE' }}</span>
       <span class="agenda-day-number">{{ group.date | date:'d' }}</span>
@@ -233,14 +210,17 @@
       <span *ngIf="isToday(group.date)" class="agenda-today-badge">Today</span>
     </div>
 
-    <!-- Events for the day -->
     <div class="agenda-events">
-      <div *ngFor="let event of group.events" class="agenda-event" [class.linked]="event.linkedBoardItemId"
+      <div
+        *ngFor="let event of group.events"
+        class="agenda-event"
+        [class.linked]="event.linkedBoardItemId"
         [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
-        [matTooltip]="getTooltip(event)" matTooltipShowDelay="400" matTooltipHideDelay="100"
+        [matTooltip]="getTooltip(event)"
+        matTooltipShowDelay="400"
+        matTooltipHideDelay="100"
         (click)="onEventClicked(event, $event)">
 
-        <!-- Time column -->
         <div class="agenda-event-time">
           <ng-container *ngIf="event.allDayEvent; else timedEvent">
             <span class="agenda-allday-badge">All day</span>
@@ -252,7 +232,6 @@
           </ng-template>
         </div>
 
-        <!-- Content column -->
         <div class="agenda-event-content">
           <div class="agenda-event-title">
             <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
@@ -261,8 +240,9 @@
           <div *ngIf="event.eventTypeName" class="agenda-event-type">{{ event.eventTypeName }}</div>
         </div>
 
-        <!-- Attendance dot -->
-        <div *ngIf="event.attendanceScore != null" class="agenda-attendance-dot"
+        <div
+          *ngIf="event.attendanceScore != null"
+          class="agenda-attendance-dot"
           [style.background]="attendanceColor(event.attendanceScore)">
         </div>
 
@@ -270,17 +250,12 @@
     </div>
 
   </div>
-
 </div>
 
+<!-- ==================== MORE MENU ==================== -->
 <mat-menu #moreMenu="matMenu" class="more-menu">
-
-  <div class="more-menu-header">
-    {{ selectedMoreDate | date: 'EEE, MMM d' }}
-  </div>
-
+  <div class="more-menu-header">{{ selectedMoreDate | date: 'EEE, MMM d' }}</div>
   <button mat-menu-item *ngFor="let event of selectedMoreEvents" (click)="onEventClicked(event, $event)">
     {{ event.subject }}
   </button>
-
 </mat-menu>

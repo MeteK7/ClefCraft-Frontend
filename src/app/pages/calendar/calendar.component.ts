@@ -1,41 +1,47 @@
-import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatInputModule } from '@angular/material/input';
 import { MatNativeDateModule } from '@angular/material/core';
-import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
-import { Item } from '../../models/board.model';
-import { CalendarService } from '../../_services/calendar.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
-import { EventNormalizer } from '../../calendar-engine/utils/event-normalizer';
-import { TimeBlockLayoutEngine } from '../../calendar-engine/layout/time-block-layout-engine';
-import { MonthLayoutEngine, MonthLayoutItem } from '../../calendar-engine/layout/month-layout-engine';
-import { DateUtils } from '../../calendar-engine/utils/date.utils';
-import { AgendaDayGroup } from '../../models/agenda-day-group.model';
-import { CalendarViewMode } from '../../calendar-engine/types/calendar-view-model.type';
-import { CalendarEventUI } from '../../models/calendar-event.model-ui';
-import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
-import { SavePayload } from '../../models/save-payload.model';
-import { DragSession } from '../../calendar-engine/interactions/drag/drag-session.model';
-import { ResizeSession } from '../../calendar-engine/interactions/resize/resize-session.model';
-import { EventDragEngine } from '../../calendar-engine/interactions/drag/event-drag-engine';
-import { EventResizeEngine } from '../../calendar-engine/interactions/resize/event-resize-engine';
-import { Observable, Subscription } from 'rxjs';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { Observable, Subscription } from 'rxjs';
 
-// ── Recurrence scope ────────────────────────────────────────────────────────
+import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
+import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
 import {
   RecurrenceScopeDialogComponent,
   RecurrenceUpdateScope,
 } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
+
+import { CalendarService } from '../../_services/calendar.service';
 import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
 import { AuthService } from '../../_services/auth.service';
-import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
+import { CalendarEngineService } from '../../calendar-engine/services/calendar-engine.service';
+
+import { DateUtils } from '../../calendar-engine/utils/date.utils';
+import { CalendarViewMode } from '../../calendar-engine/types/calendar-view-model.type';
+import { MonthViewModel, MonthWeekRow } from '../../calendar-engine/models/month-view.model';
+import { WeekViewModel } from '../../calendar-engine/models/week-view.model';
+import { DayViewModel } from '../../calendar-engine/models/day-view.model';
+import { CalendarLayoutItem } from '../../calendar-engine/models/calendar-layout-item.model';
+
+import { CalendarEventUI } from '../../models/calendar-event.model-ui';
+import { AgendaDayGroup } from '../../models/agenda-day-group.model';
+import { Item } from '../../models/board.model';
+import { SavePayload } from '../../models/save-payload.model';
+
+import { DragSession } from '../../calendar-engine/interactions/drag/drag-session.model';
+import { ResizeSession } from '../../calendar-engine/interactions/resize/resize-session.model';
+import { EventDragEngine } from '../../calendar-engine/interactions/drag/event-drag-engine';
+import { EventResizeEngine } from '../../calendar-engine/interactions/resize/event-resize-engine';
+
+import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
+import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
 
 @Component({
   selector: 'app-calendar',
@@ -50,56 +56,61 @@ import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder
     MatInputModule,
     MatIconModule,
     MatMenuModule,
+    MatSnackBarModule,
     CalendarDialogComponent,
-    MatSnackBarModule
   ],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.css'],
 })
 export class CalendarComponent implements OnInit, OnDestroy {
 
+  // ── State ──────────────────────────────────────────────────────────────────
+
   events: CalendarEventUI[] = [];
   selectedDate: Date = new Date();
   linkedRecord: Item | null = null;
   userId: string | undefined;
-  calendarGrid: Date[][] = [];
-  weekdays: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  agendaDayGroups: AgendaDayGroup[] = [];
+
+  // ── View mode ──────────────────────────────────────────────────────────────
+
+  viewMode: CalendarViewMode = 'month';
+  monthView!: MonthViewModel;
+  weekView!: WeekViewModel;
+  dayView!: DayViewModel;
+  agendaView!: AgendaDayGroup[];
+
+  // ── UI constants ───────────────────────────────────────────────────────────
+
+  readonly weekdays: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  readonly hours: number[] = Array.from({ length: 24 }, (_, i) => i);
   readonly MAX_VISIBLE_LANES = 3;
-  readonly AGENDA_DAYS = 30;
+  readonly HOUR_HEIGHT = 80;
+
+  // ── "More" overflow menu ───────────────────────────────────────────────────
+
   selectedMoreEvents: CalendarEventUI[] = [];
   selectedMoreDate: Date | null = null;
-  attendanceLabel = getAttendanceLabel;
-  attendanceColor = getAttendanceColor;
+
+  // ── Interaction sessions ───────────────────────────────────────────────────
+
   dragSession: DragSession | null = null;
   resizeSession: ResizeSession | null = null;
 
-  // =========================
-  // VIEW MODES
-  // =========================
+  // ── Now indicator ──────────────────────────────────────────────────────────
 
-  viewMode: CalendarViewMode = 'month';
-  weekViewDates: Date[] = [];
-  hours: number[] = Array.from({ length: 24 }, (_, i) => i);
-  dayViewBlocks: CalendarTimeBlock[] = [];
   nowIndicatorTop: number = 0;
-  readonly HOUR_HEIGHT = 80;
-  private nowTimer: any;
+  private nowTimer: ReturnType<typeof setInterval> | undefined;
+
+  // ── Utility aliases exposed to template ───────────────────────────────────
+
+  readonly attendanceColor = getAttendanceColor;
+  readonly attendanceLabel = getAttendanceLabel;
+
+  // ── Injected services ──────────────────────────────────────────────────────
+
+  private readonly engine = inject(CalendarEngineService);
+
   private reminderSubscription!: Subscription;
-
-  // =========================
-  // MONTH LAYOUT CACHE
-  // =========================
-
-  /**
-   * Keyed by the timestamp of the week's first day (Monday).
-   * Populated by computeMonthLayouts() after the grid or events change.
-   */
-  private weekLayoutMap = new Map<number, MonthLayoutItem<CalendarEventUI>[]>();
-
-  // =========================
-  // LIFECYCLE
-  // =========================
 
   constructor(
     private calendarService: CalendarService,
@@ -107,14 +118,17 @@ export class CalendarComponent implements OnInit, OnDestroy {
     private notificationService: NotificationRealtimeService,
     private snackBar: MatSnackBar,
     private authService: AuthService,
-    private zone: NgZone
+    private zone: NgZone,
   ) { }
+
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
 
   ngOnInit(): void {
     const activeId = this.authService.getUserId();
-    if (activeId) {
-      this.userId = activeId;
-    }
+    if (activeId) this.userId = activeId;
+
     this.generateCurrentView();
     this.fetchEvents();
     this.updateNowIndicator();
@@ -122,58 +136,69 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.listenForLiveReminders();
   }
 
+  ngOnDestroy(): void {
+    clearInterval(this.nowTimer);
+    this.reminderSubscription?.unsubscribe();
+    window.removeEventListener('mousemove', this.onDragging);
+    window.removeEventListener('mouseup', this.stopDrag);
+    window.removeEventListener('mousemove', this.onResizing);
+    window.removeEventListener('mouseup', this.stopResize);
+  }
+
+  // ==========================================================================
+  // REMINDERS
+  // ==========================================================================
+
   private listenForLiveReminders(): void {
     this.reminderSubscription = this.notificationService.reminders$.subscribe({
-      next: (reminder) => {
-        this.displayInteractiveReminder(reminder.message, reminder.eventId);
-      },
-      error: (err) => console.error('Real-time channel broadcast error:', err)
+      next: reminder => this.displayInteractiveReminder(reminder.message, reminder.eventId),
+      error: err => console.error('Real-time channel broadcast error:', err),
     });
   }
 
-private displayInteractiveReminder(message: string, eventId: number): void {
-  this.zone.run(() => {
-    const matchedEvent = this.events.find(e => e.id === eventId);
-    const eventColor = matchedEvent?.eventColor || '#4f87f5';
+  private displayInteractiveReminder(message: string, eventId: number): void {
+    this.zone.run(() => {
+      const matchedEvent = this.events.find(e => e.id === eventId);
+      const eventColor = matchedEvent?.eventColor ?? '#4f87f5';
+      const timeUntil = this.buildTimeUntilLabel(matchedEvent);
 
-    // Derive a human-readable "starts in X minutes" string if event data is available
-    let timeUntil: string | undefined;
-    if (matchedEvent?.startDate) {
-      const diffMs = new Date(matchedEvent.startDate).getTime() - Date.now();
-      const diffMin = Math.round(diffMs / 60000);
-      const timeStr = new Date(matchedEvent.startDate)
-        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      timeUntil = diffMin > 0
-        ? `Starts in ${diffMin} minute${diffMin !== 1 ? 's' : ''} · ${timeStr}`
-        : `Starting now · ${timeStr}`;
-    }
+      const ref = this.snackBar.openFromComponent(LiveReminderToastComponent, {
+        duration: 12_000,
+        horizontalPosition: 'right',
+        verticalPosition: 'top',
+        panelClass: ['clean-reminder-viewport-override'],
+        data: { message, eventId, color: eventColor, timeUntil },
+      });
 
-    const snackBarRef = this.snackBar.openFromComponent(LiveReminderToastComponent, {
-      duration: 12000,
-      horizontalPosition: 'right',
-      verticalPosition: 'top',
-      panelClass: ['clean-reminder-viewport-override'],
-      data: { message, eventId, color: eventColor, timeUntil }
+      ref.onAction().subscribe(() => this.openEventById(eventId));
     });
+  }
 
-    snackBarRef.onAction().subscribe(() => this.openEventById(eventId));
-  });
-}
+  private buildTimeUntilLabel(event: CalendarEventUI | undefined): string | undefined {
+    if (!event?.startDate) return undefined;
+
+    const diffMs = new Date(event.startDate).getTime() - Date.now();
+    const diffMin = Math.round(diffMs / 60_000);
+    const timeStr = new Date(event.startDate)
+      .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    return diffMin > 0
+      ? `Starts in ${diffMin} minute${diffMin !== 1 ? 's' : ''} · ${timeStr}`
+      : `Starting now · ${timeStr}`;
+  }
 
   private openEventById(eventId: number): void {
-    // Find the target layout model configuration from local memory state
     const matchedEvent = this.events.find(e => e.id === eventId);
     if (matchedEvent) {
       this.openDialog(matchedEvent);
     } else {
-      // Fallback: If event is out of scope in current month viewport, pull fresh data and display
-      console.log(`Event item context #${eventId} out of date viewport scope.`);
+      console.log(`Event #${eventId} is outside the current viewport scope.`);
     }
   }
 
-  ngOnDestroy(): void {
-    clearInterval(this.nowTimer);
-  }
+  // ==========================================================================
+  // NOW INDICATOR
+  // ==========================================================================
 
   updateNowIndicator(): void {
     const now = new Date();
@@ -181,9 +206,9 @@ private displayInteractiveReminder(message: string, eventId: number): void {
     this.nowIndicatorTop = (minutes / 60) * this.HOUR_HEIGHT;
   }
 
-  // =========================
+  // ==========================================================================
   // VIEW MODE
-  // =========================
+  // ==========================================================================
 
   setViewMode(mode: CalendarViewMode): void {
     this.viewMode = mode;
@@ -192,250 +217,121 @@ private displayInteractiveReminder(message: string, eventId: number): void {
 
   generateCurrentView(): void {
     switch (this.viewMode) {
-      case 'month': this.generateCalendarGrid(); break;
-      case 'week': this.generateWeekView(); break;
-      case 'day': this.generateDayView(); break;
-      case 'agenda': this.generateAgendaView(); break;
-    }
-  }
-
-  generateWeekView(): void {
-    const current = new Date(this.selectedDate);
-    const day = (current.getDay() + 6) % 7;
-    current.setDate(current.getDate() - day);
-
-    this.weekViewDates = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(current);
-      d.setDate(current.getDate() + i);
-      return d;
-    });
-  }
-
-  generateDayView(): void {
-    const dayEvents = this.getEventsForDay(this.selectedDate);
-    const normalized = EventNormalizer.normalize(dayEvents);
-
-    this.dayViewBlocks = TimeBlockLayoutEngine.generate(normalized).map(layout => ({
-      ...layout.event,
-      top: layout.top,
-      height: layout.height,
-      left: layout.left,
-      width: layout.width,
-      overlapIndex: layout.lane,
-      overlapCount: layout.laneCount,
-    }));
-  }
-
-  generateAgendaView(): void {
-    const groups: AgendaDayGroup[] = [];
-
-    for (let i = 0; i < this.AGENDA_DAYS; i++) {
-      const date = new Date(this.selectedDate);
-      date.setHours(0, 0, 0, 0);
-      date.setDate(date.getDate() + i);
-
-      const events = this.getEventsForDay(date)
-        .slice()
-        .sort((a, b) => {
-          if (a.allDayEvent && !b.allDayEvent) return -1;
-          if (!a.allDayEvent && b.allDayEvent) return 1;
-          return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
-        });
-
-      if (events.length > 0) {
-        groups.push({ date, events });
-      }
-    }
-
-    this.agendaDayGroups = groups;
-  }
-
-  getWeekDayLayouts(date: Date): CalendarTimeBlock[] {
-    const events = this.getEventsForDay(date);
-    const normalized = EventNormalizer.normalize(events);
-
-    return TimeBlockLayoutEngine.generate(normalized).map(layout => ({
-      ...layout.event,
-      top: layout.top,
-      height: layout.height,
-      left: layout.left,
-      width: layout.width,
-      overlapIndex: layout.lane,
-      overlapCount: layout.laneCount,
-    }));
-  }
-
-  // =========================
-  // FETCH EVENTS
-  // =========================
-
-  fetchEvents(): void {
-    let start: Date;
-    let end: Date;
-
-    switch (this.viewMode) {
-
       case 'month':
-        start = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1);
-        end = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth() + 1, 1);
+        this.monthView = this.engine.buildMonthView(this.selectedDate, this.events);
         break;
-
       case 'week':
-        start = new Date(this.weekViewDates[0]);
-        end = new Date(this.weekViewDates[6]);
-        end.setDate(end.getDate() + 1);
+        this.weekView = this.engine.buildWeekView(this.selectedDate, this.events);
         break;
-
       case 'day':
-        start = new Date(this.selectedDate);
-        start.setHours(0, 0, 0, 0);
-        end = new Date(this.selectedDate);
-        end.setHours(23, 59, 59, 999);
+        this.dayView = this.engine.buildDayView(this.selectedDate, this.events);
         break;
-
-      default:
-        start = new Date();
-        end = new Date();
+      case 'agenda':
+        this.agendaView = this.engine.buildAgendaView(this.selectedDate, this.events);
         break;
     }
-
-    this.calendarService.getEvents(start, end).subscribe(
-      (events: any[]) => {
-        this.events = events.map(event => ({
-          ...event,
-          startDate: this.convertToLocalDate(event.startDate),
-          endDate: this.convertToLocalDate(event.endDate),
-          eventTypeName: event.eventTypeName,
-          eventColor: event.eventColor,
-          attendanceScore: event.attendanceScore,
-        }));
-
-        this.generateCurrentView();
-      },
-      error => console.error('Error fetching events:', error)
-    );
   }
 
-  convertToLocalDate(utcString: string): Date {
-    return new Date(utcString);
+  // ── Week view helpers ──────────────────────────────────────────────────────
+
+  /** The 7 date objects for the current week view column headers. */
+  get weekViewDates(): Date[] {
+    return this.weekView?.columns.map(c => c.date) ?? [];
   }
 
-  // =========================
-  // MONTH VIEW
-  // =========================
-
-  generateCalendarGrid(): void {
-    const year = this.selectedDate.getFullYear();
-    const month = this.selectedDate.getMonth();
-
-    const firstOfMonth = new Date(year, month, 1);
-    const lastOfMonth = new Date(year, month + 1, 0);
-    const startDay = (firstOfMonth.getDay() + 6) % 7;
-    const daysInMonth = lastOfMonth.getDate();
-    const prevMonthLast = new Date(year, month, 0).getDate();
-
-    this.calendarGrid = [];
-    let row: Date[] = [];
-
-    // Days from previous month
-    for (let i = startDay - 1; i >= 0; i--) {
-      row.push(new Date(year, month - 1, prevMonthLast - i));
-    }
-
-    // Days of current month
-    for (let day = 1; day <= daysInMonth; day++) {
-      row.push(new Date(year, month, day));
-      if (row.length === 7) {
-        this.calendarGrid.push(row);
-        row = [];
-      }
-    }
-
-    // Pad with next-month days
-    let nextMonthDay = 1;
-    while (row.length > 0 && row.length < 7) {
-      row.push(new Date(year, month + 1, nextMonthDay++));
-    }
-    if (row.length) {
-      this.calendarGrid.push(row);
-    }
-
-    this.computeMonthLayouts();
+  /** Layout items for a specific date column in the week view. */
+  getWeekDayLayouts(date: Date): CalendarLayoutItem<CalendarEventUI>[] {
+    const column = this.weekView?.columns.find(c => DateUtils.isSameDate(c.date, date));
+    return column?.layoutItems ?? [];
   }
 
-  // ── Month layout helpers ───────────────────────────────────────────────────
+  // ── Month view helpers ─────────────────────────────────────────────────────
 
-  private computeMonthLayouts(): void {
-    this.weekLayoutMap.clear();
-    for (const week of this.calendarGrid) {
-      this.weekLayoutMap.set(
-        week[0].getTime(),
-        MonthLayoutEngine.generate(this.events, week)
-      );
-    }
-  }
-
-  getWeekLayout(week: Date[]): MonthLayoutItem<CalendarEventUI>[] {
-    return this.weekLayoutMap.get(week[0].getTime()) ?? [];
-  }
-
-  getHiddenCountForDay(date: Date, week: Date[]): number {
-    const dayMs = this.toDateOnly(date);
-    const weekStartMs = this.toDateOnly(week[0]);
-    const colIdx = Math.floor((dayMs - weekStartMs) / DateUtils.DAY_MS) + 1;
-
-    return this.getWeekLayout(week).filter(item =>
-      item.lane >= this.MAX_VISIBLE_LANES &&
-      item.columnStart <= colIdx &&
-      (item.columnStart + item.columnSpan - 1) >= colIdx
+  getHiddenCountForDay(date: Date, row: MonthWeekRow): number {
+    const colIdx = row.dates.findIndex(d => DateUtils.isSameDate(d, date));
+    return row.layoutItems.filter(
+      item =>
+        item.lane >= this.MAX_VISIBLE_LANES &&
+        item.columnStart <= colIdx + 1 &&
+        item.columnStart + item.columnSpan - 1 >= colIdx + 1,
     ).length;
   }
 
-  // =========================
-  // DATE HELPERS
-  // =========================
+  // ==========================================================================
+  // FETCH EVENTS
+  // ==========================================================================
 
-  getEventsForDay(date: Date): CalendarEventUI[] {
-    const day = this.toDateOnly(date);
+  fetchEvents(): void {
+    const { start, end } = this.buildFetchRange();
 
-    return this.events.filter(event => {
-      const start = this.toDateOnly(new Date(event.startDate));
-      const end = this.toDateOnly(new Date(event.endDate));
-      return start <= day && end >= day;
+    this.calendarService.getEvents(start, end).subscribe({
+      next: (events: any[]) => {
+        this.events = events.map(event => ({
+          ...event,
+          startDate: new Date(event.startDate),
+          endDate: new Date(event.endDate),
+        }));
+        this.generateCurrentView();
+      },
+      error: err => console.error('Error fetching events:', err),
     });
   }
 
-  getTooltip(event: CalendarEventUI): string {
-    let base = event.eventTypeName
-      ? `${event.subject} — ${event.eventTypeName}`
-      : event.subject;
+  private buildFetchRange(): { start: Date; end: Date } {
+    switch (this.viewMode) {
+      case 'month':
+        return {
+          start: new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1),
+          end: new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth() + 1, 1),
+        };
 
-    if (event.attendanceScore != null) {
-      const label = this.attendanceLabel(event.attendanceScore);
-      base += `\nAttendance: ${label} (${(event.attendanceScore * 100).toFixed(0)}%)`;
+      case 'week': {
+        const cols = this.weekView?.columns;
+        if (cols?.length) {
+          const end = new Date(cols[6].date);
+          end.setDate(end.getDate() + 1);
+          return { start: new Date(cols[0].date), end };
+        }
+        // Fallback before weekView is initialised
+        const weekStart = DateUtils.startOfWeek(this.selectedDate);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+        return { start: weekStart, end: weekEnd };
+      }
+
+      case 'day': {
+        const start = new Date(this.selectedDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(this.selectedDate);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+      }
+
+      default: {
+        const now = new Date();
+        return { start: now, end: now };
+      }
     }
-
-    return base;
   }
 
+  // ==========================================================================
+  // DATE HELPERS (delegates to DateUtils; thin wrappers for template use)
+  // ==========================================================================
+
   isToday(date: Date): boolean {
-    const today = new Date();
-    return (
-      date.getFullYear() === today.getFullYear() &&
-      date.getMonth() === today.getMonth() &&
-      date.getDate() === today.getDate()
-    );
+    return DateUtils.isSameDate(date, new Date());
+  }
+
+  isSameDate(a: Date, b: Date): boolean {
+    return DateUtils.isSameDate(a, b);
   }
 
   getWeekNumber(date: Date): number {
-    const targetDate = new Date(date.getTime());
-    targetDate.setDate(targetDate.getDate() + 3 - ((targetDate.getDay() + 6) % 7));
-
-    const firstThursday = new Date(targetDate.getFullYear(), 0, 4);
-    firstThursday.setDate(firstThursday.getDate() + 3 - ((firstThursday.getDay() + 6) % 7));
-
-    const diff = targetDate.getTime() - firstThursday.getTime();
-    return 1 + Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
+    const d = new Date(date.getTime());
+    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+    const jan4 = new Date(d.getFullYear(), 0, 4);
+    jan4.setDate(jan4.getDate() + 3 - ((jan4.getDay() + 6) % 7));
+    return 1 + Math.floor((d.getTime() - jan4.getTime()) / (7 * 24 * 60 * 60 * 1000));
   }
 
   getDayOfYear(date: Date): number {
@@ -443,25 +339,30 @@ private displayInteractiveReminder(message: string, eventId: number): void {
     const diff =
       date.getTime() -
       startOfYear.getTime() +
-      (startOfYear.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000;
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
+      (startOfYear.getTimezoneOffset() - date.getTimezoneOffset()) * 60_000;
+    return Math.floor(diff / (1_000 * 60 * 60 * 24));
   }
 
-  toDateOnly(date: Date): number {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  formatHour(hour: number): string {
+    return `${hour.toString().padStart(2, '0')}:00`;
   }
 
-  isSameDate(date1: Date, date2: Date): boolean {
-    return (
-      date1.getFullYear() === date2.getFullYear() &&
-      date1.getMonth() === date2.getMonth() &&
-      date1.getDate() === date2.getDate()
-    );
+  getTooltip(event: CalendarEventUI): string {
+    let tip = event.eventTypeName
+      ? `${event.subject} — ${event.eventTypeName}`
+      : event.subject;
+
+    if (event.attendanceScore != null) {
+      const label = this.attendanceLabel(event.attendanceScore);
+      tip += `\nAttendance: ${label} (${(event.attendanceScore * 100).toFixed(0)}%)`;
+    }
+
+    return tip;
   }
 
-  // =========================
+  // ==========================================================================
   // NAVIGATION
-  // =========================
+  // ==========================================================================
 
   onDateSelectedFromPicker(date: Date): void {
     this.selectedDate = date;
@@ -470,45 +371,13 @@ private displayInteractiveReminder(message: string, eventId: number): void {
   }
 
   goToPreviousMonth(): void {
-    switch (this.viewMode) {
-      case 'month':
-        this.selectedDate = new Date(
-          this.selectedDate.getFullYear(),
-          this.selectedDate.getMonth() - 1,
-          1
-        );
-        break;
-      case 'week':
-        this.selectedDate = new Date(this.selectedDate);
-        this.selectedDate.setDate(this.selectedDate.getDate() - 7);
-        break;
-      case 'day':
-        this.selectedDate = new Date(this.selectedDate);
-        this.selectedDate.setDate(this.selectedDate.getDate() - 1);
-        break;
-    }
+    this.selectedDate = this.shiftDate(this.selectedDate, this.viewMode, -1);
     this.generateCurrentView();
     this.fetchEvents();
   }
 
   goToNextMonth(): void {
-    switch (this.viewMode) {
-      case 'month':
-        this.selectedDate = new Date(
-          this.selectedDate.getFullYear(),
-          this.selectedDate.getMonth() + 1,
-          1
-        );
-        break;
-      case 'week':
-        this.selectedDate = new Date(this.selectedDate);
-        this.selectedDate.setDate(this.selectedDate.getDate() + 7);
-        break;
-      case 'day':
-        this.selectedDate = new Date(this.selectedDate);
-        this.selectedDate.setDate(this.selectedDate.getDate() + 1);
-        break;
-    }
+    this.selectedDate = this.shiftDate(this.selectedDate, this.viewMode, 1);
     this.generateCurrentView();
     this.fetchEvents();
   }
@@ -519,40 +388,57 @@ private displayInteractiveReminder(message: string, eventId: number): void {
     this.fetchEvents();
   }
 
-  // =========================
+  private shiftDate(date: Date, mode: CalendarViewMode, direction: 1 | -1): Date {
+    const d = new Date(date);
+    switch (mode) {
+      case 'month':
+        return new Date(d.getFullYear(), d.getMonth() + direction, 1);
+      case 'week':
+        d.setDate(d.getDate() + direction * 7);
+        return d;
+      case 'day':
+        d.setDate(d.getDate() + direction);
+        return d;
+      default:
+        return d;
+    }
+  }
+
+  // ==========================================================================
   // EVENT INTERACTIONS
-  // =========================
+  // ==========================================================================
 
   onEmptyDayClicked(date: Date): void {
     this.selectedDate = date;
     this.openDialog(null);
   }
 
-  onEventClicked(event: any, e: MouseEvent): void {
+  onEventClicked(event: CalendarEventUI, e: MouseEvent): void {
     e.stopPropagation();
     this.selectedDate = new Date(event.startDate);
     this.openDialog(event);
   }
 
-  onMoreClicked(date: Date, week: Date[], e: MouseEvent): void {
+  onMoreClicked(date: Date, row: MonthWeekRow, e: MouseEvent): void {
     e.stopPropagation();
 
-    const dayMs = this.toDateOnly(date);
-    const weekStartMs = this.toDateOnly(week[0]);
+    const dayMs = DateUtils.toDateOnly(date);
+    const weekStartMs = DateUtils.toDateOnly(row.dates[0]);
     const colIdx = Math.floor((dayMs - weekStartMs) / DateUtils.DAY_MS) + 1;
 
-    this.selectedMoreEvents = this.getWeekLayout(week)
-      .filter(item =>
-        item.lane >= this.MAX_VISIBLE_LANES &&
-        item.columnStart <= colIdx &&
-        (item.columnStart + item.columnSpan - 1) >= colIdx
+    this.selectedMoreEvents = row.layoutItems
+      .filter(
+        item =>
+          item.lane >= this.MAX_VISIBLE_LANES &&
+          item.columnStart <= colIdx &&
+          item.columnStart + item.columnSpan - 1 >= colIdx,
       )
       .map(item => item.event);
 
     this.selectedMoreDate = date;
   }
 
-  openDialog(eventData: any = null): void {
+  openDialog(eventData: CalendarEventUI | null = null): void {
     const dialogRef = this.dialog.open(CalendarDialogComponent, {
       width: '70%',
       height: '80vh',
@@ -561,35 +447,17 @@ private displayInteractiveReminder(message: string, eventId: number): void {
       data: { date: this.selectedDate, eventData },
     });
 
-    // ── Save handler ─────────────────────────────────────────────────────────
     dialogRef.componentInstance.onSave.subscribe(({ record, attachments }: SavePayload) => {
-
-      const recurrenceScope = record.recurrenceScope as RecurrenceUpdateScope | null;
-
-      // =========================================================
-      // RECURRING EVENT UPDATE
-      // =========================================================
-
-      if (record.isRecurring && record.id && recurrenceScope) {
-
-        const save$ = this.buildOccurrenceSave(record, recurrenceScope);
-
-        this.executeSave(save$, record, attachments, dialogRef);
-        return;
-      }
-
-      // =========================================================
-      // NORMAL EVENT CREATE / UPDATE
-      // =========================================================
-
-      const save$ = record.id
-        ? this.calendarService.updateEvent(record.id, record)
-        : this.calendarService.saveEvent(record);
+      const scope = record.recurrenceScope as RecurrenceUpdateScope | null;
+      const save$ = record.isRecurring && record.id && scope
+        ? this.buildOccurrenceSave(record, scope)
+        : record.id
+          ? this.calendarService.updateEvent(record.id, record)
+          : this.calendarService.saveEvent(record);
 
       this.executeSave(save$, record, attachments, dialogRef);
     });
 
-    // ── Cancel handler ────────────────────────────────────────────────────────
     dialogRef.componentInstance.onCancel.subscribe(() => dialogRef.close());
 
     const attemptClose = () => {
@@ -603,101 +471,64 @@ private displayInteractiveReminder(message: string, eventId: number): void {
     };
 
     dialogRef.backdropClick().subscribe(() => attemptClose());
-    dialogRef.keydownEvents().subscribe(event => {
-      if (event.key === 'Escape') attemptClose();
+    dialogRef.keydownEvents().subscribe(evt => {
+      if (evt.key === 'Escape') attemptClose();
     });
   }
 
-  // =========================
+  // ==========================================================================
   // RECURRENCE SAVE HELPERS
-  // =========================
+  // ==========================================================================
 
-  private buildOccurrenceSave(
-    record: any,
-    scope: RecurrenceUpdateScope
-  ): Observable<any> {
+  private buildOccurrenceSave(record: any, scope: RecurrenceUpdateScope): Observable<any> {
+    const occurrenceDate = record.originalOccurrenceDate
+      ? new Date(record.originalOccurrenceDate).toISOString()
+      : new Date(record.startDate).toISOString();
 
-    const occurrenceDate =
-      record.originalOccurrenceDate
-        ? new Date(record.originalOccurrenceDate).toISOString()
-        : new Date(record.startDate).toISOString();
+    const startDate = new Date(record.startDate).toISOString();
+    const endDate = new Date(record.endDate).toISOString();
 
     switch (scope) {
-
-      // =====================================================
-      // THIS OCCURRENCE ONLY
-      // =====================================================
-
       case 'this':
-
         return this.calendarService.updateSingleOccurrence({
           seriesUid: record.seriesUid,
           occurrenceDate,
-
           subject: record.subject,
           comment: record.comment,
-
-          startDate: new Date(record.startDate).toISOString(),
-          endDate: new Date(record.endDate).toISOString(),
-
+          startDate,
+          endDate,
           location: record.location,
-
           eventTypeId: record.eventTypeId,
-
-          isCancelled: false
+          isCancelled: false,
         });
 
-      // =====================================================
-      // THIS + FOLLOWING
-      // =====================================================
-
       case 'thisAndFollowing':
-
         return this.calendarService.updateFromOccurrence({
           seriesUid: record.seriesUid,
           occurrenceDate,
-
           subject: record.subject,
           comment: record.comment,
-
-          startDate: new Date(record.startDate).toISOString(),
-          endDate: new Date(record.endDate).toISOString(),
-
-          location: record.location
+          startDate,
+          endDate,
+          location: record.location,
         });
-
-      // =====================================================
-      // ALL PRESERVE
-      // =====================================================
 
       case 'allPreserve':
-
         return this.calendarService.updateSeriesPreserveExceptions({
           seriesUid: record.seriesUid,
-
           subject: record.subject,
           comment: record.comment,
-
           location: record.location,
-
-          recurrenceRuleJson: record.recurrenceRuleJson
+          recurrenceRuleJson: record.recurrenceRuleJson,
         });
 
-      // =====================================================
-      // ALL OVERRIDE
-      // =====================================================
-
       case 'allOverride':
-
         return this.calendarService.updateSeriesOverrideAll({
           seriesUid: record.seriesUid,
-
           subject: record.subject,
           comment: record.comment,
-
           location: record.location,
-
-          recurrenceRuleJson: record.recurrenceRuleJson
+          recurrenceRuleJson: record.recurrenceRuleJson,
         });
 
       default:
@@ -709,16 +540,14 @@ private displayInteractiveReminder(message: string, eventId: number): void {
     save$: Observable<any>,
     record: any,
     attachments: File[],
-    dialogRef: any
+    dialogRef: any,
   ): void {
     save$.subscribe({
       next: (savedEvent: any) => {
-        const isOccurrence =
-          !!record.seriesUid &&
-          record.id !== record.baseEventId;
+        const isOccurrence = !!record.seriesUid && record.id !== record.baseEventId;
         const eventId = isOccurrence ? record.baseEventId : savedEvent?.id;
 
-        if (attachments?.length > 0 && eventId) {
+        if (attachments?.length && eventId) {
           const formData = new FormData();
           attachments.forEach((f: File) => formData.append('files', f));
           this.calendarService.uploadAttachments(eventId, formData)
@@ -733,141 +562,95 @@ private displayInteractiveReminder(message: string, eventId: number): void {
     });
   }
 
-  // =========================
-  // MISC
-  // =========================
+  // ==========================================================================
+  // DRAG
+  // ==========================================================================
 
-  formatHour(hour: number): string {
-    if (hour === 0) return '00:00';
-    return `${hour.toString().padStart(2, '0')}:00`;
-  }
-
-  startDrag(
-    e: MouseEvent,
-    block: CalendarTimeBlock,
-    date: Date
-  ): void {
-
+  startDrag(e: MouseEvent, block: CalendarLayoutItem<CalendarEventUI>, date: Date): void {
     e.preventDefault();
     e.stopPropagation();
 
+    const timeBlock: CalendarTimeBlock = {
+      ...block.event,
+      top: block.top,
+      height: block.height,
+      left: block.left,
+      width: block.width,
+      overlapIndex: block.lane,
+      overlapCount: block.laneCount,
+    };
+
     this.dragSession = {
-      event: block,
+      event: timeBlock,
       startMouseY: e.clientY,
       startMouseX: e.clientX,
-      originalStart: new Date(block.startDate),
-      originalEnd: new Date(block.endDate),
+      originalStart: new Date(block.event.startDate),
+      originalEnd: new Date(block.event.endDate),
       originalTop: block.top,
       sourceDate: date,
     };
-
     window.addEventListener('mousemove', this.onDragging);
     window.addEventListener('mouseup', this.stopDrag);
   }
 
   onDragging = (e: MouseEvent): void => {
-
     if (!this.dragSession) return;
 
-    const deltaY =
-      e.clientY - this.dragSession.startMouseY;
-
-    const minuteDelta =
-      EventDragEngine.calculateMinuteDelta(deltaY);
-
-    const updated =
-      EventDragEngine.moveDates(
-        this.dragSession.originalStart,
-        this.dragSession.originalEnd,
-        minuteDelta
-      );
-
-    const sourceEvent = this.events.find(
-      x => x.id === this.dragSession!.event.id
+    const deltaY = e.clientY - this.dragSession.startMouseY;
+    const minuteDelta = EventDragEngine.calculateMinuteDelta(deltaY);
+    const updated = EventDragEngine.moveDates(
+      this.dragSession.originalStart,
+      this.dragSession.originalEnd,
+      minuteDelta,
     );
 
-    if (!sourceEvent) return;
+    const source = this.events.find(x => x.id === this.dragSession!.event.id);
+    if (!source) return;
 
-    sourceEvent.startDate = updated.start;
-    sourceEvent.endDate = updated.end;
-
+    source.startDate = updated.start;
+    source.endDate = updated.end;
     this.generateCurrentView();
   };
 
   stopDrag = (): void => {
-
     if (!this.dragSession) return;
 
-    const updatedEvent = this.events.find(
-      x => x.id === this.dragSession!.event.id
-    );
-
-    if (!updatedEvent) return;
-
-    // =====================================================
-    // RECURRING EVENT
-    // =====================================================
-
-    if (updatedEvent.isRecurring) {
-
-      const occurrenceDate = new Date(
-        this.dragSession.originalStart
-      ).toISOString();
-
-      this.calendarService.updateSingleOccurrence({
-        seriesUid: updatedEvent.seriesUid,
-        occurrenceDate,
-
-        subject: updatedEvent.subject,
-        comment: updatedEvent.comment,
-
-        startDate: new Date(updatedEvent.startDate).toISOString(),
-        endDate: new Date(updatedEvent.endDate).toISOString(),
-
-        location: updatedEvent.location,
-        eventTypeId: updatedEvent.eventTypeId,
-
-        isCancelled: false
-      })
-        .subscribe({
-          next: () => this.fetchEvents(),
-          error: err => console.error('Failed to update recurring drag event', err)
-        });
-
-    } else {
-
-      // =====================================================
-      // NORMAL EVENT
-      // =====================================================
-
-      this.calendarService.updateEvent(updatedEvent.id, updatedEvent)
-        .subscribe({
-          next: () => this.fetchEvents(),
-          error: err => console.error('Failed to update dragged event', err)
-        });
-    }
+    const updated = this.events.find(x => x.id === this.dragSession!.event.id);
+    if (updated) this.persistEventUpdate(updated, this.dragSession.originalStart);
 
     this.dragSession = null;
-
     window.removeEventListener('mousemove', this.onDragging);
     window.removeEventListener('mouseup', this.stopDrag);
-  }
+  };
+
+  // ==========================================================================
+  // RESIZE
+  // ==========================================================================
 
   startResize(
     e: MouseEvent,
-    block: CalendarTimeBlock,
-    direction: 'top' | 'bottom'
+    block: CalendarLayoutItem<CalendarEventUI>,
+    direction: 'top' | 'bottom',
   ): void {
-
     e.preventDefault();
     e.stopPropagation();
 
+    const timeBlock: CalendarTimeBlock = {
+      ...block.event,
+      top: block.top,
+      height: block.height,
+      left: block.left,
+      width: block.width,
+      overlapIndex: block.lane,
+      overlapCount: block.laneCount,
+    };
+
     this.resizeSession = {
-      event: block,
+      event: timeBlock,
       direction,
       startMouseY: e.clientY,
-      originalStart: new Date(block.startDate),
-      originalEnd: new Date(block.endDate),
+      originalStart: new Date(block.event.startDate),
+      originalEnd: new Date(block.event.endDate),
       originalTop: block.top,
       originalHeight: block.height,
     };
@@ -877,89 +660,57 @@ private displayInteractiveReminder(message: string, eventId: number): void {
   }
 
   onResizing = (e: MouseEvent): void => {
-
     if (!this.resizeSession) return;
 
-    const deltaY =
-      e.clientY - this.resizeSession.startMouseY;
+    const deltaY = e.clientY - this.resizeSession.startMouseY;
+    const updated = this.resizeSession.direction === 'top'
+      ? EventResizeEngine.resizeTop(this.resizeSession.originalStart, this.resizeSession.originalEnd, deltaY)
+      : EventResizeEngine.resizeBottom(this.resizeSession.originalStart, this.resizeSession.originalEnd, deltaY);
 
-    const updated =
-      this.resizeSession.direction === 'top'
-        ? EventResizeEngine.resizeTop(
-          this.resizeSession.originalStart,
-          this.resizeSession.originalEnd,
-          deltaY
-        )
-        : EventResizeEngine.resizeBottom(
-          this.resizeSession.originalStart,
-          this.resizeSession.originalEnd,
-          deltaY
-        );
+    const source = this.events.find(x => x.id === this.resizeSession!.event.id);
+    if (!source) return;
 
-    const sourceEvent = this.events.find(
-      x => x.id === this.resizeSession!.event.id
-    );
-
-    if (!sourceEvent) return;
-
-    sourceEvent.startDate = updated.start;
-    sourceEvent.endDate = updated.end;
-
+    source.startDate = updated.start;
+    source.endDate = updated.end;
     this.generateCurrentView();
   };
 
   stopResize = (): void => {
-
     if (!this.resizeSession) return;
 
-    const updatedEvent = this.events.find(
-      x => x.id === this.resizeSession!.event.id
-    );
-
-    if (!updatedEvent) return;
-
-    // =====================================================
-    // RECURRING EVENT
-    // =====================================================
-
-    if (updatedEvent.isRecurring) {
-
-      const occurrenceDate = new Date(
-        this.resizeSession.originalStart
-      ).toISOString();
-
-      this.calendarService.updateSingleOccurrence({
-        seriesUid: updatedEvent.seriesUid,
-        occurrenceDate,
-
-        subject: updatedEvent.subject,
-        comment: updatedEvent.comment,
-
-        startDate: new Date(updatedEvent.startDate).toISOString(),
-        endDate: new Date(updatedEvent.endDate).toISOString(),
-
-        location: updatedEvent.location,
-        eventTypeId: updatedEvent.eventTypeId,
-
-        isCancelled: false
-      })
-        .subscribe({
-          next: () => this.fetchEvents(),
-          error: err => console.error('Failed to resize recurring event', err)
-        });
-
-    } else {
-
-      this.calendarService.updateEvent(updatedEvent.id, updatedEvent)
-        .subscribe({
-          next: () => this.fetchEvents(),
-          error: err => console.error('Failed to resize event', err)
-        });
-    }
+    const updated = this.events.find(x => x.id === this.resizeSession!.event.id);
+    if (updated) this.persistEventUpdate(updated, this.resizeSession.originalStart);
 
     this.resizeSession = null;
-
     window.removeEventListener('mousemove', this.onResizing);
     window.removeEventListener('mouseup', this.stopResize);
+  };
+
+  // ==========================================================================
+  // SHARED PERSIST (drag + resize share the same save path)
+  // ==========================================================================
+
+  private persistEventUpdate(event: CalendarEventUI, originalStart: Date): void {
+    if (event.isRecurring) {
+      this.calendarService.updateSingleOccurrence({
+        seriesUid: event.seriesUid,
+        occurrenceDate: originalStart.toISOString(),
+        subject: event.subject,
+        comment: event.comment,
+        startDate: new Date(event.startDate).toISOString(),
+        endDate: new Date(event.endDate).toISOString(),
+        location: event.location,
+        eventTypeId: event.eventTypeId,
+        isCancelled: false,
+      }).subscribe({
+        next: () => this.fetchEvents(),
+        error: err => console.error('Failed to update recurring event:', err),
+      });
+    } else {
+      this.calendarService.updateEvent(event.id, event).subscribe({
+        next: () => this.fetchEvents(),
+        error: err => console.error('Failed to update event:', err),
+      });
+    }
   }
 }
