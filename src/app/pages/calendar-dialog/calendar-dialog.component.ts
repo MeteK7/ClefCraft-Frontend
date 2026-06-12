@@ -170,12 +170,18 @@ export class CalendarDialogComponent implements OnInit {
       const startTime = this.generalForm.get('startTime');
       const endTime = this.generalForm.get('endTime');
 
-      if (!isAllDay) {
-        startTime?.setValidators([Validators.required]);
-        endTime?.setValidators([Validators.required]);
-      } else {
+      if (isAllDay) {
         startTime?.clearValidators();
         endTime?.clearValidators();
+
+        startTime?.disable({ emitEvent: false });
+        endTime?.disable({ emitEvent: false });
+      } else {
+        startTime?.setValidators([Validators.required]);
+        endTime?.setValidators([Validators.required]);
+
+        startTime?.enable({ emitEvent: false });
+        endTime?.enable({ emitEvent: false });
       }
 
       startTime?.updateValueAndValidity();
@@ -203,6 +209,14 @@ export class CalendarDialogComponent implements OnInit {
         eventTypeId: this.data.eventData.eventTypeId,
         reminderMinutes: this.data.eventData.reminderMinutes || []
       });
+
+      const isAllDay = this.generalForm.get('allDayEvent')?.value;
+
+      if (isAllDay) {
+        this.generalForm.get('startTime')?.disable({ emitEvent: false });
+        this.generalForm.get('endTime')?.disable({ emitEvent: false });
+      }
+
 
       this.eventTypeName = this.data.eventData.eventTypeName;
       this.eventColor = this.data.eventData.eventColor;

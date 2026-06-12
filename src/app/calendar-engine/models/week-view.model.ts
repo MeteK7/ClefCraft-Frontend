@@ -5,6 +5,7 @@ export interface WeekDayColumn {
   date: Date;
   isToday: boolean;
   layoutItems: CalendarLayoutItem<CalendarEventUI>[];
+  allDayEvents: CalendarEventUI[];
 }
 
 export interface WeekViewModel {

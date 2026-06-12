@@ -9,7 +9,7 @@ export class WeekViewGenerator {
     const today = new Date();
     const current = new Date(selectedDate);
     const ISOOffsetDay = (current.getDay() + 6) % 7;
-    
+
     current.setDate(current.getDate() - ISOOffsetDay);
     current.setHours(0, 0, 0, 0);
 
@@ -25,13 +25,17 @@ export class WeekViewGenerator {
         return start <= dayTimestamp && end >= dayTimestamp;
       });
 
-      const normalized = EventNormalizer.normalize(dayEvents);
+      const allDayEvents = dayEvents.filter(e => e.allDayEvent);
+      const timedEvents = dayEvents.filter(e => !e.allDayEvent);
+
+      const normalized = EventNormalizer.normalize(timedEvents);
       const layoutItems = TimeBlockLayoutEngine.generate(normalized);
 
       return {
         date: columnDate,
         isToday: DateUtils.isSameDate(columnDate, today),
-        layoutItems
+        layoutItems,
+        allDayEvents
       };
     });
 

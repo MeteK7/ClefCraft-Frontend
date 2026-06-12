@@ -5,4 +5,5 @@ export interface DayViewModel {
   date: Date;
   isToday: boolean;
   layoutItems: CalendarLayoutItem<CalendarEventUI>[];
+  allDayEvents: CalendarEventUI[];
 }
