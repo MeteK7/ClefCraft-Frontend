@@ -95,16 +95,31 @@
 <div *ngIf="viewMode === 'week'" class="week-view-wrapper">
   <div class="week-scroll-area">
 
-    <!-- Sticky header -->
-    <div class="week-header-row">
-      <div class="time-header"></div>
-      <div *ngFor="let col of weekView.columns" class="week-day-header" [class.today]="col.isToday">
-        <div>{{ col.date | date:'EEE' }}</div>
-        <div>{{ col.date | date:'d' }}</div>
+    <div class="week-header-sticky-container">
+      <div class="week-header-row">
+        <div class="time-header"></div>
+        <div *ngFor="let col of weekView.columns" class="week-day-header" [class.today]="col.isToday">
+          <div>{{ col.date | date:'EEE' }}</div>
+          <div>{{ col.date | date:'d' }}</div>
+        </div>
+      </div>
+
+      <div class="week-allday-row">
+        <div class="time-header-allday-label">all-day</div>
+        <div class="week-days-container">
+          <div *ngFor="let col of weekView.columns" class="week-day-column-allday" [class.today]="col.isToday">
+            <div class="all-day-events-wrapper">
+              <div *ngFor="let event of col.allDayEvents" class="all-day-pill"
+                   [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
+                   (click)="onEventClicked(event, $event)">
+                {{ event.subject }}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Body -->
     <div class="week-body">
       <div class="time-column">
         <div *ngFor="let hour of hours" class="time-slot-label">{{ formatHour(hour) }}</div>
@@ -112,13 +127,7 @@
 
       <div class="week-days-container">
         <div *ngFor="let col of weekView.columns" class="week-day-column" [class.today]="col.isToday">
-          <div class="all-day-container">
-            <div *ngFor="let event of col.allDayEvents">
-              {{ event.subject }}
-            </div>
-          </div>
           <div class="week-day-grid">
-
             <div *ngFor="let hour of hours" class="hour-row"></div>
 
             <div *ngIf="col.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
@@ -129,13 +138,10 @@
               (click)="onEventClicked(item.event, $event)" (mousedown)="startDrag($event, item, col.date)">
 
               <div class="resize-handle top" (mousedown)="startResize($event, item, 'top')"></div>
-
               <div class="time-block-title">{{ item.event.subject }}</div>
-
               <div class="time-block-time">
                 {{ item.event.startDate | date:'HH:mm' }} – {{ item.event.endDate | date:'HH:mm' }}
               </div>
-
               <div class="resize-handle bottom" (mousedown)="startResize($event, item, 'bottom')"></div>
             </div>
 
@@ -148,52 +154,44 @@
 </div>
 
 <!-- ==================== DAY VIEW ==================== -->
-<div *ngIf="viewMode === 'day'" class="day-time-layout">
-
-  <!-- LEFT TIME COLUMN -->
-  <div class="time-column">
-    <div *ngFor="let hour of hours" class="time-slot-label">
-      {{ formatHour(hour) }}
-    </div>
-  </div>
-
-  <!-- RIGHT SIDE -->
-  <div class="day-timeline">
-
-    <!-- ALL DAY ROW -->
+<div *ngIf="viewMode === 'day'" class="day-view-outer">
+  
+  <div class="day-allday-row-container">
+    <div class="time-header-allday-label">all-day</div>
     <div class="day-all-day-row">
-      <div *ngFor="let event of dayView.allDayEvents" class="all-day-pill">
+      <div *ngFor="let event of dayView.allDayEvents" class="all-day-pill"
+           [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
+           (click)="onEventClicked(event, $event)">
         {{ event.subject }}
       </div>
     </div>
+  </div>
 
-    <!-- GRID BACKGROUND -->
-    <div *ngFor="let hour of hours" class="hour-row"></div>
-
-    <!-- NOW INDICATOR -->
-    <div *ngIf="dayView.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
-
-    <!-- TIMED EVENTS -->
-    <div *ngFor="let item of dayView.layoutItems" class="time-block-event" [style.top.px]="item.top"
-      [style.height.px]="item.height" [style.left.%]="item.left" [style.width.%]="item.width"
-      [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
-      (click)="onEventClicked(item.event, $event)" (mousedown)="startDrag($event, item, selectedDate)">
-
-      <div class="resize-handle top" (mousedown)="startResize($event, item, 'top')"></div>
-
-      <div class="time-block-title">
-        {{ item.event.subject }}
+  <div class="day-time-layout">
+    <div class="time-column">
+      <div *ngFor="let hour of hours" class="time-slot-label">
+        {{ formatHour(hour) }}
       </div>
-
-      <div class="time-block-time">
-        {{ item.event.startDate | date:'HH:mm' }} –
-        {{ item.event.endDate | date:'HH:mm' }}
-      </div>
-
-      <div class="resize-handle bottom" (mousedown)="startResize($event, item, 'bottom')"></div>
-
     </div>
 
+    <div class="day-timeline">
+      <div *ngFor="let hour of hours" class="hour-row"></div>
+
+      <div *ngIf="dayView.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
+
+      <div *ngFor="let item of dayView.layoutItems" class="time-block-event" [style.top.px]="item.top"
+        [style.height.px]="item.height" [style.left.%]="item.left" [style.width.%]="item.width"
+        [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
+        (click)="onEventClicked(item.event, $event)" (mousedown)="startDrag($event, item, selectedDate)">
+
+        <div class="resize-handle top" (mousedown)="startResize($event, item, 'top')"></div>
+        <div class="time-block-title">{{ item.event.subject }}</div>
+        <div class="time-block-time">
+          {{ item.event.startDate | date:'HH:mm' }} – {{ item.event.endDate | date:'HH:mm' }}
+        </div>
+        <div class="resize-handle bottom" (mousedown)="startResize($event, item, 'bottom')"></div>
+      </div>
+    </div>
   </div>
 </div>
 
