@@ -12,7 +12,10 @@ export class DayViewGenerator {
 
     const dayEvents = events.filter(event => {
       const start = DateUtils.toDateOnly(new Date(event.startDate));
-      const end = DateUtils.toDateOnly(new Date(event.endDate));
+      let end = DateUtils.toDateOnly(new Date(event.endDate));
+      if (event.allDayEvent) {
+        end = DateUtils.toDateOnly(DateUtils.addDays(new Date(event.endDate), -1));
+      }
       return start <= dayTimestamp && end >= dayTimestamp;
     });
 
