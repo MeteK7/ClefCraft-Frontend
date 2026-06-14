@@ -1,12 +1,14 @@
 .reminder-snackbar {
   background-color: #2c3e50 !important;
   color: #ffffff !important;
-  border-left: 6px solid #e74c3c; /* Sharp alert indicator edge color */
+  border-left: 6px solid #e74c3c;
+  /* Sharp alert indicator edge color */
   font-weight: 500;
 }
 
 .reminder-snackbar .mat-mdc-snack-bar-action {
-  color: #3498db !important; /* Standout interaction button label */
+  color: #3498db !important;
+  /* Standout interaction button label */
   text-transform: uppercase;
 }
 
@@ -502,7 +504,8 @@
 }
 
 .week-header-row {
-  border-bottom: none !important; /* Managed by outer wrapper sticky layout block */
+  border-bottom: none !important;
+  /* Managed by outer wrapper sticky layout block */
 }
 
 .week-allday-row {
@@ -554,7 +557,11 @@
 .day-view-outer {
   display: flex;
   flex-direction: column;
+
   flex: 1;
+  min-height: 0;
+  height: 0;
+
   background: white;
   border: 1px solid #ddd;
   box-sizing: border-box;
@@ -589,7 +596,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: opacity 0.15s ease;
 }
 
@@ -599,7 +606,8 @@
 
 /* Ensure day timeline overrides any old styles placing rows inside timeline */
 .day-time-layout {
-  border: none !important; /* Borders are handled by outer card */
+  border: none !important;
+  /* Borders are handled by outer card */
 }
 
 /* =========================
@@ -798,8 +806,6 @@
 .time-column {
   width: 70px;
   flex-shrink: 0;
-  border-right: 1px solid #ddd;
-  background: #fafafa;
   box-sizing: border-box;
 }
 
@@ -841,6 +847,9 @@
   text-align: center;
   color: #666;
   border-bottom: 1px solid #eee;
+  border-right: 1px solid #ddd;
+  background: #fafafa;
+  box-sizing: border-box;
 }
 
 .hour-row {
