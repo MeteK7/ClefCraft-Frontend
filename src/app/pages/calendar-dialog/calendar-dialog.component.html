@@ -112,9 +112,15 @@
 
               <mat-form-field appearance="outline" color="primary" class="time-field">
                 <mat-label>End Time</mat-label>
+
                 <input matInput [ngxMatTimepicker]="endPicker" formControlName="endTime" />
+
                 <ngx-mat-timepicker-toggle matSuffix [for]="endPicker"></ngx-mat-timepicker-toggle>
                 <ngx-mat-timepicker #endPicker [format]="24" [enableKeyboardInput]="true"></ngx-mat-timepicker>
+
+                <mat-error *ngIf="generalForm.get('endTime')?.hasError('dateTimeOrderInvalid')">
+                  End time must be after start time
+                </mat-error>
               </mat-form-field>
 
             </div>
