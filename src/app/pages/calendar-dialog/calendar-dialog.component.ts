@@ -162,7 +162,7 @@ export class CalendarDialogComponent implements OnInit {
       recurrenceEndDate: [null],
       recurrenceCount: [null],
       reminderMinutes: [[]]
-    });
+    }, { validators: this.dateTimeOrderValidator });
   }
 
   ngOnInit(): void {
@@ -186,6 +186,14 @@ export class CalendarDialogComponent implements OnInit {
 
       startTime?.updateValueAndValidity();
       endTime?.updateValueAndValidity();
+    });
+
+    this.generalForm.get('startTime')?.valueChanges.subscribe(() => {
+      this.generalForm.updateValueAndValidity();
+    });
+
+    this.generalForm.get('endTime')?.valueChanges.subscribe(() => {
+      this.generalForm.updateValueAndValidity();
     });
 
     if (this.data.eventData) {
@@ -216,7 +224,6 @@ export class CalendarDialogComponent implements OnInit {
         this.generalForm.get('startTime')?.disable({ emitEvent: false });
         this.generalForm.get('endTime')?.disable({ emitEvent: false });
       }
-
 
       this.eventTypeName = this.data.eventData.eventTypeName;
       this.eventColor = this.data.eventData.eventColor;
@@ -267,6 +274,42 @@ export class CalendarDialogComponent implements OnInit {
       this.filteredLocations = this.filterLocations(value || '');
     });
   }
+
+private dateTimeOrderValidator = (group: FormGroup) => {
+  const allDay = group.get('allDayEvent')?.value;
+  if (allDay) return null;
+
+  const startDate = group.get('startDate')?.value;
+  const endDate = group.get('endDate')?.value;
+  const startTime = group.get('startTime')?.value;
+  const endTime = group.get('endTime')?.value;
+
+  const startCtrl = group.get('startTime');
+  const endCtrl = group.get('endTime');
+
+  if (!startDate || !endDate || !startTime || !endTime) return null;
+
+  const start = this.combineDateAndTime(startDate, this.normalizeTime(startTime));
+  const end = this.combineDateAndTime(endDate, this.normalizeTime(endTime));
+
+  const isInvalid = end <= start;
+
+  if (isInvalid) {
+    endCtrl?.setErrors({ ...(endCtrl.errors || {}), dateTimeOrderInvalid: true });
+    return { dateTimeOrderInvalid: true };
+  }
+
+  // IMPORTANT: clear only our custom error, not others
+  if (endCtrl?.hasError('dateTimeOrderInvalid')) {
+    const errors = { ...(endCtrl.errors || {}) };
+    delete errors['dateTimeOrderInvalid'];
+
+    const hasOtherErrors = Object.keys(errors).length > 0;
+    endCtrl.setErrors(hasOtherErrors ? errors : null);
+  }
+
+  return null;
+};
 
   /**
  * Monitors start date/time changes and intelligently slides 
