@@ -1,5 +1,7 @@
 .board { 
   display: flex;
+  flex-direction: column;
+  height: 100%;
   gap: 15px;
   padding: 20px;
   background: rgba(0, 0, 0, 0.4); /* board area glass effect */

@@ -30,7 +30,8 @@ app-sidebar {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;   /* 👈 allow vertical scroll */
+  overflow-x: hidden; /* 👈 prevent horizontal scroll */
   padding: 20px;
   min-width: 0;
   box-sizing: border-box;

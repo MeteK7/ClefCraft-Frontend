@@ -1,7 +1,7 @@
 .board-column {
-  flex: 1;
-  min-width: 250px;
-  /* padding: 20px; */
+  flex: 1 1 0;       /* 👈 allows shrinking */
+  min-width: 100px;  /* 👈 smaller base width */
+  max-width: 100%;   /* safety */
   background: rgba(210, 217, 241, 0.6); /* dark glass effect */
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
