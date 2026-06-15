@@ -38,7 +38,7 @@ export class CalendarService {
   }
 
   GetWorkHistory(itemId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/WorkHistory/${itemId}`);
+    return this.http.get<any[]>(`${this.apiUrl}/work-history/${itemId}`);
   }
   getAttachments(eventId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/${eventId}/attachments`);
