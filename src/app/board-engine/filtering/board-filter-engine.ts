@@ -1,4 +1,3 @@
-// board-engine/filtering/board-filter-engine.ts
 import { BoardItemView } from '../models/board-item-view.model';
 
 export interface BoardFilterCriteria {
