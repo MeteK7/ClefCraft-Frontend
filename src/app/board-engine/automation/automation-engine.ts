@@ -1,4 +1,3 @@
-// board-engine/automation/automation-engine.ts
 import { Item } from '../models/board-state.model';
 import { AutomationRule, RuleAction, RuleContext, findMatchingRules } from './rule-engine';
 
