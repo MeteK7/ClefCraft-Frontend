@@ -1,10 +1,22 @@
 import { Component, ElementRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BoardColumnComponent } from '../board-column/board-column.component';
-import { Board, Column, Item } from '../../models/board.model';
-import { BoardService } from '../../_services/board.service';
+import { BoardEngineService } from '../../board-engine/services/board-engine.service';
+import { BoardView, toBoardView } from '../../board-engine/models/board-view.model';
+import { BoardItemView } from '../../board-engine/models/board-item-view.model';
+import { Board, Item } from '../../board-engine/models/board-state.model';
+import {
+  applyItemCreated,
+  applyItemUpdate,
+  closeSidebar as closeSidebarState,
+  selectItem,
+  shouldCloseSidebarOnOutsideClick,
+  SelectionState,
+  toggleViewMode as toggleViewModeState,
+} from '../../board-engine/interactions/board-selection-engine';
+import { getConnectedDropListIds } from '../../board-engine/interactions/board-drag-engine';
 import { AddItemFormComponent } from '../../components/add-item-form/add-item-form.component';
-import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatDialog } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
 import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-sidebar.component';
@@ -14,86 +26,138 @@ import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [CommonModule, FormsModule, BoardColumnComponent, DragDropModule, AddItemFormComponent, ItemDetailSidebarComponent, MatIconModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    BoardColumnComponent,
+    DragDropModule,
+    AddItemFormComponent,
+    ItemDetailSidebarComponent,
+    MatIconModule,
+  ],
   templateUrl: './board.component.html',
-  styleUrls: ['./board.component.css']
+  styleUrls: ['./board.component.css'],
 })
 export class BoardComponent implements OnInit {
   boards: Board[] = [];
-  columns: Column[] = [];
-  items: Item[] = [];
+  boardView: BoardView | null = null;
   selectedBoardId: number | null = null;
-  selectedItem: Item | null = null;
-  viewMode: 'dialog' | 'sidebar' = 'dialog'; // Default view mode
-  isSidebarOpen: boolean = false;
 
-  constructor(private boardService: BoardService, private dialog: MatDialog, private eRef: ElementRef) { }
+  selection: SelectionState = {
+    selectedItem: null,
+    viewMode: 'dialog',
+    isSidebarOpen: false,
+  };
+
+  constructor(
+    private boardEngine: BoardEngineService,
+    private dialog: MatDialog,
+    private eRef: ElementRef
+  ) {}
 
   ngOnInit(): void {
     this.loadBoards();
-    //this.loadBoardItems();
   }
+
+  // ---------------------------------------------------------------------
+  // Getters delegating to selection state (keeps template bindings simple)
+  // ---------------------------------------------------------------------
+
+  get selectedItem(): BoardItemView | null {
+    return this.selection.selectedItem;
+  }
+
+  get viewMode(): 'dialog' | 'sidebar' {
+    return this.selection.viewMode;
+  }
+
+  set viewMode(mode: 'dialog' | 'sidebar') {
+    this.selection = { ...this.selection, viewMode: mode, isSidebarOpen: false };
+  }
+
+  get columns() {
+    return this.boardView?.columns ?? [];
+  }
+
+  get allColumnIds(): string[] {
+    return getConnectedDropListIds(this.boardView);
+  }
+
+  // ---------------------------------------------------------------------
+  // Outside-click handling for the sidebar
+  // ---------------------------------------------------------------------
 
   @HostListener('document:click', ['$event'])
   handleClickOutside(event: Event): void {
     const target = event.target as HTMLElement;
     const sidebar = document.querySelector('.sidebar');
+    const clickedInsideSidebar = !!sidebar && sidebar.contains(target);
 
-    console.log('Selected item before checking click outside:', this.selectedItem);
-
-    // If the sidebar is open and the click happens outside of it, close it
-    if (this.viewMode === 'sidebar' && this.selectedItem && sidebar && !sidebar.contains(target)) {
-      // Check if the sidebar is fully opened before allowing the click to close it
-      if (this.isSidebarOpen) {
-        // Reset the flag immediately after clicking, allowing the sidebar to keep open
-        this.isSidebarOpen = false;
-        return; // Do not close the sidebar on the first click
-      }
-      this.selectedItem = null;  // Close the sidebar
+    if (shouldCloseSidebarOnOutsideClick(this.selection, clickedInsideSidebar)) {
+      this.selection = closeSidebarState(this.selection);
+      return;
     }
 
-    console.log('Click target:', target);
-
+    // Consume the "just opened" flag on the first outside click.
+    if (
+      this.selection.viewMode === 'sidebar' &&
+      this.selection.selectedItem &&
+      sidebar &&
+      !clickedInsideSidebar &&
+      this.selection.isSidebarOpen
+    ) {
+      this.selection = { ...this.selection, isSidebarOpen: false };
+    }
   }
 
+  // ---------------------------------------------------------------------
+  // Data loading
+  // ---------------------------------------------------------------------
+
   loadBoards(): void {
-    this.boardService.getBoards().subscribe(boards => {
+    this.boardEngine.getBoards().subscribe(boards => {
       this.boards = boards;
 
       if (boards.length) {
-        this.selectedBoardId = boards[0].id; //Assigning default value
-        this.loadBoardColumnItems(this.selectedBoardId); // Load columns and items for the first board
+        this.selectedBoardId = boards[0].id;
+        this.loadBoardColumnItems(this.selectedBoardId);
       }
     });
   }
 
   loadBoardColumnItems(boardId: number): void {
-    this.boardService.getBoardItemsByBoardId(boardId).subscribe(columns => {
-      this.columns = columns.map(column => ({
-        ...column,
-        boardItems: column.boardItems.map(item => ({
-          ...item,
-          createdByFullName: item.createdByFullName,
-          modifiedByFullName: item.modifiedByFullName
-        }))
-      }));
+    this.boardEngine.getBoardItemsByBoardId(boardId).subscribe(columns => {
+      const board = this.boards.find(b => b.id === boardId);
+      const title = board?.title ?? '';
+
+      this.boardView = toBoardView({
+        id: boardId,
+        title,
+        boardColumns: columns,
+      });
     });
   }
 
-  get allColumnIds(): string[] {
-    return this.columns.map(column => 'column-' + column.title);
+  onBoardSelection(boardId: number | null): void {
+    if (boardId !== null) {
+      this.selectedBoardId = boardId;
+      this.loadBoardColumnItems(boardId);
+    }
   }
+
+  // ---------------------------------------------------------------------
+  // Item creation
+  // ---------------------------------------------------------------------
 
   openAddItemDialog(): void {
     const dialogRef = this.dialog.open(AddItemFormComponent, {
       width: '400px',
       data: {
-        columns: this.columns,
-        boardId: this.selectedBoardId // Pass the selected board ID 
-      } // Passing the columns to the form component
+        columns: this.boardView?.columns ?? [],
+        boardId: this.selectedBoardId,
+      },
     });
 
-    // Handle the event when the dialog is closed and a new item is created
     dialogRef.afterClosed().subscribe((item: Item | undefined) => {
       if (item) {
         this.onItemCreated(item);
@@ -102,36 +166,30 @@ export class BoardComponent implements OnInit {
   }
 
   onItemCreated(item: Item): void {
-    const column = this.columns.find(c => c.id === item.boardColumnId);
-    if (column) {
-      column.boardItems.push(item);
+    if (!this.boardView) {
+      return;
     }
 
-    //this.loadBoardColumnItems();
+    const view: BoardItemView = toViewItem(item);
+    this.boardView = applyItemCreated(this.boardView, view);
   }
 
-  onBoardSelection(boardId: number | null): void {
-    // Check if boardId is not null before proceeding
-    if (boardId !== null) {
-      this.selectedBoardId = boardId;
-      this.loadBoardColumnItems(boardId); // Fetch data for the selected board
-    }
-  }
+  // ---------------------------------------------------------------------
+  // Selection / detail views
+  // ---------------------------------------------------------------------
 
-  onItemClick(item: Item): void {
-    //console.log('Item clicked:', item);
-    this.selectedItem = item; // Set selectedItem to the clicked item
-    if (this.viewMode === 'dialog') {
+  onItemClick(item: BoardItemView): void {
+    this.selection = selectItem(this.selection, item);
+
+    if (this.selection.viewMode === 'dialog') {
       this.openItemDetailDialog(item);
-    } else {
-      this.openItemDetailSidebar(item);
     }
   }
-  // Method to open item detail dialog
-  openItemDetailDialog(item: Item): void {
+
+  openItemDetailDialog(item: BoardItemView): void {
     const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
       width: '400px',
-      data: { item }
+      data: { item },
     });
 
     const attemptClose = () => {
@@ -143,55 +201,64 @@ export class BoardComponent implements OnInit {
         return;
       }
 
-      const confirmClose = window.confirm(
-        'You have unsaved changes.\n\nDiscard them?'
-      );
+      const confirmClose = window.confirm('You have unsaved changes.\n\nDiscard them?');
 
       if (confirmClose) {
         dialogRef.close();
       }
     };
 
-    // Handle ESC
     dialogRef.keydownEvents().subscribe(event => {
       if (event.key === 'Escape') {
         attemptClose();
       }
     });
 
-    // Handle backdrop click
     dialogRef.backdropClick().subscribe(() => {
       attemptClose();
     });
 
-    dialogRef.afterClosed().subscribe((updatedItem: Item | undefined) => {
+    dialogRef.afterClosed().subscribe((updatedItem: BoardItemView | undefined) => {
       if (updatedItem) {
         this.onItemUpdated(updatedItem);
       }
     });
   }
 
-  // Method to handle opening the sidebar
-  openItemDetailSidebar(item: Item): void {
-    //this.selectedItem = item; // Set the selected item
-    this.isSidebarOpen = true; // Mark the sidebar flag as true in case the user opens sidebar.
-  }
-
-  onItemUpdated(updatedItem: Item): void {
-    this.columns = this.columns.map(c =>
-      c.id === updatedItem.boardColumnId
-        ? {
-          ...c,
-          boardItems: c.boardItems.map(i =>
-            i.id === updatedItem.id ? updatedItem : i
-          )
-        }
-        : c
-    );
+  onItemUpdated(updatedItem: BoardItemView): void {
+    if (!this.boardView) {
+      return;
+    }
+    this.boardView = applyItemUpdate(this.boardView, updatedItem);
   }
 
   toggleViewMode(): void {
-    this.viewMode = this.viewMode === 'dialog' ? 'sidebar' : 'dialog';
-    this.isSidebarOpen = false; //Flag
+    this.selection = toggleViewModeState(this.selection);
   }
+}
+
+/** Minimal mapper for items returned from the create dialog */
+function toViewItem(item: Item): BoardItemView {
+  const first = item.assigneeFirstName ?? '';
+  const last = item.assigneeLastName ?? '';
+  return {
+    raw: item,
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    statusId: item.statusId,
+    priorityId: item.priorityId,
+    priorityName: item.priority?.name,
+    boardId: item.boardId,
+    boardColumnId: item.boardColumnId,
+    tags: item.tags ?? [],
+    assigneeId: item.assigneeId,
+    fullName: `${first} ${last}`.trim(),
+    initials: (first.charAt(0) + last.charAt(0)).toUpperCase(),
+    dueDate: item.dueDate,
+    estimatedTime: item.estimatedTime,
+    timeSpent: item.timeSpent,
+    createdByFullName: item.createdByFullName,
+    modifiedByFullName: item.modifiedByFullName,
+  };
 }

@@ -1,4 +1,4 @@
-<!-- components/board/board.component.html -->
+<!-- pages/board/board.component.html -->
 <div class="board-header">
   <label for="boardId">Board:</label>
   <select id="boardId" [(ngModel)]="selectedBoardId" name="boardId" (change)="onBoardSelection(selectedBoardId)">
@@ -18,10 +18,17 @@
 <button class="add-item-btn" (click)="openAddItemDialog()">Add New Item</button>
 
 <div class="board-columns">
-  <app-board-column *ngFor="let column of columns" [column]="column" [allColumnIds]="allColumnIds"
-    (itemClicked)="onItemClick($event)"></app-board-column>
+  <app-board-column
+    *ngFor="let column of columns"
+    [column]="column"
+    [allColumnIds]="allColumnIds"
+    (itemClicked)="onItemClick($event)"
+  ></app-board-column>
 </div>
 
 <!-- Sidebar View -->
-<app-item-detail-sidebar *ngIf="viewMode === 'sidebar' && selectedItem" [item]="selectedItem"
-  (itemUpdated)="onItemUpdated($event)"></app-item-detail-sidebar>
+<app-item-detail-sidebar
+  *ngIf="viewMode === 'sidebar' && selectedItem"
+  [item]="selectedItem"
+  (itemUpdated)="onItemUpdated($event)"
+></app-item-detail-sidebar>
