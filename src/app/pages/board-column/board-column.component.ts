@@ -1,73 +1,52 @@
-//add an @Input() to receive the list of all column IDs.
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { Column, Item } from '../../models/board.model';
 import { CommonModule } from '@angular/common';
-import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-//The BoardItemComponent is a child component of the BoardColumnComponent because items are part of a column in the Board board. Therefore, it makes sense to import BoardItemComponent inside BoardColumnComponent rather than directly in BoardComponent.
+import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { BoardItemComponent } from '../board-item/board-item.component';
-import { BoardService } from '../../_services/board.service';
+import { BoardEngineService } from '../../board-engine/services/board-engine.service';
+import { BoardColumnView } from '../../board-engine/models/board-column-view.model';
+import { BoardItemView } from '../../board-engine/models/board-item-view.model';
+import { handleBoardDrop } from '../../board-engine/interactions/board-drop-engine';
 
 @Component({
   selector: 'app-board-column',
   standalone: true,
   imports: [CommonModule, DragDropModule, BoardItemComponent],
   templateUrl: './board-column.component.html',
-  styleUrls: ['./board-column.component.css']
+  styleUrls: ['./board-column.component.css'],
 })
 export class BoardColumnComponent {
-  @Input() column!: Column;
+  @Input() column!: BoardColumnView;
   @Input() allColumnIds!: string[];
-  @Output() itemClicked = new EventEmitter<Item>();
+  @Output() itemClicked = new EventEmitter<BoardItemView>();
 
-  constructor(private boardService: BoardService) { }
+  constructor(private boardEngine: BoardEngineService) {}
 
   get connectedTo(): string[] {
     return this.allColumnIds;
   }
 
-  drop(event: CdkDragDrop<Item[]>) {
-    console.log('Drop event:', event);
-    console.log('Previous Container ID:', event.previousContainer.id);
-    console.log('Current Container ID:', event.container.id);
+  drop(event: CdkDragDrop<BoardItemView[]>) {
+    const result = handleBoardDrop(event, this.column);
 
-    if (event.previousContainer === event.container) {
-      // Moving item within the same column
-      console.log('Moving item within the same column');
-      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-    } else {
-      // Moving item to a different column
-      console.log('Moving item to a different column');
-
-      transferArrayItem(
-        event.previousContainer.data,
-        event.container.data,
-        event.previousIndex,
-        event.currentIndex
-      );
-
-      // Update item’s column on the server
-      const item = event.container.data[event.currentIndex];
-      const newColumnId = this.column.id;
-      this.updateItemColumn(item.id, newColumnId);
+    if (!result.sameColumn) {
+      this.updateItemColumn(result.item.id, result.newColumnId);
     }
   }
-  updateItemColumn(itemId: number, newColumnId: number) {
-    const updatedItem = {
-      id: itemId,
-      boardColumnId: newColumnId
-    };
 
-    this.boardService.switchBoardItemColumn(updatedItem).subscribe(
-      (response) => {
-        console.log('Item updated successfully:', response);
-      },
-      (error) => {
-        console.error('Error updating item:', error);
-      }
-    );
+  updateItemColumn(itemId: number, newColumnId: number) {
+    this.boardEngine
+      .switchBoardItemColumn({ id: itemId, boardColumnId: newColumnId })
+      .subscribe(
+        response => {
+          console.log('Item updated successfully:', response);
+        },
+        error => {
+          console.error('Error updating item:', error);
+        }
+      );
   }
 
-  onItemClick(item: Item): void {
-    this.itemClicked.emit({ ...item, boardColumnId: this.column.id }); // Emit the clicked item
+  onItemClick(item: BoardItemView): void {
+    this.itemClicked.emit({ ...item, boardColumnId: this.column.id });
   }
 }
