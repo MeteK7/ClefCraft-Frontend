@@ -1,12 +1,18 @@
+export type ImportanceLevel = 0 | 1 | 2; // 0 = Low, 1 = Normal, 2 = High
+
 export interface CalendarEvent {
   id?: number;
+  baseEventId?: number;
+  seriesUid?: string;
   subject: string;
   location?: string;
   startDate: string;
   endDate: string;
-  allDay: boolean;
-  importance: 'Low' | 'Normal' | 'High';
+  allDayEvent: boolean;
+  importance: ImportanceLevel;
   comment?: string;
   isRecurring?: boolean;
-  baseEventId: number;
+  recurrenceRuleJson?: string | null;
+  linkedBoardItemId?: number | null;
+  reminderMinutes?: number[];
 }

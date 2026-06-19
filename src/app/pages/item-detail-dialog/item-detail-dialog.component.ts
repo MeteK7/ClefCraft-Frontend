@@ -187,7 +187,7 @@ export class ItemDetailDialogComponent implements OnInit {
       startDate: currentDate,
       endDate: endDate,
       allDayEvent: false,
-      importance: 'Normal',
+      importance: 1, // Normal
       linkedBoardItemId: this.data.item.id,
     };
 
