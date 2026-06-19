@@ -1,6 +1,6 @@
 /** Minimal shape required by the engine; extend via the generic. */
 export interface MonthEventInput {
-  id: number;
+  id?: number;
   startDate: Date | string;
   endDate: Date | string;
   allDayEvent?: boolean;

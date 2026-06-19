@@ -100,7 +100,6 @@ mat-tab-group {
 .form-column {
   display: flex;
   flex-direction: column;
-  gap: 1em;
   flex: 1;
 }
 
