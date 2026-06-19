@@ -67,9 +67,9 @@ export class CalendarDialogComponent implements OnInit {
   generalForm: FormGroup;
 
   importanceLevels = [
-    { label: 'Low', value: 1 },
-    { label: 'Normal', value: 2 },
-    { label: 'High', value: 3 }
+    { label: 'Low', value: 0 },
+    { label: 'Normal', value: 1 },
+    { label: 'High', value: 2 }
   ];
 
   reminderOptions = [
@@ -151,7 +151,7 @@ export class CalendarDialogComponent implements OnInit {
       startTime: [''],
       endTime: [''],
       allDayEvent: [false],
-      importance: [2],
+      importance: [1],
       comment: [''],
       eventTypeId: [null],
       isRecurring: [false],
@@ -275,41 +275,41 @@ export class CalendarDialogComponent implements OnInit {
     });
   }
 
-private dateTimeOrderValidator = (group: FormGroup) => {
-  const allDay = group.get('allDayEvent')?.value;
-  if (allDay) return null;
+  private dateTimeOrderValidator = (group: FormGroup) => {
+    const allDay = group.get('allDayEvent')?.value;
+    if (allDay) return null;
 
-  const startDate = group.get('startDate')?.value;
-  const endDate = group.get('endDate')?.value;
-  const startTime = group.get('startTime')?.value;
-  const endTime = group.get('endTime')?.value;
+    const startDate = group.get('startDate')?.value;
+    const endDate = group.get('endDate')?.value;
+    const startTime = group.get('startTime')?.value;
+    const endTime = group.get('endTime')?.value;
 
-  const startCtrl = group.get('startTime');
-  const endCtrl = group.get('endTime');
+    const startCtrl = group.get('startTime');
+    const endCtrl = group.get('endTime');
 
-  if (!startDate || !endDate || !startTime || !endTime) return null;
+    if (!startDate || !endDate || !startTime || !endTime) return null;
 
-  const start = this.combineDateAndTime(startDate, this.normalizeTime(startTime));
-  const end = this.combineDateAndTime(endDate, this.normalizeTime(endTime));
+    const start = this.combineDateAndTime(startDate, this.normalizeTime(startTime));
+    const end = this.combineDateAndTime(endDate, this.normalizeTime(endTime));
 
-  const isInvalid = end <= start;
+    const isInvalid = end <= start;
 
-  if (isInvalid) {
-    endCtrl?.setErrors({ ...(endCtrl.errors || {}), dateTimeOrderInvalid: true });
-    return { dateTimeOrderInvalid: true };
-  }
+    if (isInvalid) {
+      endCtrl?.setErrors({ ...(endCtrl.errors || {}), dateTimeOrderInvalid: true });
+      return { dateTimeOrderInvalid: true };
+    }
 
-  // IMPORTANT: clear only our custom error, not others
-  if (endCtrl?.hasError('dateTimeOrderInvalid')) {
-    const errors = { ...(endCtrl.errors || {}) };
-    delete errors['dateTimeOrderInvalid'];
+    // IMPORTANT: clear only our custom error, not others
+    if (endCtrl?.hasError('dateTimeOrderInvalid')) {
+      const errors = { ...(endCtrl.errors || {}) };
+      delete errors['dateTimeOrderInvalid'];
 
-    const hasOtherErrors = Object.keys(errors).length > 0;
-    endCtrl.setErrors(hasOtherErrors ? errors : null);
-  }
+      const hasOtherErrors = Object.keys(errors).length > 0;
+      endCtrl.setErrors(hasOtherErrors ? errors : null);
+    }
 
-  return null;
-};
+    return null;
+  };
 
   /**
  * Monitors start date/time changes and intelligently slides 

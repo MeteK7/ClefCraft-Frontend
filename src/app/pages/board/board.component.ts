@@ -225,11 +225,13 @@ export class BoardComponent implements OnInit {
     });
   }
 
-  onItemUpdated(updatedItem: BoardItemView): void {
+  onItemUpdated(updatedItem: BoardItemView | Item): void {
     if (!this.boardView) {
       return;
     }
-    this.boardView = applyItemUpdate(this.boardView, updatedItem);
+    // ItemDetailSidebarComponent still emits a raw Item; normalise it.
+    const view: BoardItemView = 'raw' in updatedItem ? updatedItem : toViewItem(updatedItem);
+    this.boardView = applyItemUpdate(this.boardView, view);
   }
 
   toggleViewMode(): void {

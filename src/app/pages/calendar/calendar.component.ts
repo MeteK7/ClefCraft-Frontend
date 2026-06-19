@@ -693,7 +693,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   private persistEventUpdate(event: CalendarEventUI, originalStart: Date): void {
     if (event.isRecurring) {
       this.calendarService.updateSingleOccurrence({
-        seriesUid: event.seriesUid,
+        seriesUid: event.seriesUid!,
         occurrenceDate: originalStart.toISOString(),
         subject: event.subject,
         comment: event.comment,
@@ -707,7 +707,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         error: err => console.error('Failed to update recurring event:', err),
       });
     } else {
-      this.calendarService.updateEvent(event.id, event).subscribe({
+      this.calendarService.updateEvent(event.id!, event).subscribe({
         next: () => this.fetchEvents(),
         error: err => console.error('Failed to update event:', err),
       });
