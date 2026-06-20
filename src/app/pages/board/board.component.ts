@@ -188,7 +188,7 @@ export class BoardComponent implements OnInit {
 
   openItemDetailDialog(item: BoardItemView): void {
     const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
-      width: '400px',
+      minWidth: '900px',
       data: { item },
     });
 

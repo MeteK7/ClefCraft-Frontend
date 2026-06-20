@@ -1,239 +1,370 @@
+:host {
+  display: block;
+  box-sizing: border-box;
+}
+
 .dialog-container {
   display: flex;
   flex-direction: column;
   height: 100%;
   width: 100%;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+  background: var(--mdc-theme-background, #ffffff);
+  border-radius: 12px;
   overflow: hidden;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
 }
 
-/* Make the tab group take available space */
-mat-tab-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* Ensure tab content containers are properly sized */
-::ng-deep .mat-mdc-tab-body-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-::ng-deep .mat-mdc-tab-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-::ng-deep .mat-mdc-tab-body-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
-}
-
-/* Fixed actions at the bottom */
-.dialog-actions {
+/* Header UI Elements */
+.dialog-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1em;
-  background: white;
-  border-top: 1px solid #eee;
+  padding: 16px 24px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  flex-shrink: 0;
-  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Ensure buttons have proper spacing */
-.dialog-actions .btn {
+.dialog-title {
   margin: 0;
-  min-width: 100px;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #202124;
 }
 
-::ng-deep .mat-mdc-dialog-surface {
-  max-width: none !important;
-  width: 50vw !important;
-  /* Adjust the width */
-  height: 80vh !important;
-  /* Adjust the height */
-  position: absolute !important;
-  left: auto !important;
-  top: auto !important;
-  transform: none !important;
-  will-change: auto !important;
+.item-id-badge {
+  background-color: #e8eaed;
+  color: #5f6368;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
-/* Make dialog content fill available space */
+/* Unsaved Changes Banner Styling */
+.unsaved-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #fff8e1;
+  color: #b78103;
+  padding: 10px 24px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-bottom: 1px solid #ffe082;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.banner-icon {
+  color: #f5b041;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+/* Tab Layout Adjustments */
+.dialog-tabs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-icon {
+  margin-right: 8px;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Tab Viewport Dynamic Expansion */
 .dialog-content {
   display: flex;
   flex-direction: column;
   flex: 1;
+  padding: 24px;
   overflow-y: auto;
-  padding: 1em 2em 1em 1em;
+  box-sizing: border-box;
 }
 
-/* Make the description textarea expand naturally */
-.form-group.textarea-group {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+/* Utility layout rules */
+.w-100 {
+  width: 100%;
 }
 
-#itemDescription {
-  flex: 1;
-  min-height: 6em;
-  resize: vertical;
+.textarea-field {
+  margin-bottom: 8px;
 }
 
-/* Form layout adjustments */
-.form-row {
-  display: flex;
-  gap: 2em;
-  flex: 1;
+/* Form Grid Architecture */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 8px;
 }
 
 .form-column {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  gap: 4px;
 }
 
-/* Ensure form groups take proper space */
-.form-group {
-  margin-bottom: 1.5em;
-}
-
-/* Rest of your existing styles */
-.input-field {
-  width: 100%;
-  padding: 0.5em;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 1em;
-}
-
-.input-field:focus {
-  border-color: #007bff;
-  outline: none;
-}
-
-.info-group {
+/* Multi-select chips custom rendering wrapper */
+.tag-chips-wrapper {
   display: flex;
-  justify-content: space-between;
-  margin: 1em 0;
-  font-size: 0.9em;
-  color: #666;
   flex-wrap: wrap;
-}
-
-.linked-items {
-  margin-bottom: 1.5em;
-}
-
-.linked-items ul {
-  list-style-type: disc;
-  margin-left: 20px;
-}
-
-.btn {
-  padding: 0.5em 1em;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1em;
-  transition: background-color 0.3s;
-}
-
-.save-btn {
-  background-color: #28a745;
-  color: white;
-}
-
-.save-btn:hover {
-  background-color: #218838;
-}
-
-.delete-btn {
-  background-color: #dc3545;
-  color: white;
-}
-
-.delete-btn:hover {
-  background-color: #c82333;
-}
-
-.cancel-btn {
-  background-color: #6c757d;
-  color: white;
-}
-
-.cancel-btn:hover {
-  background-color: #5a6268;
-}
-
-.mark-as-worked-btn {
-  background-color: #007bff;
-  color: white;
-}
-
-.mark-as-worked-btn:hover {
-  background-color: #0056b3;
-}
-
-.unsaved-banner {
-  background: #fff3cd;
-  padding: 10px;
-  font-weight: bold;
-  border-bottom: 1px solid #ffeeba;
+  gap: 6px;
+  align-items: center;
 }
 
 .tag-chip {
-  display: inline-block;
-  background: #e0e0e0;
-  border-radius: 12px;
-  padding: 2px 8px;
-  margin-right: 6px; /* 👈 spacing between tags */
-  font-size: 12px;
+  background: #f1f3f4;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  border-radius: 16px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .more-tags {
-  color: #666;
+  color: #70757a;
   font-size: 12px;
-  margin-left: 4px;
+  font-weight: 500;
 }
 
-.history-entry {
+/* Info view tab aesthetics */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.info-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #5f6368;
+  font-weight: 600;
+}
+
+.info-value {
+  font-size: 14px;
+  color: #202124;
+  font-weight: 500;
+}
+
+/* Section definitions inside generic tabs */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #3c4043;
+  margin: 0 0 16px 0;
+  border-bottom: 1px solid #f1f3f4;
+  padding-bottom: 8px;
+}
+
+.section-title mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: #5f6368;
+}
+
+.linked-section, .history-section {
+  margin-top: 12px;
+}
+
+.linked-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.linked-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.item-dot {
+  color: #78909c;
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.linked-title {
+  font-size: 14px;
+  color: #3c4043;
+}
+
+/* Audit / History logs interactive styles */
+.history-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-entry-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
   cursor: pointer;
-}
-.history-entry:hover {
-  text-decoration: underline;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Responsive adjustments */
+.history-entry-card:hover {
+  background: #f4f6f7;
+  border-color: #b0bec5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.history-meta, .history-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.history-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: #78909c;
+}
+
+.history-date {
+  font-size: 13.5px;
+  color: #202124;
+}
+
+.history-name {
+  font-size: 13.5px;
+  color: #5f6368;
+}
+
+.history-arrow {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: #9aa0a6;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.history-entry-card:hover .history-arrow {
+  opacity: 1;
+}
+
+.empty-state-text {
+  font-size: 13.5px;
+  color: #80868b;
+  font-style: italic;
+  margin: 8px 0;
+}
+
+/* Dialog Bottom Footer Strip Actions */
+.dialog-actions-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #ffffff;
+  border-top: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.left-actions, .right-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.action-btn {
+  padding: 0 16px;
+  font-weight: 500;
+  letter-spacing: 0.25px;
+}
+
+.action-btn mat-icon {
+  margin-right: 4px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Clean Responsive Adaptive Queries */
+@media (max-width: 992px) {
+  :host {
+    width: 80vw;
+    height: 85vh;
+  }
+}
+
 @media (max-width: 768px) {
-  .form-row {
-    flex-direction: column;
-    gap: 1.5em;
+  :host {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
   }
 
-  .dialog-actions {
-    flex-wrap: wrap;
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .dialog-actions-footer {
+    flex-direction: column-reverse;
+    gap: 12px;
+    align-items: stretch;
+    padding: 12px 16px;
+  }
+
+  .left-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .right-actions {
     justify-content: center;
   }
-
-  .dialog-actions .btn {
-    flex: 1;
-    min-width: auto;
-    margin: 4px;
-  }
-
-  .info-group {
-    flex-direction: column;
-    gap: 8px;
+  
+  .action-btn {
+    width: 100%;
   }
 }
