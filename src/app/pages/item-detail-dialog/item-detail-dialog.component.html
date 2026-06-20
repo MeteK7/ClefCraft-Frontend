@@ -128,7 +128,8 @@
       <div class="history-tab">
         <h5>Work History</h5>
         <ul>
-          <li *ngFor="let historyItem of markAsWorkedHistory">
+          <li *ngFor="let historyItem of markAsWorkedHistory" class="history-entry"
+            (click)="openWorkHistoryEvent(historyItem)" matTooltip="Open this entry on the calendar">
             {{ historyItem.dateCreated | date: 'short' }} - {{ historyItem.actionBy }}
           </li>
         </ul>
