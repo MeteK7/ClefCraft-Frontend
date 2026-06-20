@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { EventType } from '../models/event-type.model';
+import { WorkHistoryEntry } from '../models/work-history.model';
 
 @Injectable({
   providedIn: 'root',
@@ -37,9 +38,10 @@ export class CalendarService {
     return this.http.get<EventType[]>(`${this.apiUrl}/event-types`);
   }
 
-  GetWorkHistory(itemId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/work-history/${itemId}`);
+  GetWorkHistory(itemId: number): Observable<WorkHistoryEntry[]> {
+    return this.http.get<WorkHistoryEntry[]>(`${this.apiUrl}/work-history/${itemId}`);
   }
+
   getAttachments(eventId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/${eventId}/attachments`);
   }

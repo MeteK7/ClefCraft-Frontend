@@ -12,6 +12,7 @@ import { CalendarService } from '../../_services/calendar.service';
 import { Assignee } from '../../models/assignee.model';
 import { UserService } from '../../_services/user.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-item-detail-dialog',
@@ -30,7 +31,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 export class ItemDetailDialogComponent implements OnInit {
   form!: FormGroup;
 
-  markAsWorkedHistory: { dateCreated: string; actionBy: string }[] = [];
+  markAsWorkedHistory: { id: number; dateCreated: string; actionBy: string }[] = [];
+
   assignees: Assignee[] = [];
   tags: Tag[] = [];
   statuses: Status[] = [];
@@ -45,7 +47,8 @@ export class ItemDetailDialogComponent implements OnInit {
     private fb: FormBuilder,
     private boardService: BoardService,
     private userService: UserService,
-    private calendarService: CalendarService
+    private calendarService: CalendarService,
+    private router: Router
   ) { }
 
   ngOnInit(): void {
@@ -164,10 +167,22 @@ export class ItemDetailDialogComponent implements OnInit {
   fetchMarkAsWorkedHistory(): void {
     this.calendarService.GetWorkHistory(this.data.item.id).subscribe(history => {
       this.markAsWorkedHistory = history.map(entry => ({
+        id: entry.id,
         dateCreated: this.convertToLocalDate(entry.dateCreated).toISOString(),
         actionBy: entry.actionByFullName
       }));
     });
+  }
+
+  openWorkHistoryEvent(entry: { id: number; dateCreated: string }): void {
+    const urlTree = this.router.createUrlTree(['/calendar'], {
+      queryParams: {
+        eventId: entry.id,
+        date: entry.dateCreated
+      }
+    });
+    const url = this.router.serializeUrl(urlTree);
+    window.open(url, '_blank');
   }
 
   convertToLocalDate(utcDate: string): Date {
@@ -212,9 +227,9 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   get hiddenTagsTooltip(): string {
-  return this.selectedTags
-    .slice(3)
-    .map(t => t.name)
-    .join(', ');
-}
+    return this.selectedTags
+      .slice(3)
+      .map(t => t.name)
+      .join(', ');
+  }
 }
