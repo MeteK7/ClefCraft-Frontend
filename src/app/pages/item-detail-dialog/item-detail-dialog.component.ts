@@ -5,14 +5,21 @@ import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';   
+import { MatRippleModule } from '@angular/material/core'; 
 
 import { Item, Priority, Status, Tag } from '../../models/board.model';
 import { BoardService } from '../../_services/board.service';
 import { CalendarService } from '../../_services/calendar.service';
 import { Assignee } from '../../models/assignee.model';
 import { UserService } from '../../_services/user.service';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-item-detail-dialog',
@@ -23,7 +30,14 @@ import { Router } from '@angular/router';
     MatTabsModule,
     MatSelectModule,
     MatRadioModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatRippleModule
   ],
   templateUrl: './item-detail-dialog.component.html',
   styleUrl: './item-detail-dialog.component.css'
@@ -74,7 +88,8 @@ export class ItemDetailDialogComponent implements OnInit {
       priorityId: [item.priority?.id ?? null],
       tags: [item.tags?.map(t => t.id) ?? []],
       assigneeId: [item.assigneeId ?? null],
-      dueDate: [item.dueDate],
+      // Parsed as a Date object so matDatepicker functions properly out-of-the-box
+      dueDate: [item.dueDate ? new Date(item.dueDate) : null], 
       estimatedTime: [item.estimatedTime],
       timeSpent: [item.timeSpent]
     });
@@ -82,7 +97,6 @@ export class ItemDetailDialogComponent implements OnInit {
 
   private trackFormChanges(): void {
     this.form.valueChanges.subscribe(currentValue => {
-      // Compare current value with original
       this.hasUnsavedChanges =
         JSON.stringify(currentValue) !== JSON.stringify(this.originalItemData);
     });
@@ -119,9 +133,11 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   onDelete(): void {
-    this.boardService.deleteBoardItem(this.data.item.id).subscribe(() => {
-      this.dialogRef.close(this.data.item);
-    });
+    if (window.confirm('Are you absolutely sure you want to delete this item?')) {
+      this.boardService.deleteBoardItem(this.data.item.id).subscribe(() => {
+        this.dialogRef.close(this.data.item);
+      });
+    }
   }
 
   onCancel(): void {
@@ -192,7 +208,7 @@ export class ItemDetailDialogComponent implements OnInit {
 
   markAsWorked(): void {
     const currentDate = new Date();
-    const endDate = new Date(currentDate.getTime() + 1); // +1 millisecond
+    const endDate = new Date(currentDate.getTime() + 1);
 
     const formValue = this.form.value;
 
@@ -202,12 +218,11 @@ export class ItemDetailDialogComponent implements OnInit {
       startDate: currentDate,
       endDate: endDate,
       allDayEvent: false,
-      importance: 1, // Normal
+      importance: 1,
       linkedBoardItemId: this.data.item.id,
     };
 
     this.calendarService.saveEvent(calendarEvent).subscribe(() => {
-      // After saving, optionally refresh history from backend
       this.fetchMarkAsWorkedHistory();
       this.dialogRef.close();
     });
@@ -219,7 +234,7 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   get visibleTags(): Tag[] {
-    return this.selectedTags.slice(0, 3); // show max 3
+    return this.selectedTags.slice(0, 3);
   }
 
   get hiddenTagCount(): number {
