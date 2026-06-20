@@ -207,6 +207,13 @@ mat-tab-group {
   margin-left: 4px;
 }
 
+.history-entry {
+  cursor: pointer;
+}
+.history-entry:hover {
+  text-decoration: underline;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .form-row {
