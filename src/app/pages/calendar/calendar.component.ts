@@ -42,6 +42,7 @@ import { EventResizeEngine } from '../../calendar-engine/interactions/resize/eve
 
 import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
 import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-calendar',
@@ -112,6 +113,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   private reminderSubscription!: Subscription;
 
+  private pendingEventIdFromRedirect: number | null = null;
+
   constructor(
     private calendarService: CalendarService,
     private dialog: MatDialog,
@@ -119,6 +122,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private authService: AuthService,
     private zone: NgZone,
+    private route: ActivatedRoute,
+    private router: Router,
   ) { }
 
   // ==========================================================================
@@ -128,6 +133,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const activeId = this.authService.getUserId();
     if (activeId) this.userId = activeId;
+
+    this.applyRedirectQueryParams();
 
     this.generateCurrentView();
     this.fetchEvents();
@@ -143,6 +150,26 @@ export class CalendarComponent implements OnInit, OnDestroy {
     window.removeEventListener('mouseup', this.stopDrag);
     window.removeEventListener('mousemove', this.onResizing);
     window.removeEventListener('mouseup', this.stopResize);
+  }
+
+  private applyRedirectQueryParams(): void {
+    const params = this.route.snapshot.queryParamMap;
+    const eventIdParam = params.get('eventId');
+    const dateParam = params.get('date');
+
+    if (dateParam) {
+      const parsedDate = new Date(dateParam);
+      if (!isNaN(parsedDate.getTime())) {
+        this.selectedDate = parsedDate;
+      }
+    }
+
+    if (eventIdParam) {
+      const parsedId = Number(eventIdParam);
+      if (!isNaN(parsedId)) {
+        this.pendingEventIdFromRedirect = parsedId;
+      }
+    }
   }
 
   // ==========================================================================
@@ -185,15 +212,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
     return diffMin > 0
       ? `Starts in ${diffMin} minute${diffMin !== 1 ? 's' : ''} · ${timeStr}`
       : `Starting now · ${timeStr}`;
-  }
-
-  private openEventById(eventId: number): void {
-    const matchedEvent = this.events.find(e => e.id === eventId);
-    if (matchedEvent) {
-      this.openDialog(matchedEvent);
-    } else {
-      console.log(`Event #${eventId} is outside the current viewport scope.`);
-    }
   }
 
   // ==========================================================================
@@ -272,9 +290,33 @@ export class CalendarComponent implements OnInit, OnDestroy {
           endDate: new Date(event.endDate),
         }));
         this.generateCurrentView();
+        this.openPendingRedirectEventIfAny();   // ADDED
       },
       error: err => console.error('Error fetching events:', err),
     });
+  }
+
+  // NEW
+  private openPendingRedirectEventIfAny(): void {
+    if (this.pendingEventIdFromRedirect == null) return;
+
+    const eventId = this.pendingEventIdFromRedirect;
+    this.pendingEventIdFromRedirect = null; // consume once, so paging months later doesn't reopen it
+
+    this.openEventById(eventId);
+
+    // strip the query params so a refresh/navigation doesn't reopen the dialog
+    this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+  }
+
+  private openEventById(eventId: number): void {
+    const matchedEvent = this.events.find(e => e.id === eventId);
+    if (matchedEvent) {
+      this.openDialog(matchedEvent);
+    } else {
+      console.log(`Event #${eventId} is outside the current viewport scope.`);
+      this.snackBar.open('Could not find that event on the calendar.', 'Dismiss', { duration: 5000 }); // ADDED
+    }
   }
 
   private buildFetchRange(): { start: Date; end: Date } {
