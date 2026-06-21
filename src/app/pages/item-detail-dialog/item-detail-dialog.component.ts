@@ -12,8 +12,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';   
-import { MatRippleModule } from '@angular/material/core'; 
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatRippleModule } from '@angular/material/core';
 
 import { Item, Priority, Status, Tag } from '../../models/board.model';
 import { BoardService } from '../../_services/board.service';
@@ -84,12 +84,12 @@ export class ItemDetailDialogComponent implements OnInit {
     this.form = this.fb.group({
       title: [item.title],
       description: [item.description],
-      statusId: [item.status?.id ?? null],
-      priorityId: [item.priority?.id ?? null],
+      statusId: [item.statusId ?? null],
+      priorityId: [item.priorityId ?? null],
       tags: [item.tags?.map(t => t.id) ?? []],
       assigneeId: [item.assigneeId ?? null],
       // Parsed as a Date object so matDatepicker functions properly out-of-the-box
-      dueDate: [item.dueDate ? new Date(item.dueDate) : null], 
+      dueDate: [item.dueDate ? new Date(item.dueDate) : null],
       estimatedTime: [item.estimatedTime],
       timeSpent: [item.timeSpent]
     });
@@ -156,15 +156,17 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   fetchStatuses(): void {
-    this.boardService
-      .getStatuses(this.data.item.boardId)
-      .subscribe(data => this.statuses = data);
+    this.boardService.getStatuses(this.data.item.boardId).subscribe(data => {
+      this.statuses = data;
+      this.form.patchValue({ statusId: this.data.item.statusId ?? null }, { emitEvent: false });
+    });
   }
 
   fetchPriorities(): void {
-    this.boardService
-      .getPriorities(this.data.item.boardId)
-      .subscribe(data => this.priorities = data);
+    this.boardService.getPriorities(this.data.item.boardId).subscribe(data => {
+      this.priorities = data;
+      this.form.patchValue({ priorityId: this.data.item.priorityId ?? null }, { emitEvent: false });
+    });
   }
 
   fetchAssignees(): void {

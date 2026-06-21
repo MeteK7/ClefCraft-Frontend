@@ -53,7 +53,7 @@ export class BoardComponent implements OnInit {
     private boardEngine: BoardEngineService,
     private dialog: MatDialog,
     private eRef: ElementRef
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.loadBoards();
@@ -189,7 +189,10 @@ export class BoardComponent implements OnInit {
   openItemDetailDialog(item: BoardItemView): void {
     const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
       minWidth: '900px',
-      data: { item },
+      data: {
+        item,
+        boardId: this.selectedBoardId,
+      },
     });
 
     const attemptClose = () => {
@@ -229,9 +232,26 @@ export class BoardComponent implements OnInit {
     if (!this.boardView) {
       return;
     }
-    // ItemDetailSidebarComponent still emits a raw Item; normalise it.
+
     const view: BoardItemView = 'raw' in updatedItem ? updatedItem : toViewItem(updatedItem);
-    this.boardView = applyItemUpdate(this.boardView, view);
+
+    // Defensive: if the dialog/API response omits identity fields like
+    // boardId/boardColumnId (since they aren't part of the edit form),
+    // fall back to what's already in state rather than wiping it out.
+    const existing = this.boardView.columns
+      .flatMap(c => c.boardItems)
+      .find(i => i.id === view.id);
+
+    const merged: BoardItemView = existing
+      ? {
+        ...existing,
+        ...view,
+        boardId: view.boardId ?? existing.boardId,
+        boardColumnId: view.boardColumnId ?? existing.boardColumnId,
+      }
+      : view;
+
+    this.boardView = applyItemUpdate(this.boardView, merged);
   }
 
   toggleViewMode(): void {

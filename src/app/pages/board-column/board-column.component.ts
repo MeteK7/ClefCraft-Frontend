@@ -19,7 +19,7 @@ export class BoardColumnComponent {
   @Input() allColumnIds!: string[];
   @Output() itemClicked = new EventEmitter<BoardItemView>();
 
-  constructor(private boardEngine: BoardEngineService) {}
+  constructor(private boardEngine: BoardEngineService) { }
 
   get connectedTo(): string[] {
     return this.allColumnIds;
@@ -47,6 +47,10 @@ export class BoardColumnComponent {
   }
 
   onItemClick(item: BoardItemView): void {
-    this.itemClicked.emit({ ...item, boardColumnId: this.column.id });
+    this.itemClicked.emit({
+      ...item,
+      boardColumnId: this.column.id,
+      boardId: item.boardId,
+    });
   }
 }
