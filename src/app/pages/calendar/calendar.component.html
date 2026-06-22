@@ -28,7 +28,7 @@
   </div>
 
   <!-- Datepicker -->
-  <div class="calendar-container">
+  <div class="calendar-container compact-datepicker">
     <mat-form-field appearance="outline">
       <mat-label>Select a date</mat-label>
       <input matInput [matDatepicker]="picker" (dateChange)="onDateSelectedFromPicker($event.value)" />
@@ -110,8 +110,8 @@
           <div *ngFor="let col of weekView.columns" class="week-day-column-allday" [class.today]="col.isToday">
             <div class="all-day-events-wrapper">
               <div *ngFor="let event of col.allDayEvents" class="all-day-pill"
-                   [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
-                   (click)="onEventClicked(event, $event)">
+                [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
+                (click)="onEventClicked(event, $event)">
                 {{ event.subject }}
               </div>
             </div>
@@ -155,13 +155,13 @@
 
 <!-- ==================== DAY VIEW ==================== -->
 <div *ngIf="viewMode === 'day'" class="day-view-outer">
-  
+
   <div class="day-allday-row-container">
     <div class="time-header-allday-label">all-day</div>
     <div class="day-all-day-row">
       <div *ngFor="let event of dayView.allDayEvents" class="all-day-pill"
-           [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
-           (click)="onEventClicked(event, $event)">
+        [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
+        (click)="onEventClicked(event, $event)">
         {{ event.subject }}
       </div>
     </div>
