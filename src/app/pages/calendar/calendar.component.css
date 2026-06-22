@@ -63,6 +63,29 @@
   min-width: 220px;
 }
 
+.compact-datepicker mat-form-field {
+  width: 220px;
+}
+
+/* main height */
+.compact-datepicker ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+/* input vertical alignment */
+.compact-datepicker mat-form-field {
+  width: 220px;
+  --mat-form-field-container-height: 38px;
+  --mat-form-field-container-vertical-padding: 6px;
+}
+
+/* icon centering */
+.compact-datepicker ::ng-deep .mat-mdc-icon-button {
+  width: 38px;
+  height: 38px;
+  padding: 7px;
+}
+
 /* =========================
    CALENDAR GRID
    ========================= */
