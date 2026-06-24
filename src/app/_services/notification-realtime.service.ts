@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Subject, Observable } from 'rxjs';
 import { AuthService } from './auth.service';  // ← adjust path if needed
+import { environment } from '../../environments/environment';
 
 export interface ReminderPayload {
     eventId: number;
@@ -23,9 +24,9 @@ export class NotificationRealtimeService {
     }
 
     private startConnection(): void {
-
+        const hubUrl = environment.apiUrl.replace('/api', '');
         this.hubConnection = new signalR.HubConnectionBuilder()
-            .withUrl('https://localhost:7287/hubs/notifications', {
+            .withUrl(`${hubUrl}/hubs/notifications`, {
                 accessTokenFactory: () => this.authService.getToken() ?? '',
                 withCredentials: true
             })

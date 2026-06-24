@@ -3,12 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { EventType } from '../models/event-type.model';
 import { WorkHistoryEntry } from '../models/work-history.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CalendarService {
-  private apiUrl = 'https://localhost:7287/api/Calendar';
+  private apiUrl = `${environment.apiUrl}/Calendar`;
 
   constructor(private http: HttpClient) { }
 
