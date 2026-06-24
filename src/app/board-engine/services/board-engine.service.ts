@@ -11,12 +11,13 @@ import {
 } from '../models/board-state.model';
 import { BoardView, toBoardView } from '../models/board-view.model';
 import { BoardColumnView, toBoardColumnView } from '../models/board-column-view.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class BoardEngineService {
-  private apiUrl = 'https://localhost:7287/api'; // API base URL
+  private apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) {}
 
