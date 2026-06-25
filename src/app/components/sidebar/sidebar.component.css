@@ -1,12 +1,24 @@
+:host {
+  display: block;
+  /* Let it size perfectly to the text on PC */
+  width: max-content; 
+  transition: width 0.2s ease;
+}
+
+/* COLLAPSED WIDTH */
+:host(.collapsed) {
+  width: 50px;
+}
+
 nav {
   padding: 12px;
   background-color: #f8f9fa;
   height: 100%;
   box-sizing: border-box;
-  transition: width 0.2s ease;
   position: relative;
 }
 
+/* collapse button */
 .collapse-btn {
   position: absolute;
   top: 8px;
@@ -27,31 +39,35 @@ nav {
   background: #ccc;
 }
 
+mat-icon {
+  transition: transform 0.2s ease;
+}
+
+mat-icon.rotated {
+  transform: rotate(180deg);
+}
+
 ul {
   list-style: none;
   padding: 0;
   margin: 40px 0 0 0;
 }
 
-li {
-  margin-bottom: 8px;
-}
-
 a {
-  display: block;
+  display: flex;
+  align-items: center;
   padding: 10px;
   text-decoration: none;
   color: #333;
   border-radius: 6px;
   font-size: 16px;
-  transition: background-color 0.2s ease;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  transition: background-color 0.2s ease, padding 0.2s ease;
 }
 
 a:hover {
-  background-color: #ddd;
+  background-color: #c3c3c3;
 }
 
 .active-link {
@@ -61,53 +77,63 @@ a:hover {
 
 .icon {
   font-size: 18px;
-  margin-right: 8px;
+  flex-shrink: 0;
+  /* Add margin instead of flex gap to prevent a jerky snap when collapsing */
+  margin-right: 10px; 
+  transition: margin 0.2s ease;
 }
 
 .label {
+  display: inline-block;
   vertical-align: middle;
+  opacity: 1;
+  visibility: visible;
+  /* Set a safe upper limit for text layout sizing */
+  max-width: 300px; 
+  transition: max-width 0.2s ease, opacity 0.2s ease, visibility 0.2s ease;
 }
 
-/* COLLAPSED STATE */
-nav.collapsed {
-  padding: 12px 6px;
+/* Smoothly collapse the label on PC/Global */
+:host(.collapsed) .label {
+  max-width: 0;
+  opacity: 0;
+  visibility: hidden;
 }
 
-nav.collapsed a {
+/* Remove icon spacing when collapsed */
+:host(.collapsed) .icon {
+  margin-right: 0;
+}
+
+/* center icons when collapsed */
+:host(.collapsed) a {
+  justify-content: center;
   padding: 10px 6px;
-  text-align: center;
-  font-size: 0;
 }
 
-nav.collapsed li {
-  margin-bottom: 10px;
-}
-
-nav.collapsed .label {
-  display: none;
-}
-
-nav.collapsed .icon {
-  font-size: 20px;
-}
-
-/* Tablet */
-@media (max-width: 992px) {
-  a {
-    font-size: 14px;
-    padding: 8px;
-  }
-}
-
-/* Phone */
-@media (max-width: 250px) {
-  nav {
-    padding: 8px;
+@media (max-width: 768px) {
+  :host:not(.collapsed) {
+    width: 25vw;
   }
 
   a {
-    font-size: 12px;
-    padding: 6px;
-    text-align: center;
+    font-size: 13px;
+    padding: 8px 6px;
+  }
+
+  .label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* hide icons on mobile when expanded — labels have full space */
+  :host(:not(.collapsed)) .icon {
+    display: none;
+  }
+
+  /* collapsed on mobile: icon visible, label already hidden by the global rule */
+  :host(.collapsed) .icon {
+    display: inline;
+    margin-right: 0;
   }
 }
