@@ -11,7 +11,7 @@ import { TunerComponent } from './pages/tuner/tuner.component';
 import { ManagementComponent } from './pages/management/management.component';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/home', pathMatch: 'full' },
+  { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: 'home', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'registration', component: RegistrationComponent },
