@@ -15,7 +15,7 @@
 
 <nav [class.collapsed]="isCollapsed">
   <button class="collapse-btn" (click)="toggleCollapse()">
-    {{ isCollapsed ? '»' : '«' }}
+    <mat-icon [class.rotated]="isCollapsed">chevron_left</mat-icon>
   </button>
 
   <ul>
