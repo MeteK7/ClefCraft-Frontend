@@ -24,15 +24,30 @@ app-sidebar {
   background-color: #f8f9fa;
   border-right: 1px solid #ccc;
   flex-shrink: 0;
+  transition: width 0.2s ease;
 }
 
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;   /* 👈 allow vertical scroll */
-  overflow-x: hidden; /* 👈 prevent horizontal scroll */
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px;
   min-width: 0;
   box-sizing: border-box;
+}
+
+/* Tablet */
+@media (max-width: 992px) {
+  app-sidebar {
+    width: 160px;
+  }
+}
+
+/* Phone */
+@media (max-width: 576px) {
+  app-sidebar {
+    width: 90px;
+  }
 }

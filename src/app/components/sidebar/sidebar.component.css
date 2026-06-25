@@ -1,36 +1,113 @@
 nav {
-  padding: 20px;
+  padding: 12px;
   background-color: #f8f9fa;
   height: 100%;
+  box-sizing: border-box;
+  transition: width 0.2s ease;
+  position: relative;
+}
+
+.collapse-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #ddd;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapse-btn:hover {
+  background: #ccc;
 }
 
 ul {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 40px 0 0 0;
 }
 
 li {
-  margin-bottom: 15px;
+  margin-bottom: 8px;
 }
 
 a {
+  display: block;
+  padding: 10px;
   text-decoration: none;
   color: #333;
-  font-family: 'Arial', sans-serif;
+  border-radius: 6px;
   font-size: 16px;
-  padding: 10px 15px;
-  display: block;
-  border-radius: 5px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 a:hover {
   background-color: #ddd;
-  color: #000;
 }
 
 .active-link {
   background-color: #444;
-  color: #fff;
+  color: white;
+}
+
+.icon {
+  font-size: 18px;
+  margin-right: 8px;
+}
+
+.label {
+  vertical-align: middle;
+}
+
+/* COLLAPSED STATE */
+nav.collapsed {
+  padding: 12px 6px;
+}
+
+nav.collapsed a {
+  padding: 10px 6px;
+  text-align: center;
+  font-size: 0;
+}
+
+nav.collapsed li {
+  margin-bottom: 10px;
+}
+
+nav.collapsed .label {
+  display: none;
+}
+
+nav.collapsed .icon {
+  font-size: 20px;
+}
+
+/* Tablet */
+@media (max-width: 992px) {
+  a {
+    font-size: 14px;
+    padding: 8px;
+  }
+}
+
+/* Phone */
+@media (max-width: 250px) {
+  nav {
+    padding: 8px;
+  }
+
+  a {
+    font-size: 12px;
+    padding: 6px;
+    text-align: center;
+  }
 }

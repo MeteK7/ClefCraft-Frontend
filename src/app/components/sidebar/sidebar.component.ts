@@ -16,4 +16,10 @@ export class SidebarComponent {
     // Replace with actual admin check logic
     this.isAdmin = true; // or false
   }
+
+  isCollapsed: boolean = false;
+
+  toggleCollapse() {
+    this.isCollapsed = !this.isCollapsed;
+  }
 }
