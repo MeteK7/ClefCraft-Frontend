@@ -13,18 +13,9 @@ h1 {
   margin: 0;
 }
 
-/* default: desktop */
-.abbr {
-  display: none;
-}
-
-/* mobile */
-@media (max-width: 600px) {
-  .full {
-    display: none;
-  }
-
-  .abbr {
-    display: inline;
+/* Mobile override */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 20px;
   }
 }
