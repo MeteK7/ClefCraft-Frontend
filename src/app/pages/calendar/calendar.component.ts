@@ -71,6 +71,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   selectedDate: Date = new Date();
   linkedRecord: Item | null = null;
   userId: string | undefined;
+  isLoading: boolean = false;
 
   // ── View mode ──────────────────────────────────────────────────────────────
 
@@ -279,8 +280,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // FETCH EVENTS
   // ==========================================================================
 
+  // Update fetchEvents()
   fetchEvents(): void {
     const { start, end } = this.buildFetchRange();
+    this.isLoading = true; // ← start loading
 
     this.calendarService.getEvents(start, end).subscribe({
       next: (events: any[]) => {
@@ -290,9 +293,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
           endDate: new Date(event.endDate),
         }));
         this.generateCurrentView();
-        this.openPendingRedirectEventIfAny();   // ADDED
+        this.openPendingRedirectEventIfAny();
+        this.isLoading = false; // ← done
       },
-      error: err => console.error('Error fetching events:', err),
+      error: err => {
+        console.error('Error fetching events:', err);
+        this.isLoading = false; // ← also clear on error
+      },
     });
   }
 
