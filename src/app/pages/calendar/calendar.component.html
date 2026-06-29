@@ -51,11 +51,12 @@
       <div class="calendar-header-cell" *ngFor="let day of weekdays">{{ day }}</div>
     </div>
 
-    <div *ngFor="let row of monthView.weeks" class="calendar-week">
+    <div *ngFor="let row of monthView.weeks" class="calendar-week" cdkDropListGroup>
 
-      <!-- Day cells (numbers + overflow indicators) -->
       <div class="days-grid">
-        <div *ngFor="let date of row.dates" class="calendar-day"
+        <div *ngFor="let date of row.dates; let i = index" class="calendar-day" cdkDropList
+          [id]="'day-' + (row.dates[0] | date:'yyyyMMdd') + '-' + i" [cdkDropListData]="date"
+          (cdkDropListDropped)="onMonthEventDropped($event, date)"
           [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
           [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
           (click)="onEmptyDayClicked(date)">
@@ -73,11 +74,11 @@
       <div class="week-events-overlay">
         <div class="week-events-layer">
           <ng-container *ngFor="let item of row.layoutItems">
-            <div *ngIf="item.lane < MAX_VISIBLE_LANES" class="event span-event"
+            <div *ngIf="item.lane < MAX_VISIBLE_LANES" class="event span-event" cdkDrag [cdkDragData]="item.event"
+              (cdkDragStarted)="onMonthDragStart(item.event)" (cdkDragEnded)="onMonthDragEnd()"
               [class.linked]="item.event.linkedBoardItemId"
               [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan" [style.grid-row]="item.lane + 1"
               [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
-              [matTooltip]="getTooltip(item.event)" matTooltipShowDelay="400" matTooltipHideDelay="100"
               (click)="onEventClicked(item.event, $event)">
 
               <span class="event-title">
