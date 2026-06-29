@@ -229,10 +229,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // VIEW MODE
   // ==========================================================================
 
-  setViewMode(mode: CalendarViewMode): void {
+setViewMode(mode: CalendarViewMode): void {
+    if (this.viewMode === mode)
+        return;
+
     this.viewMode = mode;
-    this.generateCurrentView();
-  }
+    this.fetchEvents();
+}
 
   generateCurrentView(): void {
     switch (this.viewMode) {
