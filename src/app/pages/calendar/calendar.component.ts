@@ -43,6 +43,7 @@ import { EventResizeEngine } from '../../calendar-engine/interactions/resize/eve
 import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
 import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-calendar',
@@ -58,6 +59,7 @@ import { ActivatedRoute, Router } from '@angular/router';
     MatIconModule,
     MatMenuModule,
     MatSnackBarModule,
+    DragDropModule,
     CalendarDialogComponent,
   ],
   templateUrl: './calendar.component.html',
@@ -66,7 +68,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 export class CalendarComponent implements OnInit, OnDestroy {
 
   // ── State ──────────────────────────────────────────────────────────────────
-
+  alwaysTrue = () => true;
   events: CalendarEventUI[] = [];
   selectedDate: Date = new Date();
   linkedRecord: Item | null = null;
@@ -111,10 +113,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // ── Injected services ──────────────────────────────────────────────────────
 
   private readonly engine = inject(CalendarEngineService);
-
   private reminderSubscription!: Subscription;
-
   private pendingEventIdFromRedirect: number | null = null;
+  private monthDragEvent: CalendarEventUI | null = null;
 
   constructor(
     private calendarService: CalendarService,
@@ -777,5 +778,38 @@ export class CalendarComponent implements OnInit, OnDestroy {
         error: err => console.error('Failed to update event:', err),
       });
     }
+  }
+
+  onMonthDragStart(event: CalendarEventUI): void {
+    this.monthDragEvent = event;
+  }
+
+  onMonthDragEnd(): void {
+    this.monthDragEvent = null;
+  }
+
+  onMonthEventDropped(event: any, targetDate: Date): void {
+    const draggedEvent = event.item.data as CalendarEventUI;
+    if (!draggedEvent) return;
+
+    const oldStart = new Date(draggedEvent.startDate);
+
+    // preserve time of day
+    const newStart = new Date(targetDate);
+    newStart.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0);
+
+    const duration =
+      new Date(draggedEvent.endDate).getTime() - oldStart.getTime();
+
+    const newEnd = new Date(newStart.getTime() + duration);
+
+    // optimistic UI update
+    draggedEvent.startDate = newStart;
+    draggedEvent.endDate = newEnd;
+
+    this.generateCurrentView();
+
+    // persist
+    this.persistEventUpdate(draggedEvent, oldStart);
   }
 }
