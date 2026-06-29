@@ -229,13 +229,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // VIEW MODE
   // ==========================================================================
 
-setViewMode(mode: CalendarViewMode): void {
+  setViewMode(mode: CalendarViewMode): void {
     if (this.viewMode === mode)
-        return;
+      return;
 
     this.viewMode = mode;
     this.fetchEvents();
-}
+  }
 
   generateCurrentView(): void {
     switch (this.viewMode) {
@@ -359,6 +359,16 @@ setViewMode(mode: CalendarViewMode): void {
         return { start, end };
       }
 
+      case 'agenda': {
+        const start = new Date(this.selectedDate);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(start);
+        end.setDate(end.getDate() + 30);
+
+        return { start, end };
+      }
+
       default: {
         const now = new Date();
         return { start: now, end: now };
@@ -450,6 +460,9 @@ setViewMode(mode: CalendarViewMode): void {
         return d;
       case 'day':
         d.setDate(d.getDate() + direction);
+        return d;
+      case 'agenda':
+        d.setDate(d.getDate() + direction * 30);
         return d;
       default:
         return d;
