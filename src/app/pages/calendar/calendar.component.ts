@@ -9,7 +9,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { Observable, Subscription } from 'rxjs';
+import { min, Observable, Subscription } from 'rxjs';
 
 import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
 import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
@@ -115,7 +115,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   private readonly engine = inject(CalendarEngineService);
   private reminderSubscription!: Subscription;
   private pendingEventIdFromRedirect: number | null = null;
-  private monthDragEvent: CalendarEventUI | null = null;
+  monthDragEvent: CalendarEventUI | null = null;
 
   constructor(
     private calendarService: CalendarService,
@@ -788,8 +788,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.monthDragEvent = null;
   }
 
-  onMonthEventDropped(event: any, weekDates: Date[]): void {
-
+  onMonthEventDropped(event: any): void {
     const dragged = event.item.data as CalendarEventUI;
     if (!dragged?.id) return;
 
@@ -799,22 +798,25 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const oldStart = new Date(draggedEvent.startDate);
     const oldEnd = new Date(draggedEvent.endDate);
 
-    // Calculate which day column was dropped onto
+    // Retrieve the target week context structure assigned to the drop zone container data payload
+    const targetRowData = event.container.data as MonthWeekRow;
+    if (!targetRowData || !targetRowData.dates) return;
+
+    // Calculate which day column index was hit using coordinates relative to the actual active container element dropspace
     const overlay = event.container.element.nativeElement as HTMLElement;
     const rect = overlay.getBoundingClientRect();
-
     const relativeX = event.dropPoint.x - rect.left;
-
     const columnWidth = rect.width / 7;
 
     const columnIndex = Math.max(
       0,
-      Math.min(6, Math.floor(relativeX / columnWidth))
+      Math.min(6, Math.floor(relativeX / columnWidth)) // Added Math. right here
     );
 
-    const targetDate = new Date(weekDates[columnIndex]);
+    // Pin target dates out of the exact drop target array sequence safely
+    const targetDate = new Date(targetRowData.dates[columnIndex]);
 
-    // Preserve time
+    // Preserve original timestamp time metrics securely
     targetDate.setHours(
       oldStart.getHours(),
       oldStart.getMinutes(),
@@ -822,18 +824,17 @@ export class CalendarComponent implements OnInit, OnDestroy {
       oldStart.getMilliseconds()
     );
 
-    // Preserve duration
+    // Keep duration delta offsets aligned properly
     const duration = oldEnd.getTime() - oldStart.getTime();
     const newEnd = new Date(targetDate.getTime() + duration);
 
-    if (oldStart.toDateString() === targetDate.toDateString())
-      return;
+    // Early exit if the target date matches original coordinates to avoid layout calculations loop overhead
+    if (oldStart.toDateString() === targetDate.toDateString()) return;
 
     draggedEvent.startDate = targetDate;
     draggedEvent.endDate = newEnd;
 
     this.generateCurrentView();
-
     this.persistEventUpdate(draggedEvent, oldStart);
   }
 }
