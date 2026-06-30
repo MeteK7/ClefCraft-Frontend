@@ -68,7 +68,7 @@ import { DragDropModule } from '@angular/cdk/drag-drop';
 export class CalendarComponent implements OnInit, OnDestroy {
 
   // ── State ──────────────────────────────────────────────────────────────────
-  alwaysTrue = () => true;
+  alwaysAllowDrop = (): boolean => true;
   events: CalendarEventUI[] = [];
   selectedDate: Date = new Date();
   linkedRecord: Item | null = null;
@@ -788,28 +788,52 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.monthDragEvent = null;
   }
 
-  onMonthEventDropped(event: any, targetDate: Date): void {
-    const draggedEvent = event.item.data as CalendarEventUI;
+  onMonthEventDropped(event: any, weekDates: Date[]): void {
+
+    const dragged = event.item.data as CalendarEventUI;
+    if (!dragged?.id) return;
+
+    const draggedEvent = this.events.find(e => e.id === dragged.id);
     if (!draggedEvent) return;
 
     const oldStart = new Date(draggedEvent.startDate);
+    const oldEnd = new Date(draggedEvent.endDate);
 
-    // preserve time of day
-    const newStart = new Date(targetDate);
-    newStart.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0);
+    // Calculate which day column was dropped onto
+    const overlay = event.container.element.nativeElement as HTMLElement;
+    const rect = overlay.getBoundingClientRect();
 
-    const duration =
-      new Date(draggedEvent.endDate).getTime() - oldStart.getTime();
+    const relativeX = event.dropPoint.x - rect.left;
 
-    const newEnd = new Date(newStart.getTime() + duration);
+    const columnWidth = rect.width / 7;
 
-    // optimistic UI update
-    draggedEvent.startDate = newStart;
+    const columnIndex = Math.max(
+      0,
+      Math.min(6, Math.floor(relativeX / columnWidth))
+    );
+
+    const targetDate = new Date(weekDates[columnIndex]);
+
+    // Preserve time
+    targetDate.setHours(
+      oldStart.getHours(),
+      oldStart.getMinutes(),
+      oldStart.getSeconds(),
+      oldStart.getMilliseconds()
+    );
+
+    // Preserve duration
+    const duration = oldEnd.getTime() - oldStart.getTime();
+    const newEnd = new Date(targetDate.getTime() + duration);
+
+    if (oldStart.toDateString() === targetDate.toDateString())
+      return;
+
+    draggedEvent.startDate = targetDate;
     draggedEvent.endDate = newEnd;
 
     this.generateCurrentView();
 
-    // persist
     this.persistEventUpdate(draggedEvent, oldStart);
   }
 }
