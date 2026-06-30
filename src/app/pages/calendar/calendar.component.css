@@ -1218,8 +1218,3 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-
-.calendar-day.cdk-drop-list-dragging {
-  background: #e3f2fd;
-  outline: 2px dashed #1976d2;
-}
