@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
 import { environment } from '../../environments/environment.prod';
 
@@ -10,6 +10,8 @@ import { environment } from '../../environments/environment.prod';
 export class AuthService {
 
   private apiUrl = `${environment.apiUrl}/Auth`;
+  private currentUserSubject = new BehaviorSubject<any>(null);
+  currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) { }
 
@@ -83,5 +85,17 @@ export class AuthService {
     const decoded = this.decodeToken();
     // Return the custom uid claim set up by the .NET Token Engine
     return decoded?.uid || null;
+  }
+
+  loadCurrentUser(): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/Auth/me`);
+  }
+
+  setCurrentUser(user: any) {
+    this.currentUserSubject.next(user);
+  }
+
+  getCurrentUser() {
+    return this.currentUserSubject.value;
   }
 }

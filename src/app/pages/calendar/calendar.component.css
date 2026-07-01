@@ -299,6 +299,11 @@
   pointer-events: none;
 }
 
+/* Re-enable hit testing on every row's overlay while a month drag is active */
+.calendar-grid.month-dragging .week-events-overlay {
+  pointer-events: auto;
+}
+
 .week-events-layer {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -1216,5 +1221,7 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }

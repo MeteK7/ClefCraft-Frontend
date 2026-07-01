@@ -45,67 +45,67 @@
 </div>
 <div class="calendar-body" [class.calendar-loading]="isLoading">
 
-<!-- ==================== MONTH VIEW ==================== -->
-<div *ngIf="viewMode === 'month'" class="calendar-grid" cdkDropListGroup>
+  <!-- ==================== MONTH VIEW ==================== -->
+  <div *ngIf="viewMode === 'month'" class="calendar-grid" [class.month-dragging]="monthDragEvent" cdkDropListGroup>
 
-  <!-- Header row -->
-  <div class="calendar-header-row">
-    <div class="calendar-header-cell" *ngFor="let day of weekdays">
-      {{ day }}
-    </div>
-  </div>
-
-  <!-- Weeks -->
-  <div *ngFor="let row of monthView.weeks" class="calendar-week">
-
-    <!-- Day grid -->
-    <div class="days-grid">
-      <div *ngFor="let date of row.dates; let i = index" class="calendar-day"
-        [id]="'day-' + (row.dates[0] | date:'yyyyMMdd') + '-' + i"
-        [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
-        [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
-        (click)="onEmptyDayClicked(date)">
-
-        <div class="day">
-          <span>{{ date.getDate() }}</span>
-        </div>
-
-        <!-- "+ more" indicator -->
-        <span *ngIf="getHiddenCountForDay(date, row) > 0" class="more-indicator" [matMenuTriggerFor]="moreMenu"
-          (click)="onMoreClicked(date, row, $event)">
-          +{{ getHiddenCountForDay(date, row) }} more
-        </span>
+    <!-- Header row -->
+    <div class="calendar-header-row">
+      <div class="calendar-header-cell" *ngFor="let day of weekdays">
+        {{ day }}
       </div>
     </div>
 
-    <!-- ================= OVERLAY (NOW ACCEPTS THE GENERIC CDK DROP EVENT OBJECT) ================= -->
-    <div class="week-events-overlay" cdkDropList [cdkDropListData]="row"
-      [cdkDropListEnterPredicate]="alwaysAllowDrop" (cdkDropListDropped)="onMonthEventDropped($event)">
+    <!-- Weeks -->
+    <div *ngFor="let row of monthView.weeks" class="calendar-week">
 
-      <div class="week-events-layer">
-        <ng-container *ngFor="let item of row.layoutItems">
-          <div *ngIf="item.lane < MAX_VISIBLE_LANES" class="event span-event" cdkDrag [cdkDragData]="item.event"
-            (cdkDragStarted)="onMonthDragStart(item.event)" (cdkDragEnded)="onMonthDragEnd()"
-            [class.linked]="item.event.linkedBoardItemId"
-            [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan" [style.grid-row]="item.lane + 1"
-            [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
-            (click)="onEventClicked(item.event, $event)">
+      <!-- Day grid -->
+      <div class="days-grid">
+        <div *ngFor="let date of row.dates; let i = index" class="calendar-day"
+          [id]="'day-' + (row.dates[0] | date:'yyyyMMdd') + '-' + i"
+          [class.outside-month]="date.getMonth() !== selectedDate.getMonth()"
+          [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
+          (click)="onEmptyDayClicked(date)">
 
-            <span class="event-title">
-              <mat-icon *ngIf="item.event.linkedBoardItemId" class="linked-icon">link</mat-icon>
-              {{ item.event.subject }}
-            </span>
-
-            <div class="attendance-indicator" *ngIf="item.event.attendanceScore != null"
-              [style.background]="attendanceColor(item.event.attendanceScore)">
-            </div>
+          <div class="day">
+            <span>{{ date.getDate() }}</span>
           </div>
-        </ng-container>
-      </div>
-    </div>
 
+          <!-- "+ more" indicator -->
+          <span *ngIf="getHiddenCountForDay(date, row) > 0" class="more-indicator" [matMenuTriggerFor]="moreMenu"
+            (click)="onMoreClicked(date, row, $event)">
+            +{{ getHiddenCountForDay(date, row) }} more
+          </span>
+        </div>
+      </div>
+
+      <!-- ================= OVERLAY (NOW ACCEPTS THE GENERIC CDK DROP EVENT OBJECT) ================= -->
+      <div class="week-events-overlay" cdkDropList [cdkDropListData]="row" [cdkDropListEnterPredicate]="alwaysAllowDrop"
+        (cdkDropListDropped)="onMonthEventDropped($event)">
+
+        <div class="week-events-layer">
+          <ng-container *ngFor="let item of row.layoutItems">
+            <div *ngIf="item.lane < MAX_VISIBLE_LANES" class="event span-event" cdkDrag [cdkDragData]="item.event"
+              (cdkDragStarted)="onMonthDragStart(item.event)" (cdkDragEnded)="onMonthDragEnd()"
+              [class.linked]="item.event.linkedBoardItemId"
+              [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan" [style.grid-row]="item.lane + 1"
+              [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
+              (click)="onEventClicked(item.event, $event)">
+
+              <span class="event-title">
+                <mat-icon *ngIf="item.event.linkedBoardItemId" class="linked-icon">link</mat-icon>
+                {{ item.event.subject }}
+              </span>
+
+              <div class="attendance-indicator" *ngIf="item.event.attendanceScore != null"
+                [style.background]="attendanceColor(item.event.attendanceScore)">
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+    </div>
   </div>
-</div>
 
   <!-- ==================== WEEK VIEW ==================== -->
   <div *ngIf="viewMode === 'week'" class="week-view-wrapper">
