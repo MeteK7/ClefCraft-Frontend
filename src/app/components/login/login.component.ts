@@ -41,12 +41,11 @@ export class LoginComponent {
 
     this.authService.login(email!, password!).subscribe({
       next: (res) => {
-        this.isLoading = false;
-
-        // ✅ single responsibility: component stores token
         this.authService.setToken(res.token);
 
-        this.toastr.success('Welcome back!', 'Login successful');
+        this.authService.loadCurrentUser().subscribe(user => {
+          this.authService.setCurrentUser(user);
+        });
 
         this.router.navigate(['/home']);
       },
