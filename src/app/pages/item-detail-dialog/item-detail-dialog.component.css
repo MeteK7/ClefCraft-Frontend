@@ -1,17 +1,22 @@
 :host {
-  display: block;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 .dialog-container {
   display: flex;
   flex-direction: column;
+
   height: 100%;
+  min-height: 0;
+
   width: 100%;
-  background: var(--mdc-theme-background, #ffffff);
-  border-radius: 12px;
   overflow: hidden;
-  font-family: Roboto, "Helvetica Neue", sans-serif;
+
+  background: #fff;
+  border-radius: 12px;
 }
 
 /* Header UI Elements */
@@ -69,10 +74,10 @@
 
 /* Tab Layout Adjustments */
 .dialog-tabs {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .tab-icon {
@@ -86,9 +91,13 @@
 .dialog-content {
   display: flex;
   flex-direction: column;
-  flex: 1;
+
+  flex: 1 1 auto;
+  min-height: 0;
+
   padding: 24px;
-  overflow-y: auto;
+
+  overflow: auto;
   box-sizing: border-box;
 }
 
@@ -192,7 +201,8 @@
   color: #5f6368;
 }
 
-.linked-section, .history-section {
+.linked-section,
+.history-section {
   margin-top: 12px;
 }
 
@@ -248,10 +258,11 @@
   background: #f4f6f7;
   border-color: #b0bec5;
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
-.history-meta, .history-user {
+.history-meta,
+.history-user {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -297,16 +308,21 @@
 
 /* Dialog Bottom Footer Strip Actions */
 .dialog-actions-footer {
+  margin-top: auto;
+
   display: flex;
   justify-content: space-between;
   align-items: center;
+
   padding: 16px 24px;
-  background: #ffffff;
   border-top: 1px solid #e0e0e0;
+  background: #fff;
+
   flex-shrink: 0;
 }
 
-.left-actions, .right-actions {
+.left-actions,
+.right-actions {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -323,8 +339,15 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Clean Responsive Adaptive Queries */
@@ -363,7 +386,7 @@
   .right-actions {
     justify-content: center;
   }
-  
+
   .action-btn {
     width: 100%;
   }

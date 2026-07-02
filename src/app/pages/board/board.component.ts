@@ -188,7 +188,11 @@ export class BoardComponent implements OnInit {
 
   openItemDetailDialog(item: BoardItemView): void {
     const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
-      minWidth: '900px',
+      width: '900px',
+      height: '100vh',      // or 75vh
+      maxHeight: '90vh',
+      maxWidth: '95vw',
+      autoFocus: false,
       data: {
         item,
         boardId: this.selectedBoardId,
