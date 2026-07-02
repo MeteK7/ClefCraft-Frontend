@@ -40,14 +40,15 @@ export class LoginComponent {
     const { email, password } = this.form.value;
 
     this.authService.login(email!, password!).subscribe({
-      next: (res) => {
+      next: res => {
         this.authService.setToken(res.token);
 
-        this.authService.loadCurrentUser().subscribe(user => {
-          this.authService.setCurrentUser(user);
+        this.authService.loadCurrentUser().subscribe({
+          next: user => {
+            this.authService.setCurrentUser(user);
+            this.router.navigate(['/home']);
+          }
         });
-
-        this.router.navigate(['/home']);
       },
       error: () => {
         this.isLoading = false;

@@ -16,6 +16,9 @@ nav {
   height: 100%;
   box-sizing: border-box;
   position: relative;
+
+  display: flex;
+  flex-direction: column;
 }
 
 /* collapse button */
@@ -139,8 +142,8 @@ a:hover {
 }
 
 .user-info {
+  margin-top: auto;
   padding: 10px;
   font-weight: 500;
-  border-bottom: 1px solid #ddd;
-  margin-bottom: 10px;
+  border-top: 1px solid #ddd;
 }
