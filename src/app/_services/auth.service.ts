@@ -4,24 +4,44 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
 import { environment } from '../../environments/environment.prod';
 
+// Replace "any" with your actual User model when available.
+type CurrentUser = any;
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
+  private readonly apiUrl = `${environment.apiUrl}/Auth`;
 
-  private apiUrl = `${environment.apiUrl}/Auth`;
-  private currentUserSubject = new BehaviorSubject<any>(null);
-  currentUser$ = this.currentUserSubject.asObservable();
+  private readonly currentUserSubject = new BehaviorSubject<CurrentUser | null>(null);
+  readonly currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(private http: HttpClient) { }
+  constructor(private readonly http: HttpClient) {}
 
-  // =========================
-  // AUTH API CALLS
-  // =========================
+  // ==========================================================
+  // Initialization
+  // ==========================================================
+
+  initializeUser(): void {
+    if (!this.isLoggedIn()) {
+      return;
+    }
+
+    this.loadCurrentUser().subscribe({
+      next: user => this.currentUserSubject.next(user),
+      error: err => console.error('Failed to load current user.', err)
+    });
+  }
+
+  // ==========================================================
+  // Authentication
+  // ==========================================================
 
   login(email: string, password: string): Observable<any> {
-    const body = { email, password };
-    return this.http.post<any>(`${this.apiUrl}/login`, body);
+    return this.http.post(`${this.apiUrl}/login`, {
+      email,
+      password
+    });
   }
 
   register(
@@ -31,13 +51,34 @@ export class AuthService {
     userName: string,
     password: string
   ): Observable<any> {
-    const body = { firstName, lastName, email, userName, password };
-    return this.http.post<any>(`${this.apiUrl}/register`, body);
+    return this.http.post(`${this.apiUrl}/register`, {
+      firstName,
+      lastName,
+      email,
+      userName,
+      password
+    });
   }
 
-  // =========================
-  // TOKEN MANAGEMENT
-  // =========================
+  loadCurrentUser(): Observable<CurrentUser> {
+    return this.http.get<CurrentUser>(`${this.apiUrl}/me`);
+  }
+
+  // ==========================================================
+  // Current User
+  // ==========================================================
+
+  setCurrentUser(user: CurrentUser): void {
+    this.currentUserSubject.next(user);
+  }
+
+  getCurrentUser(): CurrentUser | null {
+    return this.currentUserSubject.value;
+  }
+
+  // ==========================================================
+  // Token Management
+  // ==========================================================
 
   setToken(token: string): void {
     localStorage.setItem('token', token);
@@ -53,49 +94,37 @@ export class AuthService {
 
   logout(): void {
     this.removeToken();
+    this.currentUserSubject.next(null);
   }
 
   isLoggedIn(): boolean {
-    return !!this.getToken();
+    return this.getToken() !== null;
   }
 
-  // =========================
-  // JWT HELPERS
-  // =========================
+  // ==========================================================
+  // JWT Helpers
+  // ==========================================================
 
   decodeToken(): any | null {
     const token = this.getToken();
-    if (!token) return null;
+
+    if (!token) {
+      return null;
+    }
 
     try {
       return jwtDecode(token);
-    } catch (e) {
-      console.error('Invalid token', e);
+    } catch (error) {
+      console.error('Invalid JWT token.', error);
       return null;
     }
   }
 
-  getUserRole(): string | null {
-    const decoded = this.decodeToken();
-    return decoded?.role || null;
-  }
-
-  // auth.service.ts
   getUserId(): string | null {
-    const decoded = this.decodeToken();
-    // Return the custom uid claim set up by the .NET Token Engine
-    return decoded?.uid || null;
+    return this.decodeToken()?.uid ?? null;
   }
 
-  loadCurrentUser(): Observable<any> {
-    return this.http.get(`${environment.apiUrl}/Auth/me`);
-  }
-
-  setCurrentUser(user: any) {
-    this.currentUserSubject.next(user);
-  }
-
-  getCurrentUser() {
-    return this.currentUserSubject.value;
+  getUserRole(): string | null {
+    return this.decodeToken()?.role ?? null;
   }
 }

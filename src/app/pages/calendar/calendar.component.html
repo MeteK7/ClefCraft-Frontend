@@ -85,8 +85,8 @@
         <div class="week-events-layer">
           <ng-container *ngFor="let item of row.layoutItems">
             <div *ngIf="item.lane < MAX_VISIBLE_LANES" class="event span-event" cdkDrag [cdkDragData]="item.event"
-              (cdkDragStarted)="onMonthDragStart(item.event)" (cdkDragEnded)="onMonthDragEnd()"
-              [class.linked]="item.event.linkedBoardItemId"
+              cdkDragPreviewContainer="global" (cdkDragStarted)="onMonthDragStart(item.event)"
+              (cdkDragEnded)="onMonthDragEnd()" [class.linked]="item.event.linkedBoardItemId"
               [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan" [style.grid-row]="item.lane + 1"
               [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
               (click)="onEventClicked(item.event, $event)">

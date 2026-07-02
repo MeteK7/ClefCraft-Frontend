@@ -3,6 +3,7 @@ import { RouterModule, RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './components/header/header.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { FooterComponent } from './components/footer/footer.component';
+import { AuthService } from './_services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -13,4 +14,10 @@ import { FooterComponent } from './components/footer/footer.component';
 })
 export class AppComponent {
   title = 'Activity Management';
+
+      constructor(private authService: AuthService) {}
+
+    ngOnInit() {
+        this.authService.initializeUser();
+    }
 }
