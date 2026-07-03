@@ -1,17 +1,60 @@
-<div class="protected-container">
+<div class="workspace-preview">
+    <!-- ========================================================= -->
+    <!-- Fake toolbar                                               -->
+    <!-- ========================================================= -->
+    <div class="preview-toolbar">
+        <div class="toolbar-title"></div>
+        <div class="toolbar-actions">
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+        </div>
+    </div>
 
-    <h1>Workspace Locked</h1>
+    <!-- ========================================================= -->
+    <!-- Fake board                                                 -->
+    <!-- ========================================================= -->
+    <div class="preview-board">
+        <div class="column">
+            <div class="column-title"></div>
+            <div class="card"></div>
+            <div class="card"></div>
+            <div class="card small"></div>
+        </div>
 
-    <p>
-        You need to sign in to access this page.
-    </p>
+        <div class="column">
+            <div class="column-title"></div>
+            <div class="card"></div>
+            <div class="card"></div>
+        </div>
 
-    <button (click)="login()">
-        Sign In
-    </button>
+        <div class="column">
+            <div class="column-title"></div>
+            <div class="card"></div>
+            <div class="card small"></div>
+            <div class="card"></div>
+        </div>
 
-    <button (click)="goHome()">
-        Return Home
-    </button>
+        <div class="column">
+            <div class="column-title"></div>
+            <div class="card"></div>
+            <div class="card"></div>
+        </div>
+    </div>
+</div>
 
+<div class="page-overlay">
+    <div class="login-card">
+        <div class="lock-icon">🔒</div>
+        <h1>Workspace Locked</h1>
+        <p>Sign in to access your boards, calendar, projects and workspace.</p>
+
+        <button class="primary-button" (click)="login()">
+            Sign In
+        </button>
+
+        <button class="secondary-button" (click)="goHome()">
+            Return Home
+        </button>
+    </div>
 </div>
