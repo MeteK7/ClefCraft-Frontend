@@ -36,4 +36,8 @@ export class SidebarComponent {
   toggleCollapse() {
     this.isCollapsed = !this.isCollapsed;
   }
+
+  logout(): void {
+    this.authService.logout();
+  }
 }

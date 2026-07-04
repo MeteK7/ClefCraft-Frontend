@@ -51,4 +51,9 @@
   <div class="user-info" *ngIf="userFullName">
     👤 {{ userFullName }}
   </div>
+
+  <button class="logout-btn" (click)="logout()">
+    <span class="icon">🚪</span>
+    <span class="label">Sign Out</span>
+  </button>
 </nav>

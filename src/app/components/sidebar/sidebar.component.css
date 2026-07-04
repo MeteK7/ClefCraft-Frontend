@@ -1,7 +1,7 @@
 :host {
   display: block;
   /* Let it size perfectly to the text on PC */
-  width: max-content; 
+  width: max-content;
   transition: width 0.2s ease;
 }
 
@@ -82,7 +82,7 @@ a:hover {
   font-size: 18px;
   flex-shrink: 0;
   /* Add margin instead of flex gap to prevent a jerky snap when collapsing */
-  margin-right: 10px; 
+  margin-right: 10px;
   transition: margin 0.2s ease;
 }
 
@@ -92,7 +92,7 @@ a:hover {
   opacity: 1;
   visibility: visible;
   /* Set a safe upper limit for text layout sizing */
-  max-width: 300px; 
+  max-width: 300px;
   transition: max-width 0.2s ease, opacity 0.2s ease, visibility 0.2s ease;
 }
 
@@ -146,4 +146,37 @@ a:hover {
   padding: 10px;
   font-weight: 500;
   border-top: 1px solid #ddd;
+}
+
+.logout-btn {
+  margin-top: 12px;
+
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+
+  border: none;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  padding: 10px;
+
+  border-radius: 6px;
+
+  color: #d32f2f;
+
+  font-size: 16px;
+
+  transition: background .2s;
+}
+
+.logout-btn:hover {
+  background: rgba(211, 47, 47, .08);
+}
+
+:host(.collapsed) .logout-btn {
+  justify-content: center;
 }
