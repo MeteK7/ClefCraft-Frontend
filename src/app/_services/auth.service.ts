@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
 import { environment } from '../../environments/environment.prod';
+import { Router } from '@angular/router';
 
 // Replace "any" with your actual User model when available.
 type CurrentUser = any;
@@ -16,7 +17,7 @@ export class AuthService {
   private readonly currentUserSubject = new BehaviorSubject<CurrentUser | null>(null);
   readonly currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly http: HttpClient, private readonly router: Router) { }
 
   // ==========================================================
   // Initialization
@@ -93,31 +94,39 @@ export class AuthService {
   }
 
   logout(): void {
-    this.removeToken();
+    localStorage.removeItem('token');
+
     this.currentUserSubject.next(null);
+
+    this.router.navigate(
+      ['/login'],
+      {
+        replaceUrl: true
+      }
+    );
   }
 
-isLoggedIn(): boolean {
+  isLoggedIn(): boolean {
     const token = this.getToken();
 
     if (!token) {
-        return false;
+      return false;
     }
 
     try {
-        const decoded: any = jwtDecode(token);
+      const decoded: any = jwtDecode(token);
 
-        if (!decoded.exp) {
-            return false;
-        }
-
-        return decoded.exp * 1000 > Date.now();
-    }
-    
-    catch {
+      if (!decoded.exp) {
         return false;
+      }
+
+      return decoded.exp * 1000 > Date.now();
     }
-}
+
+    catch {
+      return false;
+    }
+  }
 
   // ==========================================================
   // JWT Helpers
