@@ -1,9 +1,11 @@
 <div class="workspace-preview">
-    <!-- ========================================================= -->
-    <!-- Fake toolbar                                               -->
-    <!-- ========================================================= -->
+
+    <!-- Top Bar -->
     <div class="preview-toolbar">
         <div class="toolbar-title"></div>
+
+        <div class="toolbar-search"></div>
+
         <div class="toolbar-actions">
             <div class="circle"></div>
             <div class="circle"></div>
@@ -11,43 +13,120 @@
         </div>
     </div>
 
-    <!-- ========================================================= -->
-    <!-- Fake board                                                 -->
-    <!-- ========================================================= -->
-    <div class="preview-board">
-        <div class="column">
-            <div class="column-title"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card small"></div>
+    <div class="workspace-body">
+
+        <!-- Sidebar -->
+        <div class="preview-sidebar">
+
+            <div class="sidebar-logo"></div>
+
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item active"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+
         </div>
 
-        <div class="column">
-            <div class="column-title"></div>
-            <div class="card"></div>
-            <div class="card"></div>
+        <!-- Main -->
+        <div class="preview-main">
+
+            <!-- Stats -->
+            <div class="stats-row">
+
+                <div class="stat-card"></div>
+                <div class="stat-card"></div>
+                <div class="stat-card"></div>
+
+            </div>
+
+            <!-- Content -->
+            <div class="content-grid">
+
+                <!-- Calendar -->
+                <div class="widget calendar-widget">
+
+                    <div class="widget-title"></div>
+
+                    <div class="calendar-grid">
+
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span><span></span>
+
+                    </div>
+
+                </div>
+
+                <!-- Activity -->
+                <div class="widget">
+
+                    <div class="widget-title"></div>
+
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line short"></div>
+
+                    <div class="line"></div>
+                    <div class="line short"></div>
+
+                </div>
+
+            </div>
+
+            <!-- Bottom -->
+            <div class="bottom-grid">
+
+                <div class="kanban-preview">
+
+                    <div class="mini-column">
+                        <div class="mini-card"></div>
+                        <div class="mini-card"></div>
+                    </div>
+
+                    <div class="mini-column">
+                        <div class="mini-card"></div>
+                        <div class="mini-card"></div>
+                        <div class="mini-card small"></div>
+                    </div>
+
+                    <div class="mini-column">
+                        <div class="mini-card"></div>
+                    </div>
+
+                </div>
+
+                <div class="table-widget">
+
+                    <div class="table-row"></div>
+                    <div class="table-row"></div>
+                    <div class="table-row"></div>
+                    <div class="table-row"></div>
+                    <div class="table-row short"></div>
+
+                </div>
+
+            </div>
+
         </div>
 
-        <div class="column">
-            <div class="column-title"></div>
-            <div class="card"></div>
-            <div class="card small"></div>
-            <div class="card"></div>
-        </div>
-
-        <div class="column">
-            <div class="column-title"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-        </div>
     </div>
+
 </div>
 
 <div class="page-overlay">
+
     <div class="login-card">
+
         <div class="lock-icon">🔒</div>
+
         <h1>Workspace Locked</h1>
-        <p>Sign in to access your boards, calendar, projects and workspace.</p>
+
+        <p>
+            Sign in to access your boards, calendar, projects and workspace.
+        </p>
 
         <button class="primary-button" (click)="login()">
             Sign In
@@ -56,5 +135,7 @@
         <button class="secondary-button" (click)="goHome()">
             Return Home
         </button>
+
     </div>
+
 </div>
