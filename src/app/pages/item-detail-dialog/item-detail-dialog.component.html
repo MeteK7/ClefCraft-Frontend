@@ -110,7 +110,7 @@
       </div>
     </mat-tab>
 
-    <mat-tab>
+    <mat-tab *ngIf="!isNewItem">
       <ng-template mat-tab-label>
         <mat-icon class="tab-icon">info</mat-icon> Info
       </ng-template>
@@ -150,7 +150,7 @@
       </div>
     </mat-tab>
 
-    <mat-tab>
+    <mat-tab *ngIf="!isNewItem">
       <ng-template mat-tab-label>
         <mat-icon class="tab-icon">history</mat-icon> History
       </ng-template>
