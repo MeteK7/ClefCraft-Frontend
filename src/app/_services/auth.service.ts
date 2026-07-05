@@ -151,7 +151,34 @@ export class AuthService {
     return this.decodeToken()?.uid ?? null;
   }
 
-  getUserRole(): string | null {
-    return this.decodeToken()?.role ?? null;
+  hasRole(role: string): boolean {
+
+    const roles = this.getRoleClaim();
+
+    if (!roles) {
+      return false;
+    }
+
+    if (Array.isArray(roles)) {
+      return roles.includes(role);
+    }
+
+    return roles === role;
+  }
+
+  private getRoleClaim(): string | string[] | null {
+
+    const token = this.decodeToken();
+
+    if (!token) {
+      return null;
+    }
+
+    return (
+      token.role ??
+      token.roles ??
+      token['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
+      null
+    );
   }
 }
