@@ -52,8 +52,8 @@
     👤 {{ userFullName }}
   </div>
 
-  <button class="logout-btn" (click)="logout()">
-    <span class="icon">🚪</span>
+  <button *ngIf="authService.isLoggedIn()" class="logout-btn" (click)="logout()">
     <span class="label">Sign Out</span>
+    <mat-icon>logout</mat-icon>
   </button>
 </nav>

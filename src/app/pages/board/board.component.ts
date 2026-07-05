@@ -15,7 +15,6 @@ import {
   toggleViewMode as toggleViewModeState,
 } from '../../board-engine/interactions/board-selection-engine';
 import { getConnectedDropListIds } from '../../board-engine/interactions/board-drag-engine';
-import { AddItemFormComponent } from '../../components/add-item-form/add-item-form.component';
 import { MatDialog } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
@@ -31,7 +30,6 @@ import { MatIconModule } from '@angular/material/icon';
     FormsModule,
     BoardColumnComponent,
     DragDropModule,
-    AddItemFormComponent,
     ItemDetailSidebarComponent,
     MatIconModule,
   ],
@@ -150,19 +148,7 @@ export class BoardComponent implements OnInit {
   // ---------------------------------------------------------------------
 
   openAddItemDialog(): void {
-    const dialogRef = this.dialog.open(AddItemFormComponent, {
-      width: '400px',
-      data: {
-        columns: this.boardView?.columns ?? [],
-        boardId: this.selectedBoardId,
-      },
-    });
-
-    dialogRef.afterClosed().subscribe((item: Item | undefined) => {
-      if (item) {
-        this.onItemCreated(item);
-      }
-    });
+    this.openItemDetailDialog(null);
   }
 
   onItemCreated(item: Item): void {
@@ -186,16 +172,17 @@ export class BoardComponent implements OnInit {
     }
   }
 
-  openItemDetailDialog(item: BoardItemView): void {
+  openItemDetailDialog(item: BoardItemView | null): void {
     const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
       width: '900px',
-      height: '100vh',      // or 75vh
+      height: '100vh',
       maxHeight: '90vh',
       maxWidth: '95vw',
       autoFocus: false,
       data: {
-        item,
+        item: item?.raw ?? null,
         boardId: this.selectedBoardId,
+        columns: this.boardView?.columns ?? [],
       },
     });
 
@@ -208,27 +195,20 @@ export class BoardComponent implements OnInit {
         return;
       }
 
-      const confirmClose = window.confirm('You have unsaved changes.\n\nDiscard them?');
-
-      if (confirmClose) {
+      if (window.confirm('You have unsaved changes.\n\nDiscard them?')) {
         dialogRef.close();
       }
     };
 
     dialogRef.keydownEvents().subscribe(event => {
-      if (event.key === 'Escape') {
-        attemptClose();
-      }
+      if (event.key === 'Escape') attemptClose();
     });
 
-    dialogRef.backdropClick().subscribe(() => {
-      attemptClose();
-    });
+    dialogRef.backdropClick().subscribe(() => attemptClose());
 
-    dialogRef.afterClosed().subscribe((updatedItem: BoardItemView | undefined) => {
-      if (updatedItem) {
-        this.onItemUpdated(updatedItem);
-      }
+    dialogRef.afterClosed().subscribe((result: Item | undefined) => {
+      if (!result) return;
+      item ? this.onItemUpdated(result) : this.onItemCreated(result);
     });
   }
 

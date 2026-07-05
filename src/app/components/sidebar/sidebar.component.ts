@@ -15,9 +15,8 @@ export class SidebarComponent {
   isAdmin: boolean = false;
   userFullName: string = '';
 
-  constructor(private authService: AuthService) {
-    // Replace with actual admin check logic
-    this.isAdmin = true; // or false
+  constructor(public  authService: AuthService) {
+    this.isAdmin = this.authService.hasRole('Administrator');
   }
 
   ngOnInit() {
