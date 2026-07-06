@@ -152,7 +152,7 @@
 
     <mat-tab *ngIf="!isNewItem">
       <ng-template mat-tab-label>
-        <mat-icon class="tab-icon">history</mat-icon> History
+        <mat-icon class="tab-icon">history</mat-icon> Work History
       </ng-template>
 
       <div class="dialog-content">
@@ -177,6 +177,34 @@
           <ng-template #noHistory>
             <p class="empty-state-text">No active work logs recorded against this item yet.</p>
           </ng-template>
+        </div>
+      </div>
+    </mat-tab>
+
+    <mat-tab *ngIf="!isNewItem">
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">history</mat-icon>
+        History
+      </ng-template>
+
+      <div class="dialog-content">
+        <div class="history-section">
+          <h4 class="section-title">
+            <mat-icon>history</mat-icon>
+            Item History
+          </h4>
+
+          <div class="history-placeholder">
+            <mat-icon class="placeholder-icon">construction</mat-icon>
+
+            <h3>History is under construction</h3>
+
+            <p>
+              This tab will display a complete audit trail of this item, including
+              field changes, status updates, assignments, edits, and other user
+              activities.
+            </p>
+          </div>
         </div>
       </div>
     </mat-tab>
