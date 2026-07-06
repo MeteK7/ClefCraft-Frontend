@@ -391,3 +391,56 @@
     width: 100%;
   }
 }
+
+/* ==========================================================
+   History Placeholder
+   ========================================================== */
+
+.history-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 340px;
+
+  text-align: center;
+
+  border: 2px dashed #d7dce1;
+  border-radius: 12px;
+
+  background: #fafbfc;
+
+  padding: 48px 32px;
+}
+
+.placeholder-icon {
+  width: 64px;
+  height: 64px;
+  font-size: 64px;
+
+  color: #b0b7bf;
+
+  margin-bottom: 20px;
+}
+
+.history-placeholder h3 {
+  margin: 0 0 12px;
+
+  font-size: 20px;
+  font-weight: 600;
+
+  color: #37474f;
+}
+
+.history-placeholder p {
+  max-width: 520px;
+
+  margin: 0;
+
+  color: #6b7280;
+
+  line-height: 1.6;
+
+  font-size: 14px;
+}

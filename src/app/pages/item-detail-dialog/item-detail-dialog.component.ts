@@ -84,9 +84,28 @@ export class ItemDetailDialogComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    this.columns = this.data.columns ?? [];
-
     this.buildForm();
+
+    if (this.data.columns?.length) {
+      this.columns = this.data.columns;
+
+      this.form.patchValue({
+        boardColumnId:
+          this.data.item?.boardColumnId ?? this.columns[0]?.id ?? null
+      });
+    } else {
+      this.boardService
+        .getBoardItemsByBoardId(this.data.boardId)
+        .subscribe(columns => {
+          this.columns = columns;
+
+          this.form.patchValue({
+            boardColumnId:
+              this.data.item?.boardColumnId ?? columns[0]?.id ?? null
+          });
+        });
+    }
+
     this.fetchTags();
     this.fetchStatuses();
     this.fetchPriorities();
@@ -110,7 +129,10 @@ export class ItemDetailDialogComponent implements OnInit {
       priorityId: [item?.priorityId ?? null],
       tags: [item?.tags?.map(t => t.id) ?? []],
       assigneeId: [item?.assigneeId ?? null],
-      boardColumnId: [item?.boardColumnId ?? this.columns[0]?.id ?? null, Validators.required],
+      boardColumnId: [
+        item?.boardColumnId ?? null,
+        Validators.required
+      ],
       dueDate: [item?.dueDate ? new Date(item.dueDate) : null],
       estimatedTime: [item?.estimatedTime ?? null],
       timeSpent: [item?.timeSpent ?? null]
