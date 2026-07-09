@@ -1,0 +1,36 @@
+<div class="relationship-card">
+
+    <div class="card-main" (click)="openItem()">
+
+        <div class="title">
+            #{{relationship.itemId}}
+            {{relationship.title}}
+        </div>
+
+        <div class="metadata">
+
+            <span class="status">
+                {{relationship.status}}
+            </span>
+
+            <span class="priority">
+                {{relationship.priority}}
+            </span>
+
+            <span *ngIf="relationship.dueDate">
+                {{relationship.dueDate | date:'shortDate'}}
+            </span>
+
+        </div>
+
+    </div>
+
+    <button mat-icon-button color="warn" (click)="remove()">
+
+        <mat-icon>
+            delete
+        </mat-icon>
+
+    </button>
+
+</div>
