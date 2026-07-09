@@ -1,0 +1,69 @@
+<div class="relationship-hub">
+
+    <div class="hub-header">
+
+        <h3>Relationships</h3>
+
+        <button
+            mat-raised-button
+            color="primary"
+            (click)="addRelationship()">
+
+            <mat-icon>add_link</mat-icon>
+
+            Add Relationship
+
+        </button>
+
+    </div>
+
+    <div
+        *ngIf="loading"
+        class="loading">
+
+        Loading...
+
+    </div>
+
+    <mat-accordion>
+
+        <mat-expansion-panel
+            *ngFor="let group of hub.groups; trackBy: trackGroup"
+            [expanded]="group.items.length > 0">
+
+            <mat-expansion-panel-header>
+
+                <mat-panel-title>
+
+                    {{ group.name }}
+
+                </mat-panel-title>
+
+                <mat-panel-description>
+
+                    {{ group.items.length }}
+
+                </mat-panel-description>
+
+            </mat-expansion-panel-header>
+
+            <app-relationship-card
+                *ngFor="let relationship of group.items"
+                [relationship]="relationship"
+                (open)="open($event)"
+                (delete)="deleteRelationship($event)">
+            </app-relationship-card>
+
+            <div
+                class="empty"
+                *ngIf="group.items.length === 0">
+
+                No relationships.
+
+            </div>
+
+        </mat-expansion-panel>
+
+    </mat-accordion>
+
+</div>

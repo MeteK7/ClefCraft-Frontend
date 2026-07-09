@@ -19,6 +19,7 @@ import { BoardService } from '../../_services/board.service';
 import { CalendarService } from '../../_services/calendar.service';
 import { Assignee } from '../../models/assignee.model';
 import { UserService } from '../../_services/user.service';
+import { RelationshipHubComponent } from '../../components/relationship-hub/relationship-hub.component';
 
 export interface ItemDetailDialogData {
   /** null => dialog is in "create new item" mode */
@@ -44,7 +45,8 @@ export interface ItemDetailDialogData {
     MatButtonModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    MatRippleModule
+    MatRippleModule,
+    RelationshipHubComponent
   ],
   templateUrl: './item-detail-dialog.component.html',
   styleUrl: './item-detail-dialog.component.css'
@@ -283,6 +285,12 @@ export class ItemDetailDialogComponent implements OnInit {
       this.fetchMarkAsWorkedHistory();
       this.dialogRef.close();
     });
+  }
+
+  openRelatedItem(itemId: number): void {
+
+    console.log("Open related item", itemId);
+
   }
 
   get selectedTags(): Tag[] {

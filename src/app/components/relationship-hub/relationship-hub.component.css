@@ -1,0 +1,35 @@
+.relationship-hub{
+
+    margin-top:16px;
+
+}
+
+.hub-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:12px;
+
+}
+
+.loading{
+
+    padding:20px;
+
+    text-align:center;
+
+    color:#777;
+
+}
+
+.empty{
+
+    color:#999;
+
+    padding:12px;
+
+}

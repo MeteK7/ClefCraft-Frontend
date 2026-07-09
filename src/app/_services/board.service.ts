@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Board, Column, Item, Priority, Status, Tag } from '../models/board.model';
+import { Board, BoardItemSearchResult, Column, CreateRelationshipRequest, Item, Priority, RelationshipHub, Status, Tag } from '../models/board.model';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -80,5 +80,40 @@ export class BoardService {
       `${this.apiUrl}/BoardItems/GetPriorities?boardId=${boardId}`,
       { withCredentials: true }
     );
+  }
+
+  getRelationships(itemId: number) {
+    return this.http.get<RelationshipHub>(
+      `${this.apiUrl}/BoardItemRelations/${itemId}`,
+      { withCredentials: true });
+  }
+
+  searchRelationshipCandidates(
+    boardId: number,
+    itemId: number,
+    search: string) {
+    return this.http.get<BoardItemSearchResult[]>(
+      `${this.apiUrl}/BoardItemRelations/Search`,
+      {
+        params: {
+          boardId,
+          excludeItemId: itemId,
+          searchTerm: search
+        },
+        withCredentials: true
+      });
+  }
+
+  createRelationship(request: CreateRelationshipRequest) {
+    return this.http.post(
+      `${this.apiUrl}/BoardItemRelations`,
+      request,
+      { withCredentials: true });
+  }
+
+  deleteRelationship(relationId: number) {
+    return this.http.delete(
+      `${this.apiUrl}/BoardItemRelations/${relationId}`,
+      { withCredentials: true });
   }
 }
