@@ -79,10 +79,9 @@ export interface RelationshipCard {
 }
 
 export interface RelationshipGroup {
-
-    relationType:number;
-    name:string;
-    items:RelationshipCard[];
+    relationType: RelationshipType;
+    name: string;
+    items: RelationshipCard[];
 }
 
 export interface RelationshipHub {
@@ -98,5 +97,46 @@ export interface CreateRelationshipRequest{
 
     sourceBoardItemId:number;
     targetBoardItemId:number;
-    relationType:number;
+    relationType:RelationshipType;
 }
+
+export enum RelationshipType {
+  Parent = 0,
+  Blocks = 1,
+  DependsOn = 2,
+  Related = 3,
+  Duplicate = 4,
+  SplitFrom = 5
+}
+
+export interface RelationshipTypeOption {
+  value: RelationshipType;
+  name: string;
+}
+
+export const RELATIONSHIP_TYPES: RelationshipTypeOption[] = [
+  {
+    value: RelationshipType.Parent,
+    name: 'Parent'
+  },
+  {
+    value: RelationshipType.Blocks,
+    name: 'Blocks'
+  },
+  {
+    value: RelationshipType.DependsOn,
+    name: 'Depends On'
+  },
+  {
+    value: RelationshipType.Related,
+    name: 'Related'
+  },
+  {
+    value: RelationshipType.Duplicate,
+    name: 'Duplicate'
+  },
+  {
+    value: RelationshipType.SplitFrom,
+    name: 'Split From'
+  }
+];

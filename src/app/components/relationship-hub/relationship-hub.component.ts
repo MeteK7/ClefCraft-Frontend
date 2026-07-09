@@ -20,10 +20,11 @@ import {
 
 import { BoardService } from '../../_services/board.service';
 import { RelationshipCardComponent } from '../relationship-card/relationship-card.component';
-import { RelationshipDialogComponent } from '../relationship-dialog/relationship-dialog.component';
+
 import {
     RelationshipType
 } from '../../models/board.model';
+import { RelationshipDialogComponent } from '../relationship-dialog/relationship-dialog.component';
 
 @Component({
     selector: 'app-relationship-hub',

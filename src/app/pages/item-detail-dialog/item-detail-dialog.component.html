@@ -111,43 +111,25 @@
     </mat-tab>
 
     <mat-tab *ngIf="!isNewItem">
+
       <ng-template mat-tab-label>
-        <mat-icon class="tab-icon">info</mat-icon> Info
+
+        <mat-icon class="tab-icon">
+          account_tree
+        </mat-icon>
+
+        Relationships
+
       </ng-template>
 
       <div class="dialog-content">
-        <div class="info-grid">
-          <div class="info-card">
-            <span class="info-label">Created On</span>
-            <span class="info-value">{{ item.dateCreated | date: 'medium' }}</span>
-          </div>
-          <div class="info-card">
-            <span class="info-label">Created By</span>
-            <span class="info-value">{{ item.createdByFullName || 'System' }}</span>
-          </div>
-          <div class="info-card">
-            <span class="info-label">Last Modified</span>
-            <span class="info-value">{{ item.dateModified | date: 'medium' }}</span>
-          </div>
-          <div class="info-card">
-            <span class="info-label">Last Modified By</span>
-            <span class="info-value">{{ item.modifiedByFullName || 'System' }}</span>
-          </div>
-        </div>
 
-        <div class="linked-section">
-          <h4 class="section-title"><mat-icon>link</mat-icon> Linked Items</h4>
-          <div class="linked-items-list" *ngIf="item.linkedItems?.length; else noLinkedItems">
-            <div *ngFor="let linkedItem of item.linkedItems" class="linked-item-row">
-              <mat-icon class="item-dot">horizontal_rule</mat-icon>
-              <span class="linked-title">{{ linkedItem.title }}</span>
-            </div>
-          </div>
-          <ng-template #noLinkedItems>
-            <p class="empty-state-text">No linked references associated with this item.</p>
-          </ng-template>
-        </div>
+        <app-relationship-hub [boardId]="data.boardId" [itemId]="item.id" (openItem)="openRelatedItem($event)">
+
+        </app-relationship-hub>
+
       </div>
+
     </mat-tab>
 
     <mat-tab *ngIf="!isNewItem">
@@ -205,6 +187,46 @@
               activities.
             </p>
           </div>
+        </div>
+      </div>
+    </mat-tab>
+
+    <mat-tab *ngIf="!isNewItem">
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">info</mat-icon> Info
+      </ng-template>
+
+      <div class="dialog-content">
+        <div class="info-grid">
+          <div class="info-card">
+            <span class="info-label">Created On</span>
+            <span class="info-value">{{ item.dateCreated | date: 'medium' }}</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Created By</span>
+            <span class="info-value">{{ item.createdByFullName || 'System' }}</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Last Modified</span>
+            <span class="info-value">{{ item.dateModified | date: 'medium' }}</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Last Modified By</span>
+            <span class="info-value">{{ item.modifiedByFullName || 'System' }}</span>
+          </div>
+        </div>
+
+        <div class="linked-section">
+          <h4 class="section-title"><mat-icon>link</mat-icon> Linked Items</h4>
+          <div class="linked-items-list" *ngIf="item.linkedItems?.length; else noLinkedItems">
+            <div *ngFor="let linkedItem of item.linkedItems" class="linked-item-row">
+              <mat-icon class="item-dot">horizontal_rule</mat-icon>
+              <span class="linked-title">{{ linkedItem.title }}</span>
+            </div>
+          </div>
+          <ng-template #noLinkedItems>
+            <p class="empty-state-text">No linked references associated with this item.</p>
+          </ng-template>
         </div>
       </div>
     </mat-tab>

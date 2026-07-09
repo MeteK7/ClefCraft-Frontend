@@ -16,12 +16,8 @@
 
         <mat-select formControlName="relationType">
 
-            <mat-option
-                *ngFor="let type of relationTypes"
-                [value]="type.value">
-
-                {{type.name}}
-
+            <mat-option *ngFor="let type of relationshipTypes" [value]="type.value">
+                {{ type.name }}
             </mat-option>
 
         </mat-select>
@@ -36,9 +32,7 @@
 
         </mat-label>
 
-        <input
-            matInput
-            formControlName="search">
+        <input matInput formControlName="search">
 
     </mat-form-field>
 
@@ -52,9 +46,7 @@
 
         <mat-select formControlName="targetItemId">
 
-            <mat-option
-                *ngFor="let item of candidates"
-                [value]="item.id">
+            <mat-option *ngFor="let item of candidates" [value]="item.id">
 
                 #{{item.id}}
                 {{item.title}}
@@ -70,18 +62,13 @@
 
 <mat-dialog-actions align="end">
 
-    <button
-        mat-button
-        (click)="cancel()">
+    <button mat-button (click)="cancel()">
 
         Cancel
 
     </button>
 
-    <button
-        mat-raised-button
-        color="primary"
-        (click)="create()">
+    <button mat-raised-button color="primary" (click)="create()">
 
         Create
 
