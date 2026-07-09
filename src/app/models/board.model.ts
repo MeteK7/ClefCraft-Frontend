@@ -60,3 +60,43 @@ export interface Item {
   createdBy?: string;
   modifiedBy?: string;
 }
+
+export interface BoardItemSearchResult {
+  id: number;
+  title: string;
+  status: string;
+  priority: string;
+}
+
+export interface RelationshipCard {
+  relationId: number;
+  itemId: number;
+  title: string;
+  status: string;
+  priority: string;
+  assigneeId?: string;
+  dueDate?: Date;
+}
+
+export interface RelationshipGroup {
+
+    relationType:number;
+    name:string;
+    items:RelationshipCard[];
+}
+
+export interface RelationshipHub {
+
+    groups:RelationshipGroup[];
+    parentCount:number;
+    blockCount:number;
+    relatedCount:number;
+    dependencyCount:number;
+}
+
+export interface CreateRelationshipRequest{
+
+    sourceBoardItemId:number;
+    targetBoardItemId:number;
+    relationType:number;
+}
