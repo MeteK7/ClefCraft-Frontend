@@ -1,9 +1,9 @@
 import {
-  Component,
-  EventEmitter,
-  Input,
-  OnInit,
-  Output
+    Component,
+    EventEmitter,
+    Input,
+    OnInit,
+    Output
 } from '@angular/core';
 
 import { CommonModule } from '@angular/common';
@@ -14,13 +14,16 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialog } from '@angular/material/dialog';
 
 import {
-  RelationshipHub,
-  RelationshipGroup
+    RelationshipHub,
+    RelationshipGroup
 } from '../../models/board.model';
 
 import { BoardService } from '../../_services/board.service';
 import { RelationshipCardComponent } from '../relationship-card/relationship-card.component';
 import { RelationshipDialogComponent } from '../relationship-dialog/relationship-dialog.component';
+import {
+    RelationshipType
+} from '../../models/board.model';
 
 @Component({
     selector: 'app-relationship-hub',
@@ -37,31 +40,33 @@ import { RelationshipDialogComponent } from '../relationship-dialog/relationship
 })
 export class RelationshipHubComponent implements OnInit {
 
-    @Input()
-    boardId!: number;
+    @Input() boardId!: number;
+    @Input() itemId!: number;
 
-    @Input()
-    itemId!: number;
+    @Output() openItem = new EventEmitter<number>();
 
-    @Output()
-    openItem = new EventEmitter<number>();
-
-    hub?: RelationshipHub;
+    hub: RelationshipHub = {
+        parentCount: 0,
+        blockCount: 0,
+        relatedCount: 0,
+        dependencyCount: 0,
+        groups: []
+    };
 
     loading = false;
+
+    readonly RelationshipType = RelationshipType;
 
     constructor(
         private boardService: BoardService,
         private dialog: MatDialog
-    ) {}
+    ) { }
 
     ngOnInit(): void {
-
         this.loadRelationships();
-
     }
 
-    loadRelationships() {
+    loadRelationships(): void {
 
         this.loading = true;
 
@@ -86,55 +91,44 @@ export class RelationshipHubComponent implements OnInit {
 
     }
 
-    addRelationship() {
+    addRelationship(): void {
 
         const dialogRef = this.dialog.open(
             RelationshipDialogComponent,
             {
-
                 width: '700px',
-
                 data: {
-
                     boardId: this.boardId,
                     itemId: this.itemId
-
                 }
-
             });
 
         dialogRef.afterClosed()
             .subscribe(created => {
 
-                if(created){
-
+                if (created) {
                     this.loadRelationships();
-
                 }
 
             });
 
     }
 
-    deleteRelationship(relationId:number){
+    deleteRelationship(relationId: number): void {
 
         this.boardService
             .deleteRelationship(relationId)
-            .subscribe(() => {
-
-                this.loadRelationships();
-
-            });
+            .subscribe(() => this.loadRelationships());
 
     }
 
-    open(itemId:number){
+    open(itemId: number): void {
 
         this.openItem.emit(itemId);
 
     }
 
-    trackGroup(index:number, group:RelationshipGroup){
+    trackGroup(index: number, group: RelationshipGroup): number {
 
         return group.relationType;
 

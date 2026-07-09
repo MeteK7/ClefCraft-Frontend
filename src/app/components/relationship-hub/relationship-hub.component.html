@@ -2,20 +2,14 @@
 
     <div class="hub-header">
 
-        <h3>
-
-            Relationships
-
-        </h3>
+        <h3>Relationships</h3>
 
         <button
             mat-raised-button
             color="primary"
             (click)="addRelationship()">
 
-            <mat-icon>
-                add_link
-            </mat-icon>
+            <mat-icon>add_link</mat-icon>
 
             Add Relationship
 
@@ -31,44 +25,38 @@
 
     </div>
 
-    <mat-accordion
-        *ngIf="hub">
+    <mat-accordion>
 
         <mat-expansion-panel
-            *ngFor="let group of hub.groups; trackBy:trackGroup"
-            [expanded]="group.items.length>0">
+            *ngFor="let group of hub.groups; trackBy: trackGroup"
+            [expanded]="group.items.length > 0">
 
             <mat-expansion-panel-header>
 
                 <mat-panel-title>
 
-                    {{group.name}}
+                    {{ group.name }}
 
                 </mat-panel-title>
 
                 <mat-panel-description>
 
-                    {{group.items.length}}
+                    {{ group.items.length }}
 
                 </mat-panel-description>
 
             </mat-expansion-panel-header>
 
             <app-relationship-card
-
                 *ngFor="let relationship of group.items"
-
                 [relationship]="relationship"
-
                 (open)="open($event)"
-
                 (delete)="deleteRelationship($event)">
-
             </app-relationship-card>
 
             <div
                 class="empty"
-                *ngIf="group.items.length==0">
+                *ngIf="group.items.length === 0">
 
                 No relationships.
 
