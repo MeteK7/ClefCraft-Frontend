@@ -93,7 +93,7 @@ export class BoardService {
     itemId: number,
     search: string) {
     return this.http.get<BoardItemSearchResult[]>(
-      `${this.apiUrl}/BoardItemRelations/Search`,
+      `${this.apiUrl}/BoardItemRelations/search`,
       {
         params: {
           boardId,
