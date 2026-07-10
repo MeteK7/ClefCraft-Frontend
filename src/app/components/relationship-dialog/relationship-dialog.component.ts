@@ -56,8 +56,8 @@ import { BoardService } from '../../_services/board.service';
 export class RelationshipDialogComponent {
 
     candidates: BoardItemSearchResult[] = [];
-
     searching = false;
+    submitting = false;
 
     form = this.fb.group({
 
@@ -144,28 +144,21 @@ export class RelationshipDialogComponent {
     }
 
     create() {
-
-        if (this.form.invalid)
-            return;
+        if (this.form.invalid || this.submitting) return;
+        this.submitting = true;
 
         const request: CreateRelationshipRequest = {
 
             sourceBoardItemId: this.data.itemId,
-
             targetBoardItemId: this.form.value.targetItemId!,
-
             relationType: this.form.get('relationType')!.value!
 
         };
 
-        this.boardService
-            .createRelationship(request)
-            .subscribe(() => {
-
-                this.dialogRef.close(true);
-
-            });
-
+        this.boardService.createRelationship(request).subscribe({
+            next: () => this.dialogRef.close(true),
+            error: () => { this.submitting = false; }
+        });
     }
 
     cancel() {
