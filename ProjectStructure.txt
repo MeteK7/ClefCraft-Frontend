@@ -11,6 +11,7 @@ C:.
 |   ProjectStructure.txt
 |   README.docx
 |   README.md
+|   relationship engine prompt.txt
 |   tsconfig.app.json
 |   tsconfig.json
 |   tsconfig.spec.json
@@ -37354,6 +37355,24 @@ C:.
     |   |           tuner.component.html
     |   |           tuner.component.spec.ts
     |   |           tuner.component.ts
+    |   |           
+    |   +---relationship-engine
+    |   |   +---analytics
+    |   |   |       critical-path-engine.ts
+    |   |   |       cycle-detector.ts
+    |   |   |       dependency-engine.ts
+    |   |   |       impact-engine.ts
+    |   |   |       relationship-score-engine.ts
+    |   |   |       
+    |   |   +---graph
+    |   |   |       graph-layout-engine.ts
+    |   |   |       graph-navigation-engine.ts
+    |   |   |       relationship-graph-builder.ts
+    |   |   |       
+    |   |   \---visualization
+    |   |           graph-edge.model.ts
+    |   |           graph-node.model.ts
+    |   |           graph-view-model.ts
     |   |           
     |   +---utils
     |   |       attendance.utils.ts
