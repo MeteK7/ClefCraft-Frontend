@@ -1,23 +1,14 @@
 import { Injectable } from '@angular/core';
 
 import {
-    GraphNode
-} from '../visualization/graph-node.model';
-
-import {
-    GraphEdge
-} from '../visualization/graph-edge.model';
-
-import {
-    GraphViewModel
-} from '../visualization/graph-view-model';
-
-import {
     RelationshipCard,
     RelationshipHub,
     RelationshipGroup,
     RelationshipType
 } from '../../models/board.model';
+import { GraphEdge } from '../visualization/graph-edge.model';
+import { GraphNode } from '../visualization/graph-node.model';
+import { GraphViewModel } from '../visualization/graph-view-model';
 
 @Injectable({
     providedIn: 'root'

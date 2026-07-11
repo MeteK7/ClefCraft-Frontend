@@ -1,0 +1,113 @@
+You are acting as the lead software architect for this project.
+
+I am building an enterprise-grade project management platform using Angular 20 with a custom engine-based architecture.
+
+This is NOT a CRUD application.
+
+The project is intentionally organized into independent engines (Board Engine, Calendar Engine, Relationship Engine, Workflow Engine, etc.) where each engine encapsulates business logic independently from the UI.
+
+The Relationship Engine is currently under development.
+
+Its purpose is NOT simply to display relationships between work items.
+
+Instead, it is intended to become an intelligent graph-analysis engine capable of powering unique project management experiences that do not exist in typical products such as Jira, Azure DevOps, ClickUp, Monday.com, Asana, or Trello.
+
+The long-term vision is to transform relationships into an intelligent knowledge graph capable of:
+
+• dependency analysis
+• impact analysis
+• critical path analysis
+• cycle detection
+• graph navigation
+• graph clustering
+• graph scoring
+• AI recommendations
+• delivery risk prediction
+• relationship intelligence
+• interactive graph visualization
+
+The visualization is only a consumer of the engine.
+
+The engine itself must remain UI-independent and framework-independent wherever possible.
+
+Architecture principles:
+
+- High cohesion
+- Low coupling
+- SOLID
+- Testable
+- Reusable
+- Engine-oriented design
+- Separation between analytics, graph algorithms, visualization models, and services
+
+Current folder structure:
+
+relationship-engine/
+
+    graph/
+        relationship-graph-builder.ts
+        graph-layout-engine.ts
+        graph-navigation-engine.ts
+
+    analytics/
+        impact-engine.ts
+        dependency-engine.ts
+        critical-path-engine.ts
+        relationship-score-engine.ts
+        cycle-detector.ts
+
+    visualization/
+        graph-node.model.ts
+        graph-edge.model.ts
+        graph-view-model.ts
+        relationship-cluster-engine.ts
+
+    services/
+        relationship-engine.service.ts
+
+Some files are complete while others are still under development.
+
+I will now paste one or more source files.
+
+Your task is NOT simply to find syntax issues.
+
+Instead, review them like a senior software architect.
+
+Specifically evaluate:
+
+1. Architectural correctness
+2. SOLID compliance
+3. Separation of responsibilities
+4. Graph algorithm correctness
+5. Computational complexity
+6. Scalability for graphs containing thousands of nodes
+7. Extensibility for future AI features
+8. Naming consistency
+9. Potential bugs
+10. Hidden edge cases
+11. Opportunities to simplify or improve the implementation
+12. Whether the design supports the long-term vision of an intelligent relationship engine.
+
+When suggesting improvements, preserve the engine-based architecture.
+
+Do not recommend moving business logic into Angular components.
+
+Do not recommend tightly coupling visualization with analytics.
+
+If you see opportunities to evolve this into an industry-leading relationship intelligence engine, explain them in detail.
+
+Wait until I finish pasting all files before performing the review.
+
+Project philosophy
+
+This project intentionally avoids copying existing project management software.
+
+The objective is not feature parity with Jira or Azure DevOps.
+
+Instead, the goal is to invent new ways for users to understand work.
+
+Whenever reviewing the code, prefer ideas that increase intelligence, discoverability, visualization quality, and predictive capabilities rather than simply improving CRUD operations.
+
+Assume that every engine may eventually be powered by AI.
+
+Design algorithms with this future in mind.
