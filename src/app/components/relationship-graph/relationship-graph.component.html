@@ -1,0 +1,76 @@
+<div class="graph-container">
+
+    <svg
+        class="graph-svg"
+        viewBox="-700 -500 1400 1000"
+        preserveAspectRatio="xMidYMid meet">
+
+        <!-- Edges -->
+
+        <g class="edges">
+
+            <line
+                *ngFor="let edge of graph?.edges; trackBy: trackEdge"
+
+                class="edge"
+
+                [attr.x1]="edgeX1(edge)"
+                [attr.y1]="edgeY1(edge)"
+                [attr.x2]="edgeX2(edge)"
+                [attr.y2]="edgeY2(edge)">
+            </line>
+
+        </g>
+
+        <!-- Nodes -->
+
+        <g
+            *ngFor="let node of graph?.nodes; trackBy: trackNode">
+
+            <rect
+
+                class="node"
+
+                rx="12"
+
+                [attr.x]="nodeX(node)"
+                [attr.y]="nodeY(node)"
+                [attr.width]="nodeWidth"
+                [attr.height]="nodeHeight"
+
+                (click)="clickNode(node)">
+            </rect>
+
+            <text
+
+                class="title"
+
+                [attr.x]="node.x"
+
+                [attr.y]="node.y-8"
+
+                text-anchor="middle">
+
+                #{{node.id}}
+
+            </text>
+
+            <text
+
+                class="subtitle"
+
+                [attr.x]="node.x"
+
+                [attr.y]="node.y+14"
+
+                text-anchor="middle">
+
+                {{node.title}}
+
+            </text>
+
+        </g>
+
+    </svg>
+
+</div>

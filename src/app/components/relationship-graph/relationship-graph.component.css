@@ -1,0 +1,78 @@
+:host {
+
+    display:block;
+
+    width:100%;
+    height:650px;
+
+}
+
+.graph-container{
+
+    width:100%;
+    height:100%;
+
+    overflow:hidden;
+
+    border-radius:14px;
+
+    background:#fafafa;
+
+    border:1px solid #e0e0e0;
+
+}
+
+.graph-svg{
+
+    width:100%;
+    height:100%;
+
+}
+
+.edge{
+
+    stroke:#bdbdbd;
+
+    stroke-width:2;
+
+}
+
+.node{
+
+    fill:white;
+
+    stroke:#3f51b5;
+
+    stroke-width:2;
+
+    cursor:pointer;
+
+    transition:all .2s;
+
+}
+
+.node:hover{
+
+    stroke:#1e88e5;
+
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.25));
+
+}
+
+.title{
+
+    font-size:14px;
+
+    font-weight:700;
+
+    pointer-events:none;
+
+}
+
+.subtitle{
+
+    font-size:12px;
+
+    pointer-events:none;
+
+}
