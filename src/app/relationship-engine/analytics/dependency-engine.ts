@@ -1,397 +1,203 @@
-import { GraphViewModel } from '../visualization/graph-view-model';
 import { GraphNode } from '../visualization/graph-node.model';
 import { GraphEdge } from '../visualization/graph-edge.model';
+import { GraphViewModel } from '../visualization/graph-view-model';
 
 export interface DependencySummary {
 
     nodeId: number;
 
     prerequisites: GraphNode[];
-
     dependents: GraphNode[];
 
     transitivePrerequisites: GraphNode[];
-
     transitiveDependents: GraphNode[];
 
     canStart: boolean;
-
     dependencyDepth: number;
-
     impactSize: number;
 
+    /**
+     * True if this node sits inside a dependency cycle. When true,
+     * dependencyDepth is meaningless (see calculateAllDepths) and callers
+     * should defer to CycleDetector for the actual cycle membership.
+     */
+    inCycle: boolean;
 }
 
+/**
+ * Plain, framework-independent class — no Angular DI. Every method takes
+ * a GraphViewModel and reads its precomputed incoming/outgoing index
+ * instead of filtering graph.edges, so a call costs O(1) per neighbor
+ * lookup rather than O(E) per call. This matters once graphs run into
+ * the thousands of nodes this engine is meant to scale to.
+ */
 export class DependencyEngine {
 
-    /**
-     * Returns complete dependency information for one node.
-     */
-    public analyze(
-        graph: GraphViewModel,
-        nodeId: number
-    ): DependencySummary {
+    analyze(graph: GraphViewModel, nodeId: number): DependencySummary {
 
-        const prerequisites =
-            this.getImmediatePrerequisites(graph, nodeId);
+        const prerequisites = this.getImmediatePrerequisites(graph, nodeId);
+        const dependents = this.getImmediateDependents(graph, nodeId);
 
-        const dependents =
-            this.getImmediateDependents(graph, nodeId);
+        const transitivePrerequisites = this.collect(graph, nodeId, graph.incoming);
+        const transitiveDependents = this.collect(graph, nodeId, graph.outgoing);
 
-        const allParents =
-            this.getAllPrerequisites(graph, nodeId);
-
-        const allChildren =
-            this.getAllDependents(graph, nodeId);
+        const depthMap = this.calculateAllDepths(graph);
 
         return {
-
             nodeId,
-
             prerequisites,
-
             dependents,
-
-            transitivePrerequisites: allParents,
-
-            transitiveDependents: allChildren,
-
+            transitivePrerequisites,
+            transitiveDependents,
             canStart: prerequisites.length === 0,
-
-            dependencyDepth:
-                this.calculateDepth(graph, nodeId),
-
-            impactSize:
-                allChildren.length
-
+            dependencyDepth: depthMap.get(nodeId) ?? 0,
+            impactSize: transitiveDependents.length,
+            inCycle: !depthMap.has(nodeId)
         };
+    }
 
+    getImmediatePrerequisites(graph: GraphViewModel, nodeId: number): GraphNode[] {
+        return (graph.incoming.get(nodeId) ?? [])
+            .map(id => graph.nodeMap.get(id))
+            .filter((n): n is GraphNode => !!n);
+    }
+
+    getImmediateDependents(graph: GraphViewModel, nodeId: number): GraphNode[] {
+        return (graph.outgoing.get(nodeId) ?? [])
+            .map(id => graph.nodeMap.get(id))
+            .filter((n): n is GraphNode => !!n);
+    }
+
+    getAllPrerequisites(graph: GraphViewModel, nodeId: number): GraphNode[] {
+        return this.collect(graph, nodeId, graph.incoming);
+    }
+
+    getAllDependents(graph: GraphViewModel, nodeId: number): GraphNode[] {
+        return this.collect(graph, nodeId, graph.outgoing);
+    }
+
+    getRootTasks(graph: GraphViewModel): GraphNode[] {
+        return graph.nodes.filter(n => (graph.incoming.get(n.id) ?? []).length === 0);
+    }
+
+    getLeafTasks(graph: GraphViewModel): GraphNode[] {
+        return graph.nodes.filter(n => (graph.outgoing.get(n.id) ?? []).length === 0);
     }
 
     /**
-     * Immediate incoming dependencies.
+     * Longest-prerequisite-chain depth for every node, computed in a
+     * single O(V + E) topological (Kahn's algorithm) pass.
+     *
+     * The previous implementation recursed per node with no memoization:
+     * on a diamond-shaped DAG (two paths converging on one ancestor —
+     * extremely common in real dependency graphs) the same ancestor gets
+     * revisited exponentially many times. rankByDepth/rankByImpact then
+     * called that once per node on top, making the whole ranking
+     * effectively unusable past a few hundred nodes.
+     *
+     * Nodes inside a cycle never reach in-degree 0 in Kahn's algorithm,
+     * so they're intentionally left out of the returned map rather than
+     * silently reported as depth 0 — check `.has(nodeId)` (see `inCycle`
+     * on DependencySummary) before trusting a depth value.
      */
-    public getImmediatePrerequisites(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphNode[] {
+    calculateAllDepths(graph: GraphViewModel): Map<number, number> {
 
-        const ids = graph.edges
-            .filter(e => e.targetId === nodeId)
-            .map(e => e.sourceId);
+        const remaining = new Map<number, number>();
+        graph.nodes.forEach(n => remaining.set(n.id, (graph.incoming.get(n.id) ?? []).length));
 
+        const queue: number[] = [];
+        remaining.forEach((count, id) => { if (count === 0) queue.push(id); });
+
+        const depth = new Map<number, number>();
+        queue.forEach(id => depth.set(id, 0));
+
+        while (queue.length) {
+
+            const current = queue.shift()!;
+            const currentDepth = depth.get(current) ?? 0;
+
+            for (const next of graph.outgoing.get(current) ?? []) {
+
+                depth.set(next, Math.max(depth.get(next) ?? 0, currentDepth + 1));
+
+                const count = (remaining.get(next) ?? 0) - 1;
+                remaining.set(next, count);
+
+                if (count === 0) {
+                    queue.push(next);
+                }
+            }
+        }
+
+        return depth;
+    }
+
+    calculateDepth(graph: GraphViewModel, nodeId: number): number {
+        return this.calculateAllDepths(graph).get(nodeId) ?? 0;
+    }
+
+    rankByImpact(graph: GraphViewModel): GraphNode[] {
+        const impactCache = new Map<number, number>();
+        graph.nodes.forEach(n => impactCache.set(n.id, this.getAllDependents(graph, n.id).length));
+        return [...graph.nodes].sort((a, b) => (impactCache.get(b.id) ?? 0) - (impactCache.get(a.id) ?? 0));
+    }
+
+    rankByDepth(graph: GraphViewModel): GraphNode[] {
+        const depth = this.calculateAllDepths(graph);
+        return [...graph.nodes].sort((a, b) => (depth.get(b.id) ?? 0) - (depth.get(a.id) ?? 0));
+    }
+
+    isReady(graph: GraphViewModel, nodeId: number): boolean {
+        return (graph.incoming.get(nodeId) ?? []).length === 0;
+    }
+
+    calculateImpactSize(graph: GraphViewModel, nodeId: number): number {
+        return this.getAllDependents(graph, nodeId).length;
+    }
+
+    findIndependentTasks(graph: GraphViewModel): GraphNode[] {
         return graph.nodes.filter(n =>
-            ids.includes(n.id));
+            (graph.incoming.get(n.id) ?? []).length === 0 &&
+            (graph.outgoing.get(n.id) ?? []).length === 0
+        );
+    }
 
+    getDependencies(graph: GraphViewModel, nodeId: number): GraphEdge[] {
+        return [
+            ...(graph.incomingEdges.get(nodeId) ?? []),
+            ...(graph.outgoingEdges.get(nodeId) ?? [])
+        ];
     }
 
     /**
-     * Immediate outgoing dependencies.
+     * Iterative reachability walk (BFS/DFS via explicit stack — no
+     * recursion, so it can't blow the call stack on a long chain) along
+     * a given direction (graph.incoming for ancestors, graph.outgoing
+     * for descendants). Visited-on-push, so it's safe on cyclic graphs
+     * too.
      */
-    public getImmediateDependents(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphNode[] {
-
-        const ids = graph.edges
-            .filter(e => e.sourceId === nodeId)
-            .map(e => e.targetId);
-
-        return graph.nodes.filter(n =>
-            ids.includes(n.id));
-
-    }
-
-    /**
-     * Every ancestor recursively.
-     */
-    public getAllPrerequisites(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphNode[] {
+    private collect(graph: GraphViewModel, nodeId: number, direction: Map<number, number[]>): GraphNode[] {
 
         const visited = new Set<number>();
+        const stack = [...(direction.get(nodeId) ?? [])];
 
-        this.collectParents(
-            graph,
-            nodeId,
-            visited
-        );
+        while (stack.length) {
 
-        return graph.nodes.filter(n =>
-            visited.has(n.id));
+            const id = stack.pop()!;
 
-    }
-
-    /**
-     * Every descendant recursively.
-     */
-    public getAllDependents(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphNode[] {
-
-        const visited = new Set<number>();
-
-        this.collectChildren(
-            graph,
-            nodeId,
-            visited
-        );
-
-        return graph.nodes.filter(n =>
-            visited.has(n.id));
-
-    }
-
-    /**
-     * Returns every root task.
-     */
-    public getRootTasks(
-        graph: GraphViewModel
-    ): GraphNode[] {
-
-        return graph.nodes.filter(node =>
-            this.getImmediatePrerequisites(
-                graph,
-                node.id
-            ).length === 0);
-
-    }
-
-    /**
-     * Returns every leaf task.
-     */
-    public getLeafTasks(
-        graph: GraphViewModel
-    ): GraphNode[] {
-
-        return graph.nodes.filter(node =>
-            this.getImmediateDependents(
-                graph,
-                node.id
-            ).length === 0);
-
-    }
-
-    /**
-     * Longest dependency chain ending at node.
-     */
-    public calculateDepth(
-        graph: GraphViewModel,
-        nodeId: number
-    ): number {
-
-        const parents =
-            this.getImmediatePrerequisites(
-                graph,
-                nodeId
-            );
-
-        if (parents.length === 0) {
-
-            return 0;
-
-        }
-
-        let maxDepth = 0;
-
-        for (const parent of parents) {
-
-            maxDepth = Math.max(
-
-                maxDepth,
-
-                this.calculateDepth(
-                    graph,
-                    parent.id
-                )
-
-            );
-
-        }
-
-        return maxDepth + 1;
-
-    }
-
-    /**
-     * Returns nodes ordered by downstream impact.
-     */
-    public rankByImpact(
-        graph: GraphViewModel
-    ): GraphNode[] {
-
-        return [...graph.nodes]
-            .sort((a, b) =>
-
-                this.getAllDependents(
-                    graph,
-                    b.id
-                ).length -
-
-                this.getAllDependents(
-                    graph,
-                    a.id
-                ).length
-
-            );
-
-    }
-
-    /**
-     * Returns nodes ordered by dependency depth.
-     */
-    public rankByDepth(
-        graph: GraphViewModel
-    ): GraphNode[] {
-
-        return [...graph.nodes]
-            .sort((a, b) =>
-
-                this.calculateDepth(
-                    graph,
-                    b.id
-                ) -
-
-                this.calculateDepth(
-                    graph,
-                    a.id
-                )
-
-            );
-
-    }
-
-    /**
-     * True when nothing blocks this item.
-     */
-    public isReady(
-        graph: GraphViewModel,
-        nodeId: number
-    ): boolean {
-
-        return this.getImmediatePrerequisites(
-            graph,
-            nodeId
-        ).length === 0;
-
-    }
-
-    /**
-     * Counts direct + indirect dependents.
-     */
-    public calculateImpactSize(
-        graph: GraphViewModel,
-        nodeId: number
-    ): number {
-
-        return this.getAllDependents(
-            graph,
-            nodeId
-        ).length;
-
-    }
-
-    /**
-     * Returns nodes that nothing depends on.
-     */
-    public findIndependentTasks(
-        graph: GraphViewModel
-    ): GraphNode[] {
-
-        return graph.nodes.filter(node =>
-
-            this.getImmediateDependents(
-                graph,
-                node.id
-            ).length === 0 &&
-
-            this.getImmediatePrerequisites(
-                graph,
-                node.id
-            ).length === 0
-
-        );
-
-    }
-
-    /**
-     * Returns edges connected to node.
-     */
-    public getDependencies(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphEdge[] {
-
-        return graph.edges.filter(edge =>
-
-            edge.sourceId === nodeId ||
-
-            edge.targetId === nodeId
-
-        );
-
-    }
-
-    private collectParents(
-        graph: GraphViewModel,
-        nodeId: number,
-        visited: Set<number>
-    ): void {
-
-        const parents =
-            this.getImmediatePrerequisites(
-                graph,
-                nodeId
-            );
-
-        for (const parent of parents) {
-
-            if (!visited.has(parent.id)) {
-
-                visited.add(parent.id);
-
-                this.collectParents(
-                    graph,
-                    parent.id,
-                    visited
-                );
-
+            if (visited.has(id)) {
+                continue;
             }
 
-        }
+            visited.add(id);
 
-    }
-
-    private collectChildren(
-        graph: GraphViewModel,
-        nodeId: number,
-        visited: Set<number>
-    ): void {
-
-        const children =
-            this.getImmediateDependents(
-                graph,
-                nodeId
-            );
-
-        for (const child of children) {
-
-            if (!visited.has(child.id)) {
-
-                visited.add(child.id);
-
-                this.collectChildren(
-                    graph,
-                    child.id,
-                    visited
-                );
-
+            for (const next of direction.get(id) ?? []) {
+                if (!visited.has(next)) {
+                    stack.push(next);
+                }
             }
-
         }
 
+        return graph.nodes.filter(n => visited.has(n.id));
     }
-
 }

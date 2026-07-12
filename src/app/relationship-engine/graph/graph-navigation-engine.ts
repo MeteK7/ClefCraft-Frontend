@@ -4,328 +4,165 @@ import { GraphViewModel } from '../visualization/graph-view-model';
 
 export class GraphNavigationEngine {
 
-    /**
-     * Returns every node connected to the selected node.
-     * Useful for hover/focus highlighting.
-     */
-    public getConnectedNodes(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphNode[] {
-
-        const connectedIds = new Set<number>();
-
-        for (const edge of graph.edges) {
-
-            if (edge.sourceId === nodeId) {
-                connectedIds.add(edge.targetId);
-            }
-
-            if (edge.targetId === nodeId) {
-                connectedIds.add(edge.sourceId);
-            }
-
-        }
-
-        return graph.nodes.filter(n => connectedIds.has(n.id));
-
-    }
-
-    /**
-     * Returns all edges touching the node.
-     */
-    public getConnectedEdges(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphEdge[] {
-
-        return graph.edges.filter(edge =>
-
-            edge.sourceId === nodeId ||
-            edge.targetId === nodeId
-
-        );
-
-    }
-
-    /**
-     * Returns immediate parents.
-     */
-    public getParents(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphNode[] {
-
-        const ids = graph.edges
-            .filter(e => e.targetId === nodeId)
-            .map(e => e.sourceId);
-
+    /** Every node connected to the selected node (either direction). Useful for hover/focus highlighting. */
+    getConnectedNodes(graph: GraphViewModel, nodeId: number): GraphNode[] {
+        const ids = graph.adjacency.get(nodeId) ?? [];
         return graph.nodes.filter(n => ids.includes(n.id));
-
     }
 
-    /**
-     * Returns immediate children.
-     */
-    public getChildren(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphNode[] {
+    /** Every edge touching the node. */
+    getConnectedEdges(graph: GraphViewModel, nodeId: number): GraphEdge[] {
+        return [
+            ...(graph.incomingEdges.get(nodeId) ?? []),
+            ...(graph.outgoingEdges.get(nodeId) ?? [])
+        ];
+    }
 
-        const ids = graph.edges
-            .filter(e => e.sourceId === nodeId)
-            .map(e => e.targetId);
-
+    getParents(graph: GraphViewModel, nodeId: number): GraphNode[] {
+        const ids = graph.incoming.get(nodeId) ?? [];
         return graph.nodes.filter(n => ids.includes(n.id));
-
     }
 
-    /**
-     * Breadth-first traversal.
-     */
-    public traverseBreadthFirst(
-        graph: GraphViewModel,
-        startId: number
-    ): GraphNode[] {
+    getChildren(graph: GraphViewModel, nodeId: number): GraphNode[] {
+        const ids = graph.outgoing.get(nodeId) ?? [];
+        return graph.nodes.filter(n => ids.includes(n.id));
+    }
+
+    /** Breadth-first traversal following outgoing edges. */
+    traverseBreadthFirst(graph: GraphViewModel, startId: number): GraphNode[] {
 
         const queue: number[] = [startId];
-        const visited = new Set<number>();
-
+        const visited = new Set<number>([startId]);
         const result: GraphNode[] = [];
 
-        while (queue.length > 0) {
+        while (queue.length) {
 
             const id = queue.shift()!;
+            const node = graph.nodeMap.get(id);
+            if (node) result.push(node);
 
-            if (visited.has(id)) {
-                continue;
-            }
-
-            visited.add(id);
-
-            const node = graph.nodes.find(n => n.id === id);
-
-            if (node) {
-                result.push(node);
-            }
-
-            const children = this.getChildren(graph, id);
-
-            for (const child of children) {
-
-                if (!visited.has(child.id)) {
-                    queue.push(child.id);
+            for (const childId of graph.outgoing.get(id) ?? []) {
+                if (!visited.has(childId)) {
+                    visited.add(childId);
+                    queue.push(childId);
                 }
-
             }
-
         }
 
         return result;
-
     }
 
-    /**
-     * Depth-first traversal.
-     */
-    public traverseDepthFirst(
-        graph: GraphViewModel,
-        startId: number
-    ): GraphNode[] {
+    /** Depth-first traversal following outgoing edges. */
+    traverseDepthFirst(graph: GraphViewModel, startId: number): GraphNode[] {
 
         const result: GraphNode[] = [];
         const visited = new Set<number>();
 
-        this.depthSearch(
-            graph,
-            startId,
-            visited,
-            result
-        );
+        this.depthSearch(graph, startId, visited, result);
 
         return result;
-
     }
 
-    /**
-     * Returns every ancestor.
-     */
-    public getAncestors(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphNode[] {
-
+    /** Every ancestor, following incoming edges. */
+    getAncestors(graph: GraphViewModel, nodeId: number): GraphNode[] {
         const visited = new Set<number>();
-
-        this.collectParents(
-            graph,
-            nodeId,
-            visited
-        );
-
+        this.collect(graph, nodeId, graph.incoming, visited);
         return graph.nodes.filter(n => visited.has(n.id));
-
     }
 
-    /**
-     * Returns every descendant.
-     */
-    public getDescendants(
-        graph: GraphViewModel,
-        nodeId: number
-    ): GraphNode[] {
-
+    /** Every descendant, following outgoing edges. */
+    getDescendants(graph: GraphViewModel, nodeId: number): GraphNode[] {
         const visited = new Set<number>();
-
-        this.collectChildren(
-            graph,
-            nodeId,
-            visited
-        );
-
+        this.collect(graph, nodeId, graph.outgoing, visited);
         return graph.nodes.filter(n => visited.has(n.id));
-
     }
 
     /**
-     * Returns shortest path using BFS.
+     * Shortest path via BFS over undirected adjacency.
+     *
+     * Fixed: the previous version only marked a node visited when it was
+     * DEQUEUED, so the same node could be pushed onto the queue many
+     * times via different partial paths before any of them got marked —
+     * turning what should be a linear BFS into something combinatorial
+     * on dense graphs. Now nodes are marked visited at enqueue time.
      */
-    public findShortestPath(
-        graph: GraphViewModel,
-        startId: number,
-        targetId: number
-    ): number[] {
+    findShortestPath(graph: GraphViewModel, startId: number, targetId: number): number[] {
+
+        if (startId === targetId) {
+            return graph.nodeMap.has(startId) ? [startId] : [];
+        }
 
         const queue: number[][] = [[startId]];
-        const visited = new Set<number>();
+        const visited = new Set<number>([startId]);
 
-        while (queue.length > 0) {
+        while (queue.length) {
 
             const path = queue.shift()!;
             const current = path[path.length - 1];
 
-            if (current === targetId) {
-                return path;
-            }
+            for (const neighborId of graph.adjacency.get(current) ?? []) {
 
-            if (visited.has(current)) {
-                continue;
-            }
-
-            visited.add(current);
-
-            const neighbours = this.getConnectedNodes(
-                graph,
-                current
-            );
-
-            for (const node of neighbours) {
-
-                if (!visited.has(node.id)) {
-
-                    queue.push([
-                        ...path,
-                        node.id
-                    ]);
-
+                if (visited.has(neighborId)) {
+                    continue;
                 }
 
-            }
+                const nextPath = [...path, neighborId];
 
+                if (neighborId === targetId) {
+                    return nextPath;
+                }
+
+                visited.add(neighborId);
+                queue.push(nextPath);
+            }
         }
 
         return [];
-
     }
 
-    /**
-     * Returns graph center node
-     * (largest number of direct relationships).
-     */
-    public getMostConnectedNode(
-        graph: GraphViewModel
-    ): GraphNode | undefined {
+    /** Node with the most direct relationships (highest degree). */
+    getMostConnectedNode(graph: GraphViewModel): GraphNode | undefined {
 
         let winner: GraphNode | undefined;
         let max = -1;
 
         for (const node of graph.nodes) {
-
-            const degree = this.getConnectedEdges(
-                graph,
-                node.id
-            ).length;
-
+            const degree = (graph.adjacency.get(node.id) ?? []).length;
             if (degree > max) {
-
                 max = degree;
                 winner = node;
-
             }
-
         }
 
         return winner;
-
     }
 
     /**
-     * Marks a node and everything directly connected.
-     * UI can use this for focus mode.
+     * Returns new node/edge arrays with the node and everything directly
+     * connected to it marked selected/highlighted. Does not mutate the
+     * input graph — consistent with the other analytics engines, and
+     * safe to use with OnPush/signal-based change detection.
      */
-    public focusNode(
-        graph: GraphViewModel,
-        nodeId: number
-    ): void {
+    focusNode(graph: GraphViewModel, nodeId: number): { nodes: GraphNode[]; edges: GraphEdge[] } {
 
-        graph.nodes.forEach(node => {
+        const connectedEdgeIds = new Set(this.getConnectedEdges(graph, nodeId).map(e => e.id));
+        const neighborIds = new Set((graph.adjacency.get(nodeId) ?? []));
 
-            node.selected = false;
-            node.highlighted = false;
+        const nodes = graph.nodes.map(node => ({
+            ...node,
+            selected: node.id === nodeId,
+            highlighted: node.id === nodeId || neighborIds.has(node.id)
+        }));
 
-        });
+        const edges = graph.edges.map(edge => ({
+            ...edge,
+            highlighted: connectedEdgeIds.has(edge.id)
+        }));
 
-        graph.edges.forEach(edge => edge.highlighted = false);
-
-        const selected = graph.nodes.find(n => n.id === nodeId);
-
-        if (!selected) {
-            return;
-        }
-
-        selected.selected = true;
-        selected.highlighted = true;
-
-        const edges = this.getConnectedEdges(
-            graph,
-            nodeId
-        );
-
-        for (const edge of edges) {
-
-            edge.highlighted = true;
-
-        }
-
-        const neighbours = this.getConnectedNodes(
-            graph,
-            nodeId
-        );
-
-        for (const node of neighbours) {
-
-            node.highlighted = true;
-
-        }
-
+        return { nodes, edges };
     }
 
-    private depthSearch(
-        graph: GraphViewModel,
-        nodeId: number,
-        visited: Set<number>,
-        result: GraphNode[]
-    ): void {
+    private depthSearch(graph: GraphViewModel, nodeId: number, visited: Set<number>, result: GraphNode[]): void {
 
         if (visited.has(nodeId)) {
             return;
@@ -333,86 +170,21 @@ export class GraphNavigationEngine {
 
         visited.add(nodeId);
 
-        const node = graph.nodes.find(n => n.id === nodeId);
+        const node = graph.nodeMap.get(nodeId);
+        if (node) result.push(node);
 
-        if (node) {
-            result.push(node);
+        for (const childId of graph.outgoing.get(nodeId) ?? []) {
+            this.depthSearch(graph, childId, visited, result);
         }
-
-        const children = this.getChildren(
-            graph,
-            nodeId
-        );
-
-        for (const child of children) {
-
-            this.depthSearch(
-                graph,
-                child.id,
-                visited,
-                result
-            );
-
-        }
-
     }
 
-    private collectParents(
-        graph: GraphViewModel,
-        nodeId: number,
-        visited: Set<number>
-    ): void {
+    private collect(graph: GraphViewModel, nodeId: number, direction: Map<number, number[]>, visited: Set<number>): void {
 
-        const parents = this.getParents(
-            graph,
-            nodeId
-        );
-
-        for (const parent of parents) {
-
-            if (!visited.has(parent.id)) {
-
-                visited.add(parent.id);
-
-                this.collectParents(
-                    graph,
-                    parent.id,
-                    visited
-                );
-
+        for (const nextId of direction.get(nodeId) ?? []) {
+            if (!visited.has(nextId)) {
+                visited.add(nextId);
+                this.collect(graph, nextId, direction, visited);
             }
-
         }
-
     }
-
-    private collectChildren(
-        graph: GraphViewModel,
-        nodeId: number,
-        visited: Set<number>
-    ): void {
-
-        const children = this.getChildren(
-            graph,
-            nodeId
-        );
-
-        for (const child of children) {
-
-            if (!visited.has(child.id)) {
-
-                visited.add(child.id);
-
-                this.collectChildren(
-                    graph,
-                    child.id,
-                    visited
-                );
-
-            }
-
-        }
-
-    }
-
 }
