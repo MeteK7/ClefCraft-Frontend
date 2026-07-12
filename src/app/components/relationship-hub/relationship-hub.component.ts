@@ -25,16 +25,22 @@ import {
     RelationshipType
 } from '../../models/board.model';
 import { RelationshipDialogComponent } from '../relationship-dialog/relationship-dialog.component';
+import { RelationshipGraphComponent } from '../relationship-graph/relationship-graph.component';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     selector: 'app-relationship-hub',
     standalone: true,
     imports: [
+        FormsModule,
         CommonModule,
         MatButtonModule,
         MatIconModule,
         MatExpansionModule,
-        RelationshipCardComponent
+        MatButtonToggleModule,
+        RelationshipCardComponent,
+        RelationshipGraphComponent
     ],
     templateUrl: './relationship-hub.component.html',
     styleUrls: ['./relationship-hub.component.css']
@@ -55,7 +61,7 @@ export class RelationshipHubComponent implements OnInit {
     };
 
     loading = false;
-
+    viewMode: 'list' | 'graph' = 'graph';
     readonly RelationshipType = RelationshipType;
 
     constructor(
