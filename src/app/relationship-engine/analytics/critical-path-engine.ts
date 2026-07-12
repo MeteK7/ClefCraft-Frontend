@@ -1,25 +1,23 @@
 import { Injectable } from '@angular/core';
 
 import { GraphNode } from '../visualization/graph-node.model';
-import { GraphEdge } from '../visualization/graph-edge.model';
+import { GraphViewModel } from '../visualization/graph-view-model';
 
 export interface CriticalPathResult {
 
-    /**
-     * Ordered node ids.
-     */
     path: number[];
-
-    /**
-     * Ordered nodes.
-     */
     nodes: GraphNode[];
-
-    /**
-     * Total duration.
-     */
     duration: number;
 
+    /**
+     * Node ids that could not be included because they sit inside a
+     * dependency cycle (Kahn's algorithm never assigns them an order).
+     * The previous version silently ignored these, or — if the WHOLE
+     * graph was cyclic — crashed on an undefined order[0]. Callers
+     * should check this and surface it, typically alongside
+     * CycleDetector's output.
+     */
+    excludedCyclicNodeIds: number[];
 }
 
 @Injectable({
@@ -27,217 +25,107 @@ export interface CriticalPathResult {
 })
 export class CriticalPathEngine {
 
-    /**
-     * Returns the longest dependency chain.
-     */
-    findCriticalPath(
-        nodes: GraphNode[],
-        edges: GraphEdge[]
-    ): CriticalPathResult {
+    /** Returns the longest dependency chain by duration. */
+    findCriticalPath(graph: GraphViewModel): CriticalPathResult {
 
-        if (!nodes.length) {
-
-            return {
-                path: [],
-                nodes: [],
-                duration: 0
-            };
-
+        if (!graph.nodes.length) {
+            return { path: [], nodes: [], duration: 0, excludedCyclicNodeIds: [] };
         }
 
-        const nodeMap = new Map<number, GraphNode>();
-
-        nodes.forEach(node =>
-            nodeMap.set(node.id, node)
-        );
-
-        const incoming = new Map<number, number>();
-
-        const outgoing = new Map<number, number[]>();
-
-        nodes.forEach(node => {
-
-            incoming.set(node.id, 0);
-
-            outgoing.set(node.id, []);
-
-        });
-
-        edges.forEach(edge => {
-
-            outgoing.get(edge.sourceId)?.push(edge.targetId);
-
-            incoming.set(
-                edge.targetId,
-                (incoming.get(edge.targetId) ?? 0) + 1
-            );
-
-        });
+        const remaining = new Map<number, number>();
+        graph.nodes.forEach(n => remaining.set(n.id, (graph.incoming.get(n.id) ?? []).length));
 
         const queue: number[] = [];
-
-        incoming.forEach((count, id) => {
-
-            if (count === 0) {
-
-                queue.push(id);
-
-            }
-
-        });
+        remaining.forEach((count, id) => { if (count === 0) queue.push(id); });
 
         const order: number[] = [];
 
         while (queue.length) {
 
             const current = queue.shift()!;
-
             order.push(current);
 
-            const neighbours =
-                outgoing.get(current) ?? [];
-
-            neighbours.forEach(next => {
-
-                const count =
-                    (incoming.get(next) ?? 0) - 1;
-
-                incoming.set(next, count);
-
+            for (const next of graph.outgoing.get(current) ?? []) {
+                const count = (remaining.get(next) ?? 0) - 1;
+                remaining.set(next, count);
                 if (count === 0) {
-
                     queue.push(next);
-
                 }
+            }
+        }
 
-            });
+        const orderedSet = new Set(order);
+        const excludedCyclicNodeIds = graph.nodes
+            .map(n => n.id)
+            .filter(id => !orderedSet.has(id));
 
+        if (!order.length) {
+            // Every node is part of a cycle — nothing acyclic to report.
+            return { path: [], nodes: [], duration: 0, excludedCyclicNodeIds };
         }
 
         const distance = new Map<number, number>();
-
         const previous = new Map<number, number>();
 
-        nodes.forEach(node => {
-
-            distance.set(node.id, this.duration(node));
-
-        });
+        order.forEach(id => distance.set(id, this.duration(graph.nodeMap.get(id)!)));
 
         order.forEach(id => {
+            for (const next of graph.outgoing.get(id) ?? []) {
 
-            const neighbours =
-                outgoing.get(id) ?? [];
-
-            neighbours.forEach(next => {
-
-                const candidate =
-                    (distance.get(id) ?? 0) +
-                    this.duration(nodeMap.get(next)!);
-
-                if (
-                    candidate >
-                    (distance.get(next) ?? 0)
-                ) {
-
-                    distance.set(next, candidate);
-
-                    previous.set(next, id);
-
+                if (!distance.has(next)) {
+                    // next is excluded (part of a cycle) — skip it.
+                    continue;
                 }
 
-            });
+                const candidate = (distance.get(id) ?? 0) + this.duration(graph.nodeMap.get(next)!);
 
+                if (candidate > (distance.get(next) ?? 0)) {
+                    distance.set(next, candidate);
+                    previous.set(next, id);
+                }
+            }
         });
 
         let endNode = order[0];
-
         order.forEach(id => {
-
-            if (
-                (distance.get(id) ?? 0) >
-                (distance.get(endNode) ?? 0)
-            ) {
-
+            if ((distance.get(id) ?? 0) > (distance.get(endNode) ?? 0)) {
                 endNode = id;
-
             }
-
         });
 
         const path: number[] = [];
-
         let current: number | undefined = endNode;
 
         while (current !== undefined) {
-
             path.unshift(current);
-
             current = previous.get(current);
-
         }
 
         return {
-
             path,
-
-            nodes: path
-                .map(id => nodeMap.get(id)!)
-                .filter(Boolean),
-
-            duration:
-                distance.get(endNode) ?? 0
-
+            nodes: path.map(id => graph.nodeMap.get(id)!).filter(Boolean),
+            duration: distance.get(endNode) ?? 0,
+            excludedCyclicNodeIds
         };
-
     }
 
-    /**
-     * Returns only the ids.
-     */
-    getCriticalIds(
-        nodes: GraphNode[],
-        edges: GraphEdge[]
-    ): number[] {
-
-        return this.findCriticalPath(
-            nodes,
-            edges
-        ).path;
-
+    getCriticalIds(graph: GraphViewModel): number[] {
+        return this.findCriticalPath(graph).path;
     }
 
-    /**
-     * Marks nodes.
-     */
-    markCriticalNodes(
-        nodes: GraphNode[],
-        edges: GraphEdge[]
-    ): GraphNode[] {
+    /** Returns new node objects with critical/highlighted set — does not mutate the input graph. */
+    markCriticalNodes(graph: GraphViewModel): GraphNode[] {
 
-        const critical =
-            new Set(
-                this.getCriticalIds(nodes, edges)
-            );
+        const critical = new Set(this.getCriticalIds(graph));
 
-        return nodes.map(node => ({
+        return graph.nodes.map(node => ({
             ...node,
+            critical: critical.has(node.id),
             highlighted: critical.has(node.id)
         }));
-
     }
 
-    /**
-     * Estimated duration.
-     */
-    private duration(
-        node: GraphNode
-    ): number {
-
-        return node.estimatedHours ??
-               node.storyPoints ??
-               1;
-
+    private duration(node: GraphNode): number {
+        return node.estimatedHours ?? node.storyPoints ?? 1;
     }
-
 }
