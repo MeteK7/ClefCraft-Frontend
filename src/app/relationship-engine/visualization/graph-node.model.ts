@@ -1,5 +1,12 @@
+import { RelationshipType } from '../../models/board.model';
+
 /**
  * Represents one node inside the Relationship Graph.
+ *
+ * This is the ONE GraphNode contract for the whole engine. Every
+ * analytics/graph/visualization file must import this exact type —
+ * do not redeclare a lighter-weight shape elsewhere. That divergence
+ * is what caused the previous version of this engine to not compile.
  *
  * This model is intentionally independent from any UI framework
  * so it can be consumed by:
@@ -17,170 +24,70 @@
 
 export interface GraphNode {
 
-    /**
-     * Board Item Id
-     */
+    /** Board Item Id */
     id: number;
 
-    /**
-     * Display title.
-     */
     title: string;
 
-    /**
-     * Relationship type from parent.
-     *
-     * Undefined for the root node.
-     */
-    relationshipType?: number;
+    /** Relationship type from the root node. Undefined for the root itself. */
+    relationshipType?: RelationshipType;
 
-    /**
-     * Current workflow status.
-     */
     status: string;
-
-    /**
-     * Priority text.
-     */
     priority: string;
-
-    /**
-     * Optional assignee.
-     */
     assignee?: string;
-
-    /**
-     * Optional due date.
-     */
     dueDate?: Date;
 
-    /**
-     * Graph hierarchy depth.
-     *
-     * Root = 0
-     */
+    /** Graph hierarchy depth relative to the root. Root = 0. */
     level: number;
 
-    /**
-     * Parent node id.
-     */
     parentId?: number;
-
-    /**
-     * Child node ids.
-     */
     children: number[];
 
-    /**
-     * Incoming edge ids.
-     */
-    incoming: number[];
+    // ---- Domain fields consumed by analytics engines ----
+    // These must stay in sync with whatever the backend RelationshipCard /
+    // Item payload actually provides. Populate them when building nodes;
+    // engines (Impact, CriticalPath, Score) read them directly.
 
-    /**
-     * Outgoing edge ids.
-     */
-    outgoing: number[];
+    estimatedHours?: number;
+    storyPoints?: number;
+    isMilestone?: boolean;
+    completed?: boolean;
 
-    /**
-     * Layout position.
-     */
+    // ---- Render state ----
+    // Framework-agnostic position/size/color state, shared by any renderer.
+
     x: number;
-
     y: number;
-
-    /**
-     * Render size.
-     */
     width: number;
-
     height: number;
+    radius: number;
+    color?: string;
 
-    /**
-     * Visibility.
-     */
     visible: boolean;
-
-    /**
-     * Selection.
-     */
     selected: boolean;
-
-    /**
-     * Hover state.
-     */
     hovered: boolean;
-
-    /**
-     * Collapsed subtree.
-     */
     collapsed: boolean;
-
-    /**
-     * Highlighted from analytics/navigation.
-     */
     highlighted: boolean;
-
-    /**
-     * Is part of the current critical path.
-     */
     critical: boolean;
-
-    /**
-     * Is currently blocked.
-     */
     blocked: boolean;
-
-    /**
-     * Is inside a dependency cycle.
-     */
     cyclic: boolean;
 
-    /**
-     * Total descendants.
-     */
+    // ---- Computed graph metrics ----
+    // Populated by analytics engines (DependencyEngine, RelationshipScoreEngine,
+    // etc). Treat these as a cache, not hand-authored input.
+
     descendants: number;
-
-    /**
-     * Total ancestors.
-     */
     ancestors: number;
-
-    /**
-     * Number of connected edges.
-     */
     degree: number;
-
-    /**
-     * Number of incoming edges.
-     */
     inDegree: number;
-
-    /**
-     * Number of outgoing edges.
-     */
     outDegree: number;
-
-    /**
-     * Calculated impact score.
-     */
     impactScore: number;
-
-    /**
-     * Calculated relationship score.
-     */
     relationshipScore: number;
 
-    /**
-     * Optional custom data.
-     */
     metadata: Record<string, unknown>;
 }
 
-/**
- * Factory helper.
- *
- * Keeps creation consistent across the entire engine.
- */
+/** Factory helper. Keeps node creation consistent across the entire engine. */
 export class GraphNodeFactory {
 
     static create(
@@ -191,67 +98,46 @@ export class GraphNodeFactory {
     ): GraphNode {
 
         return {
-
             id,
-
             title,
-
             status,
-
             priority,
 
             relationshipType: undefined,
-
             assignee: undefined,
-
             dueDate: undefined,
 
             level: 0,
-
             parentId: undefined,
-
             children: [],
 
-            incoming: [],
-
-            outgoing: [],
+            estimatedHours: undefined,
+            storyPoints: undefined,
+            isMilestone: undefined,
+            completed: undefined,
 
             x: 0,
-
             y: 0,
-
             width: 260,
-
             height: 84,
+            radius: 28,
+            color: undefined,
 
             visible: true,
-
             selected: false,
-
             hovered: false,
-
             collapsed: false,
-
             highlighted: false,
-
             critical: false,
-
             blocked: false,
-
             cyclic: false,
 
             descendants: 0,
-
             ancestors: 0,
-
             degree: 0,
-
             inDegree: 0,
-
             outDegree: 0,
-
             impactScore: 0,
-
             relationshipScore: 0,
 
             metadata: {}
