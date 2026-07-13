@@ -118,7 +118,7 @@ export class RelationshipGraphComponent implements OnChanges {
 
     readonly viewportTransform = computed<string>(() => {
         const v = this.viewport();
-        return `translate(${v.panX}px, ${v.panY}px) scale(${v.zoom})`;
+        return `translate(${v.panX} ${v.panY}) scale(${v.zoom})`;
     });
 
     // ---- pan/drag internal state (not signals — pure interaction bookkeeping) ----

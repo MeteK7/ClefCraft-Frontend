@@ -1,76 +1,317 @@
-<div class="graph-container">
+<div #canvasContainer class="graph-container">
 
-    <svg
-        class="graph-svg"
-        viewBox="-700 -500 1400 1000"
-        preserveAspectRatio="xMidYMid meet">
+    <!-- ===========================================================
+         Toolbar
+         =========================================================== -->
 
-        <!-- Edges -->
+    <div class="graph-toolbar">
 
-        <g class="edges">
+        <button mat-icon-button matTooltip="Zoom In" (click)="zoomIn()">
 
-            <line
-                *ngFor="let edge of graph?.edges; trackBy: trackEdge"
+            <mat-icon>add</mat-icon>
 
-                class="edge"
+        </button>
 
-                [attr.x1]="edgeX1(edge)"
-                [attr.y1]="edgeY1(edge)"
-                [attr.x2]="edgeX2(edge)"
-                [attr.y2]="edgeY2(edge)">
-            </line>
+        <button mat-icon-button matTooltip="Zoom Out" (click)="zoomOut()">
 
-        </g>
+            <mat-icon>remove</mat-icon>
 
-        <!-- Nodes -->
+        </button>
 
-        <g
-            *ngFor="let node of graph?.nodes; trackBy: trackNode">
+        <button mat-icon-button matTooltip="Fit Graph" (click)="fitToView()">
 
-            <rect
+            <mat-icon>fit_screen</mat-icon>
 
-                class="node"
+        </button>
 
-                rx="12"
+        <button mat-icon-button matTooltip="Reset View" (click)="resetView()">
 
-                [attr.x]="nodeX(node)"
-                [attr.y]="nodeY(node)"
-                [attr.width]="nodeWidth"
-                [attr.height]="nodeHeight"
+            <mat-icon>center_focus_strong</mat-icon>
 
-                (click)="clickNode(node)">
-            </rect>
+        </button>
 
-            <text
+        <span class="toolbar-divider"></span>
 
-                class="title"
+        <button mat-icon-button [class.active]="showCriticalPath()" matTooltip="Toggle Critical Path"
+            (click)="toggleCriticalPath()">
 
-                [attr.x]="node.x"
+            <mat-icon>route</mat-icon>
 
-                [attr.y]="node.y-8"
+        </button>
 
-                text-anchor="middle">
+        <button mat-icon-button [class.active]="showLegend()" matTooltip="Toggle Legend" (click)="toggleLegend()">
 
-                #{{node.id}}
+            <mat-icon>legend_toggle</mat-icon>
 
-            </text>
+        </button>
 
-            <text
+    </div>
 
-                class="subtitle"
+    <!-- ===========================================================
+         SVG Workspace
+         =========================================================== -->
 
-                [attr.x]="node.x"
+    <svg #svgRoot class="graph-svg" [attr.viewBox]="'0 0 ' + viewBoxSize + ' ' + viewBoxSize"
+        preserveAspectRatio="xMidYMid meet" (wheel)="onWheel($event)" (pointerdown)="onBackgroundPointerDown($event)"
+        (pointermove)="onBackgroundPointerMove($event)" (pointerup)="onBackgroundPointerUp($event)"
+        (pointercancel)="onBackgroundPointerUp($event)">
 
-                [attr.y]="node.y+14"
+        <defs>
 
-                text-anchor="middle">
+            <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
 
-                {{node.title}}
+                <path d="M0,0 L12,6 L0,12 Z" fill="#7f8c8d">
+                </path>
 
-            </text>
+            </marker>
+
+            <marker id="arrow-critical" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+
+                <path d="M0,0 L12,6 L0,12 Z" fill="#ef5350">
+                </path>
+
+            </marker>
+
+            <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+
+                <path d="M40 0 L0 0 0 40" fill="none" stroke="#2b3440" stroke-width="1">
+
+                </path>
+
+            </pattern>
+
+            <radialGradient id="workspaceFade">
+
+                <stop offset="0%" stop-color="rgba(255,255,255,.04)">
+                </stop>
+
+                <stop offset="100%" stop-color="rgba(0,0,0,.25)">
+                </stop>
+
+            </radialGradient>
+
+            <filter id="nodeShadow">
+
+                <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity=".35">
+
+                </feDropShadow>
+
+            </filter>
+
+            <filter id="selectedGlow">
+
+                <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#42a5f5">
+
+                </feDropShadow>
+
+            </filter>
+
+            <filter id="edgeGlow">
+
+                <feGaussianBlur stdDeviation="2" result="blur" />
+
+                <feMerge>
+
+                    <feMergeNode in="blur" />
+
+                    <feMergeNode in="SourceGraphic" />
+
+                </feMerge>
+
+            </filter>
+
+        </defs>
+
+        <!-- Background -->
+
+        <rect x="-4000" y="-4000" width="8000" height="8000" fill="url(#gridPattern)">
+        </rect>
+
+        <rect x="-4000" y="-4000" width="8000" height="8000" fill="url(#workspaceFade)">
+        </rect>
+
+        <!-- Graph Layer -->
+
+        <g class="graph-layer" [attr.transform]="viewportTransform()" [class.animated]="viewportAnimated()">
+
+            <g class="graph-edges">
+
+                <line *ngFor="let edge of edges(); trackBy: trackEdge" [attr.x1]="nodeAt(edge.sourceId)?.x"
+                    [attr.y1]="nodeAt(edge.sourceId)?.y" [attr.x2]="nodeAt(edge.targetId)?.x"
+                    [attr.y2]="nodeAt(edge.targetId)?.y" [attr.marker-end]="
+            isEdgeCritical(edge)
+                ? 'url(#arrow-critical)'
+                : 'url(#arrow)'
+        " class="graph-edge" [class.dimmed]="isEdgeDimmed(edge)" [class.critical]="isEdgeCritical(edge)"
+                    [class.cyclic]="edge.cyclic">
+
+                </line>
+
+            </g>
+
+            <g class="graph-nodes">
+
+                <foreignObject *ngFor="let node of nodes(); trackBy: trackNode" [attr.x]="node.x - node.width / 2"
+                    [attr.y]="node.y - node.height / 2" [attr.width]="node.width" [attr.height]="node.height"
+                    class="graph-node" [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
+                    [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node,$event)"
+                    (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
+
+                    <div xmlns="http://www.w3.org/1999/xhtml" class="node-card">
+
+                        <!-- =========================
+         Status strip
+         ========================= -->
+
+                        <div class="status-strip" [class.center]="isCenter(node)" [class.critical]="node.critical"
+                            [class.cyclic]="node.cyclic">
+
+                        </div>
+
+                        <!-- =========================
+         Header
+         ========================= -->
+
+                        <div class="node-header">
+
+                            <div class="header-left">
+
+                                <div class="node-id">
+
+                                    #{{node.id}}
+
+                                </div>
+
+                            </div>
+
+                            <div class="header-right">
+
+                                <span *ngIf="node.critical" class="chip critical">
+
+                                    Critical
+
+                                </span>
+
+                                <span *ngIf="node.cyclic" class="chip warning">
+
+                                    Cycle
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                        <!-- =========================
+         Title
+         ========================= -->
+
+                        <div class="node-title" [title]="node.title">
+
+                            {{truncateTitle(node.title)}}
+
+                        </div>
+
+                        <!-- =========================
+         Score
+         ========================= -->
+
+                        <div class="score-container">
+
+                            <div class="score-label">
+
+                                Relationship Score
+
+                                <strong>
+
+                                    {{node.relationshipScore}}
+
+                                </strong>
+
+                            </div>
+
+                            <div class="score-bar">
+
+                                <div class="score-fill" [style.width.%]="node.relationshipScore">
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- =========================
+         Footer
+         ========================= -->
+
+                        <div class="node-footer">
+
+                            <div class="footer-left">
+
+                                <span>
+
+                                    {{node.inDegree}}
+
+                                </span>
+
+                                <span class="footer-label">
+
+                                    In
+
+                                </span>
+
+                                <span>
+
+                                    {{node.outDegree}}
+
+                                </span>
+
+                                <span class="footer-label">
+
+                                    Out
+
+                                </span>
+
+                            </div>
+
+                            <button *ngIf="!isCenter(node)" class="expand-button" [disabled]="isExpanding(node.id)"
+                                (click)="onExpandClick(node,$event)">
+
+                                {{isExpanding(node.id) ? '…' : '+'}}
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </foreignObject>
+
+            </g>
 
         </g>
 
     </svg>
+
+    <!-- ===========================================================
+         Legend
+         =========================================================== -->
+
+    <div class="graph-legend" *ngIf="showLegend()">
+
+        <div class="legend-row" *ngFor="let item of legend">
+
+            <span class="legend-color" [style.background]="item.color">
+            </span>
+
+            <span>
+
+                {{item.label}}
+
+            </span>
+
+        </div>
+
+    </div>
 
 </div>
