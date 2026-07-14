@@ -1,4 +1,5 @@
 import {
+    ChangeDetectorRef,
     Component,
     EventEmitter,
     Input,
@@ -61,12 +62,13 @@ export class RelationshipHubComponent implements OnInit {
     };
 
     loading = false;
-    viewMode: 'list' | 'graph' = 'graph';
+    viewMode: 'list' | 'graph' = 'list';
     readonly RelationshipType = RelationshipType;
 
     constructor(
         private boardService: BoardService,
-        private dialog: MatDialog
+        private dialog: MatDialog,
+        private cdr: ChangeDetectorRef
     ) { }
 
     ngOnInit(): void {
@@ -74,28 +76,25 @@ export class RelationshipHubComponent implements OnInit {
     }
 
     loadRelationships(): void {
-
         this.loading = true;
+        this.cdr.detectChanges();
 
         this.boardService
             .getRelationships(this.itemId)
             .subscribe({
-
                 next: hub => {
-
+                    hub.groups.forEach(g => {
+                        g.expanded = g.items.length > 0;
+                    });
                     this.hub = hub;
                     this.loading = false;
-
+                    this.cdr.detectChanges();
                 },
-
                 error: () => {
-
                     this.loading = false;
-
+                    this.cdr.detectChanges();
                 }
-
             });
-
     }
 
     addRelationship(): void {

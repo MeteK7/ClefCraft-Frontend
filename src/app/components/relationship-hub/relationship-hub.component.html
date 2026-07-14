@@ -52,8 +52,7 @@
 
         <mat-accordion *ngIf="viewMode==='list'">
 
-            <mat-expansion-panel *ngFor="let group of hub.groups; trackBy: trackGroup"
-                [expanded]="group.items.length>0">
+            <mat-expansion-panel *ngFor="let group of hub.groups; trackBy: trackGroup" [expanded]="group.expanded">
 
                 <mat-expansion-panel-header>
 
