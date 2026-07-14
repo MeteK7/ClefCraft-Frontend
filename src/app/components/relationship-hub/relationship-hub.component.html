@@ -4,10 +4,7 @@
 
         <h3>Relationships</h3>
 
-        <button
-            mat-raised-button
-            color="primary"
-            (click)="addRelationship()">
+        <button mat-raised-button color="primary" (click)="addRelationship()">
 
             <mat-icon>add_link</mat-icon>
 
@@ -15,55 +12,79 @@
 
         </button>
 
+        <div class="view-selector">
+
+            <mat-button-toggle-group [(ngModel)]="viewMode">
+
+                <mat-button-toggle value="graph">
+
+                    <mat-icon>hub</mat-icon>
+
+                    Graph
+
+                </mat-button-toggle>
+
+                <mat-button-toggle value="list">
+
+                    <mat-icon>view_list</mat-icon>
+
+                    List
+
+                </mat-button-toggle>
+
+            </mat-button-toggle-group>
+
+        </div>
+
     </div>
 
-    <div
-        *ngIf="loading"
-        class="loading">
+    <div *ngIf="loading" class="loading">
 
         Loading...
 
     </div>
 
-    <mat-accordion>
+    <ng-container *ngIf="!loading">
 
-        <mat-expansion-panel
-            *ngFor="let group of hub.groups; trackBy: trackGroup"
-            [expanded]="group.items.length > 0">
+        <app-relationship-graph *ngIf="viewMode==='graph'" [hub]="hub" [rootItemId]="itemId" (openItem)="open($event)">
 
-            <mat-expansion-panel-header>
+        </app-relationship-graph>
 
-                <mat-panel-title>
+        <mat-accordion *ngIf="viewMode==='list'">
 
-                    {{ group.name }}
+            <mat-expansion-panel *ngFor="let group of hub.groups; trackBy: trackGroup"
+                [expanded]="group.items.length>0">
 
-                </mat-panel-title>
+                <mat-expansion-panel-header>
 
-                <mat-panel-description>
+                    <mat-panel-title>
 
-                    {{ group.items.length }}
+                        {{group.name}}
 
-                </mat-panel-description>
+                    </mat-panel-title>
 
-            </mat-expansion-panel-header>
+                    <mat-panel-description>
 
-            <app-relationship-card
-                *ngFor="let relationship of group.items"
-                [relationship]="relationship"
-                (open)="open($event)"
-                (delete)="deleteRelationship($event)">
-            </app-relationship-card>
+                        {{group.items.length}}
 
-            <div
-                class="empty"
-                *ngIf="group.items.length === 0">
+                    </mat-panel-description>
 
-                No relationships.
+                </mat-expansion-panel-header>
 
-            </div>
+                <app-relationship-card *ngFor="let relationship of group.items" [relationship]="relationship"
+                    (open)="open($event)" (delete)="deleteRelationship($event)">
 
-        </mat-expansion-panel>
+                </app-relationship-card>
 
-    </mat-accordion>
+                <div class="empty" *ngIf="group.items.length===0">
 
+                    No relationships.
+
+                </div>
+
+            </mat-expansion-panel>
+
+        </mat-accordion>
+
+    </ng-container>
 </div>

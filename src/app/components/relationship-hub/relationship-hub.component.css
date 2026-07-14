@@ -33,3 +33,21 @@
     padding:12px;
 
 }
+
+.view-selector{
+
+    display:flex;
+
+    justify-content:flex-end;
+
+    margin-top:12px;
+
+    margin-bottom:20px;
+
+}
+
+.view-selector mat-button-toggle-group{
+
+    border-radius:10px;
+
+}
