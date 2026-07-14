@@ -109,7 +109,7 @@
 
             <g class="graph-nodes">
                 <foreignObject *ngFor="let node of nodes(); trackBy: trackNode"
-                    [attr.x]="node.x - node.width / 2" [attr.y]="node.y - node.height / 2"
+                    [attr.x]="node.x" [attr.y]="node.y"
                     [attr.width]="node.width" [attr.height]="node.height" class="graph-node-container"
                     [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
                     [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node, $event)"

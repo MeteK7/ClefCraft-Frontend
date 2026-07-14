@@ -76,6 +76,8 @@ export class RelationshipGraphComponent implements OnChanges {
 
     @Output() openItem = new EventEmitter<number>();
 
+    highlightedNode: number | null = null;
+
     // ---- template refs ----
     readonly svgRootRef = viewChild<ElementRef<SVGSVGElement>>('svgRoot');
     readonly canvasContainerRef = viewChild<ElementRef<HTMLDivElement>>('canvasContainer');
@@ -248,16 +250,6 @@ export class RelationshipGraphComponent implements OnChanges {
             x: event.clientX - rect.left,
             y: event.clientY - rect.top
         });
-    }
-
-    // =====================================================================
-    // Interaction: click / select / open / expand
-    // =====================================================================
-
-    onNodeClick(node: GraphNode): void {
-        this.selectedNodeId.set(node.id);
-        if (this.isCenter(node)) return;
-        this.openItem.emit(node.id);
     }
 
     /**
@@ -602,4 +594,17 @@ export class RelationshipGraphComponent implements OnChanges {
                 : null
         );
     }
+
+    onNodeHover(nodeId: number) {
+        this.highlightedNode = nodeId;
+    }
+
+    onNodeClick(node: GraphNode): void {
+        this.selectedNodeId.set(node.id);
+    }
+
+    isEdgeConnected(edge: GraphEdge, nodeId: number): boolean {
+        return edge.sourceId === nodeId || edge.targetId === nodeId;
+    }
+
 }
