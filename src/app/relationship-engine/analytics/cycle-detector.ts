@@ -1,3 +1,4 @@
+import { Injectable } from '@angular/core';
 import { GraphEdge } from '../visualization/graph-edge.model';
 import { GraphNode } from '../visualization/graph-node.model';
 import { GraphViewModel } from '../visualization/graph-view-model';
@@ -11,6 +12,10 @@ export interface RelationshipCycle {
 
     size: number;
 }
+
+@Injectable({
+    providedIn: 'root'
+})
 
 export class CycleDetector {
 
