@@ -82,6 +82,7 @@ export interface RelationshipGroup {
     relationType: RelationshipType;
     name: string;
     items: RelationshipCard[];
+    expanded?: boolean;
 }
 
 export interface RelationshipHub {
