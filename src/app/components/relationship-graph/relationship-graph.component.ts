@@ -3,6 +3,8 @@ import {
     Component,
     ElementRef,
     EventEmitter,
+    HostBinding,
+    HostListener,
     Input,
     OnChanges,
     Output,
@@ -121,6 +123,21 @@ export class RelationshipGraphComponent implements OnChanges {
 
     readonly showLegend = signal<boolean>(true);
     readonly showCriticalPath = signal<boolean>(false);
+
+    /**
+     * When true, :host picks up the `.graph-maximized` CSS class (see
+     * @HostBinding below), which switches the component from its normal
+     * 650px-tall box to a fixed overlay covering the full viewport —
+     * this is what lets the graph escape the item-details dialog's
+     * cramped bounds. Purely a view-state signal; it has no effect on
+     * graph/layout data.
+     */
+    readonly isMaximized = signal<boolean>(false);
+
+    @HostBinding('class.graph-maximized')
+    get graphMaximizedClass(): boolean {
+        return this.isMaximized();
+    }
 
     readonly cycleSummary = signal<RelationshipCycle[]>([]);
     readonly criticalPathSummary = signal<{ count: number; duration: number } | null>(null);
@@ -499,6 +516,26 @@ export class RelationshipGraphComponent implements OnChanges {
 
     toggleCriticalPath(): void {
         this.showCriticalPath.update(v => !v);
+    }
+
+    toggleMaximize(): void {
+        this.isMaximized.update(v => !v);
+
+        // The SVG viewBox is a fixed square, so preserveAspectRatio
+        // already keeps it valid at any container size without this —
+        // but re-fitting after a real size change (650px box -> full
+        // viewport, or back) makes the newly available space actually
+        // useful instead of leaving the same small framing centered in
+        // a much bigger box. Deferred a frame so the CSS class change
+        // has actually resized the container before we measure/zoom.
+        requestAnimationFrame(() => this.fitToView());
+    }
+
+    @HostListener('window:keydown.escape')
+    onEscapeKey(): void {
+        if (this.isMaximized()) {
+            this.toggleMaximize();
+        }
     }
 
     // =====================================================================

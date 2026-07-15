@@ -27,6 +27,12 @@
         <button mat-icon-button [color]="showLegend() ? 'primary' : null" matTooltip="Toggle Legend" (click)="toggleLegend()">
             <mat-icon>legend_toggle</mat-icon>
         </button>
+
+        <span class="toolbar-divider"></span>
+
+        <button mat-icon-button [matTooltip]="isMaximized() ? 'Restore' : 'Maximize'" (click)="toggleMaximize()">
+            <mat-icon>{{ isMaximized() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+        </button>
     </div>
 
     <div class="cycle-warning-banner" *ngIf="hasCycles()">
