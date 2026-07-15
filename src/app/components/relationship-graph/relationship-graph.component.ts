@@ -44,22 +44,30 @@ interface LegendEntry {
     color: string;
 }
 
+/** A ready-to-render edge line, already clipped to both nodes' card boundaries (not their centers). */
+interface RenderableEdge {
+    edge: GraphEdge;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+}
+
 /**
  * Flagship relationship graph.
  *
  * This component owns NO graph algorithms. Every piece of intelligence
  * on screen — cycle warnings, the critical path, node risk sizing, the
  * hover impact preview — is a direct call into the existing analytics
- * engines. This component's only job is: assemble (via the builder),
- * annotate (via the engines), and render.
+ * engines. Layout, including multi-hop expansion, is entirely owned by
+ * GraphLayoutEngine now: this component no longer overrides node
+ * positions after the fact (see graph-layout-engine.ts for why the old
+ * "arc around the expansion parent" patch was removed rather than
+ * kept — it's not that it was wrong, it's that the layout engine can
+ * now do the real thing for every node, not just the first hop).
  *
- * Known limitation (intentional, see PR notes): GraphLayoutEngine only
- * positions a node's DIRECT relationship to the root. When a node is
- * expanded two-plus hops out, this component overrides the layout
- * engine's placement for the newly-added nodes with a simple arc
- * around their expansion parent (see positionAroundParent). This is a
- * pragmatic fix, not a real multi-hop layout algorithm — a proper
- * force-directed/hierarchical layout is out of scope for this pass.
+ * This component's job is: assemble (via the builder), annotate (via
+ * the engines), lay out (via the layout engine), and render.
  */
 @Component({
     selector: 'app-relationship-graph',
@@ -86,6 +94,9 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly viewBoxSize = 800;
     readonly minZoom = 0.2;
     readonly maxZoom = 3;
+
+    /** Extra gap (world units) beyond a card's edge before an arrowhead is drawn, so the tip is visible instead of hidden under the target card. */
+    private readonly arrowGap = 6;
 
     readonly legend: LegendEntry[] = [
         { type: RelationshipType.Parent, label: 'Parent', color: '#1976d2' },
@@ -117,6 +128,34 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly nodes = computed<GraphNode[]>(() => this.graph()?.nodes ?? []);
     readonly edges = computed<GraphEdge[]>(() => this.graph()?.edges ?? []);
     readonly hasCycles = computed<boolean>(() => this.cycleSummary().length > 0);
+
+    /**
+     * Edge lines clipped to each endpoint's card boundary rather than
+     * its center. Computed once per graph/position change instead of
+     * being recalculated per template binding (x1/y1/x2/y2 would each
+     * have re-derived it independently otherwise).
+     */
+    readonly renderableEdges = computed<RenderableEdge[]>(() => {
+
+        const graph = this.graph();
+        if (!graph) return [];
+
+        const lines: RenderableEdge[] = [];
+
+        for (const edge of graph.edges) {
+
+            const source = graph.nodeMap.get(edge.sourceId);
+            const target = graph.nodeMap.get(edge.targetId);
+            if (!source || !target) continue;
+
+            const start = this.clipToRect(source, target.x, target.y, 0);
+            const end = this.clipToRect(target, source.x, source.y, this.arrowGap);
+
+            lines.push({ edge, x1: start.x, y1: start.y, x2: end.x, y2: end.y });
+        }
+
+        return lines;
+    });
 
     readonly viewportTransform = computed<string>(() => {
         const v = this.viewport();
@@ -153,6 +192,16 @@ export class RelationshipGraphComponent implements OnChanges {
         return this.graph()?.nodeMap.get(nodeId);
     }
 
+    /** foreignObject x — node.x is the card's CENTER, foreignObject wants a top-left corner. */
+    nodeLeft(node: GraphNode): number {
+        return node.x - node.width / 2;
+    }
+
+    /** foreignObject y — same corner correction as nodeLeft. */
+    nodeTop(node: GraphNode): number {
+        return node.y - node.height / 2;
+    }
+
     isCenter(node: GraphNode): boolean {
         return node.id === this.rootItemId;
     }
@@ -185,12 +234,13 @@ export class RelationshipGraphComponent implements OnChanges {
 
     /**
      * Visual radius including a risk bump: higher RelationshipScoreEngine
-     * score -> visibly larger node, up to +16px. This is the "importance"
-     * signal the previous renderer never surfaced.
+     * score -> visibly larger node, up to +16px. Used for bounding-box
+     * math (fitToView/focusOnNodes) — the card itself is rectangular, so
+     * this is a conservative circular approximation, not the render size.
      */
     visualRadius(node: GraphNode): number {
         const bump = (node.relationshipScore / 100) * 16;
-        return node.radius + bump;
+        return Math.max(node.width, node.height) / 2 + bump;
     }
 
     truncateTitle(title: string): string {
@@ -205,8 +255,8 @@ export class RelationshipGraphComponent implements OnChanges {
         return node.id;
     }
 
-    trackEdge(_: number, edge: GraphEdge): number {
-        return edge.id;
+    trackEdge(_: number, line: RenderableEdge): number {
+        return line.edge.id;
     }
 
     // =====================================================================
@@ -255,7 +305,11 @@ export class RelationshipGraphComponent implements OnChanges {
     /**
      * Pulls this node's own relationships in and merges them into the
      * graph in place — the path from a one-hop star to a real multi-hop
-     * graph. See the class-level doc comment for the layout caveat.
+     * graph. GraphLayoutEngine.layout() re-derives positions for the
+     * WHOLE graph from the BFS tree, so every node (not just the newly
+     * added ones) ends up with a position consistent with the same
+     * single layout rule — there is no separate "expanded node"
+     * placement path anymore.
      */
     onExpandClick(node: GraphNode, event: MouseEvent): void {
 
@@ -266,20 +320,11 @@ export class RelationshipGraphComponent implements OnChanges {
 
         this.expandingNodeId.set(node.id);
 
-        const beforeIds = new Set(graph.nodes.map(n => n.id));
-
         this.boardService.getRelationships(node.id).subscribe({
             next: hub => {
 
                 const expanded = this.builder.expand(graph, node.id, hub);
                 this.layoutEngine.layout(expanded);
-
-                const parent = expanded.nodeMap.get(node.id);
-                const newNodes = expanded.nodes.filter(n => !beforeIds.has(n.id));
-
-                if (parent && newNodes.length) {
-                    this.positionAroundParent(parent, newNodes);
-                }
 
                 this.applyAnalytics(expanded);
 
@@ -503,27 +548,46 @@ export class RelationshipGraphComponent implements OnChanges {
     }
 
     /**
-     * Arranges newly-expanded nodes in an arc around the node they were
-     * expanded from, facing outward from the root. This overrides
-     * GraphLayoutEngine's placement for these specific nodes — see the
-     * class-level doc comment for why.
+     * Finds where the line from `node`'s center toward (towardX, towardY)
+     * crosses `node`'s own rectangular boundary, optionally pushed
+     * `gap` units further out. This replaces the old fixed marker
+     * refX="28" offset, which assumed a small circular node — on a
+     * ~220x108 rectangular card that fixed offset landed the arrowhead
+     * underneath the opaque card instead of at its visible edge.
      */
-    private positionAroundParent(parent: GraphNode, newNodes: GraphNode[]): void {
+    private clipToRect(
+        node: GraphNode,
+        towardX: number,
+        towardY: number,
+        gap: number
+    ): { x: number; y: number } {
 
-        const radius = 140 + Math.min(newNodes.length * 4, 120);
-        const outwardAngle = (parent.x !== 0 || parent.y !== 0)
-            ? Math.atan2(parent.y, parent.x)
-            : 0;
+        const dx = towardX - node.x;
+        const dy = towardY - node.y;
 
-        const spread = Math.PI * 0.8;
-        const start = outwardAngle - spread / 2;
-        const step = newNodes.length > 1 ? spread / (newNodes.length - 1) : 0;
+        if (dx === 0 && dy === 0) {
+            return { x: node.x, y: node.y };
+        }
 
-        newNodes.forEach((node, index) => {
-            const angle = newNodes.length > 1 ? start + step * index : outwardAngle;
-            node.x = parent.x + Math.cos(angle) * radius;
-            node.y = parent.y + Math.sin(angle) * radius;
-        });
+        const halfW = node.width / 2;
+        const halfH = node.height / 2;
+
+        const scaleX = dx !== 0 ? halfW / Math.abs(dx) : Infinity;
+        const scaleY = dy !== 0 ? halfH / Math.abs(dy) : Infinity;
+        const scale = Math.min(scaleX, scaleY);
+
+        const boundaryX = node.x + dx * scale;
+        const boundaryY = node.y + dy * scale;
+
+        if (gap === 0) {
+            return { x: boundaryX, y: boundaryY };
+        }
+
+        const length = Math.hypot(dx, dy);
+        const normX = dx / length;
+        const normY = dy / length;
+
+        return { x: boundaryX + normX * gap, y: boundaryY + normY * gap };
     }
 
     private rebuild(): void {
