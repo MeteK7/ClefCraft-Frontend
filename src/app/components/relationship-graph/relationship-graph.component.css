@@ -22,6 +22,15 @@
   pointer-events: none;
 }
 
+/*
+  Edges are intentionally not individually interactive — hover
+  highlighting is driven by node hover (see isEdgeDimmed in the
+  component), not by hovering the line itself. There used to be a
+  `.graph-edge:hover` rule here that could never fire, because
+  pointer-events:none on the parent .graph-edges group blocks pointer
+  events for every descendant that doesn't explicitly opt back in.
+  Removed rather than left in as dead code.
+*/
 .graph-edge {
   stroke: #9aa0a6;
   stroke-linecap: round;
@@ -30,12 +39,6 @@
   fill: none;
   opacity: 0.85;
   transition: opacity .25s ease, stroke .25s ease, stroke-width .25s ease;
-}
-
-.graph-edge:hover {
-  stroke: #42a5f5;
-  stroke-width: 3;
-  opacity: 1;
 }
 
 .graph-edge.dimmed {
@@ -56,25 +59,29 @@
   pointer-events: auto;
 }
 
-.graph-node {
-  filter: url(#nodeShadow);
+.graph-node-container {
   overflow: visible;
-  transition: transform .18s ease, opacity .18s ease;
 }
 
-.graph-node.dimmed {
-  opacity: .25;
-}
-
-.graph-node.selected {
-  z-index: 10;
+/*
+  .selected sets a higher paint-order position isn't actually possible
+  via z-index in SVG (SVG 1.1/2 paints strictly in document order,
+  z-index has no effect on non-CSS-containing-block SVG elements in
+  the browsers this app targets) — the previous z-index:10 here did
+  nothing. A selected node visually "coming to front" would require
+  re-ordering it in the DOM (e.g. via *ngFor sorting selected-last) or
+  moving to an HTML/CSS-based renderer instead of raw SVG. Left as a
+  known limitation rather than shipping a rule that silently no-ops.
+*/
+.graph-node-container.selected .node-card {
   transform: scale(1.05);
 }
 
 .node-card {
   position: relative;
-  width: 220px;
-  min-height: 90px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   overflow: hidden;
   display: flex;
   flex-direction: column;
