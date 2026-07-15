@@ -27,6 +27,12 @@
         <button mat-icon-button [color]="showLegend() ? 'primary' : null" matTooltip="Toggle Legend" (click)="toggleLegend()">
             <mat-icon>legend_toggle</mat-icon>
         </button>
+
+        <span class="toolbar-divider"></span>
+
+        <button mat-icon-button [matTooltip]="isMaximized() ? 'Restore' : 'Maximize'" (click)="toggleMaximize()">
+            <mat-icon>{{ isMaximized() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+        </button>
     </div>
 
     <div class="cycle-warning-banner" *ngIf="hasCycles()">
@@ -57,11 +63,11 @@
         (pointercancel)="onBackgroundPointerUp($event)">
 
         <defs>
-            <marker id="arrow" markerWidth="10" markerHeight="10" refX="28" refY="5" orient="auto-start-reverse">
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
                 <path d="M0,0 L10,5 L0,10 Z" fill="#90a4ae"></path>
             </marker>
 
-            <marker id="arrow-critical" markerWidth="10" markerHeight="10" refX="28" refY="5" orient="auto-start-reverse">
+            <marker id="arrow-critical" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
                 <path d="M0,0 L10,5 L0,10 Z" fill="#e53935"></path>
             </marker>
 
@@ -96,20 +102,27 @@
 
         <g class="graph-layer" [attr.transform]="viewportTransform()" [class.animated]="viewportAnimated()">
 
+            <!--
+                Edge lines come from renderableEdges(), not edges() + raw node
+                coordinates: each line is pre-clipped to both endpoints' card
+                boundaries (see clipToRect in the component). Rendering
+                node.x/node.y directly here used to draw every line into the
+                dead center of each card, hiding the arrowhead entirely.
+            -->
             <g class="graph-edges">
-                <g *ngFor="let edge of edges(); trackBy: trackEdge">
-                    <line [attr.x1]="nodeAt(edge.sourceId)?.x" [attr.y1]="nodeAt(edge.sourceId)?.y"
-                        [attr.x2]="nodeAt(edge.targetId)?.x" [attr.y2]="nodeAt(edge.targetId)?.y"
-                        [attr.marker-end]="isEdgeCritical(edge) ? 'url(#arrow-critical)' : 'url(#arrow)'"
-                        class="graph-edge" [class.dimmed]="isEdgeDimmed(edge)"
-                        [class.critical]="isEdgeCritical(edge)" [class.cyclic]="edge.cyclic">
+                <g *ngFor="let line of renderableEdges(); trackBy: trackEdge">
+                    <line [attr.x1]="line.x1" [attr.y1]="line.y1"
+                        [attr.x2]="line.x2" [attr.y2]="line.y2"
+                        [attr.marker-end]="isEdgeCritical(line.edge) ? 'url(#arrow-critical)' : 'url(#arrow)'"
+                        class="graph-edge" [class.dimmed]="isEdgeDimmed(line.edge)"
+                        [class.critical]="isEdgeCritical(line.edge)" [class.cyclic]="line.edge.cyclic">
                     </line>
                 </g>
             </g>
 
             <g class="graph-nodes">
                 <foreignObject *ngFor="let node of nodes(); trackBy: trackNode"
-                    [attr.x]="node.x" [attr.y]="node.y"
+                    [attr.x]="nodeLeft(node)" [attr.y]="nodeTop(node)"
                     [attr.width]="node.width" [attr.height]="node.height" class="graph-node-container"
                     [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
                     [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node, $event)"

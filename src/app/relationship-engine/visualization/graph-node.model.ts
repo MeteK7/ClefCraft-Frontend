@@ -1,13 +1,6 @@
 import { RelationshipType } from '../../models/board.model';
 
 /**
- * Represents one node inside the Relationship Graph.
- *
- * This is the ONE GraphNode contract for the whole engine. Every
- * analytics/graph/visualization file must import this exact type —
- * do not redeclare a lighter-weight shape elsewhere. That divergence
- * is what caused the previous version of this engine to not compile.
- *
  * This model is intentionally independent from any UI framework
  * so it can be consumed by:
  *
@@ -55,6 +48,8 @@ export interface GraphNode {
 
     // ---- Render state ----
     // Framework-agnostic position/size/color state, shared by any renderer.
+    // x/y are the node's CENTER, not a corner — every consumer (layout
+    // engine, edge-line math, foreignObject placement) must agree on that.
 
     x: number;
     y: number;
@@ -90,6 +85,10 @@ export interface GraphNode {
 /** Factory helper. Keeps node creation consistent across the entire engine. */
 export class GraphNodeFactory {
 
+    /** Single source of truth for default card size — CSS reads 100% of this via the foreignObject. */
+    static readonly DEFAULT_WIDTH = 220;
+    static readonly DEFAULT_HEIGHT = 108;
+
     static create(
         id: number,
         title: string,
@@ -118,8 +117,8 @@ export class GraphNodeFactory {
 
             x: 0,
             y: 0,
-            width: 260,
-            height: 84,
+            width: GraphNodeFactory.DEFAULT_WIDTH,
+            height: GraphNodeFactory.DEFAULT_HEIGHT,
             radius: 28,
             color: undefined,
 

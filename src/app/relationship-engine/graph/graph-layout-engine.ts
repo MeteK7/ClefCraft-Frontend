@@ -1,114 +1,155 @@
 import { Injectable } from '@angular/core';
 
 import { GraphViewModel } from '../visualization/graph-view-model';
-import { GraphNode } from '../visualization/graph-node.model';
-import { GraphEdge } from '../visualization/graph-edge.model';
-
-import { RelationshipType } from '../../models/board.model';
 
 @Injectable({
     providedIn: 'root'
 })
 export class GraphLayoutEngine {
 
-    readonly centerX = 0;
-    readonly centerY = 0;
-    readonly ringDistance = 220;
+    /** Radial distance added per hop away from the root, before crowding adjustments. */
+    private readonly baseRingSpacing = 260;
+
+    /** Minimum center-to-center spacing to keep between sibling cards sharing a ring. */
+    private readonly minSiblingSpacing = 260;
 
     layout(graph: GraphViewModel): GraphViewModel {
 
-        const center = graph.nodeMap.get(graph.rootNodeId);
-
-        if (!center) {
+        const root = graph.nodeMap.get(graph.rootNodeId);
+        if (!root) {
             return graph;
         }
 
-        center.x = this.centerX;
-        center.y = this.centerY;
+        root.x = 0;
+        root.y = 0;
 
-        const grouped = this.groupEdges(graph);
+        const tree = this.buildSpanningTree(graph);
+        const subtreeWeight = this.computeSubtreeWeights(tree, graph.rootNodeId);
 
-        this.layoutGroup(grouped.parents, graph.nodes, -90);
-        this.layoutGroup(grouped.dependsOn, graph.nodes, 0);
-        this.layoutGroup(grouped.blocks, graph.nodes, 90);
-        this.layoutGroup(grouped.duplicatesAndSplits, graph.nodes, 180);
-        this.layoutOrbit(grouped.related, graph.nodes);
+        this.placeChildren(graph, tree, subtreeWeight, graph.rootNodeId, 0, Math.PI * 2, 1);
+        this.placeUnreachableNodes(graph, tree);
 
         return graph;
     }
 
-    /**
-     * Groups edges by the RelationshipType values that actually exist on
-     * the enum (Parent, Blocks, DependsOn, Related, Duplicate, SplitFrom).
-     * The previous version matched against Child/Dependency/BlockedBy,
-     * none of which exist — those edges fell through every case and the
-     * corresponding nodes never got positioned, leaving them stacked on
-     * top of the center node.
-     */
-    private groupEdges(graph: GraphViewModel) {
+    private buildSpanningTree(graph: GraphViewModel): Map<number, number[]> {
 
-        return {
+        const children = new Map<number, number[]>();
+        const visited = new Set<number>([graph.rootNodeId]);
+        const queue: number[] = [graph.rootNodeId];
 
-            parents: graph.edges.filter(x => x.relationType === RelationshipType.Parent),
+        while (queue.length) {
 
-            dependsOn: graph.edges.filter(x => x.relationType === RelationshipType.DependsOn),
+            const current = queue.shift()!;
+            const neighborIds = [...(graph.adjacency.get(current) ?? [])];
 
-            blocks: graph.edges.filter(x => x.relationType === RelationshipType.Blocks),
+            neighborIds.sort((a, b) => this.edgeTypeRank(graph, current, a) - this.edgeTypeRank(graph, current, b));
 
-            duplicatesAndSplits: graph.edges.filter(x =>
-                x.relationType === RelationshipType.Duplicate ||
-                x.relationType === RelationshipType.SplitFrom
-            ),
+            const kids: number[] = [];
 
-            related: graph.edges.filter(x => x.relationType === RelationshipType.Related)
-        };
-    }
-
-    private layoutGroup(edges: GraphEdge[], nodes: GraphNode[], direction: number) {
-
-        if (edges.length === 0) {
-            return;
-        }
-
-        const spacing = 60;
-        const start = -((edges.length - 1) * spacing) / 2;
-
-        edges.forEach((edge, index) => {
-
-            const node = nodes.find(x => x.id === edge.targetId);
-            if (!node) return;
-
-            const offset = start + index * spacing;
-            const radians = direction * Math.PI / 180;
-
-            node.x = Math.cos(radians) * this.ringDistance;
-            node.y = Math.sin(radians) * this.ringDistance;
-
-            if (direction === -90 || direction === 90) {
-                node.x += offset;
-            } else {
-                node.y += offset;
+            for (const neighborId of neighborIds) {
+                if (!visited.has(neighborId)) {
+                    visited.add(neighborId);
+                    kids.push(neighborId);
+                    queue.push(neighborId);
+                }
             }
-        });
+
+            children.set(current, kids);
+        }
+
+        return children;
     }
 
-    private layoutOrbit(edges: GraphEdge[], nodes: GraphNode[]) {
+    private edgeTypeRank(graph: GraphViewModel, a: number, b: number): number {
+        const edge = (graph.outgoingEdges.get(a) ?? []).find(e => e.targetId === b)
+            ?? (graph.incomingEdges.get(a) ?? []).find(e => e.sourceId === b);
+        return edge?.relationType ?? 0;
+    }
 
-        if (!edges.length) {
+    /** Leaf count of each node's subtree — nodes with no children weigh 1. Drives proportional sector sizing. */
+    private computeSubtreeWeights(tree: Map<number, number[]>, rootId: number): Map<number, number> {
+
+        const weights = new Map<number, number>();
+
+        const visit = (id: number): number => {
+
+            const kids = tree.get(id) ?? [];
+
+            if (!kids.length) {
+                weights.set(id, 1);
+                return 1;
+            }
+
+            const total = kids.reduce((sum, kidId) => sum + visit(kidId), 0);
+            weights.set(id, total);
+            return total;
+        };
+
+        visit(rootId);
+        return weights;
+    }
+
+    private placeChildren(
+        graph: GraphViewModel,
+        tree: Map<number, number[]>,
+        subtreeWeight: Map<number, number>,
+        parentId: number,
+        startAngle: number,
+        endAngle: number,
+        level: number
+    ): void {
+
+        const kids = tree.get(parentId) ?? [];
+        if (!kids.length) {
             return;
         }
 
-        const angleStep = (Math.PI * 2) / edges.length;
+        const sectorSpan = endAngle - startAngle;
+        const totalWeight = kids.reduce((sum, id) => sum + (subtreeWeight.get(id) ?? 1), 0);
 
-        edges.forEach((edge, index) => {
+        const idealRadius = level * this.baseRingSpacing;
+        const circumferenceNeeded = kids.length * this.minSiblingSpacing;
+        const radiusNeededForSpacing = sectorSpan > 0 ? circumferenceNeeded / sectorSpan : idealRadius;
+        const radius = Math.max(idealRadius, radiusNeededForSpacing);
 
-            const node = nodes.find(x => x.id === edge.targetId);
-            if (!node) return;
+        let angleCursor = startAngle;
 
-            const angle = angleStep * index;
+        for (const kidId of kids) {
 
-            node.x = Math.cos(angle) * (this.ringDistance + 120);
-            node.y = Math.sin(angle) * (this.ringDistance + 120);
+            const weight = subtreeWeight.get(kidId) ?? 1;
+            const kidSpan = sectorSpan * (weight / totalWeight);
+            const kidAngle = angleCursor + kidSpan / 2;
+
+            const kid = graph.nodeMap.get(kidId);
+
+            if (kid) {
+                kid.x = Math.cos(kidAngle) * radius;
+                kid.y = Math.sin(kidAngle) * radius;
+            }
+
+            this.placeChildren(graph, tree, subtreeWeight, kidId, angleCursor, angleCursor + kidSpan, level + 1);
+
+            angleCursor += kidSpan;
+        }
+    }
+
+    private placeUnreachableNodes(graph: GraphViewModel, tree: Map<number, number[]>): void {
+
+        const placed = new Set<number>([graph.rootNodeId]);
+        tree.forEach(kids => kids.forEach(id => placed.add(id)));
+
+        const stray = graph.nodes.filter(n => !placed.has(n.id));
+        if (!stray.length) {
+            return;
+        }
+
+        const radius = this.baseRingSpacing * 5;
+        const step = (Math.PI * 2) / stray.length;
+
+        stray.forEach((node, index) => {
+            node.x = Math.cos(step * index) * radius;
+            node.y = Math.sin(step * index) * radius;
         });
     }
 }
