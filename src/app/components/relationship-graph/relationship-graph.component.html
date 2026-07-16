@@ -24,7 +24,8 @@
             <mat-icon>route</mat-icon>
         </button>
 
-        <button mat-icon-button [color]="showLegend() ? 'primary' : null" matTooltip="Toggle Legend" (click)="toggleLegend()">
+        <button mat-icon-button [color]="showLegend() ? 'primary' : null" matTooltip="Toggle Legend"
+            (click)="toggleLegend()">
             <mat-icon>legend_toggle</mat-icon>
         </button>
 
@@ -53,7 +54,8 @@
     <div class="critical-path-summary" *ngIf="showCriticalPath() && criticalPathSummary() as cp">
         <mat-icon color="accent">insights</mat-icon>
         <span>
-            Critical Path: <strong>{{ cp.count }}</strong> items (<strong>{{ cp.duration }}h / SP</strong> estimated delay)
+            Critical Path: <strong>{{ cp.count }}</strong> items (<strong>{{ cp.duration }}h / SP</strong> estimated
+            delay)
         </span>
     </div>
 
@@ -63,11 +65,43 @@
         (pointercancel)="onBackgroundPointerUp($event)">
 
         <defs>
-            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
-                <path d="M0,0 L10,5 L0,10 Z" fill="#90a4ae"></path>
+            <marker id="arrow-parent" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+
+                <path d="M0,0 L10,5 L0,10 Z" fill="#90a4ae" />
             </marker>
 
-            <marker id="arrow-critical" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+            <marker id="arrow-blocks" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+
+                <path d="M0,6 L6,0 L12,6 L6,12 Z" fill="#90a4ae" />
+
+            </marker>
+
+            <marker id="arrow-depends" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+
+                <path d="M1,1 L9,5 L1,9" fill="none" stroke="#90a4ae" stroke-width="1.5" />
+
+            </marker>
+
+            <marker id="arrow-related" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto">
+
+                <circle cx="5" cy="5" r="3" fill="#90a4ae" />
+
+            </marker>
+
+            <marker id="arrow-duplicate" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+
+                <path d="M0,6 L6,0 L12,6 L6,12 Z" fill="none" stroke="#90a4ae" stroke-width="1.5" />
+
+            </marker>
+
+            <marker id="arrow-split" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+
+                <path d="M0,0 L8,4 L0,8" fill="#90a4ae" />
+
+            </marker>
+
+            <marker id="arrow-critical" markerWidth="10" markerHeight="10" refX="8" refY="5"
+                orient="auto-start-reverse">
                 <path d="M0,0 L10,5 L0,10 Z" fill="#e53935"></path>
             </marker>
 
@@ -111,29 +145,29 @@
             -->
             <g class="graph-edges">
                 <g *ngFor="let line of renderableEdges(); trackBy: trackEdge">
-                    <line [attr.x1]="line.x1" [attr.y1]="line.y1"
-                        [attr.x2]="line.x2" [attr.y2]="line.y2"
-                        [attr.marker-end]="isEdgeCritical(line.edge) ? 'url(#arrow-critical)' : 'url(#arrow)'"
-                        class="graph-edge" [class.dimmed]="isEdgeDimmed(line.edge)"
-                        [class.critical]="isEdgeCritical(line.edge)" [class.cyclic]="line.edge.cyclic">
+                    <line [attr.x1]="line.x1" [attr.y1]="line.y1" [attr.x2]="line.x2" [attr.y2]="line.y2"
+                        [attr.marker-end]="edgeMarker(line.edge)" class="graph-edge" [ngClass]="[
+                                        edgeCssClass(line.edge),
+                                        isEdgeCritical(line.edge) ? 'critical' : '',
+                                        line.edge.cyclic ? 'cyclic' : '',
+                                        isEdgeDimmed(line.edge) ? 'dimmed' : ''
+                                    ]" (mouseenter)="hoveredEdge.set(line.edge)" (mouseleave)="hoveredEdge.set(null)">
                     </line>
                 </g>
             </g>
 
             <g class="graph-nodes">
-                <foreignObject *ngFor="let node of nodes(); trackBy: trackNode"
-                    [attr.x]="nodeLeft(node)" [attr.y]="nodeTop(node)"
-                    [attr.width]="node.width" [attr.height]="node.height" class="graph-node-container"
-                    [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
+                <foreignObject *ngFor="let node of nodes(); trackBy: trackNode" [attr.x]="nodeLeft(node)"
+                    [attr.y]="nodeTop(node)" [attr.width]="node.width" [attr.height]="node.height"
+                    class="graph-node-container" [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
                     [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node, $event)"
-                    (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()"
-                    (click)="onNodeClick(node)">
+                    (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
 
                     <div xmlns="http://www.w3.org/1999/xhtml" class="node-card"
                         [style.filter]="isSelected(node.id) ? 'url(#selectedGlow)' : 'url(#nodeShadow)'">
 
-                        <div class="status-strip" [class.center]="isCenter(node)"
-                            [class.critical]="node.critical" [class.cyclic]="node.cyclic">
+                        <div class="status-strip" [class.center]="isCenter(node)" [class.critical]="node.critical"
+                            [class.cyclic]="node.cyclic">
                         </div>
 
                         <div class="node-header">
@@ -167,8 +201,8 @@
                                 <span class="footer-label">Out</span>
                             </div>
 
-                            <button *ngIf="!isCenter(node)" class="expand-button"
-                                [disabled]="isExpanding(node.id)" (click)="onExpandClick(node, $event)">
+                            <button *ngIf="!isCenter(node)" class="expand-button" [disabled]="isExpanding(node.id)"
+                                (click)="onExpandClick(node, $event)">
                                 <span *ngIf="!isExpanding(node.id)">+</span>
                                 <span *ngIf="isExpanding(node.id)" class="loading-dot">…</span>
                             </button>
@@ -181,8 +215,26 @@
         </g>
     </svg>
 
-    <div class="impact-tooltip" *ngIf="hoveredNodeId() !== null && hoverScreenPos() as pos"
-        [style.left.px]="pos.x + 20" [style.top.px]="pos.y + 20">
+    <div class="relationship-summary" *ngIf="hoveredEdge() as edge">
+
+        <div class="tooltip-section-title">
+
+            Relationship
+
+        </div>
+
+        <div class="relationship-text">
+
+            {{ relationshipSentence(edge) }}
+
+        </div>
+
+    </div>
+
+    <div class="tooltip-divider"></div>
+
+    <div class="impact-tooltip" *ngIf="hoveredNodeId() !== null && hoverScreenPos() as pos" [style.left.px]="pos.x + 20"
+        [style.top.px]="pos.y + 20">
         <div class="tooltip-header" *ngIf="nodeAt(hoveredNodeId()!) as node">
             <strong>#{{ node.id }} {{ node.title }}</strong>
             <span class="tooltip-status-badge">{{ node.status }}</span>
@@ -197,8 +249,7 @@
             </div>
             <div class="tooltip-row">
                 <span class="label">Downstream Impact Score:</span>
-                <span class="value impact-severity"
-                    [style.color]="impact.score > 50 ? '#ef5350' : '#66bb6a'">
+                <span class="value impact-severity" [style.color]="impact.score > 50 ? '#ef5350' : '#66bb6a'">
                     {{ impact.score }}/100
                 </span>
             </div>
@@ -225,8 +276,14 @@
     <div class="graph-legend" *ngIf="showLegend()">
         <div class="legend-header">Relationships</div>
         <div class="legend-row" *ngFor="let item of legend">
-            <span class="legend-color" [style.background]="item.color"></span>
-            <span class="legend-text">{{item.label}}</span>
+
+            <span class="legend-line" [ngClass]="item.cssClass">
+            </span>
+
+            <span class="legend-text">
+                {{ item.label }}
+            </span>
+
         </div>
     </div>
 
