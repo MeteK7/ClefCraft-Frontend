@@ -43,7 +43,7 @@ interface Viewport {
 interface LegendEntry {
     type: RelationshipType;
     label: string;
-    color: string;
+    cssClass: string;
 }
 
 /** A ready-to-render edge line, already clipped to both nodes' card boundaries (not their centers). */
@@ -91,6 +91,7 @@ export class RelationshipGraphComponent implements OnChanges {
     // ---- template refs ----
     readonly svgRootRef = viewChild<ElementRef<SVGSVGElement>>('svgRoot');
     readonly canvasContainerRef = viewChild<ElementRef<HTMLDivElement>>('canvasContainer');
+    readonly hoveredEdge = signal<GraphEdge | null>(null);
 
     // ---- constants ----
     readonly viewBoxSize = 800;
@@ -101,12 +102,36 @@ export class RelationshipGraphComponent implements OnChanges {
     private readonly arrowGap = 6;
 
     readonly legend: LegendEntry[] = [
-        { type: RelationshipType.Parent, label: 'Parent', color: '#1976d2' },
-        { type: RelationshipType.Blocks, label: 'Blocks', color: '#e53935' },
-        { type: RelationshipType.DependsOn, label: 'Depends on', color: '#7b1fa2' },
-        { type: RelationshipType.Related, label: 'Related', color: '#43a047' },
-        { type: RelationshipType.Duplicate, label: 'Duplicate', color: '#fb8c00' },
-        { type: RelationshipType.SplitFrom, label: 'Split from', color: '#00897b' }
+        {
+            type: RelationshipType.Parent,
+            label: 'Parent',
+            cssClass: 'edge-parent'
+        },
+        {
+            type: RelationshipType.Blocks,
+            label: 'Blocks',
+            cssClass: 'edge-blocks'
+        },
+        {
+            type: RelationshipType.DependsOn,
+            label: 'Depends On',
+            cssClass: 'edge-depends'
+        },
+        {
+            type: RelationshipType.Related,
+            label: 'Related',
+            cssClass: 'edge-related'
+        },
+        {
+            type: RelationshipType.Duplicate,
+            label: 'Duplicate',
+            cssClass: 'edge-duplicate'
+        },
+        {
+            type: RelationshipType.SplitFrom,
+            label: 'Split From',
+            cssClass: 'edge-split'
+        }
     ];
 
     // ---- state ----
@@ -262,10 +287,6 @@ export class RelationshipGraphComponent implements OnChanges {
 
     truncateTitle(title: string): string {
         return title.length > 24 ? `${title.slice(0, 22)}…` : title;
-    }
-
-    legendColor(type: RelationshipType): string {
-        return this.legend.find(l => l.type === type)?.color ?? '#757575';
     }
 
     trackNode(_: number, node: GraphNode): number {
@@ -708,4 +729,93 @@ export class RelationshipGraphComponent implements OnChanges {
         return edge.sourceId === nodeId || edge.targetId === nodeId;
     }
 
+    edgeCssClass(edge: GraphEdge): string {
+
+        switch (edge.relationType) {
+
+            case RelationshipType.Parent:
+                return 'edge-parent';
+
+            case RelationshipType.Blocks:
+                return 'edge-blocks';
+
+            case RelationshipType.DependsOn:
+                return 'edge-depends';
+
+            case RelationshipType.Related:
+                return 'edge-related';
+
+            case RelationshipType.Duplicate:
+                return 'edge-duplicate';
+
+            case RelationshipType.SplitFrom:
+                return 'edge-split';
+
+            default:
+                return '';
+        }
+    }
+
+    edgeMarker(edge: GraphEdge): string {
+
+        if (this.isEdgeCritical(edge))
+            return 'url(#arrow-critical)';
+
+        switch (edge.relationType) {
+
+            case RelationshipType.Parent:
+                return 'url(#arrow-parent)';
+
+            case RelationshipType.Blocks:
+                return 'url(#arrow-blocks)';
+
+            case RelationshipType.DependsOn:
+                return 'url(#arrow-depends)';
+
+            case RelationshipType.Related:
+                return 'url(#arrow-related)';
+
+            case RelationshipType.Duplicate:
+                return 'url(#arrow-duplicate)';
+
+            case RelationshipType.SplitFrom:
+                return 'url(#arrow-split)';
+
+            default:
+                return 'url(#arrow-parent)';
+        }
+    }
+
+    relationshipSentence(edge: GraphEdge): string {
+
+        const source = this.nodeAt(edge.sourceId);
+        const target = this.nodeAt(edge.targetId);
+
+        if (!source || !target)
+            return '';
+
+        switch (edge.relationType) {
+
+            case RelationshipType.Blocks:
+                return `${source.title} blocks ${target.title}`;
+
+            case RelationshipType.Parent:
+                return `${source.title} is the parent of ${target.title}`;
+
+            case RelationshipType.DependsOn:
+                return `${source.title} depends on ${target.title}`;
+
+            case RelationshipType.Related:
+                return `${source.title} is related to ${target.title}`;
+
+            case RelationshipType.Duplicate:
+                return `${source.title} duplicates ${target.title}`;
+
+            case RelationshipType.SplitFrom:
+                return `${source.title} was split from ${target.title}`;
+
+            default:
+                return '';
+        }
+    }
 }

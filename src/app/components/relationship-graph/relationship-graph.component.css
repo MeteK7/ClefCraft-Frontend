@@ -139,3 +139,79 @@
   font-size: 12px;
   opacity: .8;
 }
+
+.edge-parent{
+    stroke-dasharray:none;
+}
+
+.edge-blocks{
+    stroke-width:3.5;
+}
+
+.edge-depends{
+    stroke-dasharray:10 6;
+}
+
+.edge-related{
+    stroke-dasharray:2 8;
+}
+
+.edge-duplicate{
+    stroke-dasharray:16 4 3 4;
+}
+
+.edge-split{
+    stroke-dasharray:12 4 2 4;
+}
+
+.relationship-summary{
+
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+
+    margin-bottom:10px;
+}
+
+.tooltip-section-title{
+
+    font-size:11px;
+    font-weight:600;
+
+    text-transform:uppercase;
+
+    letter-spacing:.08em;
+
+    color:#90caf9;
+}
+
+.relationship-text{
+
+    font-size:14px;
+
+    line-height:1.4;
+
+    color:white;
+}
+
+.legend-line{
+    display:inline-block;
+    width:42px;
+    border-top:2px solid #9aa0a6;
+}
+
+.legend-line.edge-parent{
+    border-top-style:solid;
+}
+
+.legend-line.edge-depends{
+    border-top-style:dashed;
+}
+
+.legend-line.edge-related{
+    border-top-style:dotted;
+}
+
+.legend-line.edge-blocks{
+    border-top-width:4px;
+}
