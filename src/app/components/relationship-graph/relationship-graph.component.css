@@ -298,3 +298,8 @@
   font-size: 10px;
   color: #cfd8dc;
 }
+
+.metric-spacer {
+  display: inline-block;
+  width: 12px;
+}
