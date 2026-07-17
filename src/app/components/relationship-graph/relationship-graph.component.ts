@@ -19,6 +19,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
+import { firstValueFrom, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+
 import { RelationshipHub, RelationshipType } from '../../models/board.model';
 import { BoardService } from '../../_services/board.service';
 
@@ -73,10 +76,7 @@ interface RenderableEdge {
  * the edge is on the critical path, swapping only the color), and a
  * sentence builder for the hover tooltip.
  *
- * NOTE: assumes GraphEdge exposes `type: RelationshipType`. If the actual
- * model field is named differently (e.g. relationshipType), update the
- * lookups in edgeTypeClass / edgeMarkerEnd / relationshipSentence below —
- * this map itself doesn't need to change.
+ * Keyed by GraphEdge.relationType.
  */
 type RelationshipStyle = {
     cssClass: string;
@@ -180,6 +180,19 @@ export class RelationshipGraphComponent implements OnChanges {
 
     readonly showLegend = signal<boolean>(true);
     readonly showCriticalPath = signal<boolean>(false);
+
+    /**
+     * "Show Full Connections" — recursively walks every reachable
+     * relationship out from the root instead of stopping at one hop.
+     * showFullConnections is the toggle's on/off state; isExpandingFull
+     * is true only while the recursive fetch is in flight (drives the
+     * loading indicator and disables per-node expand while it runs);
+     * fullConnectionsTruncated is set if the safety cap in
+     * expandFullyConnected() was hit before every node was discovered.
+     */
+    readonly showFullConnections = signal<boolean>(false);
+    readonly isExpandingFull = signal<boolean>(false);
+    readonly fullConnectionsTruncated = signal<boolean>(false);
 
     /**
      * When true, :host picks up the `.graph-maximized` CSS class (see
@@ -344,7 +357,7 @@ export class RelationshipGraphComponent implements OnChanges {
         const style = this.typeStyleMap[edge.relationType];
         return style
             ? style.sentence(source.title, target.title)
-            : `${source.title} is related to ${target.title}`;
+            : `${source.title} is related to "${target.title}"`;
     }
 
     hoveredEdge(): GraphEdge | undefined {
@@ -487,6 +500,137 @@ export class RelationshipGraphComponent implements OnChanges {
                 this.expandingNodeId.set(null);
             }
         });
+    }
+
+    /** How many getRelationships() calls are allowed in flight at once during a full-connections expansion. */
+    private readonly expansionBatchSize = 6;
+
+    /**
+     * Hard ceiling on total nodes a full-connections expansion will pull
+     * in. Without this, a densely connected board (or a data issue that
+     * makes everything look related) could make "Show Full Connections"
+     * fetch and render an unbounded graph. If the cap is hit,
+     * fullConnectionsTruncated is set so the UI can say so. Public (not
+     * private) so the truncation banner in the template can reference
+     * the same number rather than hardcoding a copy of it.
+     */
+    readonly maxFullConnectionNodes = 500;
+
+    /**
+     * Flips the "Show Full Connections" toggle. Turning it on kicks off
+     * expandFullyConnected(); turning it off simply rebuilds back to the
+     * one-hop star around the current root (rebuild() already resets
+     * showFullConnections, so this doesn't need to re-fetch anything).
+     */
+    async toggleFullConnections(): Promise<void> {
+
+        if (this.showFullConnections()) {
+            this.rebuild();
+            return;
+        }
+
+        this.showFullConnections.set(true);
+        await this.expandFullyConnected();
+    }
+
+    /**
+     * Recursively walks every reachable relationship out from the
+     * current graph, breadth by breadth: fetch relationships for every
+     * node not yet fetched, merge them in via builder.expand (which is
+     * itself idempotent — safe against a node being reachable through
+     * more than one path), collect whichever node ids are new as a
+     * result, and repeat until a batch produces nothing new.
+     *
+     * Cycles resolve for free here: an edge back to an already-known
+     * node just isn't "new", so it never re-enters the frontier — no
+     * separate cycle guard is needed beyond the "already fetched" set.
+     */
+    private async expandFullyConnected(): Promise<void> {
+
+        let graph = this.graph();
+        if (!graph) return;
+
+        this.isExpandingFull.set(true);
+        this.fullConnectionsTruncated.set(false);
+
+        // The root's own relationships are already loaded (they're what
+        // built the initial one-hop star from @Input hub), so it's the
+        // only node considered "fetched" up front. Everything else
+        // currently in the graph is one hop out and still needs its own
+        // relationships pulled to go any further.
+        const fetched = new Set<number>([graph.rootNodeId]);
+        let frontier = new Set<number>(
+            graph.nodes.map(n => n.id).filter(id => id !== graph!.rootNodeId)
+        );
+
+        try {
+            while (frontier.size && graph.nodes.length < this.maxFullConnectionNodes) {
+
+                const batch = Array.from(frontier);
+                batch.forEach(id => fetched.add(id));
+
+                const results = await this.fetchHubsInBatches(batch);
+                const knownBefore = new Set(graph.nodes.map(n => n.id));
+
+                for (const { itemId, hub } of results) {
+                    // A failed individual fetch (network hiccup, item
+                    // deleted mid-walk, etc.) shouldn't abort the whole
+                    // expansion — just leaves that branch unexpanded.
+                    if (!hub) continue;
+                    graph = this.builder.expand(graph, itemId, hub);
+                }
+
+                frontier = new Set<number>();
+                for (const node of graph.nodes) {
+                    if (!knownBefore.has(node.id) && !fetched.has(node.id)) {
+                        frontier.add(node.id);
+                    }
+                }
+            }
+
+            if (frontier.size) {
+                this.fullConnectionsTruncated.set(true);
+            }
+        } finally {
+
+            this.layoutEngine.layout(graph);
+            this.applyAnalytics(graph);
+
+            // Same reasoning as onExpandClick: applyAnalytics already gave
+            // graph fresh .nodes/.edges references and rebuilt the index,
+            // so a shallow spread is enough for the signal's Object.is
+            // check to register this as a real change.
+            this.graph.set({ ...graph });
+
+            this.isExpandingFull.set(false);
+        }
+    }
+
+    /** Fetches relationships for a list of item ids, a few at a time, tolerating individual failures. */
+    private async fetchHubsInBatches(
+        itemIds: number[]
+    ): Promise<{ itemId: number; hub: RelationshipHub | null }[]> {
+
+        const results: { itemId: number; hub: RelationshipHub | null }[] = [];
+
+        for (let i = 0; i < itemIds.length; i += this.expansionBatchSize) {
+
+            const chunk = itemIds.slice(i, i + this.expansionBatchSize);
+
+            const chunkResults = await Promise.all(
+                chunk.map(itemId =>
+                    firstValueFrom(
+                        this.boardService.getRelationships(itemId).pipe(
+                            catchError(() => of(null))
+                        )
+                    ).then(hub => ({ itemId, hub }))
+                )
+            );
+
+            results.push(...chunkResults);
+        }
+
+        return results;
     }
 
     // =====================================================================
@@ -774,6 +918,10 @@ export class RelationshipGraphComponent implements OnChanges {
         this.selectedNodeId.set(null);
         this.viewportAnimated.set(false);
         this.viewport.set(this.defaultViewport());
+
+        this.showFullConnections.set(false);
+        this.isExpandingFull.set(false);
+        this.fullConnectionsTruncated.set(false);
     }
 
     /**

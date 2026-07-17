@@ -30,6 +30,21 @@
 
         <span class="toolbar-divider"></span>
 
+        <!--
+            Recursively discovers every reachable relationship instead of
+            stopping at the root's direct neighbors. See
+            expandFullyConnected() — walks outward batch by batch via
+            builder.expand(), fetching relationships for whichever nodes
+            are newly discovered until a batch turns up nothing new.
+        -->
+        <button mat-icon-button [color]="showFullConnections() ? 'accent' : null"
+            [matTooltip]="showFullConnections() ? 'Show Direct Relationships Only' : 'Show Full Connections'"
+            [disabled]="isExpandingFull()" (click)="toggleFullConnections()">
+            <mat-icon>{{ isExpandingFull() ? 'hourglass_empty' : 'hub' }}</mat-icon>
+        </button>
+
+        <span class="toolbar-divider"></span>
+
         <button mat-icon-button [matTooltip]="isMaximized() ? 'Restore' : 'Maximize'" (click)="toggleMaximize()">
             <mat-icon>{{ isMaximized() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
         </button>
@@ -48,6 +63,16 @@
                 Locate Cycle
             </button>
         </div>
+    </div>
+
+    <div class="full-connections-status" *ngIf="isExpandingFull()">
+        <mat-icon>hourglass_empty</mat-icon>
+        <span>Discovering connected items…</span>
+    </div>
+
+    <div class="full-connections-status truncated" *ngIf="!isExpandingFull() && fullConnectionsTruncated()">
+        <mat-icon color="warn">warning</mat-icon>
+        <span>Showing the first {{ maxFullConnectionNodes }} connected items — the graph may be larger.</span>
     </div>
 
     <div class="critical-path-summary" *ngIf="showCriticalPath() && criticalPathSummary() as cp">
@@ -235,7 +260,7 @@
                                 <span class="footer-label">Out</span>
                             </div>
 
-                            <button *ngIf="!isCenter(node)" class="expand-button"
+                            <button *ngIf="!isCenter(node) && !showFullConnections()" class="expand-button"
                                 [disabled]="isExpanding(node.id)" (click)="onExpandClick(node, $event)">
                                 <span *ngIf="!isExpanding(node.id)">+</span>
                                 <span *ngIf="isExpanding(node.id)" class="loading-dot">…</span>
