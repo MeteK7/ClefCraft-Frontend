@@ -40,10 +40,18 @@ interface Viewport {
     panY: number;
 }
 
+/**
+ * Legend entries now describe a LINE STYLE (css class + marker id), not a
+ * color. Relationship type is communicated exclusively through dash
+ * pattern and arrowhead shape; arrow color is reserved for indicating
+ * whether an edge is on the critical path, and must never be repurposed
+ * to distinguish relationship type.
+ */
 interface LegendEntry {
     type: RelationshipType;
     label: string;
     cssClass: string;
+    markerBase: string;
 }
 
 /** A ready-to-render edge line, already clipped to both nodes' card boundaries (not their centers). */
@@ -53,24 +61,29 @@ interface RenderableEdge {
     y1: number;
     x2: number;
     y2: number;
+    /** Midpoint, used to place the cyclic-membership badge. */
+    mx: number;
+    my: number;
 }
 
 /**
- * Flagship relationship graph.
+ * Per-relationship-type visual style. One entry drives three things for a
+ * given edge: the CSS class that sets its dash pattern, the base marker id
+ * whose shape becomes the arrowhead (a "-critical" suffix is appended when
+ * the edge is on the critical path, swapping only the color), and a
+ * sentence builder for the hover tooltip.
  *
- * This component owns NO graph algorithms. Every piece of intelligence
- * on screen — cycle warnings, the critical path, node risk sizing, the
- * hover impact preview — is a direct call into the existing analytics
- * engines. Layout, including multi-hop expansion, is entirely owned by
- * GraphLayoutEngine now: this component no longer overrides node
- * positions after the fact (see graph-layout-engine.ts for why the old
- * "arc around the expansion parent" patch was removed rather than
- * kept — it's not that it was wrong, it's that the layout engine can
- * now do the real thing for every node, not just the first hop).
- *
- * This component's job is: assemble (via the builder), annotate (via
- * the engines), lay out (via the layout engine), and render.
+ * NOTE: assumes GraphEdge exposes `type: RelationshipType`. If the actual
+ * model field is named differently (e.g. relationshipType), update the
+ * lookups in edgeTypeClass / edgeMarkerEnd / relationshipSentence below —
+ * this map itself doesn't need to change.
  */
+type RelationshipStyle = {
+    cssClass: string;
+    markerBase: string;
+    sentence: (sourceTitle: string, targetTitle: string) => string;
+};
+
 @Component({
     selector: 'app-relationship-graph',
     standalone: true,
@@ -91,7 +104,6 @@ export class RelationshipGraphComponent implements OnChanges {
     // ---- template refs ----
     readonly svgRootRef = viewChild<ElementRef<SVGSVGElement>>('svgRoot');
     readonly canvasContainerRef = viewChild<ElementRef<HTMLDivElement>>('canvasContainer');
-    readonly hoveredEdge = signal<GraphEdge | null>(null);
 
     // ---- constants ----
     readonly viewBoxSize = 800;
@@ -101,37 +113,53 @@ export class RelationshipGraphComponent implements OnChanges {
     /** Extra gap (world units) beyond a card's edge before an arrowhead is drawn, so the tip is visible instead of hidden under the target card. */
     private readonly arrowGap = 6;
 
-    readonly legend: LegendEntry[] = [
-        {
-            type: RelationshipType.Parent,
-            label: 'Parent',
-            cssClass: 'edge-parent'
+    /**
+     * Single source of truth mapping a relationship type to its dash
+     * pattern (css class), its arrowhead shape (marker base id — the
+     * template appends "-critical" when needed for color), and the
+     * human-readable sentence used by the edge tooltip. Update this one
+     * map to add a relationship type or change how it reads/looks.
+     */
+    private readonly typeStyleMap: Record<RelationshipType, RelationshipStyle> = {
+        [RelationshipType.Parent]: {
+            cssClass: 'type-parent',
+            markerBase: 'arrow-parent',
+            sentence: (a, b) => `${a} is the parent of "${b}"`
         },
-        {
-            type: RelationshipType.Blocks,
-            label: 'Blocks',
-            cssClass: 'edge-blocks'
+        [RelationshipType.Blocks]: {
+            cssClass: 'type-blocks',
+            markerBase: 'arrow-blocks',
+            sentence: (a, b) => `${a} blocks "${b}"`
         },
-        {
-            type: RelationshipType.DependsOn,
-            label: 'Depends On',
-            cssClass: 'edge-depends'
+        [RelationshipType.DependsOn]: {
+            cssClass: 'type-depends-on',
+            markerBase: 'arrow-depends-on',
+            sentence: (a, b) => `${a} depends on "${b}"`
         },
-        {
-            type: RelationshipType.Related,
-            label: 'Related',
-            cssClass: 'edge-related'
+        [RelationshipType.Related]: {
+            cssClass: 'type-related',
+            markerBase: 'arrow-related',
+            sentence: (a, b) => `${a} is related to "${b}"`
         },
-        {
-            type: RelationshipType.Duplicate,
-            label: 'Duplicate',
-            cssClass: 'edge-duplicate'
+        [RelationshipType.Duplicate]: {
+            cssClass: 'type-duplicate',
+            markerBase: 'arrow-duplicate',
+            sentence: (a, b) => `${a} is a duplicate of "${b}"`
         },
-        {
-            type: RelationshipType.SplitFrom,
-            label: 'Split From',
-            cssClass: 'edge-split'
+        [RelationshipType.SplitFrom]: {
+            cssClass: 'type-split-from',
+            markerBase: 'arrow-split-from',
+            sentence: (a, b) => `${a} was split from "${b}"`
         }
+    };
+
+    readonly legend: LegendEntry[] = [
+        { type: RelationshipType.Parent, label: 'Parent', cssClass: 'type-parent', markerBase: 'arrow-parent' },
+        { type: RelationshipType.Blocks, label: 'Blocks', cssClass: 'type-blocks', markerBase: 'arrow-blocks' },
+        { type: RelationshipType.DependsOn, label: 'Depends on', cssClass: 'type-depends-on', markerBase: 'arrow-depends-on' },
+        { type: RelationshipType.Related, label: 'Related', cssClass: 'type-related', markerBase: 'arrow-related' },
+        { type: RelationshipType.Duplicate, label: 'Duplicate', cssClass: 'type-duplicate', markerBase: 'arrow-duplicate' },
+        { type: RelationshipType.SplitFrom, label: 'Split from', cssClass: 'type-split-from', markerBase: 'arrow-split-from' }
     ];
 
     // ---- state ----
@@ -142,6 +170,10 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly hoveredNodeId = signal<number | null>(null);
     readonly hoverScreenPos = signal<{ x: number; y: number } | null>(null);
     readonly hoverImpact = signal<ImpactAnalysis | null>(null);
+
+    /** Edge-hover state, backing the relationship-sentence tooltip. */
+    readonly hoveredEdgeId = signal<number | null>(null);
+    readonly hoverEdgeScreenPos = signal<{ x: number; y: number } | null>(null);
 
     readonly selectedNodeId = signal<number | null>(null);
     readonly expandingNodeId = signal<number | null>(null);
@@ -175,7 +207,8 @@ export class RelationshipGraphComponent implements OnChanges {
      * Edge lines clipped to each endpoint's card boundary rather than
      * its center. Computed once per graph/position change instead of
      * being recalculated per template binding (x1/y1/x2/y2 would each
-     * have re-derived it independently otherwise).
+     * have re-derived it independently otherwise). Also carries the
+     * midpoint (mx/my), used to place the cyclic-membership badge.
      */
     readonly renderableEdges = computed<RenderableEdge[]>(() => {
 
@@ -193,7 +226,13 @@ export class RelationshipGraphComponent implements OnChanges {
             const start = this.clipToRect(source, target.x, target.y, 0);
             const end = this.clipToRect(target, source.x, source.y, this.arrowGap);
 
-            lines.push({ edge, x1: start.x, y1: start.y, x2: end.x, y2: end.y });
+            lines.push({
+                edge,
+                x1: start.x, y1: start.y,
+                x2: end.x, y2: end.y,
+                mx: (start.x + end.x) / 2,
+                my: (start.y + end.y) / 2
+            });
         }
 
         return lines;
@@ -274,6 +313,46 @@ export class RelationshipGraphComponent implements OnChanges {
         return this.showCriticalPath() && edge.critical;
     }
 
+    /** CSS class carrying this edge's relationship-type dash pattern (never color). */
+    edgeTypeClass(edge: GraphEdge): string {
+        return this.typeStyleMap[edge.relationType]?.cssClass ?? 'type-related';
+    }
+
+    /**
+     * Marker id for this edge's arrowhead: shape comes from relationship
+     * type, color comes from critical-path status. This is the only place
+     * those two dimensions combine, and only via marker id selection —
+     * never by setting a stroke/fill color directly on the edge.
+     */
+    edgeMarkerEnd(edge: GraphEdge): string {
+        const base = this.typeStyleMap[edge.relationType]?.markerBase ?? 'arrow-related';
+        return `url(#${base}${this.isEdgeCritical(edge) ? '-critical' : ''})`;
+    }
+
+    /**
+     * Builds the human-readable sentence shown in the edge tooltip, e.g.
+     * "Fix login bug blocks Ship v2.1". Deliberately avoids any
+     * Source/Target/From/To/Node A/Node B terminology — it should read
+     * like an explanation of the relationship, not an exposed data model.
+     */
+    relationshipSentence(edge: GraphEdge): string {
+        const graph = this.graph();
+        const source = graph?.nodeMap.get(edge.sourceId);
+        const target = graph?.nodeMap.get(edge.targetId);
+        if (!source || !target) return '';
+
+        const style = this.typeStyleMap[edge.relationType];
+        return style
+            ? style.sentence(source.title, target.title)
+            : `${source.title} is related to ${target.title}`;
+    }
+
+    hoveredEdge(): GraphEdge | undefined {
+        const id = this.hoveredEdgeId();
+        if (id === null) return undefined;
+        return this.graph()?.edges.find(e => e.id === id);
+    }
+
     /**
      * Visual radius including a risk bump: higher RelationshipScoreEngine
      * score -> visibly larger node, up to +16px. Used for bounding-box
@@ -298,7 +377,7 @@ export class RelationshipGraphComponent implements OnChanges {
     }
 
     // =====================================================================
-    // Interaction: hover
+    // Interaction: node hover (drives the downstream-impact tooltip)
     // =====================================================================
 
     onNodeEnter(node: GraphNode, event: MouseEvent): void {
@@ -335,6 +414,36 @@ export class RelationshipGraphComponent implements OnChanges {
         if (!container) return;
         const rect = container.getBoundingClientRect();
         this.hoverScreenPos.set({
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
+        });
+    }
+
+    // =====================================================================
+    // Interaction: edge hover (drives the relationship-sentence tooltip)
+    // =====================================================================
+
+    onEdgeEnter(edge: GraphEdge, event: MouseEvent): void {
+        this.hoveredEdgeId.set(edge.id);
+        this.updateEdgeHoverPosition(event);
+    }
+
+    onEdgeMove(event: MouseEvent): void {
+        if (this.hoveredEdgeId() !== null) {
+            this.updateEdgeHoverPosition(event);
+        }
+    }
+
+    onEdgeLeave(): void {
+        this.hoveredEdgeId.set(null);
+        this.hoverEdgeScreenPos.set(null);
+    }
+
+    private updateEdgeHoverPosition(event: MouseEvent): void {
+        const container = this.canvasContainerRef()?.nativeElement;
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        this.hoverEdgeScreenPos.set({
             x: event.clientX - rect.left,
             y: event.clientY - rect.top
         });
@@ -729,93 +838,4 @@ export class RelationshipGraphComponent implements OnChanges {
         return edge.sourceId === nodeId || edge.targetId === nodeId;
     }
 
-    edgeCssClass(edge: GraphEdge): string {
-
-        switch (edge.relationType) {
-
-            case RelationshipType.Parent:
-                return 'edge-parent';
-
-            case RelationshipType.Blocks:
-                return 'edge-blocks';
-
-            case RelationshipType.DependsOn:
-                return 'edge-depends';
-
-            case RelationshipType.Related:
-                return 'edge-related';
-
-            case RelationshipType.Duplicate:
-                return 'edge-duplicate';
-
-            case RelationshipType.SplitFrom:
-                return 'edge-split';
-
-            default:
-                return '';
-        }
-    }
-
-    edgeMarker(edge: GraphEdge): string {
-
-        if (this.isEdgeCritical(edge))
-            return 'url(#arrow-critical)';
-
-        switch (edge.relationType) {
-
-            case RelationshipType.Parent:
-                return 'url(#arrow-parent)';
-
-            case RelationshipType.Blocks:
-                return 'url(#arrow-blocks)';
-
-            case RelationshipType.DependsOn:
-                return 'url(#arrow-depends)';
-
-            case RelationshipType.Related:
-                return 'url(#arrow-related)';
-
-            case RelationshipType.Duplicate:
-                return 'url(#arrow-duplicate)';
-
-            case RelationshipType.SplitFrom:
-                return 'url(#arrow-split)';
-
-            default:
-                return 'url(#arrow-parent)';
-        }
-    }
-
-    relationshipSentence(edge: GraphEdge): string {
-
-        const source = this.nodeAt(edge.sourceId);
-        const target = this.nodeAt(edge.targetId);
-
-        if (!source || !target)
-            return '';
-
-        switch (edge.relationType) {
-
-            case RelationshipType.Blocks:
-                return `${source.title} blocks ${target.title}`;
-
-            case RelationshipType.Parent:
-                return `${source.title} is the parent of ${target.title}`;
-
-            case RelationshipType.DependsOn:
-                return `${source.title} depends on ${target.title}`;
-
-            case RelationshipType.Related:
-                return `${source.title} is related to ${target.title}`;
-
-            case RelationshipType.Duplicate:
-                return `${source.title} duplicates ${target.title}`;
-
-            case RelationshipType.SplitFrom:
-                return `${source.title} was split from ${target.title}`;
-
-            default:
-                return '';
-        }
-    }
 }
