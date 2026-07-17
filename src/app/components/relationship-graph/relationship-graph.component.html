@@ -24,9 +24,23 @@
             <mat-icon>route</mat-icon>
         </button>
 
-        <button mat-icon-button [color]="showLegend() ? 'primary' : null" matTooltip="Toggle Legend"
-            (click)="toggleLegend()">
+        <button mat-icon-button [color]="showLegend() ? 'primary' : null" matTooltip="Toggle Legend" (click)="toggleLegend()">
             <mat-icon>legend_toggle</mat-icon>
+        </button>
+
+        <span class="toolbar-divider"></span>
+
+        <!--
+            Recursively discovers every reachable relationship instead of
+            stopping at the root's direct neighbors. See
+            expandFullyConnected() — walks outward batch by batch via
+            builder.expand(), fetching relationships for whichever nodes
+            are newly discovered until a batch turns up nothing new.
+        -->
+        <button mat-icon-button [color]="showFullConnections() ? 'accent' : null"
+            [matTooltip]="showFullConnections() ? 'Show Direct Relationships Only' : 'Show Full Connections'"
+            [disabled]="isExpandingFull()" (click)="toggleFullConnections()">
+            <mat-icon>{{ isExpandingFull() ? 'hourglass_empty' : 'hub' }}</mat-icon>
         </button>
 
         <span class="toolbar-divider"></span>
@@ -51,11 +65,20 @@
         </div>
     </div>
 
+    <div class="full-connections-status" *ngIf="isExpandingFull()">
+        <mat-icon>hourglass_empty</mat-icon>
+        <span>Discovering connected items…</span>
+    </div>
+
+    <div class="full-connections-status truncated" *ngIf="!isExpandingFull() && fullConnectionsTruncated()">
+        <mat-icon color="warn">warning</mat-icon>
+        <span>Showing the first {{ maxFullConnectionNodes }} connected items — the graph may be larger.</span>
+    </div>
+
     <div class="critical-path-summary" *ngIf="showCriticalPath() && criticalPathSummary() as cp">
         <mat-icon color="accent">insights</mat-icon>
         <span>
-            Critical Path: <strong>{{ cp.count }}</strong> items (<strong>{{ cp.duration }}h / SP</strong> estimated
-            delay)
+            Critical Path: <strong>{{ cp.count }}</strong> items (<strong>{{ cp.duration }}h / SP</strong> estimated delay)
         </span>
     </div>
 
@@ -65,44 +88,60 @@
         (pointercancel)="onBackgroundPointerUp($event)">
 
         <defs>
-            <marker id="arrow-parent" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+            <!--
+                One arrowhead marker per relationship type, in each of the
+                only two colors that ever appear on an edge (normal grey,
+                critical red). Relationship type is read from SHAPE here,
+                never from color — color continues to mean exactly one
+                thing: "this relationship is on the critical path".
+            -->
 
-                <path d="M0,0 L10,5 L0,10 Z" fill="#90a4ae" />
+            <!-- Parent: solid filled triangle -->
+            <marker id="arrow-parent" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 Z" fill="#90a4ae"></path>
             </marker>
-
-            <marker id="arrow-blocks" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-
-                <path d="M0,6 L6,0 L12,6 L6,12 Z" fill="#90a4ae" />
-
-            </marker>
-
-            <marker id="arrow-depends" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-
-                <path d="M1,1 L9,5 L1,9" fill="none" stroke="#90a4ae" stroke-width="1.5" />
-
-            </marker>
-
-            <marker id="arrow-related" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto">
-
-                <circle cx="5" cy="5" r="3" fill="#90a4ae" />
-
-            </marker>
-
-            <marker id="arrow-duplicate" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-
-                <path d="M0,6 L6,0 L12,6 L6,12 Z" fill="none" stroke="#90a4ae" stroke-width="1.5" />
-
-            </marker>
-
-            <marker id="arrow-split" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-
-                <path d="M0,0 L8,4 L0,8" fill="#90a4ae" />
-
-            </marker>
-
-            <marker id="arrow-critical" markerWidth="10" markerHeight="10" refX="8" refY="5"
-                orient="auto-start-reverse">
+            <marker id="arrow-parent-critical" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
                 <path d="M0,0 L10,5 L0,10 Z" fill="#e53935"></path>
+            </marker>
+
+            <!-- Blocks: flat "stop bar" -->
+            <marker id="arrow-blocks" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+                <path d="M6,0 L10,0 L10,10 L6,10 Z" fill="#90a4ae"></path>
+            </marker>
+            <marker id="arrow-blocks-critical" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+                <path d="M6,0 L10,0 L10,10 L6,10 Z" fill="#e53935"></path>
+            </marker>
+
+            <!-- Depends on: notched / concave triangle -->
+            <marker id="arrow-depends-on" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 L2.5,5 Z" fill="#90a4ae"></path>
+            </marker>
+            <marker id="arrow-depends-on-critical" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 L2.5,5 Z" fill="#e53935"></path>
+            </marker>
+
+            <!-- Related: small dot (soft, undirected feel) -->
+            <marker id="arrow-related" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+                <circle cx="5" cy="5" r="3.5" fill="#90a4ae"></circle>
+            </marker>
+            <marker id="arrow-related-critical" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+                <circle cx="5" cy="5" r="3.5" fill="#e53935"></circle>
+            </marker>
+
+            <!-- Duplicate: diamond -->
+            <marker id="arrow-duplicate" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+                <path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#90a4ae"></path>
+            </marker>
+            <marker id="arrow-duplicate-critical" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+                <path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#e53935"></path>
+            </marker>
+
+            <!-- Split from: double chevron -->
+            <marker id="arrow-split-from" markerWidth="12" markerHeight="10" refX="9" refY="5" orient="auto-start-reverse">
+                <path d="M0,0 L4,5 L0,10 M5,0 L9,5 L5,10" fill="none" stroke="#90a4ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            </marker>
+            <marker id="arrow-split-from-critical" markerWidth="12" markerHeight="10" refX="9" refY="5" orient="auto-start-reverse">
+                <path d="M0,0 L4,5 L0,10 M5,0 L9,5 L5,10" fill="none" stroke="#e53935" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
             </marker>
 
             <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -142,32 +181,51 @@
                 boundaries (see clipToRect in the component). Rendering
                 node.x/node.y directly here used to draw every line into the
                 dead center of each card, hiding the arrowhead entirely.
+
+                Each edge is actually two <line> elements: a wide invisible
+                "hit" stroke that owns hover interaction (the visible line is
+                often only 2px, far too thin to hover reliably), and the
+                visible, styled line itself. Relationship type is expressed
+                purely via CSS class (dash pattern) + marker id (arrowhead
+                shape) — never color.
             -->
             <g class="graph-edges">
                 <g *ngFor="let line of renderableEdges(); trackBy: trackEdge">
-                    <line [attr.x1]="line.x1" [attr.y1]="line.y1" [attr.x2]="line.x2" [attr.y2]="line.y2"
-                        [attr.marker-end]="edgeMarker(line.edge)" class="graph-edge" [ngClass]="[
-                                        edgeCssClass(line.edge),
-                                        isEdgeCritical(line.edge) ? 'critical' : '',
-                                        line.edge.cyclic ? 'cyclic' : '',
-                                        isEdgeDimmed(line.edge) ? 'dimmed' : ''
-                                    ]" (mouseenter)="hoveredEdge.set(line.edge)" (mouseleave)="hoveredEdge.set(null)">
+                    <line class="graph-edge-hit"
+                        [attr.x1]="line.x1" [attr.y1]="line.y1"
+                        [attr.x2]="line.x2" [attr.y2]="line.y2"
+                        (mouseenter)="onEdgeEnter(line.edge, $event)"
+                        (mousemove)="onEdgeMove($event)"
+                        (mouseleave)="onEdgeLeave()">
                     </line>
+                    <line [attr.x1]="line.x1" [attr.y1]="line.y1"
+                        [attr.x2]="line.x2" [attr.y2]="line.y2"
+                        [attr.marker-end]="edgeMarkerEnd(line.edge)"
+                        class="graph-edge" [class]="edgeTypeClass(line.edge)"
+                        [class.dimmed]="isEdgeDimmed(line.edge)"
+                        [class.critical]="isEdgeCritical(line.edge)" [class.cyclic]="line.edge.cyclic">
+                    </line>
+                    <g class="cyclic-badge" *ngIf="line.edge.cyclic" [attr.transform]="'translate(' + line.mx + ',' + line.my + ')'">
+                        <circle r="7"></circle>
+                        <text y="1">&#8635;</text>
+                    </g>
                 </g>
             </g>
 
             <g class="graph-nodes">
-                <foreignObject *ngFor="let node of nodes(); trackBy: trackNode" [attr.x]="nodeLeft(node)"
-                    [attr.y]="nodeTop(node)" [attr.width]="node.width" [attr.height]="node.height"
-                    class="graph-node-container" [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
+                <foreignObject *ngFor="let node of nodes(); trackBy: trackNode"
+                    [attr.x]="nodeLeft(node)" [attr.y]="nodeTop(node)"
+                    [attr.width]="node.width" [attr.height]="node.height" class="graph-node-container"
+                    [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
                     [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node, $event)"
-                    (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
+                    (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()"
+                    (click)="onNodeClick(node)">
 
                     <div xmlns="http://www.w3.org/1999/xhtml" class="node-card"
                         [style.filter]="isSelected(node.id) ? 'url(#selectedGlow)' : 'url(#nodeShadow)'">
 
-                        <div class="status-strip" [class.center]="isCenter(node)" [class.critical]="node.critical"
-                            [class.cyclic]="node.cyclic">
+                        <div class="status-strip" [class.center]="isCenter(node)"
+                            [class.critical]="node.critical" [class.cyclic]="node.cyclic">
                         </div>
 
                         <div class="node-header">
@@ -197,12 +255,13 @@
                             <div class="footer-left">
                                 <span class="metric-value">{{node.inDegree || 0}}</span>
                                 <span class="footer-label">In</span>
+                                <span class="metric-spacer"></span>
                                 <span class="metric-value">{{node.outDegree || 0}}</span>
                                 <span class="footer-label">Out</span>
                             </div>
 
-                            <button *ngIf="!isCenter(node)" class="expand-button" [disabled]="isExpanding(node.id)"
-                                (click)="onExpandClick(node, $event)">
+                            <button *ngIf="!isCenter(node) && !showFullConnections()" class="expand-button"
+                                [disabled]="isExpanding(node.id)" (click)="onExpandClick(node, $event)">
                                 <span *ngIf="!isExpanding(node.id)">+</span>
                                 <span *ngIf="isExpanding(node.id)" class="loading-dot">…</span>
                             </button>
@@ -215,26 +274,8 @@
         </g>
     </svg>
 
-    <div class="relationship-summary" *ngIf="hoveredEdge() as edge">
-
-        <div class="tooltip-section-title">
-
-            Relationship
-
-        </div>
-
-        <div class="relationship-text">
-
-            {{ relationshipSentence(edge) }}
-
-        </div>
-
-    </div>
-
-    <div class="tooltip-divider"></div>
-
-    <div class="impact-tooltip" *ngIf="hoveredNodeId() !== null && hoverScreenPos() as pos" [style.left.px]="pos.x + 20"
-        [style.top.px]="pos.y + 20">
+    <div class="impact-tooltip" *ngIf="hoveredNodeId() !== null && hoverScreenPos() as pos"
+        [style.left.px]="pos.x + 20" [style.top.px]="pos.y + 20">
         <div class="tooltip-header" *ngIf="nodeAt(hoveredNodeId()!) as node">
             <strong>#{{ node.id }} {{ node.title }}</strong>
             <span class="tooltip-status-badge">{{ node.status }}</span>
@@ -249,7 +290,8 @@
             </div>
             <div class="tooltip-row">
                 <span class="label">Downstream Impact Score:</span>
-                <span class="value impact-severity" [style.color]="impact.score > 50 ? '#ef5350' : '#66bb6a'">
+                <span class="value impact-severity"
+                    [style.color]="impact.score > 50 ? '#ef5350' : '#66bb6a'">
                     {{ impact.score }}/100
                 </span>
             </div>
@@ -273,17 +315,45 @@
         </ng-template>
     </div>
 
+    <!--
+        Redesigned relationship tooltip, shown on EDGE hover (the tooltip
+        above is unrelated — it's node-hover downstream-impact analysis).
+        Content is a single human-readable sentence built from the two
+        connected items' titles and the relationship type. No Source /
+        Target / From / To / Node A / Node B terminology anywhere.
+    -->
+    <ng-container *ngIf="hoveredEdge() as edge">
+        <div class="relationship-tooltip" *ngIf="hoverEdgeScreenPos() as pos"
+            [style.left.px]="pos.x + 16" [style.top.px]="pos.y + 16">
+            <div class="relationship-sentence">{{ relationshipSentence(edge) }}</div>
+            <div class="relationship-flags" *ngIf="isEdgeCritical(edge) || edge.cyclic">
+                <span class="flag" *ngIf="isEdgeCritical(edge)">On the critical path</span>
+                <span class="flag" *ngIf="edge.cyclic">Part of a dependency cycle</span>
+            </div>
+        </div>
+    </ng-container>
+
     <div class="graph-legend" *ngIf="showLegend()">
         <div class="legend-header">Relationships</div>
         <div class="legend-row" *ngFor="let item of legend">
+            <svg class="legend-swatch" width="34" height="14" viewBox="0 0 34 14">
+                <line x1="1" y1="7" x2="24" y2="7" stroke-width="2" stroke-linecap="round"
+                    [attr.class]="'legend-line ' + item.cssClass"
+                    [attr.marker-end]="'url(#' + item.markerBase + ')'">
+                </line>
+            </svg>
+            <span class="legend-text">{{item.label}}</span>
+        </div>
 
-            <span class="legend-line" [ngClass]="item.cssClass">
-            </span>
+        <div class="legend-divider"></div>
 
-            <span class="legend-text">
-                {{ item.label }}
-            </span>
-
+        <div class="legend-row legend-note">
+            <span class="legend-critical-dot"></span>
+            <span class="legend-text">Red arrow = on the critical path</span>
+        </div>
+        <div class="legend-row legend-note">
+            <span class="legend-cyclic-badge">&#8635;</span>
+            <span class="legend-text">Part of a dependency cycle</span>
         </div>
     </div>
 

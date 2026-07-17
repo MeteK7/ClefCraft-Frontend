@@ -100,6 +100,16 @@ interface GraphIndex {
  * neighbor lists by filtering the full edge array on every call,
  * including inside recursive traversals — this function replaces
  * all of that with maps engines can read in O(1).
+ *
+ * As a side effect, this also stamps node.inDegree / node.outDegree /
+ * node.degree directly onto each GraphNode from the same incoming /
+ * outgoing / adjacency maps it just built — those three fields are
+ * documented on GraphNode as "populated by analytics engines, treat as
+ * a cache", and this is the one place in the pipeline that always runs
+ * after nodes/edges change (both RelationshipGraphBuilder.build() via
+ * GraphViewModelFactory.create(), and .expand() via rebuildIndex()
+ * below, go through here), so it's the correct single source for them
+ * rather than recomputing degree counts separately in the builder.
  */
 export function buildGraphIndex(nodes: GraphNode[], edges: GraphEdge[]): GraphIndex {
 
@@ -138,6 +148,16 @@ export function buildGraphIndex(nodes: GraphNode[], edges: GraphEdge[]): GraphIn
 
         adjacency.get(edge.sourceId)!.push(edge.targetId);
         adjacency.get(edge.targetId)!.push(edge.sourceId);
+    }
+
+    // Stamp degree counts onto the nodes themselves so the template
+    // (and anything else reading node.inDegree/outDegree/degree
+    // directly, rather than going through the index maps) sees real
+    // numbers instead of the factory's zeroed defaults.
+    for (const node of nodes) {
+        node.inDegree = incoming.get(node.id)?.length ?? 0;
+        node.outDegree = outgoing.get(node.id)?.length ?? 0;
+        node.degree = adjacency.get(node.id)?.length ?? 0;
     }
 
     return { nodeMap, edgeMap, adjacency, incoming, outgoing, incomingEdges, outgoingEdges };

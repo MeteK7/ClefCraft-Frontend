@@ -30,6 +30,9 @@
 }
 
 .graph-edges {
+  /* Individual edges opt back into pointer events via their own
+     invisible "hit" stroke (see .graph-edge-hit below) so the whole
+     layer doesn't have to be interactive just to support edge hover. */
   pointer-events: none;
 }
 
@@ -47,14 +50,89 @@
   opacity: .15;
 }
 
+/*
+ * Color is reserved EXCLUSIVELY for critical-relationship signaling.
+ * Nothing else on an edge is allowed to change stroke color — relationship
+ * type is communicated below purely through dash pattern / stroke-width
+ * (and, on the arrowhead, through marker shape — see the <defs> in the
+ * template, which now has one marker per type x {normal, critical}).
+ */
 .graph-edge.critical {
   stroke: #ef5350;
   stroke-width: 4;
   filter: url(#edgeGlow);
 }
 
-.graph-edge.cyclic {
-  stroke-dasharray: 8 6;
+/*
+ * Relationship-type styling. Every rule here is color-free by design —
+ * only dash pattern and stroke-width vary. These classes are also reused
+ * by the legend's line-preview swatches so the legend teaches the exact
+ * visual language used on the canvas instead of a separate color key.
+ */
+.graph-edge.type-parent {
+  stroke-dasharray: none;
+}
+
+.graph-edge.type-blocks {
+  stroke-dasharray: none;
+  stroke-width: 3;
+}
+
+.graph-edge.type-depends-on {
+  stroke-dasharray: 7 5;
+}
+
+.graph-edge.type-related {
+  stroke-dasharray: 1.5 5;
+}
+
+.graph-edge.type-duplicate {
+  stroke-dasharray: 9 3 2 3;
+}
+
+.graph-edge.type-split-from {
+  stroke-dasharray: 14 5;
+}
+
+/*
+ * Cyclic membership used to be communicated by hijacking stroke-dasharray
+ * (8 6), which would have collided with the type patterns above. Instead
+ * cyclic edges get a quiet pulse (skipped while dimmed, so it doesn't
+ * fight with the dimmed-edge opacity) and a small "cycle" badge rendered
+ * at the edge midpoint — see .cyclic-badge and the template.
+ */
+.graph-edge.cyclic:not(.dimmed) {
+  animation: cyclic-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes cyclic-pulse {
+  0%, 100% { opacity: .85; }
+  50%      { opacity: .5; }
+}
+
+/* Wide, invisible stroke sitting under/over the visible edge purely to
+   make hovering a thin line practical; carries its own pointer-events
+   so the (pointer-events: none) .graph-edges group stays non-interactive
+   everywhere except directly on an edge. */
+.graph-edge-hit {
+  stroke: transparent;
+  stroke-width: 14;
+  fill: none;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.cyclic-badge circle {
+  fill: #232b36;
+  stroke: rgba(255, 255, 255, .35);
+  stroke-width: 1;
+}
+
+.cyclic-badge text {
+  fill: #cfd8dc;
+  font-size: 9px;
+  text-anchor: middle;
+  dominant-baseline: central;
 }
 
 .graph-nodes {
@@ -72,7 +150,6 @@
 .node-card {
   position: relative;
   width: 100%;
-  height: 100%;
   box-sizing: border-box;
   overflow: hidden;
   display: flex;
@@ -140,78 +217,115 @@
   opacity: .8;
 }
 
-.edge-parent{
-    stroke-dasharray:none;
+/* ---------------------------------------------------------------------
+ * Relationship tooltip (new)
+ * Shown on edge hover. Communicates the relationship as a plain sentence
+ * — no Source/Target/From/To/Node A/Node B terminology anywhere.
+ * ------------------------------------------------------------------- */
+.relationship-tooltip {
+  position: absolute;
+  max-width: 240px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(20, 24, 30, .96);
+  border: 1px solid rgba(255, 255, 255, .12);
+  color: #f5f5f5;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
+  z-index: 10;
 }
 
-.edge-blocks{
-    stroke-width:3.5;
+.relationship-sentence {
+  font-weight: 500;
 }
 
-.edge-depends{
-    stroke-dasharray:10 6;
+.relationship-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
 }
 
-.edge-related{
-    stroke-dasharray:2 8;
+.relationship-flags .flag {
+  font-size: 11px;
+  color: #cfd8dc;
+  opacity: .85;
 }
 
-.edge-duplicate{
-    stroke-dasharray:16 4 3 4;
+/* ---------------------------------------------------------------------
+ * Legend — line-style previews instead of color chips
+ * ------------------------------------------------------------------- */
+.legend-swatch {
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
-.edge-split{
-    stroke-dasharray:12 4 2 4;
+.legend-line {
+  stroke: #90a4ae;
+  fill: none;
 }
 
-.relationship-summary{
-
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-
-    margin-bottom:10px;
+.legend-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, .12);
+  margin: 6px 0;
 }
 
-.tooltip-section-title{
-
-    font-size:11px;
-    font-weight:600;
-
-    text-transform:uppercase;
-
-    letter-spacing:.08em;
-
-    color:#90caf9;
+.legend-note {
+  opacity: .85;
 }
 
-.relationship-text{
-
-    font-size:14px;
-
-    line-height:1.4;
-
-    color:white;
+.legend-critical-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e53935;
+  display: inline-block;
 }
 
-.legend-line{
-    display:inline-block;
-    width:42px;
-    border-top:2px solid #9aa0a6;
+.legend-cyclic-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #232b36;
+  border: 1px solid rgba(255, 255, 255, .3);
+  font-size: 10px;
+  color: #cfd8dc;
 }
 
-.legend-line.edge-parent{
-    border-top-style:solid;
+.metric-spacer {
+  display: inline-block;
+  width: 12px;
 }
 
-.legend-line.edge-depends{
-    border-top-style:dashed;
+/* ---------------------------------------------------------------------
+ * "Show Full Connections" status banner — shown while the recursive
+ * expansion is in flight, and again (in a warning tone) if the node
+ * safety cap was hit before every connection was discovered.
+ * ------------------------------------------------------------------- */
+.full-connections-status {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(20, 24, 30, .92);
+  border: 1px solid rgba(255, 255, 255, .12);
+  color: #f5f5f5;
+  font-size: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+  z-index: 5;
 }
 
-.legend-line.edge-related{
-    border-top-style:dotted;
-}
-
-.legend-line.edge-blocks{
-    border-top-width:4px;
+.full-connections-status.truncated {
+  border-color: rgba(251, 140, 0, .4);
 }
