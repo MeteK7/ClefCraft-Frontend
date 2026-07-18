@@ -329,3 +329,11 @@
 .full-connections-status.truncated {
   border-color: rgba(251, 140, 0, .4);
 }
+
+.graph-layer.animated {
+  transition: transform .5s cubic-bezier(.22, .61, .36, 1);
+}
+
+.graph-layer:not(.animated) {
+  transition: none;
+}

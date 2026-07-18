@@ -525,7 +525,7 @@ export class RelationshipGraphComponent implements OnChanges {
     async toggleFullConnections(): Promise<void> {
 
         if (this.showFullConnections()) {
-            this.rebuild();
+            this.rebuild(true);
             return;
         }
 
@@ -601,6 +601,8 @@ export class RelationshipGraphComponent implements OnChanges {
             // so a shallow spread is enough for the signal's Object.is
             // check to register this as a real change.
             this.graph.set({ ...graph });
+
+            this.fitToView();
 
             this.isExpandingFull.set(false);
         }
@@ -901,7 +903,7 @@ export class RelationshipGraphComponent implements OnChanges {
         return { x: boundaryX + normX * gap, y: boundaryY + normY * gap };
     }
 
-    private rebuild(): void {
+    private rebuild(animateViewport = false): void {
 
         if (!this.hub || this.rootItemId == null) {
             this.graph.set(null);
@@ -916,8 +918,16 @@ export class RelationshipGraphComponent implements OnChanges {
 
         this.graph.set(built);
         this.selectedNodeId.set(null);
-        this.viewportAnimated.set(false);
-        this.viewport.set(this.defaultViewport());
+
+        if (animateViewport) {
+            // Same path expand uses to unzoom smoothly — frame the
+            // rebuilt (smaller) graph instead of hard-resetting to the
+            // default centered/zoom-1 viewport.
+            this.fitToView();
+        } else {
+            this.viewportAnimated.set(false);
+            this.viewport.set(this.defaultViewport());
+        }
 
         this.showFullConnections.set(false);
         this.isExpandingFull.set(false);
