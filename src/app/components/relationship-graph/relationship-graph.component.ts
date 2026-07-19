@@ -57,14 +57,12 @@ interface LegendEntry {
     markerBase: string;
 }
 
-/** A ready-to-render edge line, already clipped to both nodes' card boundaries (not their centers). */
+/** A ready-to-render edge path, already clipped to both nodes' card boundaries and routed around any node it would otherwise cross. */
 interface RenderableEdge {
     edge: GraphEdge;
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-    /** Midpoint, used to place the cyclic-membership badge. */
+    /** SVG path 'd' attribute — a straight "M...L..." when clear, or a "M...Q..." curve when an obstacle forced a detour. */
+    path: string;
+    /** Midpoint along the actual rendered path (not just start/end average), used to place the cyclic-membership badge. */
     mx: number;
     my: number;
 }
@@ -236,20 +234,135 @@ export class RelationshipGraphComponent implements OnChanges {
             const target = graph.nodeMap.get(edge.targetId);
             if (!source || !target) continue;
 
-            const start = this.clipToRect(source, target.x, target.y, 0);
-            const end = this.clipToRect(target, source.x, source.y, this.arrowGap);
-
             lines.push({
                 edge,
-                x1: start.x, y1: start.y,
-                x2: end.x, y2: end.y,
-                mx: (start.x + end.x) / 2,
-                my: (start.y + end.y) / 2
+                ...this.routeEdge(source, target, graph.nodes)
             });
         }
 
         return lines;
     });
+
+    /**
+     * Computes the path between two nodes, clipped to their card boundaries.
+     * If the straight line would pass through an unrelated node's card, the
+     * edge is bowed out into a quadratic curve just far enough to clear the
+     * blocking card(s) — cheap to compute, avoids the "arrows passing
+     * beneath unrelated event cards" problem without full graph-wide path
+     * planning.
+     */
+    private routeEdge(
+        source: GraphNode,
+        target: GraphNode,
+        allNodes: GraphNode[]
+    ): { path: string; mx: number; my: number } {
+
+        const start = this.clipToRect(source, target.x, target.y, 0);
+        const end = this.clipToRect(target, source.x, source.y, this.arrowGap);
+
+        const blocking = allNodes.filter(node =>
+            node.id !== source.id &&
+            node.id !== target.id &&
+            this.segmentIntersectsRect(start, end, node)
+        );
+
+        if (!blocking.length) {
+            return {
+                path: `M ${start.x} ${start.y} L ${end.x} ${end.y}`,
+                mx: (start.x + end.x) / 2,
+                my: (start.y + end.y) / 2
+            };
+        }
+
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const length = Math.hypot(dx, dy) || 1;
+
+        // Unit vector perpendicular to the source->target line.
+        const normX = -dy / length;
+        const normY = dx / length;
+
+        // Clear the largest blocking card by its half-diagonal, plus a margin.
+        const clearance = Math.max(
+            ...blocking.map(node => Math.hypot(node.width, node.height) / 2)
+        ) + 24;
+
+        const midX = (start.x + end.x) / 2;
+        const midY = (start.y + end.y) / 2;
+
+        // Push the curve to whichever side moves it AWAY from the obstacle(s)
+        // rather than deeper into them.
+        const avgObstacleX = blocking.reduce((s, n) => s + n.x, 0) / blocking.length;
+        const avgObstacleY = blocking.reduce((s, n) => s + n.y, 0) / blocking.length;
+        const towardObstacle = (avgObstacleX - midX) * normX + (avgObstacleY - midY) * normY;
+        const side = towardObstacle >= 0 ? -1 : 1;
+
+        const controlX = midX + normX * clearance * side;
+        const controlY = midY + normY * clearance * side;
+
+        // Quadratic bezier midpoint (t=0.5): 0.25*P0 + 0.5*P1 + 0.25*P2 — used for the cyclic badge.
+        return {
+            path: `M ${start.x} ${start.y} Q ${controlX} ${controlY} ${end.x} ${end.y}`,
+            mx: 0.25 * start.x + 0.5 * controlX + 0.25 * end.x,
+            my: 0.25 * start.y + 0.5 * controlY + 0.25 * end.y
+        };
+    }
+
+    /** True if the segment p1->p2 passes through node's bounding box (padded slightly so near-misses still count). */
+    private segmentIntersectsRect(
+        p1: { x: number; y: number },
+        p2: { x: number; y: number },
+        node: GraphNode
+    ): boolean {
+
+        const pad = 10;
+        const left = node.x - node.width / 2 - pad;
+        const right = node.x + node.width / 2 + pad;
+        const top = node.y - node.height / 2 - pad;
+        const bottom = node.y + node.height / 2 + pad;
+
+        const segMinX = Math.min(p1.x, p2.x), segMaxX = Math.max(p1.x, p2.x);
+        const segMinY = Math.min(p1.y, p2.y), segMaxY = Math.max(p1.y, p2.y);
+        if (segMaxX < left || segMinX > right || segMaxY < top || segMinY > bottom) {
+            return false;
+        }
+
+        const inside = (p: { x: number; y: number }) =>
+            p.x >= left && p.x <= right && p.y >= top && p.y <= bottom;
+        if (inside(p1) || inside(p2)) return true;
+
+        const corners = [
+            { x: left, y: top }, { x: right, y: top },
+            { x: right, y: bottom }, { x: left, y: bottom }
+        ];
+
+        for (let i = 0; i < 4; i++) {
+            if (this.segmentsIntersect(p1, p2, corners[i], corners[(i + 1) % 4])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private segmentsIntersect(
+        p1: { x: number; y: number }, p2: { x: number; y: number },
+        p3: { x: number; y: number }, p4: { x: number; y: number }
+    ): boolean {
+        const d1 = this.cross(p3, p4, p1);
+        const d2 = this.cross(p3, p4, p2);
+        const d3 = this.cross(p1, p2, p3);
+        const d4 = this.cross(p1, p2, p4);
+
+        return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0))
+            && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+    }
+
+    private cross(
+        a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }
+    ): number {
+        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    }
 
     readonly viewportTransform = computed<string>(() => {
         const v = this.viewport();
