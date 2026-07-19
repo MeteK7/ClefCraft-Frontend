@@ -39,7 +39,7 @@
 .graph-edge {
   stroke: #9aa0a6;
   stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-linejoin: miter;
   stroke-width: 2;
   fill: none;
   opacity: 0.85;

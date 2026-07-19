@@ -2,16 +2,33 @@ import { Injectable } from '@angular/core';
 
 import { GraphViewModel } from '../visualization/graph-view-model';
 
+/**
+ * Layered ("Sugiyama-style") layout instead of the previous radial/polar
+ * layout. Nodes are grouped into horizontal ROWS by hierarchy depth from
+ * the root — this is what makes "which row/lane an event belongs to"
+ * actually mean something, instead of everything being scattered around
+ * concentric rings at arbitrary angles.
+ *
+ * Within each row, node ORDER is optimized across several barycenter
+ * sweeps (alternating top-down / bottom-up, same idea as classic
+ * Sugiyama crossing reduction) so that connected nodes end up physically
+ * close together and edges rarely have to cross each other or other
+ * nodes. Once ordering settles, x/y coordinates are assigned from that
+ * order with fixed, consistent spacing.
+ */
 @Injectable({
     providedIn: 'root'
 })
 export class GraphLayoutEngine {
 
-    /** Radial distance added per hop away from the root, before crowding adjustments. */
-    private readonly baseRingSpacing = 260;
+    /** Vertical distance between adjacent rows (hierarchy levels). Fixed, so every row lines up consistently. */
+    private readonly rowSpacing = 200;
 
-    /** Minimum center-to-center spacing to keep between sibling cards sharing a ring. */
-    private readonly minSiblingSpacing = 260;
+    /** Minimum center-to-center horizontal spacing between neighbors sharing a row. */
+    private readonly minColSpacing = 260;
+
+    /** Barycenter sweeps to run. Alternates direction each pass; diminishing returns past ~8 on graphs this size. */
+    private readonly crossingReductionPasses = 8;
 
     layout(graph: GraphViewModel): GraphViewModel {
 
@@ -20,17 +37,19 @@ export class GraphLayoutEngine {
             return graph;
         }
 
-        root.x = 0;
-        root.y = 0;
-
         const tree = this.buildSpanningTree(graph);
-        const subtreeWeight = this.computeSubtreeWeights(tree, graph.rootNodeId);
+        const rows = this.assignRows(graph, tree);
 
-        this.placeChildren(graph, tree, subtreeWeight, graph.rootNodeId, 0, Math.PI * 2, 1);
-        this.placeUnreachableNodes(graph, tree);
+        this.minimizeCrossings(graph, rows);
+        this.assignCoordinates(graph, rows);
+        this.placeUnreachableNodes(graph, rows);
 
         return graph;
     }
+
+    // =====================================================================
+    // Row (level) assignment
+    // =====================================================================
 
     private buildSpanningTree(graph: GraphViewModel): Map<number, number[]> {
 
@@ -67,89 +86,169 @@ export class GraphLayoutEngine {
         return edge?.relationType ?? 0;
     }
 
-    /** Leaf count of each node's subtree — nodes with no children weigh 1. Drives proportional sector sizing. */
-    private computeSubtreeWeights(tree: Map<number, number[]>, rootId: number): Map<number, number> {
+    /**
+     * Walks the spanning tree breadth-first, bucketing every node into
+     * its row (BFS depth from root). BFS guarantees the whole of row N
+     * is visited before row N+1, so a single pass is enough.
+     */
+    private assignRows(graph: GraphViewModel, tree: Map<number, number[]>): number[][] {
 
-        const weights = new Map<number, number>();
+        const levelOf = new Map<number, number>([[graph.rootNodeId, 0]]);
+        const rows: number[][] = [[graph.rootNodeId]];
 
-        const visit = (id: number): number => {
+        const queue: number[] = [graph.rootNodeId];
 
-            const kids = tree.get(id) ?? [];
+        while (queue.length) {
 
-            if (!kids.length) {
-                weights.set(id, 1);
-                return 1;
+            const current = queue.shift()!;
+            const level = levelOf.get(current)!;
+
+            for (const childId of tree.get(current) ?? []) {
+
+                levelOf.set(childId, level + 1);
+
+                if (!rows[level + 1]) {
+                    rows[level + 1] = [];
+                }
+                rows[level + 1].push(childId);
+
+                queue.push(childId);
             }
+        }
 
-            const total = kids.reduce((sum, kidId) => sum + visit(kidId), 0);
-            weights.set(id, total);
-            return total;
-        };
-
-        visit(rootId);
-        return weights;
+        return rows;
     }
 
-    private placeChildren(
-        graph: GraphViewModel,
-        tree: Map<number, number[]>,
-        subtreeWeight: Map<number, number>,
-        parentId: number,
-        startAngle: number,
-        endAngle: number,
-        level: number
-    ): void {
+    // =====================================================================
+    // Crossing minimization (barycenter method)
+    // =====================================================================
 
-        const kids = tree.get(parentId) ?? [];
-        if (!kids.length) {
+    private minimizeCrossings(graph: GraphViewModel, rows: number[][]): void {
+
+        if (rows.length <= 1) {
             return;
         }
 
-        const sectorSpan = endAngle - startAngle;
-        const totalWeight = kids.reduce((sum, id) => sum + (subtreeWeight.get(id) ?? 1), 0);
+        const positionInRow = new Map<number, number>();
+        const rebuildPositions = () => {
+            positionInRow.clear();
+            rows.forEach(row => row.forEach((id, idx) => positionInRow.set(id, idx)));
+        };
+        rebuildPositions();
 
-        const idealRadius = level * this.baseRingSpacing;
-        const circumferenceNeeded = kids.length * this.minSiblingSpacing;
-        const radiusNeededForSpacing = sectorSpan > 0 ? circumferenceNeeded / sectorSpan : idealRadius;
-        const radius = Math.max(idealRadius, radiusNeededForSpacing);
+        for (let pass = 0; pass < this.crossingReductionPasses; pass++) {
 
-        let angleCursor = startAngle;
+            const downward = pass % 2 === 0;
 
-        for (const kidId of kids) {
-
-            const weight = subtreeWeight.get(kidId) ?? 1;
-            const kidSpan = sectorSpan * (weight / totalWeight);
-            const kidAngle = angleCursor + kidSpan / 2;
-
-            const kid = graph.nodeMap.get(kidId);
-
-            if (kid) {
-                kid.x = Math.cos(kidAngle) * radius;
-                kid.y = Math.sin(kidAngle) * radius;
+            if (downward) {
+                for (let level = 1; level < rows.length; level++) {
+                    this.reorderRowByBarycenter(graph, rows[level], rows[level - 1], positionInRow);
+                    rebuildPositions();
+                }
+            } else {
+                for (let level = rows.length - 2; level >= 0; level--) {
+                    this.reorderRowByBarycenter(graph, rows[level], rows[level + 1], positionInRow);
+                    rebuildPositions();
+                }
             }
-
-            this.placeChildren(graph, tree, subtreeWeight, kidId, angleCursor, angleCursor + kidSpan, level + 1);
-
-            angleCursor += kidSpan;
         }
     }
 
-    private placeUnreachableNodes(graph: GraphViewModel, tree: Map<number, number[]>): void {
+    /**
+     * Reorders `row` in place by each node's barycenter: the average
+     * position (within `referenceRow`) of its neighbors, taken across
+     * ALL graph edges — not just spanning-tree edges — so cross-links
+     * (e.g. a "related" edge between two branches) also pull related
+     * nodes toward each other instead of only tree parents/children.
+     * Nodes with no neighbors in the reference row keep their current
+     * relative position instead of collapsing to the same score.
+     */
+    private reorderRowByBarycenter(
+        graph: GraphViewModel,
+        row: number[],
+        referenceRow: number[],
+        positionInRow: Map<number, number>
+    ): void {
 
-        const placed = new Set<number>([graph.rootNodeId]);
-        tree.forEach(kids => kids.forEach(id => placed.add(id)));
+        const refPos = new Map<number, number>();
+        referenceRow.forEach((id, idx) => refPos.set(id, idx));
+
+        const barycenter = (nodeId: number): number => {
+
+            const neighbors = (graph.adjacency.get(nodeId) ?? []).filter(n => refPos.has(n));
+
+            if (!neighbors.length) {
+                return positionInRow.get(nodeId) ?? 0;
+            }
+
+            const sum = neighbors.reduce((s, n) => s + (refPos.get(n) ?? 0), 0);
+            return sum / neighbors.length;
+        };
+
+        const scored = row.map(id => ({ id, score: barycenter(id) }));
+
+        // Stable sort: ties keep their existing relative order instead of
+        // jittering between passes.
+        scored.sort((a, b) => a.score - b.score);
+
+        row.splice(0, row.length, ...scored.map(s => s.id));
+    }
+
+    // =====================================================================
+    // Coordinate assignment
+    // =====================================================================
+
+    private assignCoordinates(graph: GraphViewModel, rows: number[][]): void {
+
+        rows.forEach((row, level) => {
+
+            if (!row.length) return;
+
+            const spacing = this.computeRowSpacing(graph, row);
+            const totalWidth = (row.length - 1) * spacing;
+            const startX = -totalWidth / 2;
+
+            row.forEach((id, idx) => {
+                const node = graph.nodeMap.get(id);
+                if (!node) return;
+                node.x = startX + idx * spacing;
+                node.y = level * this.rowSpacing;
+            });
+        });
+    }
+
+    /** Widest card in the row drives spacing, so cards never overlap regardless of title length / card size. */
+    private computeRowSpacing(graph: GraphViewModel, nodeIds: number[]): number {
+
+        let widest = 0;
+        for (const id of nodeIds) {
+            const node = graph.nodeMap.get(id);
+            if (node) widest = Math.max(widest, node.width);
+        }
+
+        return Math.max(this.minColSpacing, widest + 60);
+    }
+
+    /** Nodes unreachable from the root (no path through the spanning tree) get their own row below everything else, evenly spaced. */
+    private placeUnreachableNodes(graph: GraphViewModel, rows: number[][]): void {
+
+        const placed = new Set<number>();
+        rows.forEach(row => row.forEach(id => placed.add(id)));
 
         const stray = graph.nodes.filter(n => !placed.has(n.id));
         if (!stray.length) {
             return;
         }
 
-        const radius = this.baseRingSpacing * 5;
-        const step = (Math.PI * 2) / stray.length;
+        const level = rows.length;
+        const strayIds = stray.map(n => n.id);
+        const spacing = this.computeRowSpacing(graph, strayIds);
+        const totalWidth = (stray.length - 1) * spacing;
+        const startX = -totalWidth / 2;
 
-        stray.forEach((node, index) => {
-            node.x = Math.cos(step * index) * radius;
-            node.y = Math.sin(step * index) * radius;
+        stray.forEach((node, idx) => {
+            node.x = startX + idx * spacing;
+            node.y = level * this.rowSpacing;
         });
     }
 }
