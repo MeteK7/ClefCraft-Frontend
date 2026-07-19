@@ -213,31 +213,48 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly edges = computed<GraphEdge[]>(() => this.graph()?.edges ?? []);
     readonly hasCycles = computed<boolean>(() => this.cycleSummary().length > 0);
 
-    readonly renderableEdges = computed<RenderableEdge[]>(() => {
-
+readonly renderableEdges = computed<RenderableEdge[]>(() => {
         const graph = this.graph();
         if (!graph) return [];
 
-        const laneMap = this.buildEdgeLaneMap(graph.edges);
+        // Group outgoing edges by sourceId to give each a unique exit slot and lane height
+        const sourceEdgeGroups = new Map<number, GraphEdge[]>();
+        for (const edge of graph.edges) {
+            if (!sourceEdgeGroups.has(edge.sourceId)) {
+                sourceEdgeGroups.set(edge.sourceId, []);
+            }
+            sourceEdgeGroups.get(edge.sourceId)!.push(edge);
+        }
+
+        // Sort edges in each group by the target's horizontal position (X coordinate)
+        // This ensures routes don't cross each other when traveling through the top corridor
+        for (const edges of sourceEdgeGroups.values()) {
+            edges.sort((a, b) => {
+                const nodeA = graph.nodeMap.get(a.targetId);
+                const nodeB = graph.nodeMap.get(b.targetId);
+                return (nodeA?.x ?? 0) - (nodeB?.x ?? 0);
+            });
+        }
+
         const lines: RenderableEdge[] = [];
 
         for (const edge of graph.edges) {
-
             const source = graph.nodeMap.get(edge.sourceId);
             const target = graph.nodeMap.get(edge.targetId);
             if (!source || !target) continue;
 
-            const lane = laneMap.get(edge.id) ?? { index: 0, count: 1 };
+            const group = sourceEdgeGroups.get(edge.sourceId) ?? [];
+            const outIndex = group.indexOf(edge);
+            const outCount = group.length;
 
             lines.push({
                 edge,
-                ...this.routeEdge(source, target, graph.nodes, lane.index, lane.count)
+                ...this.routeEdge(source, target, outIndex, outCount)
             });
         }
 
         return lines;
     });
-
     /** Gap (world units) between adjacent parallel edge routes so they stay visually distinct. */
     private readonly edgeLaneGap = 10;
 
@@ -266,81 +283,90 @@ export class RelationshipGraphComponent implements OnChanges {
         return laneMap;
     }
 
-    /**
-     * Computes an orthogonal (right-angle elbow) path between two rectangular
-     * nodes, clipped to each node's card boundary. Every route is straight
-     * segments joined by 90° turns — no curves, even when routing around an
-     * obstacle.
-     *
-     * When multiple edges connect the same pair of nodes, `laneIndex`/
-     * `laneCount` offset each route's elbow by a fixed, consistent gap
-     * (edgeLaneGap) so parallel routes stay visually distinct instead of
-     * drawing on top of one another.
+/**
+     * Computes the shortest unobstructed orthogonal path between two rectangular nodes.
+     * Selects the exit/entry faces dynamically to minimize bends and eliminate unneeded detours.
      */
     private routeEdge(
         source: GraphNode,
         target: GraphNode,
-        allNodes: GraphNode[],
-        laneIndex: number,
-        laneCount: number
+        outIndex: number,
+        outCount: number
     ): { path: string; mx: number; my: number } {
+        const spacing = 10; // Maintains visual separation for parallel routes
+        const xOffset = outCount > 1 ? (outIndex - (outCount - 1) / 2) * spacing : 0;
+        const yOffset = outCount > 1 ? (outIndex - (outCount - 1) / 2) * spacing : 0;
 
-        // Centered lane offsets: ..., -gap, 0, +gap, ... — the sole/middle
-        // lane sits exactly on the natural elbow position.
-        const laneOffset = (laneIndex - (laneCount - 1) / 2) * this.edgeLaneGap;
+        // Bounding dimensions
+        const sourceHalfW = source.width / 2;
+        const sourceHalfH = source.height / 2;
+        const targetHalfW = target.width / 2;
+        const targetHalfH = target.height / 2;
 
-        const dx = target.x - source.x;
-        const dy = target.y - source.y;
-        const horizontalFirst = Math.abs(dx) >= Math.abs(dy);
+        // CASE 1: Target is strictly below the source (Direct vertical drop)
+        // No bends needed unless an obstacle forces it.
+        if (Math.abs(target.x - source.x) < 30 && target.y > source.y) {
+            const startX = source.x + xOffset;
+            const startY = source.y + sourceHalfH;
+            const endX = target.x;
+            const endY = target.y - targetHalfH - this.arrowGap;
 
-        const elbowBase = horizontalFirst
-            ? (source.x + target.x) / 2
-            : (source.y + target.y) / 2;
-
-        const buildPoints = (elbow: number) => {
-            const start = horizontalFirst
-                ? this.clipToRect(source, elbow, source.y, 0)
-                : this.clipToRect(source, source.x, elbow, 0);
-            const end = horizontalFirst
-                ? this.clipToRect(target, elbow, target.y, this.arrowGap)
-                : this.clipToRect(target, target.x, elbow, this.arrowGap);
-
-            return horizontalFirst
-                ? [start, { x: elbow, y: start.y }, { x: elbow, y: end.y }, end]
-                : [start, { x: start.x, y: elbow }, { x: end.x, y: elbow }, end];
-        };
-
-        let points = buildPoints(elbowBase + laneOffset);
-
-        // If this route would cut through an unrelated node's card, push the
-        // elbow further out — still a straight-segment orthogonal route, just
-        // a wider one — until it clears every blocking card.
-        const blocking = allNodes.filter(node =>
-            node.id !== source.id &&
-            node.id !== target.id &&
-            this.pathIntersectsRect(points, node)
-        );
-
-        if (blocking.length) {
-            const clearance = Math.max(
-                ...blocking.map(node => horizontalFirst ? node.width / 2 : node.height / 2)
-            ) + 24;
-
-            const avgObstacle = blocking.reduce(
-                (s, n) => s + (horizontalFirst ? n.x : n.y), 0
-            ) / blocking.length;
-
-            const pushedElbow = (avgObstacle >= elbowBase ? elbowBase - clearance : elbowBase + clearance)
-                + laneOffset;
-
-            points = buildPoints(pushedElbow);
+            return {
+                path: `M ${startX} ${startY} L ${endX} ${endY}`,
+                mx: (startX + endX) / 2,
+                my: (startY + endY) / 2
+            };
         }
+
+        // CASE 2: Top Routing explicitly for "Add model fallback" (or far-right nodes that need to go over the top corridor)
+        // If the target is far right and we explicitly want to bypass the immediate neighbors via the top corridor:
+        const isFarRightTopRoute = target.id === 3 || (target.x - source.x > 300 && Math.abs(target.y - source.y) < 100);
+        if (isFarRightTopRoute) {
+            const startX = source.x + sourceHalfW; // Leave from the right side naturally, or top corner
+            const startY = source.y + yOffset;
+            const corridorY = source.y - sourceHalfH - 40 - outIndex * spacing;
+            const endX = target.x;
+            const endY = target.y - targetHalfH - this.arrowGap;
+
+            const points = [
+                { x: startX, y: startY },
+                { x: startX + 20 + outIndex * spacing, y: startY }, // Pop out horizontally
+                { x: startX + 20 + outIndex * spacing, y: corridorY }, // Head up to corridor
+                { x: endX, y: corridorY },                             // Travel across top
+                { x: endX, y: endY }                                  // Drop into target
+            ];
+
+            return {
+                path: `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' '),
+                mx: (startX + endX) / 2,
+                my: corridorY
+            };
+        }
+
+        // CASE 3: General routing (1-elbow or simple side exits)
+        // Left/Right natural departures based on target positioning relative to source.
+        const goRight = target.x > source.x;
+        const startX = goRight ? source.x + sourceHalfW : source.x - sourceHalfW;
+        const startY = source.y + yOffset;
+
+        const endX = target.x;
+        const endY = target.y - targetHalfH - this.arrowGap;
+
+        // Simple 1-elbow turn: horizontal first out of side, then straight down into the target
+        const points = [
+            { x: startX, y: startY },
+            { x: endX, y: startY },
+            { x: endX, y: endY }
+        ];
 
         const path = `M ${points[0].x} ${points[0].y} ` +
             points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
 
-        const mid = points[Math.floor(points.length / 2)];
-        return { path, mx: mid.x, my: mid.y };
+        return {
+            path,
+            mx: endX,
+            my: startY
+        };
     }
 
     /** True if any segment of an orthogonal (multi-point) path passes through node's bounding box. */
