@@ -60,9 +60,8 @@ interface LegendEntry {
 /** A ready-to-render edge path, already clipped to both nodes' card boundaries and routed around any node it would otherwise cross. */
 interface RenderableEdge {
     edge: GraphEdge;
-    /** SVG path 'd' attribute — a straight "M...L..." when clear, or a "M...Q..." curve when an obstacle forced a detour. */
+    /** SVG path 'd' attribute — an orthogonal "M...L...L...L..." route: straight segments joined by 90° elbow turns, never a curve. */
     path: string;
-    /** Midpoint along the actual rendered path (not just start/end average), used to place the cyclic-membership badge. */
     mx: number;
     my: number;
 }
@@ -214,18 +213,12 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly edges = computed<GraphEdge[]>(() => this.graph()?.edges ?? []);
     readonly hasCycles = computed<boolean>(() => this.cycleSummary().length > 0);
 
-    /**
-     * Edge lines clipped to each endpoint's card boundary rather than
-     * its center. Computed once per graph/position change instead of
-     * being recalculated per template binding (x1/y1/x2/y2 would each
-     * have re-derived it independently otherwise). Also carries the
-     * midpoint (mx/my), used to place the cyclic-membership badge.
-     */
     readonly renderableEdges = computed<RenderableEdge[]>(() => {
 
         const graph = this.graph();
         if (!graph) return [];
 
+        const laneMap = this.buildEdgeLaneMap(graph.edges);
         const lines: RenderableEdge[] = [];
 
         for (const edge of graph.edges) {
@@ -234,78 +227,133 @@ export class RelationshipGraphComponent implements OnChanges {
             const target = graph.nodeMap.get(edge.targetId);
             if (!source || !target) continue;
 
+            const lane = laneMap.get(edge.id) ?? { index: 0, count: 1 };
+
             lines.push({
                 edge,
-                ...this.routeEdge(source, target, graph.nodes)
+                ...this.routeEdge(source, target, graph.nodes, lane.index, lane.count)
             });
         }
 
         return lines;
     });
 
+    /** Gap (world units) between adjacent parallel edge routes so they stay visually distinct. */
+    private readonly edgeLaneGap = 10;
+
     /**
-     * Computes the path between two nodes, clipped to their card boundaries.
-     * If the straight line would pass through an unrelated node's card, the
-     * edge is bowed out into a quadratic curve just far enough to clear the
-     * blocking card(s) — cheap to compute, avoids the "arrows passing
-     * beneath unrelated event cards" problem without full graph-wide path
-     * planning.
+     * Groups edges by the unordered pair of node ids they connect (so A→B and
+     * B→A count as the same pair) and assigns each edge an index/count within
+     * that group. Used to spread duplicate/parallel connections between the
+     * same two nodes into separate lanes instead of overlapping.
+     */
+    private buildEdgeLaneMap(edges: GraphEdge[]): Map<number, { index: number; count: number }> {
+        const groups = new Map<string, GraphEdge[]>();
+
+        for (const edge of edges) {
+            const key = edge.sourceId < edge.targetId
+                ? `${edge.sourceId}-${edge.targetId}`
+                : `${edge.targetId}-${edge.sourceId}`;
+            const bucket = groups.get(key);
+            if (bucket) bucket.push(edge); else groups.set(key, [edge]);
+        }
+
+        const laneMap = new Map<number, { index: number; count: number }>();
+        for (const bucket of groups.values()) {
+            bucket.forEach((edge, index) => laneMap.set(edge.id, { index, count: bucket.length }));
+        }
+
+        return laneMap;
+    }
+
+    /**
+     * Computes an orthogonal (right-angle elbow) path between two rectangular
+     * nodes, clipped to each node's card boundary. Every route is straight
+     * segments joined by 90° turns — no curves, even when routing around an
+     * obstacle.
+     *
+     * When multiple edges connect the same pair of nodes, `laneIndex`/
+     * `laneCount` offset each route's elbow by a fixed, consistent gap
+     * (edgeLaneGap) so parallel routes stay visually distinct instead of
+     * drawing on top of one another.
      */
     private routeEdge(
         source: GraphNode,
         target: GraphNode,
-        allNodes: GraphNode[]
+        allNodes: GraphNode[],
+        laneIndex: number,
+        laneCount: number
     ): { path: string; mx: number; my: number } {
 
-        const start = this.clipToRect(source, target.x, target.y, 0);
-        const end = this.clipToRect(target, source.x, source.y, this.arrowGap);
+        // Centered lane offsets: ..., -gap, 0, +gap, ... — the sole/middle
+        // lane sits exactly on the natural elbow position.
+        const laneOffset = (laneIndex - (laneCount - 1) / 2) * this.edgeLaneGap;
 
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        const horizontalFirst = Math.abs(dx) >= Math.abs(dy);
+
+        const elbowBase = horizontalFirst
+            ? (source.x + target.x) / 2
+            : (source.y + target.y) / 2;
+
+        const buildPoints = (elbow: number) => {
+            const start = horizontalFirst
+                ? this.clipToRect(source, elbow, source.y, 0)
+                : this.clipToRect(source, source.x, elbow, 0);
+            const end = horizontalFirst
+                ? this.clipToRect(target, elbow, target.y, this.arrowGap)
+                : this.clipToRect(target, target.x, elbow, this.arrowGap);
+
+            return horizontalFirst
+                ? [start, { x: elbow, y: start.y }, { x: elbow, y: end.y }, end]
+                : [start, { x: start.x, y: elbow }, { x: end.x, y: elbow }, end];
+        };
+
+        let points = buildPoints(elbowBase + laneOffset);
+
+        // If this route would cut through an unrelated node's card, push the
+        // elbow further out — still a straight-segment orthogonal route, just
+        // a wider one — until it clears every blocking card.
         const blocking = allNodes.filter(node =>
             node.id !== source.id &&
             node.id !== target.id &&
-            this.segmentIntersectsRect(start, end, node)
+            this.pathIntersectsRect(points, node)
         );
 
-        if (!blocking.length) {
-            return {
-                path: `M ${start.x} ${start.y} L ${end.x} ${end.y}`,
-                mx: (start.x + end.x) / 2,
-                my: (start.y + end.y) / 2
-            };
+        if (blocking.length) {
+            const clearance = Math.max(
+                ...blocking.map(node => horizontalFirst ? node.width / 2 : node.height / 2)
+            ) + 24;
+
+            const avgObstacle = blocking.reduce(
+                (s, n) => s + (horizontalFirst ? n.x : n.y), 0
+            ) / blocking.length;
+
+            const pushedElbow = (avgObstacle >= elbowBase ? elbowBase - clearance : elbowBase + clearance)
+                + laneOffset;
+
+            points = buildPoints(pushedElbow);
         }
 
-        const dx = end.x - start.x;
-        const dy = end.y - start.y;
-        const length = Math.hypot(dx, dy) || 1;
+        const path = `M ${points[0].x} ${points[0].y} ` +
+            points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
 
-        // Unit vector perpendicular to the source->target line.
-        const normX = -dy / length;
-        const normY = dx / length;
+        const mid = points[Math.floor(points.length / 2)];
+        return { path, mx: mid.x, my: mid.y };
+    }
 
-        // Clear the largest blocking card by its half-diagonal, plus a margin.
-        const clearance = Math.max(
-            ...blocking.map(node => Math.hypot(node.width, node.height) / 2)
-        ) + 24;
-
-        const midX = (start.x + end.x) / 2;
-        const midY = (start.y + end.y) / 2;
-
-        // Push the curve to whichever side moves it AWAY from the obstacle(s)
-        // rather than deeper into them.
-        const avgObstacleX = blocking.reduce((s, n) => s + n.x, 0) / blocking.length;
-        const avgObstacleY = blocking.reduce((s, n) => s + n.y, 0) / blocking.length;
-        const towardObstacle = (avgObstacleX - midX) * normX + (avgObstacleY - midY) * normY;
-        const side = towardObstacle >= 0 ? -1 : 1;
-
-        const controlX = midX + normX * clearance * side;
-        const controlY = midY + normY * clearance * side;
-
-        // Quadratic bezier midpoint (t=0.5): 0.25*P0 + 0.5*P1 + 0.25*P2 — used for the cyclic badge.
-        return {
-            path: `M ${start.x} ${start.y} Q ${controlX} ${controlY} ${end.x} ${end.y}`,
-            mx: 0.25 * start.x + 0.5 * controlX + 0.25 * end.x,
-            my: 0.25 * start.y + 0.5 * controlY + 0.25 * end.y
-        };
+    /** True if any segment of an orthogonal (multi-point) path passes through node's bounding box. */
+    private pathIntersectsRect(
+        points: { x: number; y: number }[],
+        node: GraphNode
+    ): boolean {
+        for (let i = 0; i < points.length - 1; i++) {
+            if (this.segmentIntersectsRect(points[i], points[i + 1], node)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** True if the segment p1->p2 passes through node's bounding box (padded slightly so near-misses still count). */
