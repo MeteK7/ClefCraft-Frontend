@@ -43,13 +43,6 @@ interface Viewport {
     panY: number;
 }
 
-/**
- * Legend entries now describe a LINE STYLE (css class + marker id), not a
- * color. Relationship type is communicated exclusively through dash
- * pattern and arrowhead shape; arrow color is reserved for indicating
- * whether an edge is on the critical path, and must never be repurposed
- * to distinguish relationship type.
- */
 interface LegendEntry {
     type: RelationshipType;
     label: string;
@@ -66,15 +59,6 @@ interface RenderableEdge {
     my: number;
 }
 
-/**
- * Per-relationship-type visual style. One entry drives three things for a
- * given edge: the CSS class that sets its dash pattern, the base marker id
- * whose shape becomes the arrowhead (a "-critical" suffix is appended when
- * the edge is on the critical path, swapping only the color), and a
- * sentence builder for the hover tooltip.
- *
- * Keyed by GraphEdge.relationType.
- */
 type RelationshipStyle = {
     cssClass: string;
     markerBase: string;
@@ -110,13 +94,6 @@ export class RelationshipGraphComponent implements OnChanges {
     /** Extra gap (world units) beyond a card's edge before an arrowhead is drawn, so the tip is visible instead of hidden under the target card. */
     private readonly arrowGap = 6;
 
-    /**
-     * Single source of truth mapping a relationship type to its dash
-     * pattern (css class), its arrowhead shape (marker base id — the
-     * template appends "-critical" when needed for color), and the
-     * human-readable sentence used by the edge tooltip. Update this one
-     * map to add a relationship type or change how it reads/looks.
-     */
     private readonly typeStyleMap: Record<RelationshipType, RelationshipStyle> = {
         [RelationshipType.Parent]: {
             cssClass: 'type-parent',
@@ -178,27 +155,10 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly showLegend = signal<boolean>(true);
     readonly showCriticalPath = signal<boolean>(false);
 
-    /**
-     * "Show Full Connections" — recursively walks every reachable
-     * relationship out from the root instead of stopping at one hop.
-     * showFullConnections is the toggle's on/off state; isExpandingFull
-     * is true only while the recursive fetch is in flight (drives the
-     * loading indicator and disables per-node expand while it runs);
-     * fullConnectionsTruncated is set if the safety cap in
-     * expandFullyConnected() was hit before every node was discovered.
-     */
     readonly showFullConnections = signal<boolean>(false);
     readonly isExpandingFull = signal<boolean>(false);
     readonly fullConnectionsTruncated = signal<boolean>(false);
 
-    /**
-     * When true, :host picks up the `.graph-maximized` CSS class (see
-     * @HostBinding below), which switches the component from its normal
-     * 650px-tall box to a fixed overlay covering the full viewport —
-     * this is what lets the graph escape the item-details dialog's
-     * cramped bounds. Purely a view-state signal; it has no effect on
-     * graph/layout data.
-     */
     readonly isMaximized = signal<boolean>(false);
 
     @HostBinding('class.graph-maximized')
@@ -213,23 +173,10 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly edges = computed<GraphEdge[]>(() => this.graph()?.edges ?? []);
     readonly hasCycles = computed<boolean>(() => this.cycleSummary().length > 0);
 
-    // ============================================================================
-    // Replace the existing `renderableEdges` computed + `routeEdge` method
-    // (and you can delete `buildEdgeLaneMap`, which is dead code today) with
-    // the following. `pathIntersectsRect` / `segmentIntersectsRect` /
-    // `segmentsIntersect` / `cross` stay exactly as they are — this just
-    // finally calls them.
-    // ============================================================================
-
     readonly renderableEdges = computed<RenderableEdge[]>(() => {
         const graph = this.graph();
         if (!graph) return [];
 
-        // Group by BOTH ends. Outgoing groups give each edge leaving a node its
-        // own exit lane; incoming groups give each edge arriving at a node its
-        // own entry lane. Without the incoming groups, every edge terminating
-        // on the same target converges on the exact same pixel, which is what
-        // produced the "stacked" arrows you flagged.
         const outgoingGroups = new Map<number, GraphEdge[]>();
         const incomingGroups = new Map<number, GraphEdge[]>();
 
@@ -287,12 +234,6 @@ export class RelationshipGraphComponent implements OnChanges {
     /** Extra clearance kept between a detour corridor and the node it's routing around. */
     private readonly detourMargin = 28;
 
-    /**
-     * Builds an orthogonal route between two nodes. The shape is chosen from
-     * their relative geometry (same row vs. stacked vs. diagonal) rather than
-     * from node identity, and every route gets checked against real obstacles;
-     * a detour is only introduced when the direct route actually needs one.
-     */
     private routeEdge(
         source: GraphNode,
         target: GraphNode,
@@ -369,12 +310,6 @@ export class RelationshipGraphComponent implements OnChanges {
         return { path, mx: (mid.x + points[Math.min(points.length - 1, Math.floor((points.length - 1) / 2) + 1)].x) / 2, my: mid.y };
     }
 
-    /**
-     * Pushes a blocked route up above (or down below) the specific node it
-     * collided with, sized off that node's own bounding box — works for any
-     * blocking node, not one hardcoded id. Picks whichever side is the
-     * shorter detour from the route's start point.
-     */
     private detourAroundNode(
         points: { x: number; y: number }[],
         blocker: GraphNode
@@ -548,23 +483,11 @@ export class RelationshipGraphComponent implements OnChanges {
         return this.typeStyleMap[edge.relationType]?.cssClass ?? 'type-related';
     }
 
-    /**
-     * Marker id for this edge's arrowhead: shape comes from relationship
-     * type, color comes from critical-path status. This is the only place
-     * those two dimensions combine, and only via marker id selection —
-     * never by setting a stroke/fill color directly on the edge.
-     */
     edgeMarkerEnd(edge: GraphEdge): string {
         const base = this.typeStyleMap[edge.relationType]?.markerBase ?? 'arrow-related';
         return `url(#${base}${this.isEdgeCritical(edge) ? '-critical' : ''})`;
     }
 
-    /**
-     * Builds the human-readable sentence shown in the edge tooltip, e.g.
-     * "Fix login bug blocks Ship v2.1". Deliberately avoids any
-     * Source/Target/From/To/Node A/Node B terminology — it should read
-     * like an explanation of the relationship, not an exposed data model.
-     */
     relationshipSentence(edge: GraphEdge): string {
         const graph = this.graph();
         const source = graph?.nodeMap.get(edge.sourceId);
@@ -583,12 +506,6 @@ export class RelationshipGraphComponent implements OnChanges {
         return this.graph()?.edges.find(e => e.id === id);
     }
 
-    /**
-     * Visual radius including a risk bump: higher RelationshipScoreEngine
-     * score -> visibly larger node, up to +16px. Used for bounding-box
-     * math (fitToView/focusOnNodes) — the card itself is rectangular, so
-     * this is a conservative circular approximation, not the render size.
-     */
     visualRadius(node: GraphNode): number {
         const bump = (node.relationshipScore / 100) * 16;
         return Math.max(node.width, node.height) / 2 + bump;
@@ -621,9 +538,6 @@ export class RelationshipGraphComponent implements OnChanges {
             return;
         }
 
-        // Computed on demand rather than for every node up front — graphs
-        // in this view are small enough that this is effectively instant,
-        // and it avoids paying for impact analysis on nodes nobody looks at.
         this.hoverImpact.set(this.impactEngine.analyze(graph, node.id));
     }
 
@@ -679,15 +593,6 @@ export class RelationshipGraphComponent implements OnChanges {
         });
     }
 
-    /**
-     * Pulls this node's own relationships in and merges them into the
-     * graph in place — the path from a one-hop star to a real multi-hop
-     * graph. GraphLayoutEngine.layout() re-derives positions for the
-     * WHOLE graph from the BFS tree, so every node (not just the newly
-     * added ones) ends up with a position consistent with the same
-     * single layout rule — there is no separate "expanded node"
-     * placement path anymore.
-     */
     onExpandClick(node: GraphNode, event: MouseEvent): void {
 
         event.stopPropagation();
@@ -705,10 +610,6 @@ export class RelationshipGraphComponent implements OnChanges {
 
                 this.applyAnalytics(expanded);
 
-                // applyAnalytics already replaced expanded.nodes/edges with
-                // fresh array references and rebuilt the index, so a shallow
-                // spread of the top-level object is enough for the `graph`
-                // signal's Object.is check to see this as a real change.
                 this.graph.set({ ...expanded });
 
                 this.expandingNodeId.set(null);
@@ -719,26 +620,10 @@ export class RelationshipGraphComponent implements OnChanges {
         });
     }
 
-    /** How many getRelationships() calls are allowed in flight at once during a full-connections expansion. */
     private readonly expansionBatchSize = 6;
 
-    /**
-     * Hard ceiling on total nodes a full-connections expansion will pull
-     * in. Without this, a densely connected board (or a data issue that
-     * makes everything look related) could make "Show Full Connections"
-     * fetch and render an unbounded graph. If the cap is hit,
-     * fullConnectionsTruncated is set so the UI can say so. Public (not
-     * private) so the truncation banner in the template can reference
-     * the same number rather than hardcoding a copy of it.
-     */
     readonly maxFullConnectionNodes = 500;
 
-    /**
-     * Flips the "Show Full Connections" toggle. Turning it on kicks off
-     * expandFullyConnected(); turning it off simply rebuilds back to the
-     * one-hop star around the current root (rebuild() already resets
-     * showFullConnections, so this doesn't need to re-fetch anything).
-     */
     async toggleFullConnections(): Promise<void> {
 
         if (this.showFullConnections()) {
@@ -750,18 +635,6 @@ export class RelationshipGraphComponent implements OnChanges {
         await this.expandFullyConnected();
     }
 
-    /**
-     * Recursively walks every reachable relationship out from the
-     * current graph, breadth by breadth: fetch relationships for every
-     * node not yet fetched, merge them in via builder.expand (which is
-     * itself idempotent — safe against a node being reachable through
-     * more than one path), collect whichever node ids are new as a
-     * result, and repeat until a batch produces nothing new.
-     *
-     * Cycles resolve for free here: an edge back to an already-known
-     * node just isn't "new", so it never re-enters the frontier — no
-     * separate cycle guard is needed beyond the "already fetched" set.
-     */
     private async expandFullyConnected(): Promise<void> {
 
         let graph = this.graph();
@@ -770,11 +643,6 @@ export class RelationshipGraphComponent implements OnChanges {
         this.isExpandingFull.set(true);
         this.fullConnectionsTruncated.set(false);
 
-        // The root's own relationships are already loaded (they're what
-        // built the initial one-hop star from @Input hub), so it's the
-        // only node considered "fetched" up front. Everything else
-        // currently in the graph is one hop out and still needs its own
-        // relationships pulled to go any further.
         const fetched = new Set<number>([graph.rootNodeId]);
         let frontier = new Set<number>(
             graph.nodes.map(n => n.id).filter(id => id !== graph!.rootNodeId)
@@ -790,9 +658,6 @@ export class RelationshipGraphComponent implements OnChanges {
                 const knownBefore = new Set(graph.nodes.map(n => n.id));
 
                 for (const { itemId, hub } of results) {
-                    // A failed individual fetch (network hiccup, item
-                    // deleted mid-walk, etc.) shouldn't abort the whole
-                    // expansion — just leaves that branch unexpanded.
                     if (!hub) continue;
                     graph = this.builder.expand(graph, itemId, hub);
                 }
@@ -813,10 +678,6 @@ export class RelationshipGraphComponent implements OnChanges {
             this.layoutEngine.layout(graph);
             this.applyAnalytics(graph);
 
-            // Same reasoning as onExpandClick: applyAnalytics already gave
-            // graph fresh .nodes/.edges references and rebuilt the index,
-            // so a shallow spread is enough for the signal's Object.is
-            // check to register this as a real change.
             this.graph.set({ ...graph });
 
             this.fitToView();
@@ -1013,14 +874,6 @@ export class RelationshipGraphComponent implements OnChanges {
 
     toggleMaximize(): void {
         this.isMaximized.update(v => !v);
-
-        // The SVG viewBox is a fixed square, so preserveAspectRatio
-        // already keeps it valid at any container size without this —
-        // but re-fitting after a real size change (650px box -> full
-        // viewport, or back) makes the newly available space actually
-        // useful instead of leaving the same small framing centered in
-        // a much bigger box. Deferred a frame so the CSS class change
-        // has actually resized the container before we measure/zoom.
         requestAnimationFrame(() => this.fitToView());
     }
 
@@ -1077,49 +930,6 @@ export class RelationshipGraphComponent implements OnChanges {
         return { x: transformed.x, y: transformed.y };
     }
 
-    /**
-     * Finds where the line from `node`'s center toward (towardX, towardY)
-     * crosses `node`'s own rectangular boundary, optionally pushed
-     * `gap` units further out. This replaces the old fixed marker
-     * refX="28" offset, which assumed a small circular node — on a
-     * ~220x108 rectangular card that fixed offset landed the arrowhead
-     * underneath the opaque card instead of at its visible edge.
-     */
-    private clipToRect(
-        node: GraphNode,
-        towardX: number,
-        towardY: number,
-        gap: number
-    ): { x: number; y: number } {
-
-        const dx = towardX - node.x;
-        const dy = towardY - node.y;
-
-        if (dx === 0 && dy === 0) {
-            return { x: node.x, y: node.y };
-        }
-
-        const halfW = node.width / 2;
-        const halfH = node.height / 2;
-
-        const scaleX = dx !== 0 ? halfW / Math.abs(dx) : Infinity;
-        const scaleY = dy !== 0 ? halfH / Math.abs(dy) : Infinity;
-        const scale = Math.min(scaleX, scaleY);
-
-        const boundaryX = node.x + dx * scale;
-        const boundaryY = node.y + dy * scale;
-
-        if (gap === 0) {
-            return { x: boundaryX, y: boundaryY };
-        }
-
-        const length = Math.hypot(dx, dy);
-        const normX = dx / length;
-        const normY = dy / length;
-
-        return { x: boundaryX + normX * gap, y: boundaryY + normY * gap };
-    }
-
     private rebuild(animateViewport = false): void {
 
         if (!this.hub || this.rootItemId == null) {
@@ -1151,15 +961,6 @@ export class RelationshipGraphComponent implements OnChanges {
         this.fullConnectionsTruncated.set(false);
     }
 
-    /**
-     * The one place graph assembly meets graph intelligence: runs the
-     * cycle, critical-path, and scoring engines and folds their output
-     * back onto fresh node/edge objects, then rebuilds the index so
-     * nodeMap/edgeMap/adjacency stay consistent with what's about to be
-     * rendered. Mutates `graph` in place (replaces .nodes/.edges) —
-     * callers are responsible for giving the `graph` signal a fresh
-     * top-level object reference afterward.
-     */
     private applyAnalytics(graph: GraphViewModel): void {
 
         const cyclesMarked = this.cycleDetector.markCycles(graph);
