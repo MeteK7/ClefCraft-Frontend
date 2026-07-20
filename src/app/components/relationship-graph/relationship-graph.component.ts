@@ -1213,4 +1213,9 @@ export class RelationshipGraphComponent implements OnChanges {
         return edge.sourceId === nodeId || edge.targetId === nodeId;
     }
 
+    isEdgeActive(edge: GraphEdge): boolean {
+        const hoveredId = this.hoveredNodeId();
+        if (hoveredId === null) return false;
+        return edge.sourceId === hoveredId || edge.targetId === hoveredId;
+    }
 }

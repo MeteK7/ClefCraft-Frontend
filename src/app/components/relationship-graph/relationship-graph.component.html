@@ -209,7 +209,8 @@
                     </path>
                     <path [attr.d]="line.path" [attr.marker-end]="edgeMarkerEnd(line.edge)" class="graph-edge"
                         [class]="edgeTypeClass(line.edge)" [class.dimmed]="isEdgeDimmed(line.edge)"
-                        [class.critical]="isEdgeCritical(line.edge)" [class.cyclic]="line.edge.cyclic">
+                        [class.active]="isEdgeActive(line.edge)" [class.critical]="isEdgeCritical(line.edge)"
+                        [class.cyclic]="line.edge.cyclic">
                     </path>
                     <g class="cyclic-badge" *ngIf="line.edge.cyclic"
                         [attr.transform]="'translate(' + line.mx + ',' + line.my + ')'">
