@@ -31,13 +31,6 @@
 
         <span class="toolbar-divider"></span>
 
-        <!--
-            Recursively discovers every reachable relationship instead of
-            stopping at the root's direct neighbors. See
-            expandFullyConnected() — walks outward batch by batch via
-            builder.expand(), fetching relationships for whichever nodes
-            are newly discovered until a batch turns up nothing new.
-        -->
         <button mat-icon-button [color]="showFullConnections() ? 'accent' : null"
             [matTooltip]="showFullConnections() ? 'Show Direct Relationships Only' : 'Show Full Connections'"
             [disabled]="isExpandingFull()" (click)="toggleFullConnections()">
@@ -90,13 +83,6 @@
         (pointercancel)="onBackgroundPointerUp($event)">
 
         <defs>
-            <!--
-                One arrowhead marker per relationship type, in each of the
-                only two colors that ever appear on an edge (normal grey,
-                critical red). Relationship type is read from SHAPE here,
-                never from color — color continues to mean exactly one
-                thing: "this relationship is on the critical path".
-            -->
 
             <!-- Parent: solid filled triangle -->
             <marker id="arrow-parent" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
@@ -188,20 +174,6 @@
 
         <g class="graph-layer" [attr.transform]="viewportTransform()" [class.animated]="viewportAnimated()">
 
-            <!--
-                Edge lines come from renderableEdges(), not edges() + raw node
-                coordinates: each line is pre-clipped to both endpoints' card
-                boundaries (see clipToRect in the component). Rendering
-                node.x/node.y directly here used to draw every line into the
-                dead center of each card, hiding the arrowhead entirely.
-
-                Each edge is actually two <line> elements: a wide invisible
-                "hit" stroke that owns hover interaction (the visible line is
-                often only 2px, far too thin to hover reliably), and the
-                visible, styled line itself. Relationship type is expressed
-                purely via CSS class (dash pattern) + marker id (arrowhead
-                shape) — never color.
-            -->
             <g class="graph-edges">
                 <g *ngFor="let line of renderableEdges(); trackBy: trackEdge">
                     <path class="graph-edge-hit" [attr.d]="line.path" (mouseenter)="onEdgeEnter(line.edge, $event)"
@@ -320,13 +292,6 @@
         </ng-template>
     </div>
 
-    <!--
-        Redesigned relationship tooltip, shown on EDGE hover (the tooltip
-        above is unrelated — it's node-hover downstream-impact analysis).
-        Content is a single human-readable sentence built from the two
-        connected items' titles and the relationship type. No Source /
-        Target / From / To / Node A / Node B terminology anywhere.
-    -->
     <ng-container *ngIf="hoveredEdge() as edge">
         <div class="relationship-tooltip" *ngIf="hoverEdgeScreenPos() as pos" [style.left.px]="pos.x + 16"
             [style.top.px]="pos.y + 16">

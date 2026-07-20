@@ -1,15 +1,5 @@
 import { RelationshipType } from '../../models/board.model';
 
-/**
- * Represents a directed connection between two GraphNodes:
- *
- *      sourceId ---------> targetId
- *
- * This is the ONE GraphEdge contract for the whole engine.
- * Field names (sourceId/targetId) intentionally match what
- * DependencyEngine, CriticalPathEngine, CycleDetector, and
- * GraphNavigationEngine already assume.
- */
 export interface GraphEdge {
 
     id: number;

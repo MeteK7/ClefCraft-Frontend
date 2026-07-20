@@ -77,15 +77,6 @@ export class GraphNavigationEngine {
         return graph.nodes.filter(n => visited.has(n.id));
     }
 
-    /**
-     * Shortest path via BFS over undirected adjacency.
-     *
-     * Fixed: the previous version only marked a node visited when it was
-     * DEQUEUED, so the same node could be pushed onto the queue many
-     * times via different partial paths before any of them got marked —
-     * turning what should be a linear BFS into something combinatorial
-     * on dense graphs. Now nodes are marked visited at enqueue time.
-     */
     findShortestPath(graph: GraphViewModel, startId: number, targetId: number): number[] {
 
         if (startId === targetId) {
@@ -137,12 +128,6 @@ export class GraphNavigationEngine {
         return winner;
     }
 
-    /**
-     * Returns new node/edge arrays with the node and everything directly
-     * connected to it marked selected/highlighted. Does not mutate the
-     * input graph — consistent with the other analytics engines, and
-     * safe to use with OnPush/signal-based change detection.
-     */
     focusNode(graph: GraphViewModel, nodeId: number): { nodes: GraphNode[]; edges: GraphEdge[] } {
 
         const connectedEdgeIds = new Set(this.getConnectedEdges(graph, nodeId).map(e => e.id));

@@ -10,20 +10,6 @@ import { GraphEdge, GraphEdgeFactory } from '../visualization/graph-edge.model';
 import { GraphNode, GraphNodeFactory } from '../visualization/graph-node.model';
 import { GraphViewModel, GraphViewModelFactory, rebuildIndex } from '../visualization/graph-view-model';
 
-/**
- * Builds and grows the relationship graph.
- *
- * build() produces a one-hop "star" graph around a single item — this
- * is all a single RelationshipHub call can give you, since the hub
- * endpoint only describes one item's direct relationships.
- *
- * expand() is the path to a REAL multi-hop graph: call it with hub
- * data for a node that's already in the graph (e.g. after the user
- * expands a node, or after fetching hubs for several items up front)
- * and it merges the new nodes/edges in, then rebuilds the index.
- * Without this step, CriticalPathEngine/DependencyEngine/CycleDetector
- * have nothing beyond depth-1 to analyze.
- */
 @Injectable({
     providedIn: 'root'
 })
@@ -64,11 +50,6 @@ export class RelationshipGraphBuilder {
         return GraphViewModelFactory.create(centerItemId, nodes, edges);
     }
 
-    /**
-     * Merges another item's relationship hub into an existing graph,
-     * turning a one-hop star into a real multi-hop graph. Safe to call
-     * repeatedly as the user expands more nodes.
-     */
     expand(graph: GraphViewModel, itemId: number, hub: RelationshipHub): GraphViewModel {
 
         if (!graph.nodeMap.has(itemId)) {
@@ -144,13 +125,6 @@ export class RelationshipGraphBuilder {
         return node;
     }
 
-    /**
-     * Only maps colors for RelationshipType values that actually exist
-     * on the enum (Parent, Blocks, DependsOn, Related, Duplicate,
-     * SplitFrom). The previous version referenced Child/Dependency/
-     * BlockedBy, which don't exist — those relationships silently fell
-     * through to the default color and never got laid out.
-     */
     private getColor(relationType: RelationshipType): string {
 
         switch (relationType) {
