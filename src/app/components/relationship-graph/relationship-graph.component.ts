@@ -36,6 +36,7 @@ import { ImpactEngine, ImpactAnalysis } from '../../relationship-engine/analytic
 import { GraphNode } from '../../relationship-engine/visualization/graph-node.model';
 import { GraphEdge } from '../../relationship-engine/visualization/graph-edge.model';
 import { GraphViewModel, rebuildIndex } from '../../relationship-engine/visualization/graph-view-model';
+import { Router } from '@angular/router';
 
 interface Viewport {
     zoom: number;
@@ -421,7 +422,8 @@ export class RelationshipGraphComponent implements OnChanges {
         private readonly criticalPathEngine: CriticalPathEngine,
         private readonly scoreEngine: RelationshipScoreEngine,
         private readonly impactEngine: ImpactEngine,
-        private readonly boardService: BoardService
+        private readonly boardService: BoardService,
+        private readonly router: Router
     ) { }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -1019,4 +1021,14 @@ export class RelationshipGraphComponent implements OnChanges {
         if (hoveredId === null) return false;
         return edge.sourceId === hoveredId || edge.targetId === hoveredId;
     }
+
+    openItemInNewTab(itemId: number, event: MouseEvent): void {
+    event.stopPropagation(); // Prevents card selection activation
+    
+    const urlTree = this.router.createUrlTree(['/board'], {
+        queryParams: { openItemId: itemId }
+    });
+    
+    window.open(this.router.serializeUrl(urlTree), '_blank');
+}
 }

@@ -139,5 +139,4 @@ export class RelationshipHubComponent implements OnInit {
         return group.relationType;
 
     }
-
 }
