@@ -213,28 +213,44 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly edges = computed<GraphEdge[]>(() => this.graph()?.edges ?? []);
     readonly hasCycles = computed<boolean>(() => this.cycleSummary().length > 0);
 
-readonly renderableEdges = computed<RenderableEdge[]>(() => {
+    // ============================================================================
+    // Replace the existing `renderableEdges` computed + `routeEdge` method
+    // (and you can delete `buildEdgeLaneMap`, which is dead code today) with
+    // the following. `pathIntersectsRect` / `segmentIntersectsRect` /
+    // `segmentsIntersect` / `cross` stay exactly as they are — this just
+    // finally calls them.
+    // ============================================================================
+
+    readonly renderableEdges = computed<RenderableEdge[]>(() => {
         const graph = this.graph();
         if (!graph) return [];
 
-        // Group outgoing edges by sourceId to give each a unique exit slot and lane height
-        const sourceEdgeGroups = new Map<number, GraphEdge[]>();
+        // Group by BOTH ends. Outgoing groups give each edge leaving a node its
+        // own exit lane; incoming groups give each edge arriving at a node its
+        // own entry lane. Without the incoming groups, every edge terminating
+        // on the same target converges on the exact same pixel, which is what
+        // produced the "stacked" arrows you flagged.
+        const outgoingGroups = new Map<number, GraphEdge[]>();
+        const incomingGroups = new Map<number, GraphEdge[]>();
+
         for (const edge of graph.edges) {
-            if (!sourceEdgeGroups.has(edge.sourceId)) {
-                sourceEdgeGroups.set(edge.sourceId, []);
-            }
-            sourceEdgeGroups.get(edge.sourceId)!.push(edge);
+            if (!outgoingGroups.has(edge.sourceId)) outgoingGroups.set(edge.sourceId, []);
+            if (!incomingGroups.has(edge.targetId)) incomingGroups.set(edge.targetId, []);
+            outgoingGroups.get(edge.sourceId)!.push(edge);
+            incomingGroups.get(edge.targetId)!.push(edge);
         }
 
-        // Sort edges in each group by the target's horizontal position (X coordinate)
-        // This ensures routes don't cross each other when traveling through the top corridor
-        for (const edges of sourceEdgeGroups.values()) {
-            edges.sort((a, b) => {
-                const nodeA = graph.nodeMap.get(a.targetId);
-                const nodeB = graph.nodeMap.get(b.targetId);
-                return (nodeA?.x ?? 0) - (nodeB?.x ?? 0);
-            });
-        }
+        const sortByOtherEndX = (groups: Map<number, GraphEdge[]>, otherIdOf: (e: GraphEdge) => number) => {
+            for (const list of groups.values()) {
+                list.sort((a, b) => {
+                    const na = graph.nodeMap.get(otherIdOf(a));
+                    const nb = graph.nodeMap.get(otherIdOf(b));
+                    return (na?.x ?? 0) - (nb?.x ?? 0);
+                });
+            }
+        };
+        sortByOtherEndX(outgoingGroups, e => e.targetId);
+        sortByOtherEndX(incomingGroups, e => e.sourceId);
 
         const lines: RenderableEdge[] = [];
 
@@ -243,130 +259,144 @@ readonly renderableEdges = computed<RenderableEdge[]>(() => {
             const target = graph.nodeMap.get(edge.targetId);
             if (!source || !target) continue;
 
-            const group = sourceEdgeGroups.get(edge.sourceId) ?? [];
-            const outIndex = group.indexOf(edge);
-            const outCount = group.length;
+            const outGroup = outgoingGroups.get(edge.sourceId) ?? [edge];
+            const inGroup = incomingGroups.get(edge.targetId) ?? [edge];
+
+            // Anything that isn't one of this edge's own endpoints is a
+            // potential obstacle — real collision testing, not a special case
+            // for one node id.
+            const obstacles = graph.nodes.filter(n => n.id !== source.id && n.id !== target.id);
 
             lines.push({
                 edge,
-                ...this.routeEdge(source, target, outIndex, outCount)
+                ...this.routeEdge(
+                    source, target,
+                    outGroup.indexOf(edge), outGroup.length,
+                    inGroup.indexOf(edge), inGroup.length,
+                    obstacles
+                )
             });
         }
 
         return lines;
     });
-    /** Gap (world units) between adjacent parallel edge routes so they stay visually distinct. */
-    private readonly edgeLaneGap = 10;
+
+    /** Gap (world units) between parallel edge lanes leaving/entering the same node. */
+    private readonly laneGap = 12;
+
+    /** Extra clearance kept between a detour corridor and the node it's routing around. */
+    private readonly detourMargin = 28;
 
     /**
-     * Groups edges by the unordered pair of node ids they connect (so A→B and
-     * B→A count as the same pair) and assigns each edge an index/count within
-     * that group. Used to spread duplicate/parallel connections between the
-     * same two nodes into separate lanes instead of overlapping.
-     */
-    private buildEdgeLaneMap(edges: GraphEdge[]): Map<number, { index: number; count: number }> {
-        const groups = new Map<string, GraphEdge[]>();
-
-        for (const edge of edges) {
-            const key = edge.sourceId < edge.targetId
-                ? `${edge.sourceId}-${edge.targetId}`
-                : `${edge.targetId}-${edge.sourceId}`;
-            const bucket = groups.get(key);
-            if (bucket) bucket.push(edge); else groups.set(key, [edge]);
-        }
-
-        const laneMap = new Map<number, { index: number; count: number }>();
-        for (const bucket of groups.values()) {
-            bucket.forEach((edge, index) => laneMap.set(edge.id, { index, count: bucket.length }));
-        }
-
-        return laneMap;
-    }
-
-/**
-     * Computes the shortest unobstructed orthogonal path between two rectangular nodes.
-     * Selects the exit/entry faces dynamically to minimize bends and eliminate unneeded detours.
+     * Builds an orthogonal route between two nodes. The shape is chosen from
+     * their relative geometry (same row vs. stacked vs. diagonal) rather than
+     * from node identity, and every route gets checked against real obstacles;
+     * a detour is only introduced when the direct route actually needs one.
      */
     private routeEdge(
         source: GraphNode,
         target: GraphNode,
         outIndex: number,
-        outCount: number
+        outCount: number,
+        inIndex: number,
+        inCount: number,
+        obstacles: GraphNode[]
     ): { path: string; mx: number; my: number } {
-        const spacing = 10; // Maintains visual separation for parallel routes
-        const xOffset = outCount > 1 ? (outIndex - (outCount - 1) / 2) * spacing : 0;
-        const yOffset = outCount > 1 ? (outIndex - (outCount - 1) / 2) * spacing : 0;
 
-        // Bounding dimensions
-        const sourceHalfW = source.width / 2;
-        const sourceHalfH = source.height / 2;
-        const targetHalfW = target.width / 2;
-        const targetHalfH = target.height / 2;
+        const exitOffset = outCount > 1 ? (outIndex - (outCount - 1) / 2) * this.laneGap : 0;
+        const entryOffset = inCount > 1 ? (inIndex - (inCount - 1) / 2) * this.laneGap : 0;
 
-        // CASE 1: Target is strictly below the source (Direct vertical drop)
-        // No bends needed unless an obstacle forces it.
-        if (Math.abs(target.x - source.x) < 30 && target.y > source.y) {
-            const startX = source.x + xOffset;
-            const startY = source.y + sourceHalfH;
-            const endX = target.x;
-            const endY = target.y - targetHalfH - this.arrowGap;
+        const sourceHalfW = source.width / 2, sourceHalfH = source.height / 2;
+        const targetHalfW = target.width / 2, targetHalfH = target.height / 2;
 
-            return {
-                path: `M ${startX} ${startY} L ${endX} ${endY}`,
-                mx: (startX + endX) / 2,
-                my: (startY + endY) / 2
-            };
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+
+        const sameRow = Math.abs(dy) < Math.max(sourceHalfH, targetHalfH) + 20;
+        const sameColumn = Math.abs(dx) < Math.max(sourceHalfW, targetHalfW) + 20;
+
+        let points: { x: number; y: number }[];
+
+        if (sameRow && !sameColumn) {
+            // Natural left<->right flow: exit/enter from the facing sides.
+            const goRight = dx > 0;
+            const startX = source.x + (goRight ? sourceHalfW : -sourceHalfW);
+            const startY = source.y + exitOffset;
+            const endX = target.x + (goRight ? -targetHalfW - this.arrowGap : targetHalfW + this.arrowGap);
+            const endY = target.y + entryOffset;
+
+            points = startY === endY
+                ? [{ x: startX, y: startY }, { x: endX, y: endY }]
+                : [
+                    { x: startX, y: startY },
+                    { x: (startX + endX) / 2, y: startY },
+                    { x: (startX + endX) / 2, y: endY },
+                    { x: endX, y: endY }
+                ];
+
+        } else if (sameColumn) {
+            // Natural up<->down flow: straight drop/rise, offset within each card's edge.
+            const goDown = dy > 0;
+            const startX = source.x + exitOffset;
+            const startY = source.y + (goDown ? sourceHalfH : -sourceHalfH);
+            const endX = target.x + entryOffset;
+            const endY = target.y + (goDown ? -targetHalfH - this.arrowGap : targetHalfH + this.arrowGap);
+
+            points = [{ x: startX, y: startY }, { x: endX, y: startY }, { x: endX, y: endY }];
+
+        } else {
+            // Diagonal: leave the side facing the target, one elbow into the
+            // target's top or bottom edge.
+            const goRight = dx > 0;
+            const goDown = dy > 0;
+            const startX = source.x + (goRight ? sourceHalfW : -sourceHalfW);
+            const startY = source.y + exitOffset;
+            const endX = target.x + entryOffset;
+            const endY = target.y + (goDown ? -targetHalfH - this.arrowGap : targetHalfH + this.arrowGap);
+
+            points = [{ x: startX, y: startY }, { x: endX, y: startY }, { x: endX, y: endY }];
         }
 
-        // CASE 2: Top Routing explicitly for "Add model fallback" (or far-right nodes that need to go over the top corridor)
-        // If the target is far right and we explicitly want to bypass the immediate neighbors via the top corridor:
-        const isFarRightTopRoute = target.id === 3 || (target.x - source.x > 300 && Math.abs(target.y - source.y) < 100);
-        if (isFarRightTopRoute) {
-            const startX = source.x + sourceHalfW; // Leave from the right side naturally, or top corner
-            const startY = source.y + yOffset;
-            const corridorY = source.y - sourceHalfH - 40 - outIndex * spacing;
-            const endX = target.x;
-            const endY = target.y - targetHalfH - this.arrowGap;
-
-            const points = [
-                { x: startX, y: startY },
-                { x: startX + 20 + outIndex * spacing, y: startY }, // Pop out horizontally
-                { x: startX + 20 + outIndex * spacing, y: corridorY }, // Head up to corridor
-                { x: endX, y: corridorY },                             // Travel across top
-                { x: endX, y: endY }                                  // Drop into target
-            ];
-
-            return {
-                path: `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' '),
-                mx: (startX + endX) / 2,
-                my: corridorY
-            };
+        // Only now do we check for a real collision — this replaces the old
+        // "always detour if far enough right" hack with an actual test.
+        const blocker = obstacles.find(n => this.pathIntersectsRect(points, n));
+        if (blocker) {
+            points = this.detourAroundNode(points, blocker);
         }
 
-        // CASE 3: General routing (1-elbow or simple side exits)
-        // Left/Right natural departures based on target positioning relative to source.
-        const goRight = target.x > source.x;
-        const startX = goRight ? source.x + sourceHalfW : source.x - sourceHalfW;
-        const startY = source.y + yOffset;
+        const path = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+        const mid = points[Math.floor((points.length - 1) / 2)];
+        return { path, mx: (mid.x + points[Math.min(points.length - 1, Math.floor((points.length - 1) / 2) + 1)].x) / 2, my: mid.y };
+    }
 
-        const endX = target.x;
-        const endY = target.y - targetHalfH - this.arrowGap;
+    /**
+     * Pushes a blocked route up above (or down below) the specific node it
+     * collided with, sized off that node's own bounding box — works for any
+     * blocking node, not one hardcoded id. Picks whichever side is the
+     * shorter detour from the route's start point.
+     */
+    private detourAroundNode(
+        points: { x: number; y: number }[],
+        blocker: GraphNode
+    ): { x: number; y: number }[] {
 
-        // Simple 1-elbow turn: horizontal first out of side, then straight down into the target
-        const points = [
-            { x: startX, y: startY },
-            { x: endX, y: startY },
-            { x: endX, y: endY }
+        const start = points[0];
+        const end = points[points.length - 1];
+
+        const distanceAbove = Math.abs(start.y - (blocker.y - blocker.height / 2 - this.detourMargin));
+        const distanceBelow = Math.abs(start.y - (blocker.y + blocker.height / 2 + this.detourMargin));
+        const goAbove = distanceAbove <= distanceBelow;
+
+        const corridorY = goAbove
+            ? blocker.y - blocker.height / 2 - this.detourMargin
+            : blocker.y + blocker.height / 2 + this.detourMargin;
+
+        return [
+            start,
+            { x: start.x, y: corridorY },
+            { x: end.x, y: corridorY },
+            end
         ];
-
-        const path = `M ${points[0].x} ${points[0].y} ` +
-            points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
-
-        return {
-            path,
-            mx: endX,
-            my: startY
-        };
     }
 
     /** True if any segment of an orthogonal (multi-point) path passes through node's bounding box. */
@@ -1183,4 +1213,9 @@ readonly renderableEdges = computed<RenderableEdge[]>(() => {
         return edge.sourceId === nodeId || edge.targetId === nodeId;
     }
 
+    isEdgeActive(edge: GraphEdge): boolean {
+        const hoveredId = this.hoveredNodeId();
+        if (hoveredId === null) return false;
+        return edge.sourceId === hoveredId || edge.targetId === hoveredId;
+    }
 }
