@@ -1,13 +1,10 @@
 <div class="relationship-card">
 
-    <div class="card-main" (click)="openItem()">
+    <div class="card-main">
 
-        <!-- Updated title section to become a clickable, underlined link -->
-        <div class="title" 
-             style="cursor: pointer; text-decoration: underline;" 
-             (click)="openItemInNewTab($event)">
-            #{{relationship.itemId}}
-            {{relationship.title}}
+        <!-- Hit box is now limited exactly to the title element bounds -->
+        <div class="title" (click)="openItemInNewTab($event)">
+            #{{relationship.itemId}} {{relationship.title}}
         </div>
 
         <div class="metadata">
@@ -29,11 +26,7 @@
     </div>
 
     <button mat-icon-button color="warn" (click)="remove()">
-
-        <mat-icon>
-            delete
-        </mat-icon>
-
+        <mat-icon>delete</mat-icon>
     </button>
 
 </div>
