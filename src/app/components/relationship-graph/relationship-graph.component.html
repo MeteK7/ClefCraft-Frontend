@@ -208,7 +208,11 @@
 
                         <div class="node-header">
                             <div class="header-left">
-                                <span class="node-id">#{{node.id}}</span>
+                                <span class="node-id" style="cursor: pointer; text-decoration: underline;"
+                                    (click)="openItemInNewTab(node.id, $event)"
+                                    matTooltip="Open this item on the board page">
+                                    #{{node.id}}
+                                </span>
                             </div>
                             <div class="header-right">
                                 <span *ngIf="node.critical" class="chip critical">Critical</span>
