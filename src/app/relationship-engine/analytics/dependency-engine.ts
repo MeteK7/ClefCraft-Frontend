@@ -16,21 +16,9 @@ export interface DependencySummary {
     dependencyDepth: number;
     impactSize: number;
 
-    /**
-     * True if this node sits inside a dependency cycle. When true,
-     * dependencyDepth is meaningless (see calculateAllDepths) and callers
-     * should defer to CycleDetector for the actual cycle membership.
-     */
     inCycle: boolean;
 }
 
-/**
- * Plain, framework-independent class — no Angular DI. Every method takes
- * a GraphViewModel and reads its precomputed incoming/outgoing index
- * instead of filtering graph.edges, so a call costs O(1) per neighbor
- * lookup rather than O(E) per call. This matters once graphs run into
- * the thousands of nodes this engine is meant to scale to.
- */
 export class DependencyEngine {
 
     analyze(graph: GraphViewModel, nodeId: number): DependencySummary {
@@ -84,22 +72,6 @@ export class DependencyEngine {
         return graph.nodes.filter(n => (graph.outgoing.get(n.id) ?? []).length === 0);
     }
 
-    /**
-     * Longest-prerequisite-chain depth for every node, computed in a
-     * single O(V + E) topological (Kahn's algorithm) pass.
-     *
-     * The previous implementation recursed per node with no memoization:
-     * on a diamond-shaped DAG (two paths converging on one ancestor —
-     * extremely common in real dependency graphs) the same ancestor gets
-     * revisited exponentially many times. rankByDepth/rankByImpact then
-     * called that once per node on top, making the whole ranking
-     * effectively unusable past a few hundred nodes.
-     *
-     * Nodes inside a cycle never reach in-degree 0 in Kahn's algorithm,
-     * so they're intentionally left out of the returned map rather than
-     * silently reported as depth 0 — check `.has(nodeId)` (see `inCycle`
-     * on DependencySummary) before trusting a depth value.
-     */
     calculateAllDepths(graph: GraphViewModel): Map<number, number> {
 
         const remaining = new Map<number, number>();
@@ -169,13 +141,6 @@ export class DependencyEngine {
         ];
     }
 
-    /**
-     * Iterative reachability walk (BFS/DFS via explicit stack — no
-     * recursion, so it can't blow the call stack on a long chain) along
-     * a given direction (graph.incoming for ancestors, graph.outgoing
-     * for descendants). Visited-on-push, so it's safe on cyclic graphs
-     * too.
-     */
     private collect(graph: GraphViewModel, nodeId: number, direction: Map<number, number[]>): GraphNode[] {
 
         const visited = new Set<number>();

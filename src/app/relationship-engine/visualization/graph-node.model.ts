@@ -1,20 +1,5 @@
 import { RelationshipType } from '../../models/board.model';
 
-/**
- * This model is intentionally independent from any UI framework
- * so it can be consumed by:
- *
- * • SVG renderer
- * • Canvas renderer
- * • WebGL renderer
- * • Cytoscape
- * • D3
- * • Future AI engines
- * • Analytics engines
- *
- * without requiring modifications.
- */
-
 export interface GraphNode {
 
     /** Board Item Id */
@@ -35,22 +20,10 @@ export interface GraphNode {
 
     parentId?: number;
     children: number[];
-
-    // ---- Domain fields consumed by analytics engines ----
-    // These must stay in sync with whatever the backend RelationshipCard /
-    // Item payload actually provides. Populate them when building nodes;
-    // engines (Impact, CriticalPath, Score) read them directly.
-
     estimatedHours?: number;
     storyPoints?: number;
     isMilestone?: boolean;
     completed?: boolean;
-
-    // ---- Render state ----
-    // Framework-agnostic position/size/color state, shared by any renderer.
-    // x/y are the node's CENTER, not a corner — every consumer (layout
-    // engine, edge-line math, foreignObject placement) must agree on that.
-
     x: number;
     y: number;
     width: number;
@@ -66,11 +39,6 @@ export interface GraphNode {
     critical: boolean;
     blocked: boolean;
     cyclic: boolean;
-
-    // ---- Computed graph metrics ----
-    // Populated by analytics engines (DependencyEngine, RelationshipScoreEngine,
-    // etc). Treat these as a cache, not hand-authored input.
-
     descendants: number;
     ancestors: number;
     degree: number;

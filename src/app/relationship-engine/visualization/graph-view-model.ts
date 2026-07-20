@@ -1,17 +1,6 @@
 import { GraphNode } from './graph-node.model';
 import { GraphEdge } from './graph-edge.model';
 
-/**
- * Represents the complete graph that powers the Relationship
- * Intelligence Engine: graph data, lookup indexes, viewport,
- * interaction and analytics state. UI-framework agnostic.
- *
- * IMPORTANT: nodes/edges are the source of truth. adjacency /
- * incoming / outgoing / *Edges maps are a derived index. Anything
- * that mutates nodes or edges directly (rather than through
- * RelationshipGraphBuilder.expand) MUST call rebuildIndex() after,
- * or reads against the index will be stale.
- */
 export interface GraphViewModel {
 
     nodes: GraphNode[];
@@ -94,23 +83,6 @@ interface GraphIndex {
     outgoingEdges: Map<number, GraphEdge[]>;
 }
 
-/**
- * Builds every lookup index in a single O(V + E) pass. This is the
- * thing that was missing before: every engine was re-deriving
- * neighbor lists by filtering the full edge array on every call,
- * including inside recursive traversals — this function replaces
- * all of that with maps engines can read in O(1).
- *
- * As a side effect, this also stamps node.inDegree / node.outDegree /
- * node.degree directly onto each GraphNode from the same incoming /
- * outgoing / adjacency maps it just built — those three fields are
- * documented on GraphNode as "populated by analytics engines, treat as
- * a cache", and this is the one place in the pipeline that always runs
- * after nodes/edges change (both RelationshipGraphBuilder.build() via
- * GraphViewModelFactory.create(), and .expand() via rebuildIndex()
- * below, go through here), so it's the correct single source for them
- * rather than recomputing degree counts separately in the builder.
- */
 export function buildGraphIndex(nodes: GraphNode[], edges: GraphEdge[]): GraphIndex {
 
     const nodeMap = new Map<number, GraphNode>();
@@ -150,10 +122,6 @@ export function buildGraphIndex(nodes: GraphNode[], edges: GraphEdge[]): GraphIn
         adjacency.get(edge.targetId)!.push(edge.sourceId);
     }
 
-    // Stamp degree counts onto the nodes themselves so the template
-    // (and anything else reading node.inDegree/outDegree/degree
-    // directly, rather than going through the index maps) sees real
-    // numbers instead of the factory's zeroed defaults.
     for (const node of nodes) {
         node.inDegree = incoming.get(node.id)?.length ?? 0;
         node.outDegree = outgoing.get(node.id)?.length ?? 0;

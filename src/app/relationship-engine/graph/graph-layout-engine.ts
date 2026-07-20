@@ -2,20 +2,6 @@ import { Injectable } from '@angular/core';
 
 import { GraphViewModel } from '../visualization/graph-view-model';
 
-/**
- * Layered ("Sugiyama-style") layout instead of the previous radial/polar
- * layout. Nodes are grouped into horizontal ROWS by hierarchy depth from
- * the root — this is what makes "which row/lane an event belongs to"
- * actually mean something, instead of everything being scattered around
- * concentric rings at arbitrary angles.
- *
- * Within each row, node ORDER is optimized across several barycenter
- * sweeps (alternating top-down / bottom-up, same idea as classic
- * Sugiyama crossing reduction) so that connected nodes end up physically
- * close together and edges rarely have to cross each other or other
- * nodes. Once ordering settles, x/y coordinates are assigned from that
- * order with fixed, consistent spacing.
- */
 @Injectable({
     providedIn: 'root'
 })
@@ -86,11 +72,6 @@ export class GraphLayoutEngine {
         return edge?.relationType ?? 0;
     }
 
-    /**
-     * Walks the spanning tree breadth-first, bucketing every node into
-     * its row (BFS depth from root). BFS guarantees the whole of row N
-     * is visited before row N+1, so a single pass is enough.
-     */
     private assignRows(graph: GraphViewModel, tree: Map<number, number[]>): number[][] {
 
         const levelOf = new Map<number, number>([[graph.rootNodeId, 0]]);
@@ -154,15 +135,6 @@ export class GraphLayoutEngine {
         }
     }
 
-    /**
-     * Reorders `row` in place by each node's barycenter: the average
-     * position (within `referenceRow`) of its neighbors, taken across
-     * ALL graph edges — not just spanning-tree edges — so cross-links
-     * (e.g. a "related" edge between two branches) also pull related
-     * nodes toward each other instead of only tree parents/children.
-     * Nodes with no neighbors in the reference row keep their current
-     * relative position instead of collapsing to the same score.
-     */
     private reorderRowByBarycenter(
         graph: GraphViewModel,
         row: number[],
