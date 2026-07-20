@@ -2,7 +2,10 @@
 
     <div class="card-main" (click)="openItem()">
 
-        <div class="title">
+        <!-- Updated title section to become a clickable, underlined link -->
+        <div class="title" 
+             style="cursor: pointer; text-decoration: underline;" 
+             (click)="openItemInNewTab($event)">
             #{{relationship.itemId}}
             {{relationship.title}}
         </div>
