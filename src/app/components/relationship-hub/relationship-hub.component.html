@@ -46,8 +46,8 @@
 
     <ng-container *ngIf="!loading">
 
-        <app-relationship-graph *ngIf="viewMode==='graph'" [hub]="hub" [rootItemId]="itemId" (openItem)="open($event)">
-
+        <app-relationship-graph *ngIf="viewMode==='graph'" [hub]="hub" [rootItemId]="itemId" (openItem)="open($event)"
+            (maximizedChange)="graphMaximizedChange.emit($event)">
         </app-relationship-graph>
 
         <mat-accordion *ngIf="viewMode==='list'">
