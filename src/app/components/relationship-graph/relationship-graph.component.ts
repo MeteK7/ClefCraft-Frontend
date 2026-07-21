@@ -80,6 +80,7 @@ export class RelationshipGraphComponent implements OnChanges {
     @Input({ required: true }) rootItemId!: number;
 
     @Output() openItem = new EventEmitter<number>();
+    @Output() maximizedChange = new EventEmitter<boolean>();
 
     highlightedNode: number | null = null;
 
@@ -876,6 +877,7 @@ export class RelationshipGraphComponent implements OnChanges {
 
     toggleMaximize(): void {
         this.isMaximized.update(v => !v);
+        this.maximizedChange.emit(this.isMaximized());
         requestAnimationFrame(() => this.fitToView());
     }
 
@@ -1023,12 +1025,12 @@ export class RelationshipGraphComponent implements OnChanges {
     }
 
     openItemInNewTab(itemId: number, event: MouseEvent): void {
-    event.stopPropagation(); // Prevents card selection activation
-    
-    const urlTree = this.router.createUrlTree(['/board'], {
-        queryParams: { openItemId: itemId }
-    });
-    
-    window.open(this.router.serializeUrl(urlTree), '_blank');
-}
+        event.stopPropagation(); // Prevents card selection activation
+
+        const urlTree = this.router.createUrlTree(['/board'], {
+            queryParams: { openItemId: itemId }
+        });
+
+        window.open(this.router.serializeUrl(urlTree), '_blank');
+    }
 }

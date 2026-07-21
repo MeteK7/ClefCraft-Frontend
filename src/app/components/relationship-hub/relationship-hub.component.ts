@@ -52,6 +52,7 @@ export class RelationshipHubComponent implements OnInit {
     @Input() itemId!: number;
 
     @Output() openItem = new EventEmitter<number>();
+    @Output() graphMaximizedChange = new EventEmitter<boolean>();
 
     hub: RelationshipHub = {
         parentCount: 0,
