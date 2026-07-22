@@ -12,15 +12,13 @@
 
 nav {
   padding: 12px;
-  background-color: var(--sidebar-bg);
+  background-color: #f8f9fa;
   height: 100%;
   box-sizing: border-box;
   position: relative;
 
   display: flex;
   flex-direction: column;
-
-  color: var(--text);
 }
 
 /* collapse button */
@@ -30,28 +28,18 @@ nav {
   right: 8px;
   width: 28px;
   height: 28px;
-
   border: none;
   border-radius: 4px;
-
   cursor: pointer;
-
-  background: var(--surface-2);
-  color: var(--text);
-
+  background: #ddd;
   font-size: 14px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
-  transition:
-    background-color .2s ease,
-    color .2s ease;
 }
 
 .collapse-btn:hover {
-  background: var(--border);
+  background: #ccc;
 }
 
 mat-icon {
@@ -71,28 +59,18 @@ ul {
 a {
   display: flex;
   align-items: center;
-
   padding: 10px;
-
   text-decoration: none;
-
-  color: var(--text);
-
+  color: #333;
   border-radius: 6px;
-
   font-size: 16px;
-
   white-space: nowrap;
   overflow: hidden;
-
-  transition:
-    background-color .2s ease,
-    color .2s ease,
-    padding .2s ease;
+  transition: background-color 0.2s ease, padding 0.2s ease;
 }
 
 a:hover {
-  background-color: var(--sidebar-hover);
+  background-color: #c3c3c3;
 }
 
 .active-link {
@@ -103,27 +81,19 @@ a:hover {
 .icon {
   font-size: 18px;
   flex-shrink: 0;
-
   /* Add margin instead of flex gap to prevent a jerky snap when collapsing */
   margin-right: 10px;
-
   transition: margin 0.2s ease;
 }
 
 .label {
   display: inline-block;
   vertical-align: middle;
-
   opacity: 1;
   visibility: visible;
-
   /* Set a safe upper limit for text layout sizing */
   max-width: 300px;
-
-  transition:
-    max-width .2s ease,
-    opacity .2s ease,
-    visibility .2s ease;
+  transition: max-width 0.2s ease, opacity 0.2s ease, visibility 0.2s ease;
 }
 
 /* Smoothly collapse the label on PC/Global */
@@ -174,12 +144,8 @@ a:hover {
 .user-info {
   margin-top: auto;
   padding: 10px;
-
   font-weight: 500;
-
-  color: var(--text);
-
-  border-top: 1px solid var(--border);
+  border-top: 1px solid #ddd;
 }
 
 .logout-btn {
@@ -187,15 +153,14 @@ a:hover {
 
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-end; /* Push contents to the right */
 
-  gap: 8px;
+  gap: 8px; /* Space between text and icon */
 
   width: 100%;
 
   border: none;
   background: transparent;
-
   cursor: pointer;
 
   padding: 10px;
@@ -203,10 +168,9 @@ a:hover {
   border-radius: 6px;
 
   color: #d32f2f;
-
   font-size: 16px;
 
-  transition: background .2s ease;
+  transition: background .2s;
 }
 
 .logout-btn:hover {
@@ -216,4 +180,12 @@ a:hover {
 :host(.collapsed) .logout-btn {
   justify-content: center;
   gap: 0;
+}
+
+.logout-btn:hover {
+  background: rgba(211, 47, 47, .08);
+}
+
+:host(.collapsed) .logout-btn {
+  justify-content: center;
 }
