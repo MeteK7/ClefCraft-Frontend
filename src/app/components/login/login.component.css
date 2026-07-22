@@ -8,11 +8,11 @@
 .auth-card {
   width: 100%;
   max-width: 420px;
-  background: white;
+  background: var(--text);
   padding: 1.5rem;
   border-radius: 5px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
 }
 
 h2 {
@@ -79,7 +79,7 @@ button[type="submit"] {
   border: none;
   border-radius: 8px;
   background: #007bff;
-  color: white;
+  color: var(--text);
   font-size: 1rem;
   margin-top: 0.5rem;
   cursor: pointer;

@@ -107,7 +107,7 @@
   text-align: center;
   padding: 8px;
   font-weight: 500;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
 }
 
 .calendar-week {
@@ -121,7 +121,7 @@
 .calendar-grid td {
   padding-block: 5px;
   text-align: center;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   vertical-align: top;
 }
 
@@ -170,7 +170,7 @@
 }
 
 .calendar-day {
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   position: relative;
   cursor: pointer;
   padding: 4px;
@@ -448,7 +448,7 @@
 
   overflow: hidden;
 
-  background: white;
+  background: var(--text);
 }
 
 /* Individual buttons */
@@ -526,7 +526,7 @@
   position: sticky;
   top: 0;
   z-index: 25;
-  background: white;
+  background: var(--text);
   border-bottom: 1px solid #ddd;
   flex-shrink: 0;
 }
@@ -590,7 +590,7 @@
   min-height: 0;
   height: 0;
 
-  background: white;
+  background: var(--text);
   border: 1px solid #ddd;
   box-sizing: border-box;
 }
@@ -656,7 +656,7 @@
   border: 1px solid #dcdcdc;
   border-radius: 10px;
   min-height: 500px;
-  background: white;
+  background: var(--text);
   overflow: hidden;
 }
 
@@ -778,7 +778,7 @@
   flex-direction: column;
   height: calc(100vh - 220px);
   border: 1px solid #ddd;
-  background: white;
+  background: var(--text);
   box-sizing: border-box;
 }
 
@@ -791,7 +791,7 @@
   /* ← add these two */
   top: 0;
   border-bottom: 1px solid #ddd;
-  background: white;
+  background: var(--text);
   z-index: 20;
   box-sizing: border-box;
 }
@@ -813,7 +813,7 @@
   padding-top: 6px;
   font-weight: 600;
   border-right: 1px solid #eee;
-  background: white;
+  background: var(--text);
   box-sizing: border-box;
 }
 
@@ -926,7 +926,7 @@
   /* same budget as week view */
   overflow-y: auto;
   border: 1px solid #ddd;
-  background: white;
+  background: var(--text);
   box-sizing: border-box;
 }
 
@@ -1009,7 +1009,7 @@
   font-size: 26px;
   font-weight: 400;
   line-height: 1;
-  color: #333;
+  color:var(--header);
 }
 
 .agenda-month-year {
@@ -1086,7 +1086,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #888;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 6px;
 }
