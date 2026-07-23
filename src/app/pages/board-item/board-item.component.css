@@ -16,7 +16,7 @@
 .board-item h4 {
   margin: 0 0 5px;
   font-size: 18px;
-  color: #333;
+  color:var(--header);
 }
 
 .board-item p {
@@ -82,7 +82,7 @@
   height: 28px;
   border-radius: 50%;
   background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-  color: white;
+  color: var(--text);
   font-size: 12px;
   display: flex;
   align-items: center;

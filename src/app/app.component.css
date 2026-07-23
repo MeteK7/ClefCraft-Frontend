@@ -1,7 +1,8 @@
 :host {
   display: flex;
   flex-direction: column;
-  height: 100vh;        /* ← must be explicit here, flex:1 doesn't work at root level */
+  height: 100vh;
+  /* ← must be explicit here, flex:1 doesn't work at root level */
   overflow: hidden;
 }
 
@@ -21,8 +22,8 @@ app-footer {
 }
 
 app-sidebar {
-  background-color: #f8f9fa;
-  border-right: 1px solid #ccc;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
   flex-shrink: 0;
   transition: width 0.2s ease;
   display: block;
@@ -37,6 +38,6 @@ app-sidebar {
   padding: 20px;
   min-width: 0;
   box-sizing: border-box;
+  background: var(--background);
+  color: var(--text);
 }
-
-

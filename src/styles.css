@@ -1,4 +1,7 @@
 /* You can add global styles to this file, and also import other style files */
+@import "./themes/_variables.css";
+@import "./themes/light-theme.css";
+@import "./themes/dark-theme.css";
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
@@ -16,4 +19,26 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   --mdc-snackbar-supporting-text-color: inherit;
   padding: 0 !important;
   box-shadow: none !important;
+}
+
+html,
+body{
+
+    height:100%;
+}
+
+body{
+
+    margin:0;
+
+    background:var(--background);
+
+    color:var(--text);
+
+    transition:
+
+        background .25s,
+
+        color .25s;
+
 }

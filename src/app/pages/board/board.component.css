@@ -7,7 +7,7 @@
   background: rgba(0, 0, 0, 0.4); /* board area glass effect */
   backdrop-filter: blur(10px);
   border-radius: 10px;
-  border: 1px solid #ccc; /* Light border to define the edges */
+  border: 1px solid var(--border); /* Light border to define the edges */
 }
 
 .board-header {
@@ -18,7 +18,7 @@
 
 .board-header select {
   padding: 8px 12px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 16px;
   background-color: #fff;
@@ -65,7 +65,7 @@
 
 .view-toggle {
   display: inline-flex;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   margin-left: 20px;
@@ -81,7 +81,7 @@
 
 .view-toggle button.active {
   background: #007bff;
-  color: white;
+  color: var(--text);
 }
 
 .view-toggle button:hover {
