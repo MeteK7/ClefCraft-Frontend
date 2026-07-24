@@ -32,6 +32,9 @@
 
   --header: #333;
   --footer: #333;
+  /* header/footer background stays dark in both themes, so their text
+     is intentionally NOT tied to --text (which flips with the theme) */
+  --header-text: #f2f2f2;
 
   --sidebar-bg: #f8f9fa;
   --sidebar-hover: #e2e2e2;

@@ -1,9 +1,8 @@
 footer {
   background: var(--footer);
-  color: var(--text);
+  color: var(--header-text);
   padding: 10px;
   text-align: center;
-  color: var(--text);
   width: 100%;
 }
 
