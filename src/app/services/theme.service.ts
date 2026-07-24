@@ -13,6 +13,13 @@ export class ThemeService {
 
     if (saved === 'dark')
       this.enableDark();
+    else if (saved === null && window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+      // No explicit choice saved yet — respect the OS preference on first visit,
+      // without writing it to localStorage, so it isn't treated as an explicit
+      // user choice and a later OS-level change can still take effect next load.
+      document.body.classList.add('dark-theme');
+    }
+
   }
 
   toggle() {
@@ -27,7 +34,7 @@ export class ThemeService {
 
     document.body.classList.add('dark-theme');
 
-    localStorage.setItem(this.key,'dark');
+    localStorage.setItem(this.key, 'dark');
 
   }
 
@@ -35,7 +42,7 @@ export class ThemeService {
 
     document.body.classList.remove('dark-theme');
 
-    localStorage.setItem(this.key,'light');
+    localStorage.setItem(this.key, 'light');
 
   }
 
