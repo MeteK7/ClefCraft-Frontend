@@ -45,6 +45,13 @@
   --event-bg: #bbdefb;
   --today-bg: #f0f5ff;
 
+  --warning-bg: #fff8e1;
+  --warning-border: #ffe082;
+  --warning-text: #7a5c00;
+
+  --board-column-bg: rgba(167, 187, 255, 0.6);
+  --board-column-bg-hover: rgb(207, 216, 245);
+
   --shadow-color: rgba(0, 0, 0, 0.1);
   --overlay-bg: rgba(255, 255, 255, 0.55);
 

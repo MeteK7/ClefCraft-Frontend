@@ -43,6 +43,13 @@ body.dark-theme {
   --event-bg: #23344a;
   --today-bg: #1a2733;
 
+  --warning-bg: #3a2f14;
+  --warning-border: #5c4a1f;
+  --warning-text: #ffcc80;
+
+  --board-column-bg: rgba(55, 65, 90, 0.6);
+  --board-column-bg-hover: rgba(70, 82, 110, 0.75);
+
   --shadow-color: rgba(0, 0, 0, 0.4);
   --overlay-bg: rgba(18, 18, 18, 0.6);
 
