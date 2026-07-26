@@ -35,6 +35,8 @@
   max-height: 90vh;
   overflow: hidden;
   border-radius: inherit;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .form-container {
@@ -158,18 +160,20 @@
 /* Toolbar */
 ::ng-deep .ql-toolbar {
   border-radius: 8px 8px 0 0;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: #fafafa;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
 }
 
 /* Editor */
 ::ng-deep .ql-container {
   flex: 1;
-    min-height: 0;
+  min-height: 0;
   border-radius: 0 0 8px 8px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border);
   border-top: none;
   font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
 }
 
 /* Editor content */
@@ -177,11 +181,12 @@
   min-height: 120px;
   font-size: 14px;
   line-height: 1.6;
+  color: var(--text);
 }
 
 /* Focus effect */
 ::ng-deep .ql-container.ql-snow:focus-within {
-  border-color: #52affb;
+  border-color: var(--primary);
 }
 
 /* ================================
@@ -191,12 +196,12 @@
 .dialog-actions.fixed-actions {
   position: sticky;
   bottom: 0;
-  background: #fff;
+  background: var(--surface);
   padding: 12px 16px;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--divider);
   z-index: 10;
 }
 
@@ -224,22 +229,22 @@ textarea[matInput] {
   flex-direction: column;
   gap: 16px;
   padding: 0 1%;
-  background: #fff;
+  background: var(--surface);
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px var(--shadow-color);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .section:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .section-title {
   font-size: 1.05rem;
   font-weight: 600;
   margin: 4px 0;
-  color: #444;
+  color: var(--text);
 }
 
 .form-section-row {
@@ -263,10 +268,10 @@ textarea[matInput] {
   min-height: 0;
   flex-grow: 1;
   padding: 1% 1%;
-  background: #fff;
+  background: var(--surface);
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px var(--shadow-color);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
@@ -278,7 +283,7 @@ textarea[matInput] {
 
 
 .notes-section:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .notes-section .form-row {
@@ -319,9 +324,9 @@ textarea[matInput] {
 .recurrence-card {
   padding: 16px;
   border-radius: 10px;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.06);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px var(--shadow-color);
 }
 
 .recurrence-row {
@@ -333,7 +338,7 @@ textarea[matInput] {
 
 .recurrence-text {
   font-size: 14px;
-  color: #444;
+  color: var(--text);
 }
 
 .interval-field {
@@ -353,8 +358,9 @@ textarea[matInput] {
 }
 
 .day-chip {
-  border: 1px solid #ddd;
-  background: #fafafa;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
   border-radius: 20px;
   padding: 6px 12px;
   cursor: pointer;
@@ -362,20 +368,20 @@ textarea[matInput] {
 }
 
 .day-chip:hover {
-  background: #eee;
+  background: var(--surface-hover);
 }
 
 .day-chip.selected {
-  background: #1976d2;
-  color: var(--text);
-  border-color: #1976d2;
+  background: var(--primary);
+  color: var(--text-inverse);
+  border-color: var(--primary);
 }
 
 /* End section */
 .recurrence-subtitle {
   margin-bottom: 8px;
   font-size: 0.95rem;
-  color: #444;
+  color: var(--text);
 }
 
 .end-group {
@@ -397,11 +403,11 @@ textarea[matInput] {
 .recurrence-summary {
   margin-top: 8px;
   padding: 10px 12px;
-  background: #f5f7fa;
+  background: var(--surface-2);
   border-radius: 8px;
   font-size: 13px;
-  color: #555;
-  border: 1px solid rgba(0,0,0,0.05);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
 }
 
 /* ================================
@@ -420,14 +426,14 @@ textarea[matInput] {
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #fafafa;
-  border: 1px dashed rgba(0, 0, 0, 0.2);
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
   border-radius: 8px;
 }
 
 .upload-hint {
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .upload-btn {
@@ -447,7 +453,7 @@ textarea[matInput] {
   margin-top: 16px;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #444;
+  color: var(--text);
 }
 
 .attachment-list {
@@ -466,7 +472,7 @@ textarea[matInput] {
 }
 
 .attachment-item:hover {
-  background: #f5f5f5;
+  background: var(--surface-hover);
 }
 
 .attachment-left {
@@ -477,12 +483,12 @@ textarea[matInput] {
 
 .attachment-link {
   cursor: pointer;
-  color: #1976d2;
+  color: var(--primary);
   transition: color 0.2s ease;
 }
 
 .attachment-link:hover {
-  color: #0d47a1;
+  color: var(--primary-hover);
 }
 
 .attachment-item.pending {
@@ -493,7 +499,7 @@ textarea[matInput] {
 .empty-attachments {
   margin-top: 40px;
   text-align: center;
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .empty-attachments mat-icon {
@@ -506,18 +512,19 @@ textarea[matInput] {
 ================================ */
 
 .unsaved-banner {
-  background: #fff3cd;
+  background: var(--warning-bg);
+  color: var(--warning-text);
   padding: 10px;
   font-weight: bold;
-  border-bottom: 1px solid #ffeeba;
+  border-bottom: 1px solid var(--warning-border);
 }
 
 .linked-board-banner {
   display: flex;
   align-items: center;
   padding: 10px 14px;
-  background: #f3e5f5;
-  border-left: 4px solid #673ab7;
+  background: var(--accent-light);
+  border-left: 4px solid var(--accent);
   border-radius: 4px;
 }
 
@@ -535,7 +542,7 @@ textarea[matInput] {
 .linked-text-inline .label {
   font-size: 13px;
   font-weight: 500;
-  color: #444;
+  color: var(--text);
   white-space: nowrap;
 }
 
@@ -552,7 +559,7 @@ textarea[matInput] {
   border-radius: 50%;
   margin-right: 8px;
   vertical-align: middle;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border);
 }
 
 /* ================================
@@ -564,8 +571,8 @@ textarea[matInput] {
   align-items: center;
   gap: 16px;
   padding: 14px 16px;
-  background: var(--color-background-primary, #fff);
-  border: 0.5px solid rgba(0,0,0,0.08);
+  background: var(--surface);
+  border: 0.5px solid var(--border);
   border-radius: 10px;
   margin: 0 16px 8px;
 }
@@ -575,18 +582,18 @@ textarea[matInput] {
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .ai-verdict {
   font-size: 15px;
   font-weight: 500;
-  color: var(--header);
+  color: var(--text);
 }
 
 .ai-sub {
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
