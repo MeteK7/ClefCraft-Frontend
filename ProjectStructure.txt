@@ -21,8 +21,6 @@ C:.
 |       \---18.2.11
 |           \---ClefCraft
 |               |   .tsbuildinfo
-|               |   angular-compiler.db
-|               |   angular-compiler.db-lock
 |               |   
 |               \---vite
 |                   \---deps
@@ -82,8 +80,8 @@ C:.
 |                           @angular_router.js.map
 |                           @microsoft_signalr.js
 |                           @microsoft_signalr.js.map
-|                           browser-ZTVOUPZW.js
-|                           browser-ZTVOUPZW.js.map
+|                           browser-WS5EAMYQ.js
+|                           browser-WS5EAMYQ.js.map
 |                           chunk-2XDADDLJ.js
 |                           chunk-2XDADDLJ.js.map
 |                           chunk-32FAUTFE.js
@@ -102,8 +100,6 @@ C:.
 |                           chunk-EG6SOSD2.js.map
 |                           chunk-F44VJSXF.js
 |                           chunk-F44VJSXF.js.map
-|                           chunk-FXM6HQB2.js
-|                           chunk-FXM6HQB2.js.map
 |                           chunk-IEOYJYAU.js
 |                           chunk-IEOYJYAU.js.map
 |                           chunk-JZKNOHMF.js
@@ -116,6 +112,8 @@ C:.
 |                           chunk-N63SP7KL.js.map
 |                           chunk-N6ESDQJH.js
 |                           chunk-N6ESDQJH.js.map
+|                           chunk-RAWUPYFN.js
+|                           chunk-RAWUPYFN.js.map
 |                           chunk-S3MJQEWQ.js
 |                           chunk-S3MJQEWQ.js.map
 |                           chunk-TH4MNBIV.js
@@ -37381,6 +37379,9 @@ C:.
     |   |           graph-node.model.ts
     |   |           graph-view-model.ts
     |   |           
+    |   +---services
+    |   |       theme.service.ts
+    |   |       
     |   +---utils
     |   |       attendance.utils.ts
     |   |       
@@ -37393,7 +37394,13 @@ C:.
     |           notification-realtime.service.ts
     |           user.service.ts
     |           
-    \---environments
-            environment.prod.ts
-            environment.ts
+    +---environments
+    |       environment.prod.ts
+    |       environment.ts
+    |       
+    \---themes
+            dark-theme.css
+            light-theme.css
+            material-theme.css
+            _variables.css
             

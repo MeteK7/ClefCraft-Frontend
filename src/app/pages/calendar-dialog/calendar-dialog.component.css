@@ -367,7 +367,7 @@ textarea[matInput] {
 
 .day-chip.selected {
   background: #1976d2;
-  color: white;
+  color: var(--text);
   border-color: #1976d2;
 }
 
@@ -581,7 +581,7 @@ textarea[matInput] {
 .ai-verdict {
   font-size: 15px;
   font-weight: 500;
-  color: #333;
+  color: var(--header);
 }
 
 .ai-sub {
