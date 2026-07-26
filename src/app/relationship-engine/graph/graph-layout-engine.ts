@@ -1,114 +1,226 @@
 import { Injectable } from '@angular/core';
 
 import { GraphViewModel } from '../visualization/graph-view-model';
-import { GraphNode } from '../visualization/graph-node.model';
-import { GraphEdge } from '../visualization/graph-edge.model';
-
-import { RelationshipType } from '../../models/board.model';
 
 @Injectable({
     providedIn: 'root'
 })
 export class GraphLayoutEngine {
 
-    readonly centerX = 0;
-    readonly centerY = 0;
-    readonly ringDistance = 220;
+    /** Vertical distance between adjacent rows (hierarchy levels). Fixed, so every row lines up consistently. */
+    private readonly rowSpacing = 200;
+
+    /** Minimum center-to-center horizontal spacing between neighbors sharing a row. */
+    private readonly minColSpacing = 260;
+
+    /** Barycenter sweeps to run. Alternates direction each pass; diminishing returns past ~8 on graphs this size. */
+    private readonly crossingReductionPasses = 8;
 
     layout(graph: GraphViewModel): GraphViewModel {
 
-        const center = graph.nodeMap.get(graph.rootNodeId);
-
-        if (!center) {
+        const root = graph.nodeMap.get(graph.rootNodeId);
+        if (!root) {
             return graph;
         }
 
-        center.x = this.centerX;
-        center.y = this.centerY;
+        const tree = this.buildSpanningTree(graph);
+        const rows = this.assignRows(graph, tree);
 
-        const grouped = this.groupEdges(graph);
-
-        this.layoutGroup(grouped.parents, graph.nodes, -90);
-        this.layoutGroup(grouped.dependsOn, graph.nodes, 0);
-        this.layoutGroup(grouped.blocks, graph.nodes, 90);
-        this.layoutGroup(grouped.duplicatesAndSplits, graph.nodes, 180);
-        this.layoutOrbit(grouped.related, graph.nodes);
+        this.minimizeCrossings(graph, rows);
+        this.assignCoordinates(graph, rows);
+        this.placeUnreachableNodes(graph, rows);
 
         return graph;
     }
 
-    /**
-     * Groups edges by the RelationshipType values that actually exist on
-     * the enum (Parent, Blocks, DependsOn, Related, Duplicate, SplitFrom).
-     * The previous version matched against Child/Dependency/BlockedBy,
-     * none of which exist — those edges fell through every case and the
-     * corresponding nodes never got positioned, leaving them stacked on
-     * top of the center node.
-     */
-    private groupEdges(graph: GraphViewModel) {
+    // =====================================================================
+    // Row (level) assignment
+    // =====================================================================
 
-        return {
+    private buildSpanningTree(graph: GraphViewModel): Map<number, number[]> {
 
-            parents: graph.edges.filter(x => x.relationType === RelationshipType.Parent),
+        const children = new Map<number, number[]>();
+        const visited = new Set<number>([graph.rootNodeId]);
+        const queue: number[] = [graph.rootNodeId];
 
-            dependsOn: graph.edges.filter(x => x.relationType === RelationshipType.DependsOn),
+        while (queue.length) {
 
-            blocks: graph.edges.filter(x => x.relationType === RelationshipType.Blocks),
+            const current = queue.shift()!;
+            const neighborIds = [...(graph.adjacency.get(current) ?? [])];
 
-            duplicatesAndSplits: graph.edges.filter(x =>
-                x.relationType === RelationshipType.Duplicate ||
-                x.relationType === RelationshipType.SplitFrom
-            ),
+            neighborIds.sort((a, b) => this.edgeTypeRank(graph, current, a) - this.edgeTypeRank(graph, current, b));
 
-            related: graph.edges.filter(x => x.relationType === RelationshipType.Related)
-        };
+            const kids: number[] = [];
+
+            for (const neighborId of neighborIds) {
+                if (!visited.has(neighborId)) {
+                    visited.add(neighborId);
+                    kids.push(neighborId);
+                    queue.push(neighborId);
+                }
+            }
+
+            children.set(current, kids);
+        }
+
+        return children;
     }
 
-    private layoutGroup(edges: GraphEdge[], nodes: GraphNode[], direction: number) {
+    private edgeTypeRank(graph: GraphViewModel, a: number, b: number): number {
+        const edge = (graph.outgoingEdges.get(a) ?? []).find(e => e.targetId === b)
+            ?? (graph.incomingEdges.get(a) ?? []).find(e => e.sourceId === b);
+        return edge?.relationType ?? 0;
+    }
 
-        if (edges.length === 0) {
+    private assignRows(graph: GraphViewModel, tree: Map<number, number[]>): number[][] {
+
+        const levelOf = new Map<number, number>([[graph.rootNodeId, 0]]);
+        const rows: number[][] = [[graph.rootNodeId]];
+
+        const queue: number[] = [graph.rootNodeId];
+
+        while (queue.length) {
+
+            const current = queue.shift()!;
+            const level = levelOf.get(current)!;
+
+            for (const childId of tree.get(current) ?? []) {
+
+                levelOf.set(childId, level + 1);
+
+                if (!rows[level + 1]) {
+                    rows[level + 1] = [];
+                }
+                rows[level + 1].push(childId);
+
+                queue.push(childId);
+            }
+        }
+
+        return rows;
+    }
+
+    // =====================================================================
+    // Crossing minimization (barycenter method)
+    // =====================================================================
+
+    private minimizeCrossings(graph: GraphViewModel, rows: number[][]): void {
+
+        if (rows.length <= 1) {
             return;
         }
 
-        const spacing = 60;
-        const start = -((edges.length - 1) * spacing) / 2;
+        const positionInRow = new Map<number, number>();
+        const rebuildPositions = () => {
+            positionInRow.clear();
+            rows.forEach(row => row.forEach((id, idx) => positionInRow.set(id, idx)));
+        };
+        rebuildPositions();
 
-        edges.forEach((edge, index) => {
+        for (let pass = 0; pass < this.crossingReductionPasses; pass++) {
 
-            const node = nodes.find(x => x.id === edge.targetId);
-            if (!node) return;
+            const downward = pass % 2 === 0;
 
-            const offset = start + index * spacing;
-            const radians = direction * Math.PI / 180;
-
-            node.x = Math.cos(radians) * this.ringDistance;
-            node.y = Math.sin(radians) * this.ringDistance;
-
-            if (direction === -90 || direction === 90) {
-                node.x += offset;
+            if (downward) {
+                for (let level = 1; level < rows.length; level++) {
+                    this.reorderRowByBarycenter(graph, rows[level], rows[level - 1], positionInRow);
+                    rebuildPositions();
+                }
             } else {
-                node.y += offset;
+                for (let level = rows.length - 2; level >= 0; level--) {
+                    this.reorderRowByBarycenter(graph, rows[level], rows[level + 1], positionInRow);
+                    rebuildPositions();
+                }
             }
+        }
+    }
+
+    private reorderRowByBarycenter(
+        graph: GraphViewModel,
+        row: number[],
+        referenceRow: number[],
+        positionInRow: Map<number, number>
+    ): void {
+
+        const refPos = new Map<number, number>();
+        referenceRow.forEach((id, idx) => refPos.set(id, idx));
+
+        const barycenter = (nodeId: number): number => {
+
+            const neighbors = (graph.adjacency.get(nodeId) ?? []).filter(n => refPos.has(n));
+
+            if (!neighbors.length) {
+                return positionInRow.get(nodeId) ?? 0;
+            }
+
+            const sum = neighbors.reduce((s, n) => s + (refPos.get(n) ?? 0), 0);
+            return sum / neighbors.length;
+        };
+
+        const scored = row.map(id => ({ id, score: barycenter(id) }));
+
+        // Stable sort: ties keep their existing relative order instead of
+        // jittering between passes.
+        scored.sort((a, b) => a.score - b.score);
+
+        row.splice(0, row.length, ...scored.map(s => s.id));
+    }
+
+    // =====================================================================
+    // Coordinate assignment
+    // =====================================================================
+
+    private assignCoordinates(graph: GraphViewModel, rows: number[][]): void {
+
+        rows.forEach((row, level) => {
+
+            if (!row.length) return;
+
+            const spacing = this.computeRowSpacing(graph, row);
+            const totalWidth = (row.length - 1) * spacing;
+            const startX = -totalWidth / 2;
+
+            row.forEach((id, idx) => {
+                const node = graph.nodeMap.get(id);
+                if (!node) return;
+                node.x = startX + idx * spacing;
+                node.y = level * this.rowSpacing;
+            });
         });
     }
 
-    private layoutOrbit(edges: GraphEdge[], nodes: GraphNode[]) {
+    /** Widest card in the row drives spacing, so cards never overlap regardless of title length / card size. */
+    private computeRowSpacing(graph: GraphViewModel, nodeIds: number[]): number {
 
-        if (!edges.length) {
+        let widest = 0;
+        for (const id of nodeIds) {
+            const node = graph.nodeMap.get(id);
+            if (node) widest = Math.max(widest, node.width);
+        }
+
+        return Math.max(this.minColSpacing, widest + 60);
+    }
+
+    /** Nodes unreachable from the root (no path through the spanning tree) get their own row below everything else, evenly spaced. */
+    private placeUnreachableNodes(graph: GraphViewModel, rows: number[][]): void {
+
+        const placed = new Set<number>();
+        rows.forEach(row => row.forEach(id => placed.add(id)));
+
+        const stray = graph.nodes.filter(n => !placed.has(n.id));
+        if (!stray.length) {
             return;
         }
 
-        const angleStep = (Math.PI * 2) / edges.length;
+        const level = rows.length;
+        const strayIds = stray.map(n => n.id);
+        const spacing = this.computeRowSpacing(graph, strayIds);
+        const totalWidth = (stray.length - 1) * spacing;
+        const startX = -totalWidth / 2;
 
-        edges.forEach((edge, index) => {
-
-            const node = nodes.find(x => x.id === edge.targetId);
-            if (!node) return;
-
-            const angle = angleStep * index;
-
-            node.x = Math.cos(angle) * (this.ringDistance + 120);
-            node.y = Math.sin(angle) * (this.ringDistance + 120);
+        stray.forEach((node, idx) => {
+            node.x = startX + idx * spacing;
+            node.y = level * this.rowSpacing;
         });
     }
 }

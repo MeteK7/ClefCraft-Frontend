@@ -64,7 +64,8 @@ export class ItemDetailDialogComponent implements OnInit {
 
   hasUnsavedChanges = false;
   originalItemData!: Item;
-
+  isGraphMaximized = false;
+  
   /** True while creating a brand new item rather than editing an existing one. */
   get isNewItem(): boolean {
     return !this.data.item?.id;

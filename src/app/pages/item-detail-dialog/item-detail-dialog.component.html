@@ -124,8 +124,8 @@
 
       <div class="dialog-content">
 
-        <app-relationship-hub [boardId]="data.boardId" [itemId]="item.id" (openItem)="openRelatedItem($event)">
-
+        <app-relationship-hub [boardId]="data.boardId" [itemId]="item.id" (openItem)="openRelatedItem($event)"
+          (graphMaximizedChange)="isGraphMaximized = $event">
         </app-relationship-hub>
 
       </div>
@@ -232,7 +232,7 @@
     </mat-tab>
   </mat-tab-group>
 
-  <div class="dialog-actions-footer">
+  <div class="dialog-actions-footer" *ngIf="!isGraphMaximized">
     <div class="left-actions">
       <button mat-flat-button color="primary" class="action-btn" (click)="onSave()" [disabled]="form.invalid">
         <mat-icon>save</mat-icon> {{ isNewItem ? 'Create' : 'Save' }}

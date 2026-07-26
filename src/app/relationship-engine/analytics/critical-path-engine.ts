@@ -8,15 +8,6 @@ export interface CriticalPathResult {
     path: number[];
     nodes: GraphNode[];
     duration: number;
-
-    /**
-     * Node ids that could not be included because they sit inside a
-     * dependency cycle (Kahn's algorithm never assigns them an order).
-     * The previous version silently ignored these, or — if the WHOLE
-     * graph was cyclic — crashed on an undefined order[0]. Callers
-     * should check this and surface it, typically alongside
-     * CycleDetector's output.
-     */
     excludedCyclicNodeIds: number[];
 }
 

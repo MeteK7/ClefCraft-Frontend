@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
-import { environment } from '../../environments/environment.prod';
+import { environment } from '../../environments/environment';
 import { Router } from '@angular/router';
 
 // Replace "any" with your actual User model when available.

@@ -1,10 +1,10 @@
+import { Injectable } from '@angular/core';
 import { GraphEdge } from '../visualization/graph-edge.model';
 import { GraphNode } from '../visualization/graph-node.model';
 import { GraphViewModel } from '../visualization/graph-view-model';
 
 export interface RelationshipCycle {
 
-    /** Node ids participating in the cycle, e.g. 12 -> 7 -> 19 -> 12. */
     nodeIds: number[];
 
     nodeTitles: string[];
@@ -12,9 +12,12 @@ export interface RelationshipCycle {
     size: number;
 }
 
+@Injectable({
+    providedIn: 'root'
+})
+
 export class CycleDetector {
 
-    /** Finds every circular dependency inside the graph. */
     detectCycles(graph: GraphViewModel): RelationshipCycle[] {
 
         const visited = new Set<number>();
@@ -59,13 +62,6 @@ export class CycleDetector {
         return graph.nodes.filter(node => ids.has(node.id));
     }
 
-    /**
-     * Returns new node/edge arrays with cyclic/highlighted set — does
-     * NOT mutate the input graph. (The previous version mutated graph
-     * objects in place while every other analytics engine returned new
-     * arrays; that inconsistency silently breaks OnPush/signal-based
-     * change detection depending on call order.)
-     */
     markCycles(graph: GraphViewModel): { nodes: GraphNode[]; edges: GraphEdge[] } {
 
         const cycles = this.detectCycles(graph);

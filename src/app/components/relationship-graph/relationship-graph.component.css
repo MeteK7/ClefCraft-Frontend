@@ -1,78 +1,387 @@
 :host {
-
-    display:block;
-
-    width:100%;
-    height:650px;
-
+  display: block;
+  width: 100%;
+  height: 650px;
+  position: relative;
 }
 
-.graph-container{
-
-    width:100%;
-    height:100%;
-
-    overflow:hidden;
-
-    border-radius:14px;
-
-    background:#fafafa;
-
-    border:1px solid #e0e0e0;
-
+:host(.graph-maximized) {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2000;
 }
 
-.graph-svg{
-
-    width:100%;
-    height:100%;
-
+.graph-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(circle at center,
+      #26303c 0%,
+      #1f2630 45%,
+      #161b22 100%);
 }
 
-.edge{
-
-    stroke:#bdbdbd;
-
-    stroke-width:2;
-
+.graph-svg {
+  width: 100%;
+  height: 100%;
 }
 
-.node{
-
-    fill:white;
-
-    stroke:#3f51b5;
-
-    stroke-width:2;
-
-    cursor:pointer;
-
-    transition:all .2s;
-
+.graph-edges {
+  /* Individual edges opt back into pointer events via their own
+     invisible "hit" stroke (see .graph-edge-hit below) so the whole
+     layer doesn't have to be interactive just to support edge hover. */
+  pointer-events: none;
 }
 
-.node:hover{
-
-    stroke:#1e88e5;
-
-    filter:drop-shadow(0 4px 10px rgba(0,0,0,.25));
-
+.graph-edge {
+  stroke: #9aa0a6;
+  stroke-linecap: round;
+  stroke-linejoin: miter;
+  stroke-width: 2;
+  fill: none;
+  opacity: 0.85;
+  transition: opacity .25s ease, stroke .25s ease, stroke-width .25s ease;
 }
 
-.title{
-
-    font-size:14px;
-
-    font-weight:700;
-
-    pointer-events:none;
-
+.graph-edge.dimmed {
+  opacity: .15;
 }
 
-.subtitle{
+/*
+ * Color is reserved EXCLUSIVELY for critical-relationship signaling.
+ * Nothing else on an edge is allowed to change stroke color — relationship
+ * type is communicated below purely through dash pattern / stroke-width
+ * (and, on the arrowhead, through marker shape — see the <defs> in the
+ * template, which now has one marker per type x {normal, critical}).
+ */
+.graph-edge.critical {
+  stroke: #ef5350;
+  stroke-width: 4;
+  filter: url(#edgeGlow);
+}
 
-    font-size:12px;
+/*
+ * Relationship-type styling. Every rule here is color-free by design —
+ * only dash pattern and stroke-width vary. These classes are also reused
+ * by the legend's line-preview swatches so the legend teaches the exact
+ * visual language used on the canvas instead of a separate color key.
+ */
+.graph-edge.type-parent {
+  stroke-dasharray: none;
+}
 
-    pointer-events:none;
+.graph-edge.type-blocks {
+  stroke-dasharray: none;
+  stroke-width: 3;
+}
 
+.graph-edge.type-depends-on {
+  stroke-dasharray: 7 5;
+}
+
+.graph-edge.type-related {
+  stroke-dasharray: 1.5 5;
+}
+
+.graph-edge.type-duplicate {
+  stroke-dasharray: 9 3 2 3;
+}
+
+.graph-edge.type-split-from {
+  stroke-dasharray: 14 5;
+}
+
+/*
+ * Cyclic membership used to be communicated by hijacking stroke-dasharray
+ * (8 6), which would have collided with the type patterns above. Instead
+ * cyclic edges get a quiet pulse (skipped while dimmed, so it doesn't
+ * fight with the dimmed-edge opacity) and a small "cycle" badge rendered
+ * at the edge midpoint — see .cyclic-badge and the template.
+ */
+.graph-edge.cyclic:not(.dimmed) {
+  animation: cyclic-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes cyclic-pulse {
+
+  0%,
+  100% {
+    opacity: .85;
+  }
+
+  50% {
+    opacity: .5;
+  }
+}
+
+/* Wide, invisible stroke sitting under/over the visible edge purely to
+   make hovering a thin line practical; carries its own pointer-events
+   so the (pointer-events: none) .graph-edges group stays non-interactive
+   everywhere except directly on an edge. */
+.graph-edge-hit {
+  stroke: transparent;
+  stroke-width: 14;
+  fill: none;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.cyclic-badge circle {
+  fill: #232b36;
+  stroke: rgba(255, 255, 255, .35);
+  stroke-width: 1;
+}
+
+.cyclic-badge text {
+  fill: #cfd8dc;
+  font-size: 9px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.graph-nodes {
+  pointer-events: auto;
+}
+
+.graph-node-container {
+  overflow: visible;
+}
+
+.graph-node-container.selected .node-card {
+  transform: scale(1.05);
+}
+
+.node-card {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #232b36;
+  border: 1px solid rgba(255, 255, 255, .12);
+  color: #f5f5f5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+
+.node-card:hover {
+  transform: translateY(-2px) scale(1.03);
+  border-color: #42a5f5;
+}
+
+.status-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: #4caf50;
+}
+
+.status-strip.center {
+  background: #ffd54f;
+}
+
+.status-strip.critical {
+  background: #ef5350;
+}
+
+.status-strip.cyclic {
+  background: #fb8c00;
+}
+
+.node-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.node-id {
+  font-size: 11px;
+  opacity: .65;
+}
+
+.header-right {
+  display: flex;
+  gap: 6px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 12px;
+  opacity: .8;
+}
+
+/* ---------------------------------------------------------------------
+ * Relationship tooltip (new)
+ * Shown on edge hover. Communicates the relationship as a plain sentence
+ * — no Source/Target/From/To/Node A/Node B terminology anywhere.
+ * ------------------------------------------------------------------- */
+.relationship-tooltip {
+  position: absolute;
+  max-width: 240px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(20, 24, 30, .96);
+  border: 1px solid rgba(255, 255, 255, .12);
+  color: #f5f5f5;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
+  z-index: 10;
+}
+
+.relationship-sentence {
+  font-weight: 500;
+}
+
+.relationship-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.relationship-flags .flag {
+  font-size: 11px;
+  color: #cfd8dc;
+  opacity: .85;
+}
+
+/* ---------------------------------------------------------------------
+ * Legend — line-style previews instead of color chips
+ * ------------------------------------------------------------------- */
+.legend-swatch {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.legend-line {
+  stroke: #90a4ae;
+  fill: none;
+}
+
+.legend-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, .12);
+  margin: 6px 0;
+}
+
+.legend-note {
+  opacity: .85;
+}
+
+.legend-critical-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e53935;
+  display: inline-block;
+}
+
+.legend-cyclic-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #232b36;
+  border: 1px solid rgba(255, 255, 255, .3);
+  font-size: 10px;
+  color: #cfd8dc;
+}
+
+.metric-spacer {
+  display: inline-block;
+  width: 12px;
+}
+
+/* ---------------------------------------------------------------------
+ * "Show Full Connections" status banner — shown while the recursive
+ * expansion is in flight, and again (in a warning tone) if the node
+ * safety cap was hit before every connection was discovered.
+ * ------------------------------------------------------------------- */
+.full-connections-status {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(20, 24, 30, .92);
+  border: 1px solid rgba(255, 255, 255, .12);
+  color: #f5f5f5;
+  font-size: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+  z-index: 5;
+}
+
+.full-connections-status.truncated {
+  border-color: rgba(251, 140, 0, .4);
+}
+
+.graph-layer.animated {
+  transition: transform .5s cubic-bezier(.22, .61, .36, 1);
+}
+
+.graph-layer:not(.animated) {
+  transition: none;
+}
+
+/* relationship-graph.component.css */
+
+/* 
+Active states for connected edges. Combines maximum opacity, 
+proportional stroke-width scaling, and a soft ambient glow.
+*/
+.graph-edge.active {
+  opacity: 1;
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
+}
+
+/* Keep structural distinctiveness across relation line types */
+.graph-edge.active.type-blocks {
+  stroke-width: 4.5;
+}
+
+.graph-edge.active.critical {
+  stroke-width: 5.5;
+  filter: url(#edgeGlow) drop-shadow(0 0 5px rgba(239, 83, 80, 0.55));
+}
+
+/* 
+Subtle marquee directional flow animation for dashed relation paths.
+Provides an elegant sense of telemetry without distracting from data text.
+*/
+.graph-edge.active:not(.type-parent):not(.type-blocks) {
+  animation: edge-flow 1.5s linear infinite;
+}
+
+/* Safe composition rules for cyclic edges that happen to be hovered/active */
+.graph-edge.active.cyclic {
+  animation: edge-flow 1.5s linear infinite, cyclic-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes edge-flow {
+  to {
+    stroke-dashoffset: -28;
+  }
 }

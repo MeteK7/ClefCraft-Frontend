@@ -21,6 +21,7 @@ import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dia
 import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-sidebar.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-board',
@@ -50,7 +51,8 @@ export class BoardComponent implements OnInit {
   constructor(
     private boardEngine: BoardEngineService,
     private dialog: MatDialog,
-    private eRef: ElementRef
+    private eRef: ElementRef,
+    private route: ActivatedRoute
   ) { }
 
   ngOnInit(): void {
@@ -133,6 +135,32 @@ export class BoardComponent implements OnInit {
         title,
         boardColumns: columns,
       });
+
+      // Check query params after the view configuration has populated
+      this.checkDeepLinkedItem();
+    });
+  }
+
+  private checkDeepLinkedItem(): void {
+    this.route.queryParams.subscribe(params => {
+      const targetIdStr = params['openItemId'];
+      if (!targetIdStr || !this.boardView) return;
+
+      const targetId = Number(targetIdStr);
+
+      // Flatten search down structural column layers
+      const matchedItem = this.boardView.columns
+        .flatMap(c => c.boardItems)
+        .find(item => item.id === targetId);
+
+      if (matchedItem) {
+        // Synchronize core engine state tracking rules
+        this.selection = selectItem(this.selection, matchedItem);
+
+        if (this.selection.viewMode === 'dialog') {
+          this.openItemDetailDialog(matchedItem);
+        }
+      }
     });
   }
 
