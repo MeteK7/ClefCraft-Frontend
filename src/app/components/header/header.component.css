@@ -10,7 +10,7 @@ header{
 
     background:var(--header);
 
-    color:var(--text);
+    color:var(--header-text);
 
 }
 
@@ -20,7 +20,19 @@ header{
 
     right:20px;
 
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    width:36px;
+
+    height:36px;
+
     border:none;
+
+    border-radius:50%;
 
     background:none;
 
@@ -28,7 +40,23 @@ header{
 
     color:inherit;
 
-    font-size:24px;
+    transition:background-color .2s ease;
+
+}
+
+.theme-btn:hover{
+
+    background:rgba(255,255,255,.1);
+
+}
+
+.theme-btn mat-icon{
+
+    font-size:22px;
+
+    width:22px;
+
+    height:22px;
 
 }
 

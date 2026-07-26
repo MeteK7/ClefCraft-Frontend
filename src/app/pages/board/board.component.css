@@ -4,7 +4,7 @@
   height: 100%;
   gap: 15px;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.4); /* board area glass effect */
+  background: rgba(0, 0, 0, 0.4); /* Intentional glass effect — kept theme-independent by design */
   backdrop-filter: blur(10px);
   border-radius: 10px;
   border: 1px solid var(--border); /* Light border to define the edges */
@@ -21,7 +21,8 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 16px;
-  background-color: #fff;
+  background-color: var(--input-bg);
+  color: var(--text);
   margin-left: 10px;
 }
 
@@ -36,8 +37,8 @@
 
 .add-item-btn {
   margin-top: 20px;
-  background-color: #007bff;
-  color: #fff;
+  background-color: var(--primary);
+  color: var(--text-inverse);
   padding: 10px 20px; /* Add padding for better button size */
   border: none; /* Remove border */
   border-radius: 5px; /* Rounded corners */
@@ -47,7 +48,7 @@
 }
 
 .add-item-btn:hover {
-  background-color: #0056b3; /* Darker shade on hover */
+  background-color: var(--primary-hover); /* Darker shade on hover */
 }
 
 .sidebar-container {
@@ -56,11 +57,12 @@
   right: 0;
   width: 300px;
   height: 100vh;
-  background-color: #f8f8f8;
+  background-color: var(--surface);
   z-index: 1000; /* Ensure it’s above other content */
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+  box-shadow: -2px 0 5px var(--shadow-color);
   padding: 15px;
   overflow-y: auto;
+  color: var(--text);
 }
 
 .view-toggle {
@@ -74,16 +76,17 @@
 .view-toggle button {
   padding: 8px 16px;
   border: none;
-  background: #f5f5f5;
+  background: var(--surface-2);
+  color: var(--text);
   cursor: pointer;
   transition: 0.2s;
 }
 
 .view-toggle button.active {
-  background: #007bff;
-  color: var(--text);
+  background: var(--primary);
+  color: var(--text-inverse);
 }
 
 .view-toggle button:hover {
-  background: #dbeafe;
+  background: var(--primary-light);
 }

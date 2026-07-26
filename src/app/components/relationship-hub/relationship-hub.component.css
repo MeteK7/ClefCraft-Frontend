@@ -1,53 +1,32 @@
 .relationship-hub{
-
     margin-top:16px;
-
 }
 
 .hub-header{
-
     display:flex;
-
     justify-content:space-between;
-
     align-items:center;
-
     margin-bottom:12px;
-
 }
 
 .loading{
-
     padding:20px;
-
     text-align:center;
-
-    color:#777;
-
+    color:var(--text-secondary);
 }
 
 .empty{
-
-    color:#999;
-
+    color:var(--text-secondary);
     padding:12px;
-
 }
 
 .view-selector{
-
     display:flex;
-
     justify-content:flex-end;
-
     margin-top:12px;
-
     margin-bottom:20px;
-
 }
 
 .view-selector mat-button-toggle-group{
-
     border-radius:10px;
-
 }
