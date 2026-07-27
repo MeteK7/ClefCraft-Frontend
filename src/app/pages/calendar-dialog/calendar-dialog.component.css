@@ -189,6 +189,12 @@
   border-color: var(--primary);
 }
 
+/* Placeholder text (Quill's own snow theme hardcodes a dark color here) */
+::ng-deep .ql-editor.ql-blank::before {
+  color: var(--text-secondary);
+  font-style: normal;
+}
+
 /* ================================
    DIALOG ACTIONS
 ================================ */
