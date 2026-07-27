@@ -2,6 +2,7 @@
 @import "./themes/_variables.css";
 @import "./themes/light-theme.css";
 @import "./themes/dark-theme.css";
+@import "./themes/material-theme.css";
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }

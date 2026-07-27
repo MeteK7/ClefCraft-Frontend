@@ -1,0 +1,121 @@
+/* ============================================================
+   Angular Material component theming — dark mode overrides
+
+   Angular Material's MDC-based components (mat-form-field, mat-select,
+   mat-dialog, mat-datepicker, mat-menu, mat-checkbox, mat-radio,
+   mat-tab-group, matTooltip, mat-expansion-panel, ...) ship their own
+   text/surface colors for a light theme. They don't read our
+   --text/--surface tokens automatically — Material exposes its own set
+   of CSS custom properties for this, which we override here only when
+   dark-theme is active. Light mode is untouched (Material's defaults
+   already match it).
+
+   NOTE: this list covers what's currently used across the app’s
+   dialogs (item-detail-dialog, calendar-dialog, recurrence-scope-dialog,
+   relationship-dialog, relationship-hub's accordion, etc). If a new
+   Material component starts showing the same "dark text on dark
+   background" symptom, inspect it in devtools → Styles/Computed, find
+   the --mdc-*--mat- variable driving the color, and add it below.
+   ============================================================ */
+
+body.dark-theme {
+
+  /* ---------- Outlined form fields (mat-form-field appearance="outline") ---------- */
+  --mdc-outlined-text-field-label-text-color: var(--text-secondary);
+  --mdc-outlined-text-field-hover-label-text-color: var(--text);
+  --mdc-outlined-text-field-focus-label-text-color: var(--primary);
+  --mdc-outlined-text-field-input-text-color: var(--text);
+  --mdc-outlined-text-field-input-text-placeholder-color: var(--text-secondary);
+  --mdc-outlined-text-field-outline-color: var(--border);
+  --mdc-outlined-text-field-hover-outline-color: var(--border-strong);
+  --mdc-outlined-text-field-focus-outline-color: var(--primary);
+  --mdc-outlined-text-field-disabled-outline-color: var(--border);
+  --mdc-outlined-text-field-disabled-input-text-color: var(--text-secondary);
+  --mdc-outlined-text-field-disabled-label-text-color: var(--text-secondary);
+  --mdc-outlined-text-field-error-outline-color: var(--danger);
+  --mdc-outlined-text-field-error-label-text-color: var(--danger);
+  --mdc-outlined-text-field-error-hover-outline-color: var(--danger);
+  --mdc-outlined-text-field-error-focus-outline-color: var(--danger);
+  --mat-form-field-hint-text-color: var(--text-secondary);
+  --mat-form-field-error-text-color: var(--danger);
+  --mat-form-field-enabled-select-arrow-color: var(--text-secondary);
+
+  /* Filled variant, in case any field uses it instead of outline */
+  --mdc-filled-text-field-label-text-color: var(--text-secondary);
+  --mdc-filled-text-field-input-text-color: var(--text);
+  --mdc-filled-text-field-container-color: var(--surface-2);
+  --mdc-filled-text-field-input-text-placeholder-color: var(--text-secondary);
+
+  /* ---------- Select / autocomplete / option panels ---------- */
+  --mat-select-enabled-trigger-text-color: var(--text);
+  --mat-select-placeholder-text-color: var(--text-secondary);
+  --mat-select-disabled-trigger-text-color: var(--text-secondary);
+  --mat-select-panel-background-color: var(--surface);
+  --mat-select-trigger-text-color: var(--text);
+  --mat-option-label-text-color: var(--text);
+  --mat-option-selected-state-label-text-color: var(--primary);
+  --mat-option-hover-state-layer-color: var(--surface-hover);
+  --mat-option-focus-state-layer-color: var(--surface-hover);
+  --mat-option-selected-state-layer-color: var(--primary-light);
+  --mat-autocomplete-background-color: var(--surface);
+
+  /* ---------- Checkbox / radio ---------- */
+  --mdc-checkbox-unselected-icon-color: var(--text-secondary);
+  --mdc-checkbox-disabled-unselected-icon-color: var(--text-secondary);
+  --mat-checkbox-label-text-color: var(--text);
+  --mdc-radio-unselected-icon-color: var(--text-secondary);
+  --mdc-radio-disabled-unselected-icon-color: var(--text-secondary);
+
+  /* ---------- Dialog container ---------- */
+  --mdc-dialog-container-color: var(--surface);
+  --mdc-dialog-subhead-color: var(--text);
+  --mdc-dialog-supporting-text-color: var(--text-secondary);
+
+  /* ---------- Menu ---------- */
+  --mat-menu-container-color: var(--surface);
+  --mat-menu-item-label-text-color: var(--text);
+  --mat-menu-item-hover-state-layer-color: var(--surface-hover);
+
+  /* ---------- Tabs (General/Attachments/Recurrence, Details/Relationships/...) ---------- */
+  --mat-tab-header-inactive-label-text-color: var(--text-secondary);
+  --mat-tab-header-active-label-text-color: var(--primary);
+  --mat-tab-header-active-ripple-color: var(--primary);
+  --mat-tab-header-inactive-ripple-color: var(--text-secondary);
+  --mat-tab-header-active-focus-label-text-color: var(--primary);
+  --mat-tab-header-active-hover-label-text-color: var(--primary);
+
+  /* ---------- Datepicker calendar popup ---------- */
+  --mat-datepicker-calendar-container-background-color: var(--surface);
+  --mat-datepicker-calendar-container-text-color: var(--text);
+  --mat-datepicker-calendar-date-text-color: var(--text);
+  --mat-datepicker-calendar-date-outline-color: var(--border);
+  --mat-datepicker-calendar-date-disabled-state-text-color: var(--text-secondary);
+  --mat-datepicker-calendar-header-text-color: var(--text-secondary);
+  --mat-datepicker-calendar-body-label-text-color: var(--text-secondary);
+  --mat-datepicker-toggle-icon-color: var(--text-secondary);
+  --mat-datepicker-calendar-date-hover-state-background-color: var(--surface-hover);
+  --mat-datepicker-calendar-date-today-outline-color: var(--primary);
+
+  /* ---------- Tooltip ---------- */
+  --mdc-plain-tooltip-container-color: var(--surface-2);
+  --mdc-plain-tooltip-supporting-text-color: var(--text);
+
+  /* ---------- Expansion panel (relationship-hub's list view accordion) ---------- */
+  --mat-expansion-container-background-color: var(--surface);
+  --mat-expansion-container-text-color: var(--text);
+  --mat-expansion-header-text-color: var(--text);
+  --mat-expansion-header-description-color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------
+   Safety net: some Angular Material versions bake a couple of these
+   colors in as literal values rather than reading the CSS variable
+   above, depending on exact version/theme setup. These two rules
+   target exactly the symptom from the screenshots (label + input text
+   unreadable) as a guaranteed fallback on top of the token overrides.
+   ------------------------------------------------------------ */
+body.dark-theme .mdc-text-field__input,
+body.dark-theme .mat-mdc-floating-label,
+body.dark-theme .mdc-floating-label {
+  color: var(--text) !important;
+}
