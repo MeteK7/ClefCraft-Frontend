@@ -83,6 +83,8 @@ body.dark-theme {
   --mat-tab-header-inactive-ripple-color: var(--text-secondary);
   --mat-tab-header-active-focus-label-text-color: var(--primary);
   --mat-tab-header-active-hover-label-text-color: var(--primary);
+  --mat-tab-header-inactive-hover-label-text-color: var(--text);
+  --mat-tab-header-inactive-focus-label-text-color: var(--text); 
 
   /* ---------- Datepicker calendar popup ---------- */
   --mat-datepicker-calendar-container-background-color: var(--surface);
