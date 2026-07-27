@@ -46,7 +46,7 @@ export class LoginComponent {
         this.authService.loadCurrentUser().subscribe({
           next: user => {
             this.authService.setCurrentUser(user);
-            this.router.navigate(['/home']);
+            this.router.navigate(['/calendar']);
           }
         });
       },

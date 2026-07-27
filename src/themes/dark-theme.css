@@ -50,6 +50,9 @@ body.dark-theme {
   --board-column-bg: rgba(55, 65, 90, 0.6);
   --board-column-bg-hover: rgba(70, 82, 110, 0.75);
 
+  --success-light: #1b3320;
+  --success-text: #81c995;
+
   --shadow-color: rgba(0, 0, 0, 0.4);
   --overlay-bg: rgba(18, 18, 18, 0.6);
 

@@ -52,6 +52,9 @@
   --board-column-bg: rgba(167, 187, 255, 0.6);
   --board-column-bg-hover: rgb(207, 216, 245);
 
+  --success-light: #e8f5e9;
+  --success-text: #2e7d32;
+
   --shadow-color: rgba(0, 0, 0, 0.1);
   --overlay-bg: rgba(255, 255, 255, 0.55);
 
