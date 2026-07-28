@@ -1,7 +1,9 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  height: 650px;
+  height: 100%;      /* was: height: 650px; */
+  min-height: 0;      /* critical: lets a flex child actually shrink instead of overflowing */
   position: relative;
 }
 
@@ -17,6 +19,8 @@
   position: relative;
   width: 100%;
   height: 100%;
+  flex: 1 1 auto;     /* added: fill whatever height the flex chain gives us */
+  min-height: 0;       /* added */
   overflow: hidden;
   background: radial-gradient(circle at center,
       #26303c 0%,
