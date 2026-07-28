@@ -1,8 +1,63 @@
-header {
-  background-color: #333;
-  text-align: center;
-  color: white;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+header{
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    position:relative;
+
+    background:var(--header);
+
+    color:var(--header-text);
+
+}
+
+.theme-btn{
+
+    position:absolute;
+
+    right:20px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    width:36px;
+
+    height:36px;
+
+    border:none;
+
+    border-radius:50%;
+
+    background:none;
+
+    cursor:pointer;
+
+    color:inherit;
+
+    transition:background-color .2s ease;
+
+}
+
+.theme-btn:hover{
+
+    background:rgba(255,255,255,.1);
+
+}
+
+.theme-btn mat-icon{
+
+    font-size:22px;
+
+    width:22px;
+
+    height:22px;
+
 }
 
 h1 {

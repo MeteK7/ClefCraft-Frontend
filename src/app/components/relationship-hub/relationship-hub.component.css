@@ -1,53 +1,45 @@
 .relationship-hub{
-
     margin-top:16px;
-
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
 }
 
 .hub-header{
-
     display:flex;
-
     justify-content:space-between;
-
     align-items:center;
-
     margin-bottom:12px;
+    flex: 0 0 auto;      /* header stays fixed size */
+}
 
+/* the graph itself grows to consume the rest of the hub's height */
+app-relationship-graph {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: block;
 }
 
 .loading{
-
     padding:20px;
-
     text-align:center;
-
-    color:#777;
-
+    color:var(--text-secondary);
 }
 
 .empty{
-
-    color:#999;
-
+    color:var(--text-secondary);
     padding:12px;
-
 }
 
 .view-selector{
-
     display:flex;
-
     justify-content:flex-end;
-
     margin-top:12px;
-
     margin-bottom:20px;
-
 }
 
 .view-selector mat-button-toggle-group{
-
     border-radius:10px;
-
 }

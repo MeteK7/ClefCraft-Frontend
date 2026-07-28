@@ -73,7 +73,7 @@ p {
   outline: none;
   cursor: pointer;
   background: #2563eb;
-  color: white;
+  color: var(--text);
   padding: 0.85rem 1.8rem;
   border-radius: 10px;
   font-size: 1rem;

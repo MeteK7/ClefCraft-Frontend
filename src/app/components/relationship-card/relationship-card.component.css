@@ -4,9 +4,9 @@
     align-items: center;
     padding: 12px;
     border-radius: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     margin-bottom: 8px;
-    background: white;
+    background: var(--surface);
 }
 
 .card-main {
@@ -18,11 +18,12 @@
     font-weight: 600;
     display: inline-block; /* Restricts the click hit box to the exact text width */
     cursor: pointer;
+    color: var(--text);
 }
 
 .title:hover {
     text-decoration: underline; /* Shows underline ONLY on hover, keeping the UI clean */
-    color: #1976d2; /* Optional: adds a visual color shift matching standard active links */
+    color: var(--primary); /* Matches standard active links */
 }
 
 .metadata {
@@ -30,5 +31,5 @@
     display: flex;
     gap: 12px;
     font-size: 12px;
-    color: #666;
+    color: var(--text-secondary);
 }

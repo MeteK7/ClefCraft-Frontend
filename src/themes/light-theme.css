@@ -1,0 +1,61 @@
+:root {
+
+  --background: #f5f5f5;
+  --surface: #ffffff;
+  --surface-2: #f8f9fa;
+  --surface-hover: #f3f6fa;
+
+  --text: #222;
+  --text-secondary: #666;
+  --text-inverse: #ffffff;
+
+  --border: #dcdcdc;
+  --border-strong: #d6d6d6;
+  --divider: #e0e0e0;
+
+  --primary: #1976d2;
+  --primary-hover: #1565c0;
+  --primary-light: #e3f2fd;
+
+  --accent: #673ab7;
+  --accent-light: #ede7f6;
+
+  --link: #007bff;
+  --link-hover: #0056b3;
+
+  --danger: #d32f2f;
+  --danger-hover: #b71c1c;
+  --danger-light: #ffebee;
+
+  --success: #4caf50;
+  --warning: #fb8c00;
+
+  --header: #333;
+  --footer: #333;
+  /* header/footer background stays dark in both themes, so their text
+     is intentionally NOT tied to --text (which flips with the theme) */
+  --header-text: #f2f2f2;
+
+  --sidebar-bg: #f8f9fa;
+  --sidebar-hover: #e2e2e2;
+
+  --input-bg: #ffffff;
+  --input-border: #dddddd;
+
+  --event-bg: #bbdefb;
+  --today-bg: #f0f5ff;
+
+  --warning-bg: #fff8e1;
+  --warning-border: #ffe082;
+  --warning-text: #7a5c00;
+
+  --board-column-bg: rgba(167, 187, 255, 0.6);
+  --board-column-bg-hover: rgb(207, 216, 245);
+
+  --success-light: #e8f5e9;
+  --success-text: #2e7d32;
+
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --overlay-bg: rgba(255, 255, 255, 0.55);
+
+}

@@ -21,7 +21,7 @@
 /* Header title styling */
 .sidebar h2 {
   font-size: 1.6em;
-  color: #333;
+  color: var(--header);
   margin-bottom: 1em;
   text-align: center;
   border-bottom: 1px solid #ddd;
@@ -42,7 +42,7 @@
   padding: 10px;
   margin-top: 0.3em;
   font-size: 1em;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 4px;
   box-sizing: border-box;
 }
@@ -93,13 +93,13 @@
 /* Specific button styles */
 .save-btn {
   background-color: #28a745;
-  color: white;
+  color: var(--text);
   margin-right: 10px;
 }
 
 .delete-btn {
   background-color: #dc3545;
-  color: white;
+  color: var(--text);
 }
 
 /* Responsive Sidebar: Change layout for smaller screens */

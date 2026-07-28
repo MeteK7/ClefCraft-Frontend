@@ -1,3 +1,15 @@
 <header>
+
     <h1>Activity Management</h1>
-  </header>
+
+    <button
+        class="theme-btn"
+        [attr.aria-label]="themeService.isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+        [matTooltip]="themeService.isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+        (click)="themeService.toggle()">
+
+        <mat-icon>{{ themeService.isDark ? 'light_mode' : 'dark_mode' }}</mat-icon>
+
+    </button>
+
+</header>

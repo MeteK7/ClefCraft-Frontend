@@ -2,15 +2,15 @@
   flex: 1 1 0;       /* 👈 allows shrinking */
   min-width: 100px;  /* 👈 smaller base width */
   max-width: 100%;   /* safety */
-  background: rgba(210, 217, 241, 0.6); /* dark glass effect */
+  background: var(--board-column-bg); /* translucent glass panel, tuned per-theme */
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
 }
 .board-column:hover {
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-  background: rgb(207, 216, 245);
+  box-shadow: 0 6px 12px var(--shadow-color);
+  background: var(--board-column-bg-hover);
   transform: scale(1.02);
 }
 
@@ -18,7 +18,7 @@
   font-size: 1.5rem;
   margin-bottom: 15px;
   margin-left: 10px;
-  color: #000000;
+  color: var(--text);
 }
 
 .item-list {
