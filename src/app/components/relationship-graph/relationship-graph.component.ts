@@ -950,14 +950,19 @@ export class RelationshipGraphComponent implements OnChanges {
         this.graph.set(built);
         this.selectedNodeId.set(null);
 
-        if (animateViewport) {
-            // Same path expand uses to unzoom smoothly — frame the
-            // rebuilt (smaller) graph instead of hard-resetting to the
-            // default centered/zoom-1 viewport.
-            this.fitToView();
+        if (this.isMaximized()) {
+            // Maximized view keeps its existing behavior untouched.
+            if (animateViewport) {
+                this.fitToView();
+            } else {
+                this.viewportAnimated.set(false);
+                this.viewport.set(this.defaultViewport());
+            }
         } else {
-            this.viewportAnimated.set(false);
-            this.viewport.set(this.defaultViewport());
+            // Embedded dialog view: always auto-fit so the whole graph is
+            // visible without the user needing to pan/zoom or scroll.
+            this.viewportAnimated.set(animateViewport);
+            this.fitToView();
         }
 
         this.showFullConnections.set(false);
