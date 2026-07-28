@@ -84,7 +84,7 @@ body.dark-theme {
   --mat-tab-header-active-focus-label-text-color: var(--primary);
   --mat-tab-header-active-hover-label-text-color: var(--primary);
   --mat-tab-header-inactive-hover-label-text-color: var(--text);
-  --mat-tab-header-inactive-focus-label-text-color: var(--text); 
+  --mat-tab-header-inactive-focus-label-text-color: var(--text);
 
   /* ---------- Datepicker calendar popup ---------- */
   --mat-datepicker-calendar-container-background-color: var(--surface);
@@ -107,6 +107,25 @@ body.dark-theme {
   --mat-expansion-container-text-color: var(--text);
   --mat-expansion-header-text-color: var(--text);
   --mat-expansion-header-description-color: var(--text-secondary);
+
+  /* ---------- Button toggle (relationship-hub's Graph/List view-selector) ---------- */
+  --mat-standard-button-toggle-text-color: var(--text-secondary);
+  --mat-standard-button-toggle-selected-state-text-color: var(--text-inverse);
+  --mat-standard-button-toggle-selected-state-background-color: var(--primary);
+  --mat-standard-button-toggle-background-color: var(--surface);
+  --mat-standard-button-toggle-state-layer-color: var(--surface-hover);
+  --mat-standard-button-toggle-divider-color: var(--border);
+  --mat-standard-button-toggle-disabled-state-text-color: var(--text-secondary);
+  --mat-standard-button-toggle-disabled-state-background-color: var(--surface-2);
+  --mat-standard-button-toggle-disabled-selected-state-background-color: var(--surface-2);
+
+  /* ---------- Raised/filled buttons (relationship-hub's "Add Relationship", etc.) ---------- */
+  --mdc-protected-button-container-color: var(--primary);
+  --mdc-protected-button-label-text-color: var(--text-inverse);
+  --mdc-protected-button-disabled-container-color: var(--surface-2);
+  --mdc-protected-button-disabled-label-text-color: var(--text-secondary);
+  --mat-protected-button-state-layer-color: var(--text-inverse);
+  --mat-protected-button-ripple-color: rgba(255, 255, 255, 0.15);
 }
 
 /* ------------------------------------------------------------
