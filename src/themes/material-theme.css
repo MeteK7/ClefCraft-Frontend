@@ -65,6 +65,7 @@ body.dark-theme {
   --mat-checkbox-label-text-color: var(--text);
   --mdc-radio-unselected-icon-color: var(--text-secondary);
   --mdc-radio-disabled-unselected-icon-color: var(--text-secondary);
+  --mat-radio-label-text-color: var(--text);
 
   /* ---------- Dialog container ---------- */
   --mdc-dialog-container-color: var(--surface);
@@ -84,7 +85,7 @@ body.dark-theme {
   --mat-tab-header-active-focus-label-text-color: var(--primary);
   --mat-tab-header-active-hover-label-text-color: var(--primary);
   --mat-tab-header-inactive-hover-label-text-color: var(--text);
-  --mat-tab-header-inactive-focus-label-text-color: var(--text); 
+  --mat-tab-header-inactive-focus-label-text-color: var(--text);
 
   /* ---------- Datepicker calendar popup ---------- */
   --mat-datepicker-calendar-container-background-color: var(--surface);
@@ -107,17 +108,48 @@ body.dark-theme {
   --mat-expansion-container-text-color: var(--text);
   --mat-expansion-header-text-color: var(--text);
   --mat-expansion-header-description-color: var(--text-secondary);
+
+  /* ---------- Button toggle (relationship-hub's Graph/List view-selector) ---------- */
+  --mat-standard-button-toggle-text-color: var(--text-secondary);
+  --mat-standard-button-toggle-selected-state-text-color: var(--text-inverse);
+  --mat-standard-button-toggle-selected-state-background-color: var(--primary);
+  --mat-standard-button-toggle-background-color: var(--surface);
+  --mat-standard-button-toggle-state-layer-color: var(--surface-hover);
+  --mat-standard-button-toggle-divider-color: var(--border);
+  --mat-standard-button-toggle-disabled-state-text-color: var(--text-secondary);
+  --mat-standard-button-toggle-disabled-state-background-color: var(--surface-2);
+  --mat-standard-button-toggle-disabled-selected-state-background-color: var(--surface-2);
+
+  /* ---------- Raised/filled buttons (relationship-hub's "Add Relationship", etc.) ---------- */
+  --mdc-protected-button-container-color: var(--primary);
+  --mdc-protected-button-label-text-color: var(--text-inverse);
+  --mdc-protected-button-disabled-container-color: var(--surface-2);
+  --mdc-protected-button-disabled-label-text-color: var(--text-secondary);
+  --mat-protected-button-state-layer-color: var(--text-inverse);
+  --mat-protected-button-ripple-color: rgba(255, 255, 255, 0.15);
 }
 
 /* ------------------------------------------------------------
    Safety net: some Angular Material versions bake a couple of these
    colors in as literal values rather than reading the CSS variable
-   above, depending on exact version/theme setup. These two rules
+   above, depending on exact version/theme setup. These rules
    target exactly the symptom from the screenshots (label + input text
    unreadable) as a guaranteed fallback on top of the token overrides.
    ------------------------------------------------------------ */
 body.dark-theme .mdc-text-field__input,
 body.dark-theme .mat-mdc-floating-label,
 body.dark-theme .mdc-floating-label {
+  color: var(--text) !important;
+}
+
+/* Checkbox labels (e.g. "Repeat event", "All Day") and radio labels
+   (e.g. "Never", "On date", "After") render via a plain <label>
+   inside .mdc-form-field — this element doesn't consistently pick up
+   --mat-checkbox-label-text-color / --mat-radio-label-text-color, so
+   force it directly, same as the text-field fallback above. */
+body.dark-theme .mat-mdc-checkbox .mdc-form-field,
+body.dark-theme .mat-mdc-checkbox label,
+body.dark-theme .mat-mdc-radio-button .mdc-form-field,
+body.dark-theme .mat-mdc-radio-button label {
   color: var(--text) !important;
 }

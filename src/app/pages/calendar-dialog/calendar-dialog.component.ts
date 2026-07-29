@@ -662,4 +662,11 @@ export class CalendarDialogComponent implements OnInit {
       this.startChangesSubscription.unsubscribe();
     }
   }
+
+  quickEnableRecurrence(frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'): void {
+    this.generalForm.patchValue({
+      isRecurring: true,
+      frequency
+    });
+  }
 }
