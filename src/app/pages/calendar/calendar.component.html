@@ -143,7 +143,7 @@
 
         <div class="week-days-container">
           <div *ngFor="let col of weekView.columns" class="week-day-column" [class.today]="col.isToday">
-            <div class="week-day-grid" (click)="onEmptyTimeSlotClicked($event, col.date)">
+            <div class="week-day-grid">
               <div *ngFor="let hour of hours" class="hour-row"></div>
 
               <div *ngIf="col.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
@@ -190,7 +190,7 @@
         </div>
       </div>
 
-      <div class="day-timeline" (click)="onEmptyTimeSlotClicked($event, selectedDate)">
+      <div class="day-timeline">
         <div *ngFor="let hour of hours" class="hour-row"></div>
 
         <div *ngIf="dayView.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
