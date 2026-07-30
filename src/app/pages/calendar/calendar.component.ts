@@ -44,6 +44,9 @@ import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.u
 import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { CreateSession } from '../../calendar-engine/interactions/create/create-session.model';
+import { DragPositionUtil } from '../../calendar-engine/interactions/drag/drag-position.util';
+import { EventCreateEngine } from '../../calendar-engine/interactions/create/event-create-engine';
 
 @Component({
   selector: 'app-calendar',
@@ -99,6 +102,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   dragSession: DragSession | null = null;
   resizeSession: ResizeSession | null = null;
+  createSession: CreateSession | null = null;
 
   // ── Now indicator ──────────────────────────────────────────────────────────
 
@@ -152,6 +156,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     window.removeEventListener('mouseup', this.stopDrag);
     window.removeEventListener('mousemove', this.onResizing);
     window.removeEventListener('mouseup', this.stopResize);
+    window.removeEventListener('mousemove', this.onCreating);
+    window.removeEventListener('mouseup', this.stopCreate);
   }
 
   private applyRedirectQueryParams(): void {
@@ -511,13 +517,17 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.selectedMoreDate = date;
   }
 
-  openDialog(eventData: CalendarEventUI | null = null): void {
+  openDialog(
+    eventData: CalendarEventUI | null = null,
+    initialStart?: Date,
+    initialEnd?: Date,
+  ): void {
     const dialogRef = this.dialog.open(CalendarDialogComponent, {
       width: '70%',
       height: '80vh',
       maxWidth: 'none',
       disableClose: true,
-      data: { date: this.selectedDate, eventData },
+      data: { date: this.selectedDate, eventData, initialStart, initialEnd },
     });
 
     dialogRef.componentInstance.onSave.subscribe(({ record, attachments }: SavePayload) => {
@@ -633,6 +643,84 @@ export class CalendarComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => console.error('Failed to save event:', err),
     });
+  }
+
+  // ==========================================================================
+  // CREATE (click / drag on an empty slot in Week or Day view)
+  // ==========================================================================
+
+  startCreate(e: MouseEvent, date: Date): void {
+    if (e.button !== 0) return; // left click only
+    e.preventDefault();
+
+    const container = e.currentTarget as HTMLElement;
+    const rect = container.getBoundingClientRect();
+    const startMinutes = EventCreateEngine.yToMinutes(e.clientY - rect.top);
+
+    this.createSession = {
+      columnDate: date,
+      container,
+      startMouseY: e.clientY,
+      startMinutes,
+      endMinutes: startMinutes,
+      dragged: false,
+    };
+
+    window.addEventListener('mousemove', this.onCreating);
+    window.addEventListener('mouseup', this.stopCreate);
+  }
+
+  onCreating = (e: MouseEvent): void => {
+    if (!this.createSession) return;
+
+    if (Math.abs(e.clientY - this.createSession.startMouseY) > 4) {
+      this.createSession.dragged = true;
+    }
+
+    const rect = this.createSession.container.getBoundingClientRect();
+    this.createSession.endMinutes = EventCreateEngine.yToRawMinutes(e.clientY - rect.top);
+  };
+
+  stopCreate = (): void => {
+    if (!this.createSession) return;
+
+    const session = this.createSession;
+    window.removeEventListener('mousemove', this.onCreating);
+    window.removeEventListener('mouseup', this.stopCreate);
+    this.createSession = null;
+
+    const range = session.dragged
+      ? EventCreateEngine.buildDragRange(session.startMinutes, session.endMinutes)
+      : EventCreateEngine.buildClickRange(session.startMinutes);
+
+    const start = EventCreateEngine.minutesToDate(session.columnDate, range.startMinutes);
+    const end = EventCreateEngine.minutesToDate(session.columnDate, range.endMinutes);
+
+    this.selectedDate = start;
+    this.openDialog(null, start, end);
+  };
+
+  get createPreviewTop(): number {
+    if (!this.createSession) return 0;
+    const range = this.currentCreateRange();
+    return DragPositionUtil.minutesToPixels(range.startMinutes);
+  }
+
+  get createPreviewHeight(): number {
+    if (!this.createSession) return 0;
+    const range = this.currentCreateRange();
+    return DragPositionUtil.minutesToPixels(range.endMinutes - range.startMinutes);
+  }
+
+  isCreatingInColumn(date: Date): boolean {
+    return !!this.createSession && DateUtils.isSameDate(this.createSession.columnDate, date);
+  }
+
+  private currentCreateRange(): { startMinutes: number; endMinutes: number } {
+    const session = this.createSession!;
+    return session.dragged
+      ? EventCreateEngine.buildDragRange(session.startMinutes, session.endMinutes)
+      : EventCreateEngine.buildClickRange(session.startMinutes);
   }
 
   // ==========================================================================

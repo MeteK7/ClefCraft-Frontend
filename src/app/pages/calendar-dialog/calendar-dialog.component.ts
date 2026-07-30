@@ -243,14 +243,23 @@ export class CalendarDialogComponent implements OnInit {
       }
 
       this.fetchAttachments(this.eventId!);
-    } else {
-      const date = new Date(this.data.date);
+    }
+
+    else {
+      const initialStart: Date | null = this.data.initialStart ? new Date(this.data.initialStart) : null;
+      const initialEnd: Date | null = this.data.initialEnd ? new Date(this.data.initialEnd) : null;
+
+      const startDateForForm = initialStart ?? new Date(this.data.date);
+      const endDateForForm = initialEnd ?? new Date(this.data.date);
+
+      const startTime = initialStart ? initialStart.toTimeString().slice(0, 5) : '09:00';
+      const endTime = initialEnd ? initialEnd.toTimeString().slice(0, 5) : '10:00';
 
       this.generalForm.patchValue({
-        startDate: date,
-        endDate: date,
-        startTime: '09:00',
-        endTime: '10:00'
+        startDate: startDateForForm,
+        endDate: endDateForForm,
+        startTime,
+        endTime
       });
     }
 
