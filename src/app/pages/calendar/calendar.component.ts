@@ -44,6 +44,7 @@ import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.u
 import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { SnapEngine } from '../../calendar-engine/interactions/snap/snap-engine';
 
 @Component({
   selector: 'app-calendar',
@@ -99,6 +100,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   dragSession: DragSession | null = null;
   resizeSession: ResizeSession | null = null;
+  private justInteracted = false;
 
   // ── Now indicator ──────────────────────────────────────────────────────────
 
@@ -332,11 +334,18 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   private buildFetchRange(): { start: Date; end: Date } {
     switch (this.viewMode) {
-      case 'month':
-        return {
-          start: new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1),
-          end: new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth() + 1, 1),
-        };
+      case 'month': {
+        const monthStart = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1);
+        const monthEnd = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth() + 1, 0); // last day of month
+
+        const gridStart = DateUtils.startOfWeek(monthStart);         // Monday of the first visible week
+        const lastVisibleWeekStart = DateUtils.startOfWeek(monthEnd); // Monday of the last visible week
+
+        const gridEnd = new Date(lastVisibleWeekStart);
+        gridEnd.setDate(gridEnd.getDate() + 7); // exclusive end: one day past the last visible date
+
+        return { start: gridStart, end: gridEnd };
+      }
 
       case 'week': {
         const cols = this.weekView?.columns;
@@ -479,6 +488,30 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.openDialog(null);
   }
 
+  onEmptyTimeSlotClicked(e: MouseEvent, date: Date): void {
+    if (this.justInteracted) return;
+
+    const target = e.target as HTMLElement;
+    if (target.closest('.time-block-event')) return; // extra safety net
+
+    const gridEl = e.currentTarget as HTMLElement;
+    const rect = gridEl.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+
+    const rawMinutes = (offsetY / this.HOUR_HEIGHT) * 60;
+    const snappedMinutes = SnapEngine.snapAndClamp(rawMinutes);
+
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    startDate.setMinutes(snappedMinutes);
+
+    const endDate = new Date(startDate);
+    endDate.setMinutes(endDate.getMinutes() + 60); // default 1-hour duration, adjust to taste
+
+    this.selectedDate = startDate;
+    this.openDialog(null, endDate);
+  }
+
   onEventClicked(event: CalendarEventUI, e: MouseEvent): void {
     e.stopPropagation();
     this.selectedDate = new Date(event.startDate);
@@ -504,13 +537,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.selectedMoreDate = date;
   }
 
-  openDialog(eventData: CalendarEventUI | null = null): void {
+  openDialog(eventData: CalendarEventUI | null = null, presetEnd: Date | null = null): void {
     const dialogRef = this.dialog.open(CalendarDialogComponent, {
       width: '70%',
       height: '80vh',
       maxWidth: 'none',
       disableClose: true,
-      data: { date: this.selectedDate, eventData },
+      data: { date: this.selectedDate, eventData, presetEnd },
     });
 
     dialogRef.componentInstance.onSave.subscribe(({ record, attachments }: SavePayload) => {
@@ -687,6 +720,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.dragSession = null;
     window.removeEventListener('mousemove', this.onDragging);
     window.removeEventListener('mouseup', this.stopDrag);
+
+    this.justInteracted = true;
+    setTimeout(() => (this.justInteracted = false), 0);
   };
 
   // ==========================================================================
@@ -750,6 +786,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.resizeSession = null;
     window.removeEventListener('mousemove', this.onResizing);
     window.removeEventListener('mouseup', this.stopResize);
+
+    this.justInteracted = true;
+    setTimeout(() => (this.justInteracted = false), 0);
   };
 
   // ==========================================================================
