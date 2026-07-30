@@ -6,13 +6,27 @@ export class SnapEngine {
     return Math.round(minutes / this.SNAP_MINUTES) * this.SNAP_MINUTES;
   }
 
+  static floorMinutes(minutes: number): number {
+    return Math.floor(minutes / this.SNAP_MINUTES) * this.SNAP_MINUTES;
+  }
+
+  static ceilMinutes(minutes: number): number {
+    return Math.ceil(minutes / this.SNAP_MINUTES) * this.SNAP_MINUTES;
+  }
+
   static clampMinutes(minutes: number): number {
     return Math.max(0, Math.min(24 * 60, minutes));
   }
 
   static snapAndClamp(minutes: number): number {
-    return this.clampMinutes(
-      this.snapMinutes(minutes)
-    );
+    return this.clampMinutes(this.snapMinutes(minutes));
+  }
+
+  static floorAndClamp(minutes: number): number {
+    return this.clampMinutes(this.floorMinutes(minutes));
+  }
+
+  static ceilAndClamp(minutes: number): number {
+    return this.clampMinutes(this.ceilMinutes(minutes));
   }
 }

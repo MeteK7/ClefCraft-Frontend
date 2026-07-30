@@ -143,10 +143,14 @@
 
         <div class="week-days-container">
           <div *ngFor="let col of weekView.columns" class="week-day-column" [class.today]="col.isToday">
-            <div class="week-day-grid">
+            <div class="week-day-grid" (mousedown)="startCreate($event, col.date)">
               <div *ngFor="let hour of hours" class="hour-row"></div>
 
               <div *ngIf="col.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
+
+              <div *ngIf="isCreatingInColumn(col.date)" class="create-preview-block" [style.top.px]="createPreviewTop"
+                [style.height.px]="createPreviewHeight">
+              </div>
 
               <div *ngFor="let item of col.layoutItems" class="time-block-event" [style.top.px]="item.top"
                 [style.height.px]="item.height" [style.left.%]="item.left" [style.width.%]="item.width"
@@ -190,10 +194,14 @@
         </div>
       </div>
 
-      <div class="day-timeline">
+      <div class="day-timeline" (mousedown)="startCreate($event, selectedDate)">
         <div *ngFor="let hour of hours" class="hour-row"></div>
 
         <div *ngIf="dayView.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
+
+        <div *ngIf="isCreatingInColumn(selectedDate)" class="create-preview-block" [style.top.px]="createPreviewTop"
+          [style.height.px]="createPreviewHeight">
+        </div>
 
         <div *ngFor="let item of dayView.layoutItems" class="time-block-event" [style.top.px]="item.top"
           [style.height.px]="item.height" [style.left.%]="item.left" [style.width.%]="item.width"
