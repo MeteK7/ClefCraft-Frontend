@@ -1,0 +1,81 @@
+<div class="month-scroll-root">
+
+  <!-- Sticky weekday header -->
+  <div class="month-scroll-header">
+    <div class="calendar-header-cell" *ngFor="let day of weekdays">{{ day }}</div>
+  </div>
+
+  <div #scrollContainer class="month-scroll-container" [class.month-dragging]="monthDragEvent" cdkDropListGroup>
+
+    <!-- Top sentinel: entering viewport triggers prepend of earlier weeks -->
+    <div #topSentinel class="scroll-sentinel scroll-sentinel-top"></div>
+
+    <div *ngFor="let row of window.weeks; trackBy: trackByWeekStart" class="calendar-week"
+      [style.height.px]="rowHeight">
+
+      <!-- Month boundary label: shown on the row containing the 1st of a month -->
+      <div class="month-boundary-label" *ngIf="row.dates[0].getDate() > row.dates[6].getDate() || row.dates[0].getDate() === 1">
+        <ng-container *ngFor="let date of row.dates">
+          <span *ngIf="date.getDate() === 1" [style.grid-column]="row.dates.indexOf(date) + 1">
+            {{ date | date:'MMMM y' }}
+          </span>
+        </ng-container>
+      </div>
+
+      <!-- Day grid -->
+      <div class="days-grid">
+        <div *ngFor="let date of row.dates; let i = index" class="calendar-day"
+          [id]="'day-' + (row.dates[0] | date:'yyyyMMdd') + '-' + i"
+          [class.selected]="isSameDate(date, selectedDate)" [class.today]="isToday(date)"
+          (click)="emptyDayClicked.emit(date)">
+
+          <div class="day">
+            <span>{{ date.getDate() }}</span>
+          </div>
+
+          <!-- "+ more" indicator -->
+          <span *ngIf="getHiddenCountForDay(date, row) > 0" class="more-indicator" [matMenuTriggerFor]="moreMenu"
+            (click)="onMoreClicked(date, row, $event)">
+            +{{ getHiddenCountForDay(date, row) }} more
+          </span>
+        </div>
+      </div>
+
+      <!-- Overlay: spanning events, drag & drop -->
+      <div class="week-events-overlay" cdkDropList [cdkDropListData]="row" [cdkDropListEnterPredicate]="alwaysAllowDrop"
+        (cdkDropListDropped)="eventDropped.emit($event)">
+
+        <div class="week-events-layer">
+          <ng-container *ngFor="let item of row.layoutItems">
+            <div *ngIf="item.lane < maxVisibleLanes" class="event span-event" cdkDrag [cdkDragData]="item.event"
+              cdkDragPreviewContainer="global" (cdkDragStarted)="monthDragStart.emit(item.event)"
+              (cdkDragEnded)="monthDragEnd.emit()" [class.linked]="item.event.linkedBoardItemId"
+              [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan" [style.grid-row]="item.lane + 1"
+              [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
+              (click)="eventClicked.emit({ event: item.event, mouseEvent: $event })">
+
+              <span class="event-title">
+                <mat-icon *ngIf="item.event.linkedBoardItemId" class="linked-icon">link</mat-icon>
+                {{ item.event.subject }}
+              </span>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom sentinel: entering viewport triggers append of later weeks -->
+    <div #bottomSentinel class="scroll-sentinel scroll-sentinel-bottom"></div>
+
+  </div>
+</div>
+
+<!-- ==================== MORE MENU ==================== -->
+<mat-menu #moreMenu="matMenu" class="more-menu">
+  <div class="more-menu-header">{{ selectedMoreDate | date: 'EEE, MMM d' }}</div>
+  <button mat-menu-item *ngFor="let event of selectedMoreEvents"
+    (click)="eventClicked.emit({ event, mouseEvent: $event })">
+    {{ event.subject }}
+  </button>
+</mat-menu>
