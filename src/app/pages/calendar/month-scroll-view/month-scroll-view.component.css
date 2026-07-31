@@ -15,34 +15,38 @@
   box-sizing: border-box;
 }
 
-/* Sticky weekday header — stays pinned while weeks scroll underneath it */
+/* Sticky weekday header */
 .month-scroll-header {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+
   position: sticky;
   top: 0;
   z-index: 25;
+
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+
+  border-left: 1px solid var(--border);
 }
 
 .calendar-header-cell {
   text-align: center;
   padding: 8px;
   font-weight: 500;
-  border: 1px solid var(--border);
-  color: var(--text);
+  box-sizing: border-box;
+
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+
+  min-width: 0;
 }
 
-/* Scrollable body — THE key change from the old flex-fill layout:
-   rows now have a fixed height and the container actually scrolls. */
 .month-scroll-container {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  position: relative;
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  position:relative;
 }
 
 .scroll-sentinel {
@@ -50,39 +54,32 @@
   width: 100%;
 }
 
-/* Each week row: fixed height so scroll math (index * rowHeight) stays exact. */
 .calendar-week {
   position: relative;
   box-sizing: border-box;
   border-bottom: 1px solid var(--border);
-}
-
-.month-boundary-label {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  pointer-events: none;
-}
-
-.month-boundary-label span {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--primary);
-  padding: 2px 4px 0;
+  overflow: hidden;
 }
 
 .days-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   height: 100%;
+
+  border-left: 1px solid var(--border);
 }
 
 .calendar-day {
-  border: 1px solid var(--border);
   position: relative;
   cursor: pointer;
+
   padding: 4px;
+  box-sizing: border-box;
+
+  min-width: 0;
+
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .day {
@@ -101,8 +98,10 @@
 }
 
 .calendar-day.selected {
-  border: 2px solid var(--primary);
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
   border-radius: 5px;
+
   box-shadow: 0 0 8px 2px var(--shadow-color);
 }
 
@@ -131,25 +130,37 @@
 
 .week-events-layer {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   grid-template-rows: repeat(3, minmax(22px, auto));
+
   height: 100%;
+
   padding: 4px;
   box-sizing: border-box;
-  column-gap: 6px;
+
+  column-gap: 0;
   row-gap: 2px;
 }
 
 .span-event {
   pointer-events: auto;
+
+  margin: 0 3px;
+
   background: var(--event-bg);
   color: var(--text);
+
   border-radius: 4px;
+
   font-size: 13px;
+
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
+
   padding: 2px 6px;
+
   overflow: hidden;
   cursor: pointer;
 }
