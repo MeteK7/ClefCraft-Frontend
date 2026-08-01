@@ -77,8 +77,14 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
   selectedMoreDate: Date | null = null;
 
   @ViewChild('scrollContainer', { static: true }) scrollContainerRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('stickyHeader', { static: true }) stickyHeaderRef!: ElementRef<HTMLDivElement>;
   @ViewChild('topSentinel', { static: true }) topSentinelRef!: ElementRef<HTMLDivElement>;
   @ViewChild('bottomSentinel', { static: true }) bottomSentinelRef!: ElementRef<HTMLDivElement>;
+
+  /** Measured height of the sticky header. Row 0 starts at this offset now that
+   *  the header lives inside the scroll container (required for alignment —
+   *  see month-scroll-view.component.html comment). */
+  private headerHeight = 0;
 
   private topObserver?: IntersectionObserver;
   private bottomObserver?: IntersectionObserver;
@@ -86,6 +92,7 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
   private lastEmittedMonth: string | null = null;
 
   ngAfterViewInit(): void {
+    this.headerHeight = this.stickyHeaderRef.nativeElement.offsetHeight;
     this.setupObservers();
     // Land the initial scroll position mid-window so both directions are scrollable immediately.
     queueMicrotask(() => this.scrollToInitialPosition());
@@ -189,7 +196,7 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     const root = this.scrollContainerRef.nativeElement;
     const idx = MonthScrollEngine.findWeekIndexForDate(this.window, this.selectedDate);
     const targetIdx = idx === -1 ? Math.floor(this.window.weeks.length / 2) : idx;
-    root.scrollTop = targetIdx * this.rowHeight;
+    root.scrollTop = this.headerHeight + targetIdx * this.rowHeight;
     this.updateVisibleMonthLabel();
   }
 
@@ -198,7 +205,7 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     const root = this.scrollContainerRef.nativeElement;
 
     if (idx !== -1) {
-      root.scrollTo({ top: idx * this.rowHeight, behavior: 'smooth' });
+      root.scrollTo({ top: this.headerHeight + idx * this.rowHeight, behavior: 'smooth' });
       return;
     }
 
@@ -210,7 +217,7 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
   private updateVisibleMonthLabel(): void {
     const root = this.scrollContainerRef.nativeElement;
-    const idx = Math.round(root.scrollTop / this.rowHeight);
+    const idx = Math.round((root.scrollTop - this.headerHeight) / this.rowHeight);
     const row = this.window.weeks[Math.max(0, Math.min(this.window.weeks.length - 1, idx))];
     if (!row) return;
 
