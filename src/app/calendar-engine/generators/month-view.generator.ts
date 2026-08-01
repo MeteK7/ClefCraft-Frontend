@@ -1,10 +1,16 @@
 import { MonthViewModel, MonthWeekRow } from '../models/month-view.model';
-import { MonthLayoutEngine } from '../layout/month-layout-engine';
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
+import { WeekRowGenerator } from './week-row.generator';
 
 export class MonthViewGenerator {
   /**
    * Generates a fully populated month viewport configuration grid.
+   *
+   * NOTE: kept for backward compatibility (e.g. any code/tests still
+   * asking for "the classic 6-row grid for one month"). The new
+   * infinite-scroll month view uses MonthScrollEngine + WeekRowGenerator
+   * directly instead of calling this.
+   *
    * @param selectedDate The anchor date targeting the focused month view.
    * @param events Pre-expanded, filtered events intersectable with the target month boundaries.
    */
@@ -20,36 +26,25 @@ export class MonthViewGenerator {
     gridStartDate.setHours(0, 0, 0, 0);
 
     const weeks: MonthWeekRow[] = [];
-    const currentRunningDate = new Date(gridStartDate);
+    let currentWeekStart = new Date(gridStartDate);
 
     // Month views universally span up to 6 structured grid rows (42 days absolute matrix max)
     for (let w = 0; w < 6; w++) {
-      const weekDates: Date[] = [];
-      
-      for (let d = 0; d < 7; d++) {
-        weekDates.push(new Date(currentRunningDate));
-        currentRunningDate.setDate(currentRunningDate.getDate() + 1);
-      }
+      const row = WeekRowGenerator.generate(currentWeekStart, events);
 
       // Check to prevent generating an extra trailing 6th week row if it falls completely into the next month
-      if (w === 5 && weekDates[0].getMonth() !== month) {
+      if (w === 5 && row.dates[0].getMonth() !== month) {
         break;
       }
 
-      // Delegate geometry lane layout assignments directly to your specialized pure calculation engine
-      const layoutItems = MonthLayoutEngine.generate(events, weekDates);
-
-      weeks.push({
-        weekStartTimestamp: weekDates[0].getTime(),
-        dates: weekDates,
-        layoutItems
-      });
+      weeks.push(row);
+      currentWeekStart = WeekRowGenerator.nextWeekStart(currentWeekStart);
     }
 
     return {
       viewStartDate: weeks[0].dates[0],
       viewEndDate: weeks[weeks.length - 1].dates[6],
-      weeks
+      weeks,
     };
   }
 }

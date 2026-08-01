@@ -17,6 +17,8 @@ import { DayViewModel } from '../models/day-view.model';
 import { AgendaViewGenerator } from '../generators/agenda-view.generator';
 import { AgendaDayGroup } from '../../models/agenda-day-group.model';
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
+import { MonthScrollWindow } from '../models/month-scroll-window.model';
+import { MonthScrollEngine } from './month-scroll-engine';
 
 export interface TimeGridEventInput {
   id: number;
@@ -107,5 +109,64 @@ export class CalendarEngineService {
 
   buildAgendaView(selectedDate: Date, events: CalendarEventUI[]): AgendaDayGroup[] {
     return AgendaViewGenerator.generate(selectedDate, events);
+  }
+
+  // ==========================================================================
+  // MONTH SCROLL WINDOW (infinite-scroll month view)
+  // ==========================================================================
+
+  /**
+   * Builds the initial MonthScrollWindow centered on `centerDate`.
+   * `weeksBefore`/`weeksAfter` control how many weeks are preloaded above
+   * and below the fold on first render.
+   */
+  initializeMonthScrollWindow(
+    centerDate: Date,
+    events: CalendarEventUI[],
+    weeksBefore: number = 4,
+    weeksAfter: number = 8,
+  ): MonthScrollWindow {
+    return MonthScrollEngine.initialize(centerDate, events, weeksBefore, weeksAfter);
+  }
+
+  appendMonthScrollWeeks(
+    window: MonthScrollWindow,
+    count: number,
+    events: CalendarEventUI[],
+  ): MonthScrollWindow {
+    return MonthScrollEngine.appendWeeks(window, count, events);
+  }
+
+  prependMonthScrollWeeks(
+    window: MonthScrollWindow,
+    count: number,
+    events: CalendarEventUI[],
+  ): MonthScrollWindow {
+    return MonthScrollEngine.prependWeeks(window, count, events);
+  }
+
+  pruneMonthScrollWindow(
+    window: MonthScrollWindow,
+    maxWeeks: number,
+    direction: 'head' | 'tail',
+  ): MonthScrollWindow {
+    return direction === 'head'
+      ? MonthScrollEngine.pruneHead(window, maxWeeks)
+      : MonthScrollEngine.pruneTail(window, maxWeeks);
+  }
+
+  recomputeAllMonthScrollWeeks(
+    window: MonthScrollWindow,
+    events: CalendarEventUI[],
+  ): MonthScrollWindow {
+    return MonthScrollEngine.recomputeAllWeeks(window, events);
+  }
+
+  recomputeMonthScrollWeekForDate(
+    window: MonthScrollWindow,
+    date: Date,
+    events: CalendarEventUI[],
+  ): MonthScrollWindow {
+    return MonthScrollEngine.recomputeWeekForDate(window, date, events);
   }
 }

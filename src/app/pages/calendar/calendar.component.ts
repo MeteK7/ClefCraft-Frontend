@@ -9,7 +9,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { min, Observable, Subscription } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 
 import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
 import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
@@ -25,7 +25,8 @@ import { CalendarEngineService } from '../../calendar-engine/services/calendar-e
 
 import { DateUtils } from '../../calendar-engine/utils/date.utils';
 import { CalendarViewMode } from '../../calendar-engine/types/calendar-view-model.type';
-import { MonthViewModel, MonthWeekRow } from '../../calendar-engine/models/month-view.model';
+import { MonthWeekRow } from '../../calendar-engine/models/month-view.model';
+import { MonthScrollWindow } from '../../calendar-engine/models/month-scroll-window.model';
 import { WeekViewModel } from '../../calendar-engine/models/week-view.model';
 import { DayViewModel } from '../../calendar-engine/models/day-view.model';
 import { CalendarLayoutItem } from '../../calendar-engine/models/calendar-layout-item.model';
@@ -43,10 +44,12 @@ import { EventResizeEngine } from '../../calendar-engine/interactions/resize/eve
 import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
 import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
 import { ActivatedRoute, Router } from '@angular/router';
-import { DragDropModule } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { CreateSession } from '../../calendar-engine/interactions/create/create-session.model';
 import { DragPositionUtil } from '../../calendar-engine/interactions/drag/drag-position.util';
 import { EventCreateEngine } from '../../calendar-engine/interactions/create/event-create-engine';
+
+import { MonthScrollViewComponent, VisibleMonthChangeEvent } from './month-scroll-view/month-scroll-view.component';
 
 @Component({
   selector: 'app-calendar',
@@ -64,6 +67,7 @@ import { EventCreateEngine } from '../../calendar-engine/interactions/create/eve
     MatSnackBarModule,
     DragDropModule,
     CalendarDialogComponent,
+    MonthScrollViewComponent,
   ],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.css'],
@@ -81,7 +85,12 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // ── View mode ──────────────────────────────────────────────────────────────
 
   viewMode: CalendarViewMode = 'month';
-  monthView!: MonthViewModel;
+  monthScrollWindow!: MonthScrollWindow;
+  /** Header label / "which month is scrolled into view" — decoupled from selectedDate. */
+  visibleMonthLabel: Date = new Date();
+  /** Set transiently to force the scroll view to jump to a date (nav buttons, datepicker, Today). */
+  scrollToDate: Date | null = null;
+
   weekView!: WeekViewModel;
   dayView!: DayViewModel;
   agendaView!: AgendaDayGroup[];
@@ -92,11 +101,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
   readonly hours: number[] = Array.from({ length: 24 }, (_, i) => i);
   readonly MAX_VISIBLE_LANES = 3;
   readonly HOUR_HEIGHT = 80;
-
-  // ── "More" overflow menu ───────────────────────────────────────────────────
-
-  selectedMoreEvents: CalendarEventUI[] = [];
-  selectedMoreDate: Date | null = null;
 
   // ── Interaction sessions ───────────────────────────────────────────────────
 
@@ -121,6 +125,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
   private pendingEventIdFromRedirect: number | null = null;
   monthDragEvent: CalendarEventUI | null = null;
 
+  /** Tracks the widest range of events we've fetched so far for month mode (incremental fetch). */
+  private monthFetchedStart: Date | null = null;
+  private monthFetchedEnd: Date | null = null;
+
   constructor(
     private calendarService: CalendarService,
     private dialog: MatDialog,
@@ -142,7 +150,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
     this.applyRedirectQueryParams();
 
-    this.generateCurrentView();
     this.fetchEvents();
     this.updateNowIndicator();
     this.nowTimer = setInterval(() => this.updateNowIndicator(), 60_000);
@@ -244,10 +251,12 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.fetchEvents();
   }
 
+  /** Rebuilds the non-month views. Month view is now driven incrementally via the scroll component. */
   generateCurrentView(): void {
     switch (this.viewMode) {
       case 'month':
-        this.monthView = this.engine.buildMonthView(this.selectedDate, this.events);
+        // Month view initializes/refreshes its window separately — see
+        // initializeMonthScrollWindowIfNeeded() / refreshMonthWindowLayout().
         break;
       case 'week':
         this.weekView = this.engine.buildWeekView(this.selectedDate, this.events);
@@ -263,18 +272,80 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   // ── Week view helpers ──────────────────────────────────────────────────────
 
-  /** The 7 date objects for the current week view column headers. */
   get weekViewDates(): Date[] {
     return this.weekView?.columns.map(c => c.date) ?? [];
   }
 
-  /** Layout items for a specific date column in the week view. */
   getWeekDayLayouts(date: Date): CalendarLayoutItem<CalendarEventUI>[] {
     const column = this.weekView?.columns.find(c => DateUtils.isSameDate(c.date, date));
     return column?.layoutItems ?? [];
   }
 
-  // ── Month view helpers ─────────────────────────────────────────────────────
+  // ==========================================================================
+  // MONTH SCROLL WINDOW
+  // ==========================================================================
+
+  private initializeMonthScrollWindow(centerDate: Date): void {
+    this.monthScrollWindow = this.engine.initializeMonthScrollWindow(centerDate, this.events);
+    this.monthFetchedStart = new Date(this.monthScrollWindow.loadedStart);
+    this.monthFetchedEnd = new Date(this.monthScrollWindow.loadedEnd);
+    this.visibleMonthLabel = new Date(centerDate);
+  }
+
+  onMonthWindowChange(next: MonthScrollWindow): void {
+    this.monthScrollWindow = next;
+  }
+
+  onVisibleMonthChange(evt: VisibleMonthChangeEvent): void {
+    this.visibleMonthLabel = new Date(evt.year, evt.month, 1);
+  }
+
+  /**
+   * Fired by MonthScrollViewComponent when it's about to append/prepend
+   * weeks that fall outside the range we've already fetched events for.
+   * We only hit the network for the genuinely new slice.
+   */
+  onNeedMoreMonthEvents(range: { start: Date; end: Date }): void {
+    if (!this.monthFetchedStart || !this.monthFetchedEnd) return;
+
+    const needsFetch =
+      range.start < this.monthFetchedStart || range.end > this.monthFetchedEnd;
+
+    if (!needsFetch) return;
+
+    const fetchStart = range.start < this.monthFetchedStart ? range.start : this.monthFetchedStart;
+    const fetchEnd = range.end > this.monthFetchedEnd ? range.end : this.monthFetchedEnd;
+
+    this.calendarService.getEvents(fetchStart, fetchEnd).subscribe({
+      next: (fetched: any[]) => {
+        this.mergeEvents(fetched);
+        this.monthFetchedStart = fetchStart;
+        this.monthFetchedEnd = fetchEnd;
+        // New events may affect rows already on screen (e.g. a multi-day
+        // event whose layout depends on neighbors) — recompute the whole
+        // loaded window's layout, cheap relative to a network round trip.
+        this.monthScrollWindow = this.engine.recomputeAllMonthScrollWeeks(this.monthScrollWindow, this.events);
+      },
+      error: err => console.error('Error fetching additional month events:', err),
+    });
+  }
+
+  /** Merge newly-fetched events into this.events, deduping by id (recurring occurrences already carry stable ids from the server). */
+  private mergeEvents(fetched: any[]): void {
+    const normalized: CalendarEventUI[] = fetched.map(event => ({
+      ...event,
+      startDate: new Date(event.startDate),
+      endDate: new Date(event.endDate),
+    }));
+
+    const byId = new Map<number, CalendarEventUI>();
+    for (const e of this.events) byId.set(e.id!, e);
+    for (const e of normalized) byId.set(e.id!, e);
+
+    this.events = Array.from(byId.values());
+  }
+
+  // ── Month view helpers (used by calendar.component.html's +more menu, if kept there) ──
 
   getHiddenCountForDay(date: Date, row: MonthWeekRow): number {
     const colIdx = row.dates.findIndex(d => DateUtils.isSameDate(d, date));
@@ -290,10 +361,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // FETCH EVENTS
   // ==========================================================================
 
-  // Update fetchEvents()
   fetchEvents(): void {
     const { start, end } = this.buildFetchRange();
-    this.isLoading = true; // ← start loading
+    this.isLoading = true;
 
     this.calendarService.getEvents(start, end).subscribe({
       next: (events: any[]) => {
@@ -302,27 +372,31 @@ export class CalendarComponent implements OnInit, OnDestroy {
           startDate: new Date(event.startDate),
           endDate: new Date(event.endDate),
         }));
-        this.generateCurrentView();
+
+        if (this.viewMode === 'month') {
+          this.initializeMonthScrollWindow(this.selectedDate);
+        } else {
+          this.generateCurrentView();
+        }
+
         this.openPendingRedirectEventIfAny();
-        this.isLoading = false; // ← done
+        this.isLoading = false;
       },
       error: err => {
         console.error('Error fetching events:', err);
-        this.isLoading = false; // ← also clear on error
+        this.isLoading = false;
       },
     });
   }
 
-  // NEW
   private openPendingRedirectEventIfAny(): void {
     if (this.pendingEventIdFromRedirect == null) return;
 
     const eventId = this.pendingEventIdFromRedirect;
-    this.pendingEventIdFromRedirect = null; // consume once, so paging months later doesn't reopen it
+    this.pendingEventIdFromRedirect = null;
 
     this.openEventById(eventId);
 
-    // strip the query params so a refresh/navigation doesn't reopen the dialog
     this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
   }
 
@@ -332,23 +406,21 @@ export class CalendarComponent implements OnInit, OnDestroy {
       this.openDialog(matchedEvent);
     } else {
       console.log(`Event #${eventId} is outside the current viewport scope.`);
-      this.snackBar.open('Could not find that event on the calendar.', 'Dismiss', { duration: 5000 }); // ADDED
+      this.snackBar.open('Could not find that event on the calendar.', 'Dismiss', { duration: 5000 });
     }
   }
 
   private buildFetchRange(): { start: Date; end: Date } {
     switch (this.viewMode) {
       case 'month': {
-        const monthStart = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1);
-        const monthEnd = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth() + 1, 0); // last day of month
-
-        const gridStart = DateUtils.startOfWeek(monthStart);         // Monday of the first visible week
-        const lastVisibleWeekStart = DateUtils.startOfWeek(monthEnd); // Monday of the last visible week
-
-        const gridEnd = new Date(lastVisibleWeekStart);
-        gridEnd.setDate(gridEnd.getDate() + 7); // exclusive end: one day past the last visible date
-
-        return { start: gridStart, end: gridEnd };
+        // Initial load: a generous window (matches the scroll engine's
+        // default weeksBefore/weeksAfter) so the first render already has
+        // enough weeks scrollable in both directions before any network
+        // round trip is needed for the incremental append/prepend path.
+        const centerWeekStart = DateUtils.startOfWeek(this.selectedDate);
+        const start = DateUtils.addDays(centerWeekStart, -4 * 7);
+        const end = DateUtils.addDays(centerWeekStart, (8 + 1) * 7);
+        return { start, end };
       }
 
       case 'week': {
@@ -358,7 +430,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
           end.setDate(end.getDate() + 1);
           return { start: new Date(cols[0].date), end };
         }
-        // Fallback before weekView is initialised
         const weekStart = DateUtils.startOfWeek(this.selectedDate);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 7);
@@ -376,10 +447,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
       case 'agenda': {
         const start = new Date(this.selectedDate);
         start.setHours(0, 0, 0, 0);
-
         const end = new Date(start);
         end.setDate(end.getDate() + 30);
-
         return { start, end };
       }
 
@@ -391,7 +460,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   // ==========================================================================
-  // DATE HELPERS (delegates to DateUtils; thin wrappers for template use)
+  // DATE HELPERS
   // ==========================================================================
 
   isToday(date: Date): boolean {
@@ -442,25 +511,51 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   onDateSelectedFromPicker(date: Date): void {
     this.selectedDate = date;
-    this.generateCurrentView();
-    this.fetchEvents();
+    this.navigateMonthViewTo(date);
   }
 
   goToPreviousMonth(): void {
     this.selectedDate = this.shiftDate(this.selectedDate, this.viewMode, -1);
-    this.generateCurrentView();
-    this.fetchEvents();
+    this.navigateMonthViewTo(this.selectedDate);
   }
 
   goToNextMonth(): void {
     this.selectedDate = this.shiftDate(this.selectedDate, this.viewMode, 1);
-    this.generateCurrentView();
-    this.fetchEvents();
+    this.navigateMonthViewTo(this.selectedDate);
   }
 
   goToToday(): void {
     this.selectedDate = new Date();
-    this.generateCurrentView();
+    this.navigateMonthViewTo(this.selectedDate);
+  }
+
+  /**
+   * Central navigation entry point for month mode. If the target date is
+   * already inside the loaded scroll window, we just smooth-scroll to it
+   * (true "continuous" feel — no grid replacement). If it's far outside
+   * the loaded range, we re-fetch and re-center the window on it.
+   */
+  private navigateMonthViewTo(date: Date): void {
+    if (this.viewMode !== 'month') {
+      this.generateCurrentView();
+      this.fetchEvents();
+      return;
+    }
+
+    const alreadyLoaded =
+      this.monthScrollWindow &&
+      date >= this.monthScrollWindow.loadedStart &&
+      date <= this.monthScrollWindow.loadedEnd;
+
+    if (alreadyLoaded) {
+      // Trigger MonthScrollViewComponent's scrollToDate @Input via a fresh
+      // Date instance so Angular's change detection sees a new reference.
+      this.scrollToDate = new Date(date);
+      return;
+    }
+
+    // Outside the loaded window — treat like the original "jump to a new
+    // month" case: refetch centered on the target and re-initialize.
     this.fetchEvents();
   }
 
@@ -496,25 +591,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
     e.stopPropagation();
     this.selectedDate = new Date(event.startDate);
     this.openDialog(event);
-  }
-
-  onMoreClicked(date: Date, row: MonthWeekRow, e: MouseEvent): void {
-    e.stopPropagation();
-
-    const dayMs = DateUtils.toDateOnly(date);
-    const weekStartMs = DateUtils.toDateOnly(row.dates[0]);
-    const colIdx = Math.floor((dayMs - weekStartMs) / DateUtils.DAY_MS) + 1;
-
-    this.selectedMoreEvents = row.layoutItems
-      .filter(
-        item =>
-          item.lane >= this.MAX_VISIBLE_LANES &&
-          item.columnStart <= colIdx &&
-          item.columnStart + item.columnSpan - 1 >= colIdx,
-      )
-      .map(item => item.event);
-
-    this.selectedMoreDate = date;
   }
 
   openDialog(
@@ -650,7 +726,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // ==========================================================================
 
   startCreate(e: MouseEvent, date: Date): void {
-    if (e.button !== 0) return; // left click only
+    if (e.button !== 0) return;
     e.preventDefault();
 
     const container = e.currentTarget as HTMLElement;
@@ -724,7 +800,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   // ==========================================================================
-  // DRAG
+  // DRAG (week/day time-grid views — unchanged)
   // ==========================================================================
 
   startDrag(e: MouseEvent, block: CalendarLayoutItem<CalendarEventUI>, date: Date): void {
@@ -785,7 +861,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   };
 
   // ==========================================================================
-  // RESIZE
+  // RESIZE (week/day time-grid views — unchanged)
   // ==========================================================================
 
   startResize(
@@ -875,6 +951,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ==========================================================================
+  // MONTH VIEW: drag start/end + drop (delegated from MonthScrollViewComponent)
+  // ==========================================================================
+
   onMonthDragStart(event: CalendarEventUI): void {
     this.monthDragEvent = event;
   }
@@ -883,7 +963,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.monthDragEvent = null;
   }
 
-  onMonthEventDropped(event: any): void {
+  onMonthEventDropped(event: CdkDragDrop<MonthWeekRow>): void {
     const dragged = event.item.data as CalendarEventUI;
     if (!dragged?.id) return;
 
@@ -893,25 +973,18 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const oldStart = new Date(draggedEvent.startDate);
     const oldEnd = new Date(draggedEvent.endDate);
 
-    // Retrieve the target week context structure assigned to the drop zone container data payload
     const targetRowData = event.container.data as MonthWeekRow;
     if (!targetRowData || !targetRowData.dates) return;
 
-    // Calculate which day column index was hit using coordinates relative to the actual active container element dropspace
     const overlay = event.container.element.nativeElement as HTMLElement;
     const rect = overlay.getBoundingClientRect();
     const relativeX = event.dropPoint.x - rect.left;
     const columnWidth = rect.width / 7;
 
-    const columnIndex = Math.max(
-      0,
-      Math.min(6, Math.floor(relativeX / columnWidth)) // Added Math. right here
-    );
+    const columnIndex = Math.max(0, Math.min(6, Math.floor(relativeX / columnWidth)));
 
-    // Pin target dates out of the exact drop target array sequence safely
     const targetDate = new Date(targetRowData.dates[columnIndex]);
 
-    // Preserve original timestamp time metrics securely
     targetDate.setHours(
       oldStart.getHours(),
       oldStart.getMinutes(),
@@ -919,17 +992,28 @@ export class CalendarComponent implements OnInit, OnDestroy {
       oldStart.getMilliseconds()
     );
 
-    // Keep duration delta offsets aligned properly
     const duration = oldEnd.getTime() - oldStart.getTime();
     const newEnd = new Date(targetDate.getTime() + duration);
 
-    // Early exit if the target date matches original coordinates to avoid layout calculations loop overhead
     if (oldStart.toDateString() === targetDate.toDateString()) return;
 
     draggedEvent.startDate = targetDate;
     draggedEvent.endDate = newEnd;
 
-    this.generateCurrentView();
+    // Only recompute the affected week row(s) instead of the whole loaded
+    // scroll window — keeps drag interactions smooth even with dozens of
+    // weeks loaded.
+    this.monthScrollWindow = this.engine.recomputeMonthScrollWeekForDate(
+      this.monthScrollWindow,
+      oldStart,
+      this.events,
+    );
+    this.monthScrollWindow = this.engine.recomputeMonthScrollWeekForDate(
+      this.monthScrollWindow,
+      targetDate,
+      this.events,
+    );
+
     this.persistEventUpdate(draggedEvent, oldStart);
   }
 }
