@@ -244,11 +244,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // ==========================================================================
 
   setViewMode(mode: CalendarViewMode): void {
-    if (this.viewMode === mode)
-      return;
-
+    if (this.viewMode === mode) return;
     this.viewMode = mode;
-    this.fetchEvents();
+    this.fetchEvents(mode === 'month'); // switching into month view re-centers on selectedDate
   }
 
   /** Rebuilds the non-month views. Month view is now driven incrementally via the scroll component. */
@@ -361,8 +359,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // FETCH EVENTS
   // ==========================================================================
 
-  fetchEvents(): void {
-    const { start, end } = this.buildFetchRange();
+  fetchEvents(recenter: boolean = false): void {
+    const { start, end } = this.buildFetchRange(recenter);
     this.isLoading = true;
 
     this.calendarService.getEvents(start, end).subscribe({
@@ -374,7 +372,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
         }));
 
         if (this.viewMode === 'month') {
-          this.initializeMonthScrollWindow(this.selectedDate);
+          if (recenter || !this.monthScrollWindow) {
+            this.initializeMonthScrollWindow(this.selectedDate); // sets monthFetchedStart/End
+          } else {
+            this.monthScrollWindow = this.engine.recomputeAllMonthScrollWeeks(this.monthScrollWindow, this.events);
+          }
         } else {
           this.generateCurrentView();
         }
@@ -410,20 +412,24 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }
   }
 
-  private buildFetchRange(): { start: Date; end: Date } {
+  private buildFetchRange(recenter: boolean): { start: Date; end: Date } {
     switch (this.viewMode) {
       case 'month': {
-        // Initial load: a generous window (matches the scroll engine's
-        // default weeksBefore/weeksAfter) so the first render already has
-        // enough weeks scrollable in both directions before any network
-        // round trip is needed for the incremental append/prepend path.
+        // Refreshing in place (save/drag) — reuse the range already on
+        // screen instead of recomputing one from selectedDate, so the
+        // viewport doesn't move.
+        if (!recenter && this.monthFetchedStart && this.monthFetchedEnd) {
+          return { start: this.monthFetchedStart, end: this.monthFetchedEnd };
+        }
+
+        // Recentering (explicit navigation) or first load.
         const centerWeekStart = DateUtils.startOfWeek(this.selectedDate);
         const start = DateUtils.addDays(centerWeekStart, -4 * 7);
         const end = DateUtils.addDays(centerWeekStart, (8 + 1) * 7);
         return { start, end };
       }
 
-      case 'week': {
+      case 'week': { /* unchanged */
         const cols = this.weekView?.columns;
         if (cols?.length) {
           const end = new Date(cols[6].date);
@@ -436,7 +442,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         return { start: weekStart, end: weekEnd };
       }
 
-      case 'day': {
+      case 'day': { /* unchanged */
         const start = new Date(this.selectedDate);
         start.setHours(0, 0, 0, 0);
         const end = new Date(this.selectedDate);
@@ -444,7 +450,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         return { start, end };
       }
 
-      case 'agenda': {
+      case 'agenda': { /* unchanged */
         const start = new Date(this.selectedDate);
         start.setHours(0, 0, 0, 0);
         const end = new Date(start);
@@ -538,7 +544,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   private navigateMonthViewTo(date: Date): void {
     if (this.viewMode !== 'month') {
       this.generateCurrentView();
-      this.fetchEvents();
+      this.fetchEvents(true);
       return;
     }
 
@@ -548,15 +554,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
       date <= this.monthScrollWindow.loadedEnd;
 
     if (alreadyLoaded) {
-      // Trigger MonthScrollViewComponent's scrollToDate @Input via a fresh
-      // Date instance so Angular's change detection sees a new reference.
       this.scrollToDate = new Date(date);
       return;
     }
 
-    // Outside the loaded window — treat like the original "jump to a new
-    // month" case: refetch centered on the target and re-initialize.
-    this.fetchEvents();
+    this.fetchEvents(true); // outside the loaded window — recenter jump
   }
 
   private shiftDate(date: Date, mode: CalendarViewMode, direction: 1 | -1): Date {
@@ -710,9 +712,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
           const formData = new FormData();
           attachments.forEach((f: File) => formData.append('files', f));
           this.calendarService.uploadAttachments(eventId, formData)
-            .subscribe(() => this.fetchEvents());
+            .subscribe(() => this.refreshAfterSave());
         } else {
-          this.fetchEvents();
+          this.refreshAfterSave();
         }
 
         dialogRef.close();
@@ -940,12 +942,12 @@ export class CalendarComponent implements OnInit, OnDestroy {
         eventTypeId: event.eventTypeId,
         isCancelled: false,
       }).subscribe({
-        next: () => this.fetchEvents(),
+        next: () => this.refreshAfterSave(),
         error: err => console.error('Failed to update recurring event:', err),
       });
     } else {
       this.calendarService.updateEvent(event.id!, event).subscribe({
-        next: () => this.fetchEvents(),
+        next: () => this.refreshAfterSave(),
         error: err => console.error('Failed to update event:', err),
       });
     }
@@ -1015,5 +1017,23 @@ export class CalendarComponent implements OnInit, OnDestroy {
     );
 
     this.persistEventUpdate(draggedEvent, oldStart);
+  }
+
+  private refreshAfterSave(): void {
+    if (this.viewMode !== 'month' || !this.monthScrollWindow) {
+      this.fetchEvents();
+      return;
+    }
+
+    const fetchStart = this.monthFetchedStart ?? this.monthScrollWindow.loadedStart;
+    const fetchEnd = this.monthFetchedEnd ?? this.monthScrollWindow.loadedEnd;
+
+    this.calendarService.getEvents(fetchStart, fetchEnd).subscribe({
+      next: (fetched: any[]) => {
+        this.mergeEvents(fetched);
+        this.monthScrollWindow = this.engine.recomputeAllMonthScrollWeeks(this.monthScrollWindow, this.events);
+      },
+      error: err => console.error('Error refreshing month events:', err),
+    });
   }
 }

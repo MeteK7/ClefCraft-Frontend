@@ -1024,9 +1024,20 @@ export class RelationshipGraphComponent implements OnChanges {
     }
 
     isEdgeActive(edge: GraphEdge): boolean {
-        const hoveredId = this.hoveredNodeId();
-        if (hoveredId === null) return false;
-        return edge.sourceId === hoveredId || edge.targetId === hoveredId;
+
+        // Hovering an edge should illuminate that edge.
+        if (this.hoveredEdgeId() === edge.id) {
+            return true;
+        }
+
+        // Hovering a node should illuminate all connected edges.
+        const hoveredNodeId = this.hoveredNodeId();
+        if (hoveredNodeId === null) {
+            return false;
+        }
+
+        return edge.sourceId === hoveredNodeId ||
+            edge.targetId === hoveredNodeId;
     }
 
     openItemInNewTab(itemId: number, event: MouseEvent): void {
