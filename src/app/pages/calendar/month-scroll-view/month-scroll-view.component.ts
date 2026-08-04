@@ -90,12 +90,15 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     private bottomObserver?: IntersectionObserver;
     private loadingMore = false;
     private lastEmittedMonth: string | null = null;
+    private ignoreNextTopCallback = false;
+    private ignoreNextBottomCallback = false;
 
     ngAfterViewInit(): void {
         this.headerHeight = this.stickyHeaderRef.nativeElement.offsetHeight;
+
+        // Land on today's week BEFORE wiring up the observers.
+        this.scrollToInitialPosition();
         this.setupObservers();
-        // Land the initial scroll position mid-window so both directions are scrollable immediately.
-        queueMicrotask(() => this.scrollToInitialPosition());
     }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -116,8 +119,26 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     private setupObservers(): void {
         const root = this.scrollContainerRef.nativeElement;
 
+        // IntersectionObserver invokes its callback once immediately upon
+        // observe(), reporting the CURRENT intersection state — not just
+        // future crossings. With only ~13 weeks loaded (~1820px) and a
+        // 600px trigger margin, both sentinels are within range of the
+        // initial scroll position regardless of where it's set, so both
+        // fire on attach. That was firing onNearTop/onNearBottom before the
+        // user ever scrolled, mutating the window and desyncing the
+        // index↔scrollTop relationship — which is what pushed the visible
+        // month header off to an arbitrary month. Skip that first,
+        // spurious invocation on each observer; only real scroll-triggered
+        // intersections should load more weeks.
+        this.ignoreNextTopCallback = true;
+        this.ignoreNextBottomCallback = true;
+
         this.topObserver = new IntersectionObserver(
             entries => {
+                if (this.ignoreNextTopCallback) {
+                    this.ignoreNextTopCallback = false;
+                    return;
+                }
                 if (entries[0].isIntersecting) this.onNearTop();
             },
             { root, rootMargin: `${LOAD_TRIGGER_MARGIN}px 0px 0px 0px` },
@@ -126,6 +147,10 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
         this.bottomObserver = new IntersectionObserver(
             entries => {
+                if (this.ignoreNextBottomCallback) {
+                    this.ignoreNextBottomCallback = false;
+                    return;
+                }
                 if (entries[0].isIntersecting) this.onNearBottom();
             },
             { root, rootMargin: `0px 0px ${LOAD_TRIGGER_MARGIN}px 0px` },
