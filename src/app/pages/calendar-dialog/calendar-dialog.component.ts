@@ -34,6 +34,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
 import { RecurrenceScopeDialogComponent, RecurrenceUpdateScope } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { Subscription } from 'rxjs';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -137,7 +138,7 @@ export class CalendarDialogComponent implements OnInit {
   private originalFormValue!: any;
   private startChangesSubscription!: Subscription;
 
-  constructor(
+  constructor(private readonly router: Router,
     private fb: FormBuilder,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private calendarService: CalendarService,
@@ -621,12 +622,21 @@ export class CalendarDialogComponent implements OnInit {
   }
 
   openLinkedBoardItem(): void {
-    this.dialog.open(ItemDetailDialogComponent, {
-      width: '70%',
-      data: {
-        itemId: this.data.eventData.linkedBoardItemId
-      }
-    });
+    const eventData = this.data.eventData;
+
+    const queryParams: Record<string, any> = {
+      openItemId: eventData.linkedBoardItemId,
+    };
+
+    // If the event carries the parent board id, pass it along so the board
+    // page opens directly on the right board instead of defaulting to the
+    // user's first board.
+    if (eventData.linkedBoardId != null) {
+      queryParams['boardId'] = eventData.linkedBoardId;
+    }
+
+    const urlTree = this.router.createUrlTree(['/board'], { queryParams });
+    window.open(this.router.serializeUrl(urlTree), '_blank');
   }
 
   get recurrenceSummary(): string {

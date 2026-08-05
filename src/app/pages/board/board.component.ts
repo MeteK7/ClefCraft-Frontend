@@ -21,7 +21,7 @@ import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dia
 import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-sidebar.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-board',
@@ -48,7 +48,7 @@ export class BoardComponent implements OnInit {
     isSidebarOpen: false,
   };
 
-  constructor(
+  constructor(private readonly router: Router,
     private boardEngine: BoardEngineService,
     private dialog: MatDialog,
     private eRef: ElementRef,
@@ -119,7 +119,12 @@ export class BoardComponent implements OnInit {
       this.boards = boards;
 
       if (boards.length) {
-        this.selectedBoardId = boards[0].id;
+        const requestedBoardId = Number(this.route.snapshot.queryParamMap.get('boardId'));
+        const initialBoardId = boards.some(b => b.id === requestedBoardId)
+          ? requestedBoardId
+          : boards[0].id;
+
+        this.selectedBoardId = initialBoardId;
         this.loadBoardColumnItems(this.selectedBoardId);
       }
     });
@@ -148,18 +153,23 @@ export class BoardComponent implements OnInit {
 
       const targetId = Number(targetIdStr);
 
-      // Flatten search down structural column layers
       const matchedItem = this.boardView.columns
         .flatMap(c => c.boardItems)
         .find(item => item.id === targetId);
 
       if (matchedItem) {
-        // Synchronize core engine state tracking rules
         this.selection = selectItem(this.selection, matchedItem);
 
         if (this.selection.viewMode === 'dialog') {
           this.openItemDetailDialog(matchedItem);
         }
+
+        // Consume the deep-link params so this doesn't re-trigger.
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: {},
+          replaceUrl: true,
+        });
       }
     });
   }
