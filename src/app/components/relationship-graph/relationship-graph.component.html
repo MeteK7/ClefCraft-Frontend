@@ -19,8 +19,8 @@
 
         <span class="toolbar-divider"></span>
 
-        <button mat-icon-button [color]="showCriticalPath() ? 'warn' : null" matTooltip="Toggle Critical Path"
-            (click)="toggleCriticalPath()">
+        <button mat-icon-button [color]="showCriticalHighlights() ? 'warn' : null"
+            matTooltip="Highlight Critical-Priority Relationships" (click)="toggleCriticalHighlights()">
             <mat-icon>route</mat-icon>
         </button>
 
@@ -69,11 +69,10 @@
         <span>Showing the first {{ maxFullConnectionNodes }} connected items — the graph may be larger.</span>
     </div>
 
-    <div class="critical-path-summary" *ngIf="showCriticalPath() && criticalPathSummary() as cp">
+    <div class="critical-path-summary" *ngIf="showCriticalHighlights() && criticalSummary() as cp">
         <mat-icon color="accent">insights</mat-icon>
         <span>
-            Critical Path: <strong>{{ cp.count }}</strong> items (<strong>{{ cp.duration }}h / SP</strong> estimated
-            delay)
+            Critical Relationships: <strong>{{ cp.count }}</strong> highlighted
         </span>
     </div>
 
@@ -215,7 +214,8 @@
                                 </span>
                             </div>
                             <div class="header-right">
-                                <span *ngIf="node.critical" class="chip critical">Critical</span>
+                                <span *ngIf="priorityClass(node.priority)" class="chip"
+                                    [ngClass]="priorityClass(node.priority)">{{ node.priority }}</span>
                                 <span *ngIf="node.cyclic" class="chip warning">Cycle</span>
                             </div>
                         </div>
@@ -301,7 +301,7 @@
             [style.top.px]="pos.y + 16">
             <div class="relationship-sentence">{{ relationshipSentence(edge) }}</div>
             <div class="relationship-flags" *ngIf="isEdgeCritical(edge) || edge.cyclic">
-                <span class="flag" *ngIf="isEdgeCritical(edge)">On the critical path</span>
+                <span class="flag" *ngIf="isEdgeCritical(edge)">Connects two Critical-priority items</span>
                 <span class="flag" *ngIf="edge.cyclic">Part of a dependency cycle</span>
             </div>
         </div>
@@ -322,7 +322,7 @@
 
         <div class="legend-row legend-note">
             <span class="legend-critical-dot"></span>
-            <span class="legend-text">Red arrow = on the critical path</span>
+            <span class="legend-text">Red arrow = connects two Critical-priority items</span>
         </div>
         <div class="legend-row legend-note">
             <span class="legend-cyclic-badge">&#8635;</span>
