@@ -8,18 +8,18 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #f4f7fb 0%, #e9eef5 100%);
+  background: var(--background);
   padding: 2rem;
 }
 
 .construction-card {
-  background: #ffffff;
+  background: var(--surface);
   border-radius: 20px;
   padding: 3rem;
   max-width: 520px;
   width: 100%;
   text-align: center;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 45px var(--shadow-color);
   animation: fadeIn 0.5s ease;
 }
 
@@ -30,7 +30,7 @@
 
 h1 {
   margin: 0;
-  color: #1f2937;
+  color: var(--text);
   font-size: 2rem;
   font-weight: 700;
 }
@@ -43,7 +43,7 @@ h2 {
 }
 
 p {
-  color: #6b7280;
+  color: var(--text-secondary);
   line-height: 1.7;
   margin-bottom: 2rem;
 }
@@ -73,7 +73,7 @@ p {
   outline: none;
   cursor: pointer;
   background: #2563eb;
-  color: var(--text);
+  color: var(--header-text);
   padding: 0.85rem 1.8rem;
   border-radius: 10px;
   font-size: 1rem;

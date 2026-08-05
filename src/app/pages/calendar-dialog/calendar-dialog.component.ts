@@ -34,6 +34,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
 import { RecurrenceScopeDialogComponent, RecurrenceUpdateScope } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { Subscription } from 'rxjs';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -137,7 +138,7 @@ export class CalendarDialogComponent implements OnInit {
   private originalFormValue!: any;
   private startChangesSubscription!: Subscription;
 
-  constructor(
+  constructor(private readonly router: Router,
     private fb: FormBuilder,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private calendarService: CalendarService,
@@ -243,14 +244,23 @@ export class CalendarDialogComponent implements OnInit {
       }
 
       this.fetchAttachments(this.eventId!);
-    } else {
-      const date = new Date(this.data.date);
+    }
+
+    else {
+      const initialStart: Date | null = this.data.initialStart ? new Date(this.data.initialStart) : null;
+      const initialEnd: Date | null = this.data.initialEnd ? new Date(this.data.initialEnd) : null;
+
+      const startDateForForm = initialStart ?? new Date(this.data.date);
+      const endDateForForm = initialEnd ?? new Date(this.data.date);
+
+      const startTime = initialStart ? initialStart.toTimeString().slice(0, 5) : '09:00';
+      const endTime = initialEnd ? initialEnd.toTimeString().slice(0, 5) : '10:00';
 
       this.generalForm.patchValue({
-        startDate: date,
-        endDate: date,
-        startTime: '09:00',
-        endTime: '10:00'
+        startDate: startDateForForm,
+        endDate: endDateForForm,
+        startTime,
+        endTime
       });
     }
 
@@ -612,12 +622,21 @@ export class CalendarDialogComponent implements OnInit {
   }
 
   openLinkedBoardItem(): void {
-    this.dialog.open(ItemDetailDialogComponent, {
-      width: '70%',
-      data: {
-        itemId: this.data.eventData.linkedBoardItemId
-      }
-    });
+    const eventData = this.data.eventData;
+
+    const queryParams: Record<string, any> = {
+      openItemId: eventData.linkedBoardItemId,
+    };
+
+    // If the event carries the parent board id, pass it along so the board
+    // page opens directly on the right board instead of defaulting to the
+    // user's first board.
+    if (eventData.linkedBoardId != null) {
+      queryParams['boardId'] = eventData.linkedBoardId;
+    }
+
+    const urlTree = this.router.createUrlTree(['/board'], { queryParams });
+    window.open(this.router.serializeUrl(urlTree), '_blank');
   }
 
   get recurrenceSummary(): string {
@@ -661,5 +680,12 @@ export class CalendarDialogComponent implements OnInit {
     if (this.startChangesSubscription) {
       this.startChangesSubscription.unsubscribe();
     }
+  }
+
+  quickEnableRecurrence(frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'): void {
+    this.generalForm.patchValue({
+      isRecurring: true,
+      frequency
+    });
   }
 }
