@@ -328,7 +328,7 @@ textarea[matInput] {
 }
 
 .recurrence-card {
-  padding: 16px;
+  padding: 10px;
   border-radius: 10px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -359,7 +359,6 @@ textarea[matInput] {
 .weekday-picker {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
   flex-wrap: wrap;
 }
 
@@ -393,7 +392,6 @@ textarea[matInput] {
 .end-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 
 .end-option {
@@ -414,6 +412,100 @@ textarea[matInput] {
   font-size: 13px;
   color: var(--text-secondary);
   border: 1px solid var(--border);
+}
+
+/* ================================
+   RECURRENCE — EMPTY STATE
+================================ */
+
+.recurrence-tab-content {
+  padding: 8px 4px;
+}
+
+.recurrence-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.recurrence-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.recurrence-empty-icon mat-icon {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+  color: var(--primary);
+}
+
+.recurrence-empty-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.recurrence-empty-subtitle {
+  margin: 8px 0 0;
+  max-width: 380px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.recurrence-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.quick-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quick-chip mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.quick-chip:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.recurrence-enable-btn {
+  margin-top: 20px;
+  border-radius: 20px;
+}
+
+.recurrence-header--active {
+  padding: 12px 4px 0;
 }
 
 /* ================================
