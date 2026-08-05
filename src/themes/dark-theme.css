@@ -56,4 +56,12 @@ body.dark-theme {
   --shadow-color: rgba(0, 0, 0, 0.4);
   --overlay-bg: rgba(18, 18, 18, 0.6);
 
+  --graph-canvas-start: #26303c;
+  --graph-canvas-mid: #1f2630;
+  --graph-canvas-end: #161b22;
+  --graph-grid-line: rgba(255, 255, 255, 0.05);
+  --graph-fade-start: rgba(255, 255, 255, 0.04);
+  --graph-fade-end: rgba(0, 0, 0, 0.25);
+  --graph-active-glow: rgba(255, 255, 255, 0.3);
+  --graph-critical-glow: rgba(239, 83, 80, 0.55);
 }

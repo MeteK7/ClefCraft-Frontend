@@ -46,7 +46,8 @@
 
     <ng-container *ngIf="!loading">
 
-        <app-relationship-graph *ngIf="viewMode==='graph'" [hub]="hub" [rootItemId]="itemId" (openItem)="open($event)"
+        <app-relationship-graph *ngIf="viewMode==='graph'" [hub]="hub" [rootItemId]="itemId" [rootStatus]="itemStatus"
+            [rootPriority]="itemPriority" (openItem)="open($event)"
             (maximizedChange)="graphMaximizedChange.emit($event)">
         </app-relationship-graph>
 

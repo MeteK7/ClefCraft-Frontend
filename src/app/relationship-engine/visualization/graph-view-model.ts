@@ -52,8 +52,6 @@ export interface GraphAnalytics {
     cyclic: boolean;
     cycleCount: number;
     dependencyCount: number;
-    /** Populated by CriticalPathEngine — 0 until computed. */
-    criticalPathLength: number;
     averageDegree: number;
 }
 
@@ -185,7 +183,6 @@ export class GraphViewModelFactory {
                 cyclic: false,
                 cycleCount: 0,
                 dependencyCount: 0,
-                criticalPathLength: 0,
                 averageDegree: nodes.length ? (edges.length * 2) / nodes.length : 0
             },
 

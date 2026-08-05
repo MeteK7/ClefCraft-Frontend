@@ -29,7 +29,6 @@ import { RelationshipGraphBuilder } from '../../relationship-engine/graph/relati
 import { GraphLayoutEngine } from '../../relationship-engine/graph/graph-layout-engine';
 
 import { CycleDetector, RelationshipCycle } from '../../relationship-engine/analytics/cycle-detector';
-import { CriticalPathEngine } from '../../relationship-engine/analytics/critical-path-engine';
 import { RelationshipScoreEngine } from '../../relationship-engine/analytics/relationship-score-engine';
 import { ImpactEngine, ImpactAnalysis } from '../../relationship-engine/analytics/impact-engine';
 
@@ -78,6 +77,8 @@ export class RelationshipGraphComponent implements OnChanges {
 
     @Input({ required: true }) hub!: RelationshipHub;
     @Input({ required: true }) rootItemId!: number;
+    @Input() rootStatus = '';
+    @Input() rootPriority = '';
 
     @Output() openItem = new EventEmitter<number>();
     @Output() maximizedChange = new EventEmitter<boolean>();
@@ -155,7 +156,7 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly expandingNodeId = signal<number | null>(null);
 
     readonly showLegend = signal<boolean>(true);
-    readonly showCriticalPath = signal<boolean>(false);
+    readonly showCriticalHighlights = signal<boolean>(false);
 
     readonly showFullConnections = signal<boolean>(false);
     readonly isExpandingFull = signal<boolean>(false);
@@ -169,7 +170,7 @@ export class RelationshipGraphComponent implements OnChanges {
     }
 
     readonly cycleSummary = signal<RelationshipCycle[]>([]);
-    readonly criticalPathSummary = signal<{ count: number; duration: number } | null>(null);
+    readonly criticalSummary = signal<{ count: number } | null>(null);
 
     readonly nodes = computed<GraphNode[]>(() => this.graph()?.nodes ?? []);
     readonly edges = computed<GraphEdge[]>(() => this.graph()?.edges ?? []);
@@ -420,7 +421,6 @@ export class RelationshipGraphComponent implements OnChanges {
         private readonly builder: RelationshipGraphBuilder,
         private readonly layoutEngine: GraphLayoutEngine,
         private readonly cycleDetector: CycleDetector,
-        private readonly criticalPathEngine: CriticalPathEngine,
         private readonly scoreEngine: RelationshipScoreEngine,
         private readonly impactEngine: ImpactEngine,
         private readonly boardService: BoardService,
@@ -428,7 +428,7 @@ export class RelationshipGraphComponent implements OnChanges {
     ) { }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['hub'] || changes['rootItemId']) {
+        if (changes['hub'] || changes['rootItemId'] || changes['rootStatus'] || changes['rootPriority']) {
             this.rebuild();
         }
     }
@@ -455,6 +455,23 @@ export class RelationshipGraphComponent implements OnChanges {
         return node.id === this.rootItemId;
     }
 
+    private static readonly PRIORITY_CSS_CLASS: Record<string, string> = {
+        critical: 'priority-critical',
+        high: 'priority-high',
+        medium: 'priority-medium',
+        low: 'priority-low'
+    };
+
+    /** CSS class for the node's actual business Priority (Critical/High/Medium/Low) — independent of graph topology. Empty/unrecognized -> ''. */
+    priorityClass(priority: string | undefined | null): string {
+        if (!priority) return '';
+        return RelationshipGraphComponent.PRIORITY_CSS_CLASS[priority.trim().toLowerCase()] ?? '';
+    }
+
+    private isPriorityCritical(priority: string | undefined | null): boolean {
+        return !!priority && priority.trim().toLowerCase() === 'critical';
+    }
+
     isSelected(nodeId: number): boolean {
         return this.selectedNodeId() === nodeId;
     }
@@ -478,7 +495,7 @@ export class RelationshipGraphComponent implements OnChanges {
     }
 
     isEdgeCritical(edge: GraphEdge): boolean {
-        return this.showCriticalPath() && edge.critical;
+        return this.showCriticalHighlights() && edge.critical;
     }
 
     /** CSS class carrying this edge's relationship-type dash pattern (never color). */
@@ -871,8 +888,8 @@ export class RelationshipGraphComponent implements OnChanges {
         this.showLegend.update(v => !v);
     }
 
-    toggleCriticalPath(): void {
-        this.showCriticalPath.update(v => !v);
+    toggleCriticalHighlights(): void {
+        this.showCriticalHighlights.update(v => !v);
     }
 
     toggleMaximize(): void {
@@ -939,11 +956,11 @@ export class RelationshipGraphComponent implements OnChanges {
         if (!this.hub || this.rootItemId == null) {
             this.graph.set(null);
             this.cycleSummary.set([]);
-            this.criticalPathSummary.set(null);
+            this.criticalSummary.set(null);
             return;
         }
 
-        const built = this.builder.build(this.rootItemId, this.hub);
+        const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority);
         this.layoutEngine.layout(built);
         this.applyAnalytics(built);
 
@@ -973,42 +990,33 @@ export class RelationshipGraphComponent implements OnChanges {
     private applyAnalytics(graph: GraphViewModel): void {
 
         const cyclesMarked = this.cycleDetector.markCycles(graph);
-        const criticalNodes = this.criticalPathEngine.markCriticalNodes(graph);
-        const criticalPathResult = this.criticalPathEngine.findCriticalPath(graph);
         const scores = this.scoreEngine.calculateScores(graph);
 
         const scoreMap = new Map(scores.map(s => [s.nodeId, s]));
-        const criticalNodeIds = new Set(criticalNodes.filter(n => n.critical).map(n => n.id));
         const cyclicEdgeMap = new Map(cyclesMarked.edges.map(e => [e.id, e.cyclic]));
-
-        const criticalEdgeKeys = new Set<string>();
-        for (let i = 0; i < criticalPathResult.path.length - 1; i++) {
-            criticalEdgeKeys.add(`${criticalPathResult.path[i]}->${criticalPathResult.path[i + 1]}`);
-        }
 
         graph.nodes = cyclesMarked.nodes.map(node => {
             const score = scoreMap.get(node.id);
             return {
                 ...node,
-                critical: criticalNodeIds.has(node.id),
+                critical: this.isPriorityCritical(node.priority),
                 relationshipScore: score?.score ?? node.relationshipScore
             };
         });
 
+        const criticalNodeIds = new Set(graph.nodes.filter(n => n.critical).map(n => n.id));
+
         graph.edges = graph.edges.map(edge => ({
             ...edge,
             cyclic: cyclicEdgeMap.get(edge.id) ?? false,
-            critical: criticalEdgeKeys.has(`${edge.sourceId}->${edge.targetId}`)
+            critical: criticalNodeIds.has(edge.sourceId) && criticalNodeIds.has(edge.targetId)
         }));
 
         rebuildIndex(graph);
 
         this.cycleSummary.set(this.cycleDetector.detectCycles(graph));
-        this.criticalPathSummary.set(
-            criticalPathResult.path.length > 1
-                ? { count: criticalPathResult.path.length, duration: criticalPathResult.duration }
-                : null
-        );
+        const criticalEdgeCount = graph.edges.filter(e => e.critical).length;
+        this.criticalSummary.set(criticalEdgeCount > 0 ? { count: criticalEdgeCount } : null);
     }
 
     onNodeHover(nodeId: number) {
