@@ -154,3 +154,30 @@ body.dark-theme .mat-mdc-radio-button label {
   color: var(--text) !important;
 }
 
+/* ---------- ngx-mat-timepicker toggle icon (clock icon) ----------
+   ngx-mat-timepicker is a third-party component, not Angular Material,
+   so it never reads --mat-datepicker-toggle-icon-color or any other
+   Material CSS variable. Its button/svg just inherit the browser's
+   default text color via `fill="currentColor"`. That default happens
+   to be dark, which is legible on the light theme's white background
+   but stays dark in dark mode too — invisible against the dark
+   surface. Bind it to our own token explicitly, in both themes, so it
+   tracks whichever theme is active. */
+.ngx-mat-timepicker-toggle,
+.ngx-mat-timepicker-toggle-default-icon {
+  color: var(--text-secondary) !important;
+}
+
+/* Disabled state (e.g. before "All Day" is unchecked) — keep it
+   readable but visually muted, consistent with other disabled
+   controls in the form. */
+.ngx-mat-timepicker-toggle:disabled,
+.ngx-mat-timepicker-toggle[disabled] {
+  color: var(--text-secondary) !important;
+  opacity: 0.5;
+}
+
+.mat-datepicker-toggle button.mat-mdc-icon-button,
+.mat-datepicker-toggle .mat-datepicker-toggle-default-icon {
+  color: var(--text-secondary) !important;
+}
