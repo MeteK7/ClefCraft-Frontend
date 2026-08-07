@@ -217,6 +217,47 @@
   gap: 6px;
 }
 
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* Business Priority chip — always shows the item's real Priority value,
+   independent of graph topology/expansion state. "Critical" reuses the
+   same --danger token as the status-strip/edge critical styling below;
+   High/Medium/Low reuse the fixed palette already used for the Kanban
+   board's priority dots (see board-item.component.css). */
+.chip.priority-critical {
+  background: var(--danger);
+  color: #fff;
+}
+
+.chip.priority-high {
+  background: #f1c40f;
+  color: #1a1a1a;
+}
+
+.chip.priority-medium {
+  background: #2ecc71;
+  color: #fff;
+}
+
+.chip.priority-low {
+  background: #78c1ef;
+  color: #1a1a1a;
+}
+
+.chip.warning {
+  background: var(--warning);
+  color: #1a1a1a;
+}
+
 .title {
   font-size: 14px;
   font-weight: 600;
