@@ -51,6 +51,15 @@
 
   --board-column-bg: rgba(167, 187, 255, 0.6);
   --board-column-bg-hover: rgb(207, 216, 245);
+  
+  --graph-canvas-start: #eef1f6;
+  --graph-canvas-mid: #e4e9f2;
+  --graph-canvas-end: #d7deeb;
+  --graph-grid-line: rgba(0, 0, 0, 0.05);
+  --graph-fade-start: rgba(0, 0, 0, 0.02);
+  --graph-fade-end: rgba(0, 0, 0, 0.08);
+  --graph-active-glow: rgba(0, 0, 0, 0.25);
+  --graph-critical-glow: rgba(211, 47, 47, 0.45);
 
   --success-light: #e8f5e9;
   --success-text: #2e7d32;

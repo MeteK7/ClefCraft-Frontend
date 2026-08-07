@@ -20,7 +20,7 @@ export interface GraphEdge {
     /** Edge participates in a dependency cycle. Set by CycleDetector. */
     cyclic: boolean;
 
-    /** Edge belongs to the current critical path. Set by CriticalPathEngine. */
+    /** Both endpoint nodes have Priority = Critical. Set in RelationshipGraphComponent.applyAnalytics(). */
     critical: boolean;
 
     /** Edge currently blocks downstream work. */

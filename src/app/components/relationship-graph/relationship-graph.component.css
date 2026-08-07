@@ -19,13 +19,13 @@
   position: relative;
   width: 100%;
   height: 100%;
-  flex: 1 1 auto;     /* added: fill whatever height the flex chain gives us */
-  min-height: 0;       /* added */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
   background: radial-gradient(circle at center,
-      #26303c 0%,
-      #1f2630 45%,
-      #161b22 100%);
+      var(--graph-canvas-start) 0%,
+      var(--graph-canvas-mid) 45%,
+      var(--graph-canvas-end) 100%);
 }
 
 .graph-svg {
@@ -41,7 +41,7 @@
 }
 
 .graph-edge {
-  stroke: #9aa0a6;
+  stroke: var(--text-secondary);
   stroke-linecap: round;
   stroke-linejoin: miter;
   stroke-width: 2;
@@ -62,7 +62,7 @@
  * template, which now has one marker per type x {normal, critical}).
  */
 .graph-edge.critical {
-  stroke: #ef5350;
+  stroke: var(--danger);
   stroke-width: 4;
   filter: url(#edgeGlow);
 }
@@ -134,13 +134,13 @@
 }
 
 .cyclic-badge circle {
-  fill: #232b36;
-  stroke: rgba(255, 255, 255, .35);
+  fill: var(--surface-2);
+  stroke: var(--border-strong);
   stroke-width: 1;
 }
 
 .cyclic-badge text {
-  fill: #cfd8dc;
+  fill: var(--text-secondary);
   font-size: 9px;
   text-anchor: middle;
   dominant-baseline: central;
@@ -168,16 +168,16 @@
   justify-content: space-between;
   padding: 12px 14px;
   border-radius: 12px;
-  background: #232b36;
-  border: 1px solid rgba(255, 255, 255, .12);
-  color: #f5f5f5;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: 0 2px 6px var(--shadow-color);
   transition: transform .18s ease, border-color .18s ease, background .18s ease;
 }
 
 .node-card:hover {
   transform: translateY(-2px) scale(1.03);
-  border-color: #42a5f5;
+  border-color: var(--primary);
 }
 
 .status-strip {
@@ -186,19 +186,19 @@
   top: 0;
   bottom: 0;
   width: 5px;
-  background: #4caf50;
+  background: var(--success);
 }
 
 .status-strip.center {
-  background: #ffd54f;
+  background: var(--warning);
 }
 
 .status-strip.critical {
-  background: #ef5350;
+  background: var(--danger);
 }
 
 .status-strip.cyclic {
-  background: #fb8c00;
+  background: var(--warning);
 }
 
 .node-header {
@@ -215,6 +215,47 @@
 .header-right {
   display: flex;
   gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* Business Priority chip — always shows the item's real Priority value,
+   independent of graph topology/expansion state. "Critical" reuses the
+   same --danger token as the status-strip/edge critical styling below;
+   High/Medium/Low reuse the fixed palette already used for the Kanban
+   board's priority dots (see board-item.component.css). */
+.chip.priority-critical {
+  background: var(--danger);
+  color: #fff;
+}
+
+.chip.priority-high {
+  background: #f1c40f;
+  color: #1a1a1a;
+}
+
+.chip.priority-medium {
+  background: #2ecc71;
+  color: #fff;
+}
+
+.chip.priority-low {
+  background: #78c1ef;
+  color: #1a1a1a;
+}
+
+.chip.warning {
+  background: var(--warning);
+  color: #1a1a1a;
 }
 
 .title {
@@ -238,13 +279,13 @@
   max-width: 240px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(20, 24, 30, .96);
-  border: 1px solid rgba(255, 255, 255, .12);
-  color: #f5f5f5;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
   font-size: 12px;
   line-height: 1.4;
   pointer-events: none;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
+  box-shadow: 0 4px 14px var(--shadow-color);
   z-index: 10;
 }
 
@@ -261,7 +302,7 @@
 
 .relationship-flags .flag {
   font-size: 11px;
-  color: #cfd8dc;
+  color: var(--text-secondary);
   opacity: .85;
 }
 
@@ -274,13 +315,13 @@
 }
 
 .legend-line {
-  stroke: #90a4ae;
+  stroke: var(--text-secondary);
   fill: none;
 }
 
 .legend-divider {
   height: 1px;
-  background: rgba(255, 255, 255, .12);
+  background: var(--divider);
   margin: 6px 0;
 }
 
@@ -292,7 +333,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #e53935;
+  background: var(--danger);
   display: inline-block;
 }
 
@@ -303,10 +344,10 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #232b36;
-  border: 1px solid rgba(255, 255, 255, .3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
   font-size: 10px;
-  color: #cfd8dc;
+  color: var(--text-secondary);
 }
 
 .metric-spacer {
@@ -329,16 +370,16 @@
   gap: 8px;
   padding: 8px 14px;
   border-radius: 8px;
-  background: rgba(20, 24, 30, .92);
-  border: 1px solid rgba(255, 255, 255, .12);
-  color: #f5f5f5;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
   font-size: 12px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+  box-shadow: 0 4px 14px var(--shadow-color);
   z-index: 5;
 }
 
 .full-connections-status.truncated {
-  border-color: rgba(251, 140, 0, .4);
+  border-color: var(--warning-border);
 }
 
 .graph-layer.animated {
@@ -358,7 +399,7 @@ proportional stroke-width scaling, and a soft ambient glow.
 .graph-edge.active {
   opacity: 1;
   stroke-width: 3.5;
-  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
+  filter: drop-shadow(0 0 3px var(--graph-active-glow));
 }
 
 /* Keep structural distinctiveness across relation line types */
@@ -368,7 +409,7 @@ proportional stroke-width scaling, and a soft ambient glow.
 
 .graph-edge.active.critical {
   stroke-width: 5.5;
-  filter: url(#edgeGlow) drop-shadow(0 0 5px rgba(239, 83, 80, 0.55));
+  filter: url(#edgeGlow) drop-shadow(0 0 5px var(--graph-critical-glow));
 }
 
 /* 
