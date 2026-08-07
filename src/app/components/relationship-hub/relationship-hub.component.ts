@@ -50,6 +50,8 @@ export class RelationshipHubComponent implements OnInit {
 
     @Input() boardId!: number;
     @Input() itemId!: number;
+    @Input() itemStatus = '';
+    @Input() itemPriority = '';
 
     @Output() openItem = new EventEmitter<number>();
     @Output() graphMaximizedChange = new EventEmitter<boolean>();

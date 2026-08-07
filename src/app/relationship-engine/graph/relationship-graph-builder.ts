@@ -15,9 +15,9 @@ import { GraphViewModel, GraphViewModelFactory, rebuildIndex } from '../visualiz
 })
 export class RelationshipGraphBuilder {
 
-    build(centerItemId: number, hub: RelationshipHub): GraphViewModel {
+    build(centerItemId: number, hub: RelationshipHub, centerStatus: string, centerPriority: string): GraphViewModel {
 
-        const nodes: GraphNode[] = [this.createCenterNode(centerItemId)];
+        const nodes: GraphNode[] = [this.createCenterNode(centerItemId, centerStatus, centerPriority)];
         const edges: GraphEdge[] = [];
 
         let nextEdgeId = 1;
@@ -96,9 +96,9 @@ export class RelationshipGraphBuilder {
         return graph;
     }
 
-    private createCenterNode(id: number): GraphNode {
+    private createCenterNode(id: number, status: string, priority: string): GraphNode {
 
-        const node = GraphNodeFactory.create(id, 'Current Item', '', '');
+        const node = GraphNodeFactory.create(id, 'Current Item', status, priority);
 
         node.radius = 42;
         node.color = '#3f51b5';

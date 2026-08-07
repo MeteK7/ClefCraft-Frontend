@@ -77,6 +77,8 @@ export class RelationshipGraphComponent implements OnChanges {
 
     @Input({ required: true }) hub!: RelationshipHub;
     @Input({ required: true }) rootItemId!: number;
+    @Input() rootStatus = '';
+    @Input() rootPriority = '';
 
     @Output() openItem = new EventEmitter<number>();
     @Output() maximizedChange = new EventEmitter<boolean>();
@@ -426,7 +428,7 @@ export class RelationshipGraphComponent implements OnChanges {
     ) { }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['hub'] || changes['rootItemId']) {
+        if (changes['hub'] || changes['rootItemId'] || changes['rootStatus'] || changes['rootPriority']) {
             this.rebuild();
         }
     }
@@ -958,7 +960,7 @@ export class RelationshipGraphComponent implements OnChanges {
             return;
         }
 
-        const built = this.builder.build(this.rootItemId, this.hub);
+        const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority);
         this.layoutEngine.layout(built);
         this.applyAnalytics(built);
 
