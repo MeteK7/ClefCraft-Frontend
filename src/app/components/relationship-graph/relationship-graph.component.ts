@@ -77,6 +77,8 @@ export class RelationshipGraphComponent implements OnChanges {
 
     @Input({ required: true }) hub!: RelationshipHub;
     @Input({ required: true }) rootItemId!: number;
+    @Input() rootStatus = '';
+    @Input() rootPriority = '';
 
     @Output() openItem = new EventEmitter<number>();
     @Output() maximizedChange = new EventEmitter<boolean>();
@@ -127,6 +129,10 @@ export class RelationshipGraphComponent implements OnChanges {
             sentence: (a, b) => `${a} was split from "${b}"`
         }
     };
+
+    readonly expandedNodeIds = signal<Set<number>>(new Set());
+    /** nodeId -> set of node ids that were newly added directly because that node was expanded. */
+    private readonly expandedChildren = new Map<number, Set<number>>();
 
     readonly legend: LegendEntry[] = [
         { type: RelationshipType.Parent, label: 'Parent', cssClass: 'type-parent', markerBase: 'arrow-parent' },
@@ -426,7 +432,7 @@ export class RelationshipGraphComponent implements OnChanges {
     ) { }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['hub'] || changes['rootItemId']) {
+        if (changes['hub'] || changes['rootItemId'] || changes['rootStatus'] || changes['rootPriority']) {
             this.rebuild();
         }
     }
@@ -618,15 +624,27 @@ export class RelationshipGraphComponent implements OnChanges {
         const graph = this.graph();
         if (!graph || this.expandingNodeId() !== null || this.isCenter(node)) return;
 
+        if (this.isExpanded(node.id)) {
+            this.collapseNode(node.id);
+            return;
+        }
+
         this.expandingNodeId.set(node.id);
+
+        const beforeIds = new Set(graph.nodes.map(n => n.id));
 
         this.boardService.getRelationships(node.id).subscribe({
             next: hub => {
 
                 const expanded = this.builder.expand(graph, node.id, hub);
                 this.layoutEngine.layout(expanded);
-
                 this.applyAnalytics(expanded);
+
+                const addedIds = new Set(
+                    expanded.nodes.map(n => n.id).filter(id => !beforeIds.has(id))
+                );
+                this.expandedChildren.set(node.id, addedIds);
+                this.expandedNodeIds.update(set => new Set(set).add(node.id));
 
                 this.graph.set({ ...expanded });
 
@@ -636,6 +654,55 @@ export class RelationshipGraphComponent implements OnChanges {
                 this.expandingNodeId.set(null);
             }
         });
+    }
+
+    private collapseNode(nodeId: number): void {
+
+        const graph = this.graph();
+        if (!graph) return;
+
+        const toRemove = new Set<number>();
+        this.collectDescendants(nodeId, toRemove);
+
+        this.expandedChildren.delete(nodeId);
+        this.expandedNodeIds.update(set => {
+            const next = new Set(set);
+            next.delete(nodeId);
+            toRemove.forEach(id => next.delete(id));
+            return next;
+        });
+
+        if (!toRemove.size) return;
+
+        graph.nodes = graph.nodes.filter(n => !toRemove.has(n.id));
+        graph.edges = graph.edges.filter(e => !toRemove.has(e.sourceId) && !toRemove.has(e.targetId));
+
+        rebuildIndex(graph);
+        this.layoutEngine.layout(graph);
+        this.applyAnalytics(graph);
+
+        if (this.selectedNodeId() !== null && toRemove.has(this.selectedNodeId()!)) {
+            this.selectedNodeId.set(null);
+        }
+        if (this.hoveredNodeId() !== null && toRemove.has(this.hoveredNodeId()!)) {
+            this.onNodeLeave();
+        }
+        if (this.hoveredEdgeId() !== null && !graph.edges.some(e => e.id === this.hoveredEdgeId())) {
+            this.onEdgeLeave();
+        }
+
+        this.graph.set({ ...graph });
+    }
+
+    /** Recursively collects every node id that was added, directly or indirectly, by expanding nodeId. */
+    private collectDescendants(nodeId: number, acc: Set<number>): void {
+        const children = this.expandedChildren.get(nodeId);
+        if (!children) return;
+        for (const childId of children) {
+            if (acc.has(childId)) continue;
+            acc.add(childId);
+            this.collectDescendants(childId, acc);
+        }
     }
 
     private readonly expansionBatchSize = 6;
@@ -958,11 +1025,13 @@ export class RelationshipGraphComponent implements OnChanges {
             return;
         }
 
-        const built = this.builder.build(this.rootItemId, this.hub);
+        const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority);
         this.layoutEngine.layout(built);
         this.applyAnalytics(built);
 
         this.graph.set(built);
+        this.expandedNodeIds.set(new Set());
+        this.expandedChildren.clear();
         this.selectedNodeId.set(null);
 
         if (this.isMaximized()) {
@@ -1054,5 +1123,9 @@ export class RelationshipGraphComponent implements OnChanges {
         });
 
         window.open(this.router.serializeUrl(urlTree), '_blank');
+    }
+
+    isExpanded(nodeId: number): boolean {
+        return this.expandedNodeIds().has(nodeId);
     }
 }
