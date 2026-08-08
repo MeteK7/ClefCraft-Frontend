@@ -125,7 +125,7 @@
       <div class="dialog-content">
 
         <app-relationship-hub [boardId]="item.boardId" [itemId]="item.id" [itemStatus]="item.status?.name ?? ''"
-          [itemPriority]="item.priority?.name ?? ''">
+          [itemPriority]="item.priority?.name ?? ''" (graphMaximizedChange)="isGraphMaximized = $event">
         </app-relationship-hub>
 
       </div>
