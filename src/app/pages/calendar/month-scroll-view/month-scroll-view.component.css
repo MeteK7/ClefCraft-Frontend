@@ -43,6 +43,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+  overflow-anchor: none;
 }
 
 .scroll-sentinel {

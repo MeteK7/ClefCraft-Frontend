@@ -9,7 +9,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { Observable, Subscription } from 'rxjs';
+import { map, Observable, Subject, Subscription, switchMap } from 'rxjs';
 
 import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
 import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
@@ -129,6 +129,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
   private monthFetchedStart: Date | null = null;
   private monthFetchedEnd: Date | null = null;
 
+  private needMoreRange$ = new Subject<{ start: Date; end: Date }>();
+  private needMoreRangeSub!: Subscription;
+
   constructor(
     private calendarService: CalendarService,
     private dialog: MatDialog,
@@ -154,11 +157,31 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.updateNowIndicator();
     this.nowTimer = setInterval(() => this.updateNowIndicator(), 60_000);
     this.listenForLiveReminders();
+
+    // switchMap cancels any in-flight "need more events" request the
+    // instant a newer one comes in, so a stale, late-arriving response
+    // for an older range can never overwrite state set by a fresher one.
+    this.needMoreRangeSub = this.needMoreRange$.pipe(
+      switchMap(range =>
+        this.calendarService.getEvents(range.start, range.end).pipe(
+          map(fetched => ({ fetched, range })),
+        ),
+      ),
+    ).subscribe({
+      next: ({ fetched, range }) => {
+        this.mergeEvents(fetched);
+        this.monthFetchedStart = range.start;
+        this.monthFetchedEnd = range.end;
+        this.monthScrollWindow = this.engine.recomputeAllMonthScrollWeeks(this.monthScrollWindow, this.events);
+      },
+      error: err => console.error('Error fetching additional month events:', err),
+    });
   }
 
   ngOnDestroy(): void {
     clearInterval(this.nowTimer);
     this.reminderSubscription?.unsubscribe();
+    this.needMoreRangeSub?.unsubscribe();
     window.removeEventListener('mousemove', this.onDragging);
     window.removeEventListener('mouseup', this.stopDrag);
     window.removeEventListener('mousemove', this.onResizing);
@@ -314,18 +337,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const fetchStart = range.start < this.monthFetchedStart ? range.start : this.monthFetchedStart;
     const fetchEnd = range.end > this.monthFetchedEnd ? range.end : this.monthFetchedEnd;
 
-    this.calendarService.getEvents(fetchStart, fetchEnd).subscribe({
-      next: (fetched: any[]) => {
-        this.mergeEvents(fetched);
-        this.monthFetchedStart = fetchStart;
-        this.monthFetchedEnd = fetchEnd;
-        // New events may affect rows already on screen (e.g. a multi-day
-        // event whose layout depends on neighbors) — recompute the whole
-        // loaded window's layout, cheap relative to a network round trip.
-        this.monthScrollWindow = this.engine.recomputeAllMonthScrollWeeks(this.monthScrollWindow, this.events);
-      },
-      error: err => console.error('Error fetching additional month events:', err),
-    });
+    this.needMoreRange$.next({ start: fetchStart, end: fetchEnd });
   }
 
   /** Merge newly-fetched events into this.events, deduping by id (recurring occurrences already carry stable ids from the server). */
