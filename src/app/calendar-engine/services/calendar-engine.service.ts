@@ -123,7 +123,7 @@ export class CalendarEngineService {
   initializeMonthScrollWindow(
     centerDate: Date,
     events: CalendarEventUI[],
-    weeksBefore: number = 4,
+    weeksBefore: number = 6,
     weeksAfter: number = 8,
   ): MonthScrollWindow {
     return MonthScrollEngine.initialize(centerDate, events, weeksBefore, weeksAfter);
