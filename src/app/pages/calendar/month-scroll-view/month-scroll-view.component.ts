@@ -94,8 +94,6 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     private bottomObserver?: IntersectionObserver;
     private loadingMore = false;
     private lastEmittedMonth: string | null = null;
-    private ignoreNextTopCallback = false;
-    private ignoreNextBottomCallback = false;
 
     ngAfterViewInit(): void {
         this.headerHeight = this.stickyHeaderRef.nativeElement.offsetHeight;
@@ -125,10 +123,6 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
         this.topObserver = new IntersectionObserver(
             entries => {
-                if (this.ignoreNextTopCallback) {
-                    this.ignoreNextTopCallback = false;
-                    return;
-                }
                 if (entries[0].isIntersecting) this.onNearTop();
             },
             { root, rootMargin: `${LOAD_TRIGGER_MARGIN}px 0px 0px 0px` },
@@ -137,10 +131,6 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
         this.bottomObserver = new IntersectionObserver(
             entries => {
-                if (this.ignoreNextBottomCallback) {
-                    this.ignoreNextBottomCallback = false;
-                    return;
-                }
                 if (entries[0].isIntersecting) this.onNearBottom();
             },
             { root, rootMargin: `0px 0px ${LOAD_TRIGGER_MARGIN}px 0px` },
@@ -164,12 +154,19 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         let next = MonthScrollEngine.appendWeeks(this.window, LOAD_BATCH_WEEKS, this.events);
 
         let removedHeight = 0;
+        let prunedHead = false;
         if (next.weeks.length > MAX_LOADED_WEEKS) {
             const removedCount = next.weeks.length - PRUNE_TARGET_WEEKS;
             removedHeight = removedCount * this.rowHeight;
             next = MonthScrollEngine.pruneHead(next, PRUNE_TARGET_WEEKS);
-            this.ignoreNextTopCallback = true;
+            prunedHead = true;
         }
+
+        // Unobserve/re-observe brackets the mutation so the top sentinel's
+        // intersection is (re)computed fresh against the already-settled,
+        // post-compensation layout — instead of possibly firing mid-mutation
+        // against a transient (DOM-shrunk-but-not-yet-scroll-compensated) state.
+        if (prunedHead) this.topObserver?.unobserve(this.topSentinelRef.nativeElement);
 
         this.window = next;
         this.cdr.detectChanges();
@@ -178,6 +175,8 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
             const root = this.scrollContainerRef.nativeElement;
             root.scrollTop -= removedHeight;
         }
+
+        if (prunedHead) this.topObserver?.observe(this.topSentinelRef.nativeElement);
 
         this.windowChange.emit(next);
         this.loadingMore = false;
@@ -193,16 +192,21 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         let next = MonthScrollEngine.prependWeeks(this.window, LOAD_BATCH_WEEKS, this.events);
         const addedHeight = LOAD_BATCH_WEEKS * this.rowHeight;
 
+        let prunedTail = false;
         if (next.weeks.length > MAX_LOADED_WEEKS) {
             next = MonthScrollEngine.pruneTail(next, PRUNE_TARGET_WEEKS);
-            this.ignoreNextBottomCallback = true;
+            prunedTail = true;
         }
+
+        if (prunedTail) this.bottomObserver?.unobserve(this.bottomSentinelRef.nativeElement);
 
         this.window = next;
         this.cdr.detectChanges();
 
         const root = this.scrollContainerRef.nativeElement;
         root.scrollTop += addedHeight;
+
+        if (prunedTail) this.bottomObserver?.observe(this.bottomSentinelRef.nativeElement);
 
         this.windowChange.emit(next);
         this.loadingMore = false;
@@ -212,18 +216,22 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         const root = this.scrollContainerRef.nativeElement;
         const idx = MonthScrollEngine.findWeekIndexForDate(this.window, this.selectedDate);
         const targetIdx = idx === -1 ? Math.floor(this.window.weeks.length / 2) : idx;
-        root.scrollTop = targetIdx * this.rowHeight;          // ← was: this.headerHeight + targetIdx * this.rowHeight
+        root.scrollTop = this.headerHeight + targetIdx * this.rowHeight;
         this.updateVisibleMonthLabel();
     }
 
     private scrollToTargetDate(date: Date): void {
         const idx = MonthScrollEngine.findWeekIndexForDate(this.window, date);
-        const root = this.scrollContainerRef.nativeElement;
+        if (idx === -1) return;
 
-        if (idx !== -1) {
-            root.scrollTo({ top: idx * this.rowHeight, behavior: 'smooth' });   // ← was: this.headerHeight + idx * this.rowHeight
-            return;
-        }
+        // Instant, not smooth: an animated scroll here would take several
+        // frames to complete, and if it crosses a sentinel's trigger margin
+        // mid-flight, onNearTop()/onNearBottom() would fire and write to
+        // scrollTop directly — interrupting the animation and producing a
+        // visible snap. An instant jump has no window for that race.
+        const root = this.scrollContainerRef.nativeElement;
+        root.scrollTop = this.headerHeight + idx * this.rowHeight;
+        this.updateVisibleMonthLabel();
     }
 
     private updateVisibleMonthLabel(): void {

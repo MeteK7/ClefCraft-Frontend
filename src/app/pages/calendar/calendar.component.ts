@@ -311,6 +311,12 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.monthFetchedStart = new Date(this.monthScrollWindow.loadedStart);
     this.monthFetchedEnd = new Date(this.monthScrollWindow.loadedEnd);
     this.visibleMonthLabel = new Date(centerDate);
+    // Re-centering replaces the whole window (different weeks, different
+    // scrollHeight) but the scroll view stays mounted across month-mode
+    // navigation, so its scrollTop is left stale against the new content
+    // unless we explicitly tell it to re-sync — same mechanism the
+    // already-loaded nav path uses.
+    this.scrollToDate = new Date(centerDate);
   }
 
   onMonthWindowChange(next: MonthScrollWindow): void {
