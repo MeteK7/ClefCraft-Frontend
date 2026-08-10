@@ -216,7 +216,7 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         const root = this.scrollContainerRef.nativeElement;
         const idx = MonthScrollEngine.findWeekIndexForDate(this.window, this.selectedDate);
         const targetIdx = idx === -1 ? Math.floor(this.window.weeks.length / 2) : idx;
-        root.scrollTop = this.headerHeight + targetIdx * this.rowHeight;
+        root.scrollTop = targetIdx * this.rowHeight;
         this.updateVisibleMonthLabel();
     }
 
@@ -230,7 +230,7 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         // scrollTop directly — interrupting the animation and producing a
         // visible snap. An instant jump has no window for that race.
         const root = this.scrollContainerRef.nativeElement;
-        root.scrollTop = this.headerHeight + idx * this.rowHeight;
+        root.scrollTop = idx * this.rowHeight;
         this.updateVisibleMonthLabel();
     }
 
