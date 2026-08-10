@@ -125,6 +125,10 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
         this.topObserver = new IntersectionObserver(
             entries => {
+                if (this.ignoreNextTopCallback) {
+                    this.ignoreNextTopCallback = false;
+                    return;
+                }
                 if (entries[0].isIntersecting) this.onNearTop();
             },
             { root, rootMargin: `${LOAD_TRIGGER_MARGIN}px 0px 0px 0px` },
@@ -133,6 +137,10 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
         this.bottomObserver = new IntersectionObserver(
             entries => {
+                if (this.ignoreNextBottomCallback) {
+                    this.ignoreNextBottomCallback = false;
+                    return;
+                }
                 if (entries[0].isIntersecting) this.onNearBottom();
             },
             { root, rootMargin: `0px 0px ${LOAD_TRIGGER_MARGIN}px 0px` },
@@ -227,16 +235,6 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         const dominant = MonthScrollEngine.getDominantMonthForRow(row);
         const key = `${dominant.year}-${dominant.month}`;
 
-        console.trace('[updateVisibleMonthLabel]', {
-            t: performance.now(),
-            scrollTop: root.scrollTop,
-            computedIdx: idx,
-            weeksLength: this.window.weeks.length,
-            dominant,
-            willEmit: key !== this.lastEmittedMonth,
-            lastEmittedMonth: this.lastEmittedMonth,
-        });
-
         if (key !== this.lastEmittedMonth) {
             this.lastEmittedMonth = key;
             this.visibleMonthChange.emit(dominant);
@@ -292,35 +290,4 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         this.selectedMoreDate = date;
         this.moreClicked.emit({ date, row, mouseEvent });
     }
-
-    private logGeometry(label: string): void {
-        const root = this.scrollContainerRef.nativeElement;
-        const topRect = this.topSentinelRef.nativeElement.getBoundingClientRect();
-        const bottomRect = this.bottomSentinelRef.nativeElement.getBoundingClientRect();
-        const rootRect = root.getBoundingClientRect();
-
-        console.trace(label, {
-            scrollTop: root.scrollTop,
-            scrollHeight: root.scrollHeight,
-            clientHeight: root.clientHeight,
-            maxScrollTop: root.scrollHeight - root.clientHeight,
-            weeks: this.window.weeks.length,
-            // top sentinel position relative to the container's visible viewport —
-            // negative means it's above the visible area, small positive means
-            // it's within LOAD_TRIGGER_MARGIN of entering view
-            topSentinelOffsetFromViewportTop: topRect.top - rootRect.top,
-            bottomSentinelOffsetFromViewportBottom: bottomRect.bottom - rootRect.bottom,
-            loadingMore: this.loadingMore,
-            recentRawScroll: this.rawScrollLog.slice(-8),
-        });
-    }
-
-    private rawScrollLog: Array<{ t: number; scrollTop: number }> = [];
-
-    private onRawScroll = (): void => {
-        const root = this.scrollContainerRef.nativeElement;
-        this.rawScrollLog.push({ t: performance.now(), scrollTop: root.scrollTop });
-        // keep last ~50 entries so it doesn't grow unbounded
-        if (this.rawScrollLog.length > 50) this.rawScrollLog.shift();
-    };
 }
