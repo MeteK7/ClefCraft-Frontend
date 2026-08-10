@@ -154,19 +154,24 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         let next = MonthScrollEngine.appendWeeks(this.window, LOAD_BATCH_WEEKS, this.events);
 
         let removedHeight = 0;
-        let prunedHead = false;
         if (next.weeks.length > MAX_LOADED_WEEKS) {
-            const removedCount = next.weeks.length - PRUNE_TARGET_WEEKS;
-            removedHeight = removedCount * this.rowHeight;
-            next = MonthScrollEngine.pruneHead(next, PRUNE_TARGET_WEEKS);
-            prunedHead = true;
-        }
+            const root = this.scrollContainerRef.nativeElement;
 
-        // Unobserve/re-observe brackets the mutation so the top sentinel's
-        // intersection is (re)computed fresh against the already-settled,
-        // post-compensation layout — instead of possibly firing mid-mutation
-        // against a transient (DOM-shrunk-but-not-yet-scroll-compensated) state.
-        if (prunedHead) this.topObserver?.unobserve(this.topSentinelRef.nativeElement);
+            // Rows above the viewport's top edge are the only ones safe to
+            // discard from the head — anything closer would need scrollTop
+            // to go negative to stay compensated, which clamps to 0 and
+            // lands inside the top sentinel's own trigger margin, spuriously
+            // signalling "the user scrolled to the top." Bounding removal by
+            // how far the user has actually scrolled keeps the compensation
+            // representable and prevents that false signal at the source.
+            const maxSafeRemovable = Math.floor(root.scrollTop / this.rowHeight);
+            const removedCount = Math.min(next.weeks.length - PRUNE_TARGET_WEEKS, maxSafeRemovable);
+
+            if (removedCount > 0) {
+                removedHeight = removedCount * this.rowHeight;
+                next = MonthScrollEngine.pruneHead(next, next.weeks.length - removedCount);
+            }
+        }
 
         this.window = next;
         this.cdr.detectChanges();
@@ -175,8 +180,6 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
             const root = this.scrollContainerRef.nativeElement;
             root.scrollTop -= removedHeight;
         }
-
-        if (prunedHead) this.topObserver?.observe(this.topSentinelRef.nativeElement);
 
         this.windowChange.emit(next);
         this.loadingMore = false;
@@ -192,21 +195,27 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         let next = MonthScrollEngine.prependWeeks(this.window, LOAD_BATCH_WEEKS, this.events);
         const addedHeight = LOAD_BATCH_WEEKS * this.rowHeight;
 
-        let prunedTail = false;
         if (next.weeks.length > MAX_LOADED_WEEKS) {
-            next = MonthScrollEngine.pruneTail(next, PRUNE_TARGET_WEEKS);
-            prunedTail = true;
-        }
+            const root = this.scrollContainerRef.nativeElement;
 
-        if (prunedTail) this.bottomObserver?.unobserve(this.bottomSentinelRef.nativeElement);
+            // Symmetric bound: rows must be kept from the front at least far
+            // enough to still cover the viewport's bottom edge once the
+            // prepend's scrollTop compensation below is applied — otherwise
+            // pruning the tail could discard rows still on screen.
+            const scrollTopAfterCompensation = root.scrollTop + addedHeight;
+            const minKeep = Math.ceil((scrollTopAfterCompensation + root.clientHeight) / this.rowHeight);
+            const keepCount = Math.max(PRUNE_TARGET_WEEKS, minKeep);
+
+            if (next.weeks.length > keepCount) {
+                next = MonthScrollEngine.pruneTail(next, keepCount);
+            }
+        }
 
         this.window = next;
         this.cdr.detectChanges();
 
         const root = this.scrollContainerRef.nativeElement;
         root.scrollTop += addedHeight;
-
-        if (prunedTail) this.bottomObserver?.observe(this.bottomSentinelRef.nativeElement);
 
         this.windowChange.emit(next);
         this.loadingMore = false;
