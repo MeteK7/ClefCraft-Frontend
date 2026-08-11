@@ -85,9 +85,6 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     @ViewChild('topSentinel', { static: true }) topSentinelRef!: ElementRef<HTMLDivElement>;
     @ViewChild('bottomSentinel', { static: true }) bottomSentinelRef!: ElementRef<HTMLDivElement>;
 
-    /** Measured height of the sticky header. Row 0 starts at this offset now that
-     *  the header lives inside the scroll container (required for alignment —
-     *  see month-scroll-view.component.html comment). */
     private headerHeight = 0;
 
     private topObserver?: IntersectionObserver;
@@ -98,7 +95,6 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     ngAfterViewInit(): void {
         this.headerHeight = this.stickyHeaderRef.nativeElement.offsetHeight;
 
-        // Land on today's week BEFORE wiring up the observers.
         this.scrollToInitialPosition();
         this.setupObservers();
     }
@@ -158,17 +154,7 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
         let targetScrollTop = scrollTopBefore;
         if (next.weeks.length > MAX_LOADED_WEEKS) {
-            // It's not enough for the compensated scrollTop to stay
-            // non-negative — it must stay outside the top sentinel's own
-            // trigger margin (the same LOAD_TRIGGER_MARGIN that governs when
-            // onNearTop fires), or the prune would land exactly inside the
-            // zone that immediately wakes the opposite loader: a real,
-            // correctly-detected crossing, not a false one, but one we
-            // triggered on ourselves by pruning right up to the edge. The
-            // sentinel's own document position is fixed at headerHeight
-            // (verified live — it doesn't move when rows are pruned/appended,
-            // since it isn't part of the *ngFor), so the margin is anchored
-            // there, not at scrollTop 0.
+
             const maxSafeRemovable = Math.max(
                 0,
                 Math.floor((scrollTopBefore - this.headerHeight - LOAD_TRIGGER_MARGIN) / this.rowHeight),
@@ -184,16 +170,6 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         this.window = next;
         this.cdr.detectChanges();
 
-        // Absolute assignment, not a relative -=: pruning shrinks
-        // scrollHeight, and the browser clamps scrollTop to the new valid
-        // range the instant that shrink is applied during detectChanges()
-        // above — before this line would otherwise run. A relative
-        // decrement then applies on top of that already-clamped value,
-        // silently double-subtracting (verified live: a compensation
-        // computed from scrollTop=3500 landed at 1883 before this write even
-        // ran, because pruning alone had already clamped it there). Writing
-        // the absolute target computed from the pre-mutation scrollTop makes
-        // whatever the browser already did irrelevant.
         if (targetScrollTop !== scrollTopBefore) {
             root.scrollTop = targetScrollTop;
         }
@@ -217,10 +193,7 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         const targetScrollTop = scrollTopBefore + addedHeight;
 
         if (next.weeks.length > MAX_LOADED_WEEKS) {
-            // Symmetric bound: rows must be kept from the front far enough
-            // that the bottom sentinel stays outside its own trigger margin
-            // once the prepend's scrollTop compensation below is applied —
-            // same reasoning as the head-prune bound above, mirrored.
+
             const minKeep = Math.ceil(
                 (targetScrollTop + root.clientHeight + LOAD_TRIGGER_MARGIN - this.headerHeight) / this.rowHeight,
             );
@@ -234,9 +207,6 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         this.window = next;
         this.cdr.detectChanges();
 
-        // Absolute assignment, computed from the pre-mutation scrollTop, for
-        // the same reason as onNearBottom above — immune to whatever the
-        // browser already clamped scrollTop to during detectChanges().
         root.scrollTop = targetScrollTop;
 
         this.windowChange.emit(next);
@@ -254,12 +224,6 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     private scrollToTargetDate(date: Date): void {
         const idx = MonthScrollEngine.findWeekIndexForDate(this.window, date);
         if (idx === -1) return;
-
-        // Instant, not smooth: an animated scroll here would take several
-        // frames to complete, and if it crosses a sentinel's trigger margin
-        // mid-flight, onNearTop()/onNearBottom() would fire and write to
-        // scrollTop directly — interrupting the animation and producing a
-        // visible snap. An instant jump has no window for that race.
         const root = this.scrollContainerRef.nativeElement;
         root.scrollTop = idx * this.rowHeight;
         this.updateVisibleMonthLabel();
@@ -267,16 +231,23 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
     private updateVisibleMonthLabel(): void {
         const root = this.scrollContainerRef.nativeElement;
-        const idx = Math.round(root.scrollTop / this.rowHeight);
-        const row = this.window.weeks[Math.max(0, Math.min(this.window.weeks.length - 1, idx))];
-        if (!row) return;
+        const startIdx = Math.max(0, Math.floor(root.scrollTop / this.rowHeight));
+        const endIdx = Math.min(
+            this.window.weeks.length - 1,
+            Math.ceil((root.scrollTop + root.clientHeight) / this.rowHeight) - 1,
+        );
+        const visibleRows = this.window.weeks.slice(startIdx, endIdx + 1);
+        if (visibleRows.length === 0) return;
 
-        const dominant = MonthScrollEngine.getDominantMonthForRow(row);
-        const key = `${dominant.year}-${dominant.month}`;
+        const dominant = MonthScrollEngine.getDominantMonthForVisibleRows(visibleRows);
+        this.emitVisibleMonth(dominant.year, dominant.month);
+    }
 
+    private emitVisibleMonth(year: number, month: number): void {
+        const key = `${year}-${month}`;
         if (key !== this.lastEmittedMonth) {
             this.lastEmittedMonth = key;
-            this.visibleMonthChange.emit(dominant);
+            this.visibleMonthChange.emit({ year, month });
         }
     }
 
