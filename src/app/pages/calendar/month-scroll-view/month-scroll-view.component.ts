@@ -151,32 +151,52 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         const newLastWeekStart = this.addWeeks(this.window.weeks[this.window.weeks.length - 1].dates[0], LOAD_BATCH_WEEKS);
         this.needMoreEvents.emit({ start: this.window.loadedEnd, end: DateUtils.addDays(newLastWeekStart, 7) });
 
+        const root = this.scrollContainerRef.nativeElement;
+        const scrollTopBefore = root.scrollTop;
+
         let next = MonthScrollEngine.appendWeeks(this.window, LOAD_BATCH_WEEKS, this.events);
 
-        let removedHeight = 0;
-        let prunedHead = false;
+        let targetScrollTop = scrollTopBefore;
         if (next.weeks.length > MAX_LOADED_WEEKS) {
-            const removedCount = next.weeks.length - PRUNE_TARGET_WEEKS;
-            removedHeight = removedCount * this.rowHeight;
-            next = MonthScrollEngine.pruneHead(next, PRUNE_TARGET_WEEKS);
-            prunedHead = true;
-        }
+            // It's not enough for the compensated scrollTop to stay
+            // non-negative — it must stay outside the top sentinel's own
+            // trigger margin (the same LOAD_TRIGGER_MARGIN that governs when
+            // onNearTop fires), or the prune would land exactly inside the
+            // zone that immediately wakes the opposite loader: a real,
+            // correctly-detected crossing, not a false one, but one we
+            // triggered on ourselves by pruning right up to the edge. The
+            // sentinel's own document position is fixed at headerHeight
+            // (verified live — it doesn't move when rows are pruned/appended,
+            // since it isn't part of the *ngFor), so the margin is anchored
+            // there, not at scrollTop 0.
+            const maxSafeRemovable = Math.max(
+                0,
+                Math.floor((scrollTopBefore - this.headerHeight - LOAD_TRIGGER_MARGIN) / this.rowHeight),
+            );
+            const removedCount = Math.min(next.weeks.length - PRUNE_TARGET_WEEKS, maxSafeRemovable);
 
-        // Unobserve/re-observe brackets the mutation so the top sentinel's
-        // intersection is (re)computed fresh against the already-settled,
-        // post-compensation layout — instead of possibly firing mid-mutation
-        // against a transient (DOM-shrunk-but-not-yet-scroll-compensated) state.
-        if (prunedHead) this.topObserver?.unobserve(this.topSentinelRef.nativeElement);
+            if (removedCount > 0) {
+                next = MonthScrollEngine.pruneHead(next, next.weeks.length - removedCount);
+                targetScrollTop = scrollTopBefore - removedCount * this.rowHeight;
+            }
+        }
 
         this.window = next;
         this.cdr.detectChanges();
 
-        if (removedHeight > 0) {
-            const root = this.scrollContainerRef.nativeElement;
-            root.scrollTop -= removedHeight;
+        // Absolute assignment, not a relative -=: pruning shrinks
+        // scrollHeight, and the browser clamps scrollTop to the new valid
+        // range the instant that shrink is applied during detectChanges()
+        // above — before this line would otherwise run. A relative
+        // decrement then applies on top of that already-clamped value,
+        // silently double-subtracting (verified live: a compensation
+        // computed from scrollTop=3500 landed at 1883 before this write even
+        // ran, because pruning alone had already clamped it there). Writing
+        // the absolute target computed from the pre-mutation scrollTop makes
+        // whatever the browser already did irrelevant.
+        if (targetScrollTop !== scrollTopBefore) {
+            root.scrollTop = targetScrollTop;
         }
-
-        if (prunedHead) this.topObserver?.observe(this.topSentinelRef.nativeElement);
 
         this.windowChange.emit(next);
         this.loadingMore = false;
@@ -189,24 +209,35 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         const newFirstWeekStart = this.addWeeks(this.window.weeks[0].dates[0], -LOAD_BATCH_WEEKS);
         this.needMoreEvents.emit({ start: newFirstWeekStart, end: this.window.loadedStart });
 
+        const root = this.scrollContainerRef.nativeElement;
+        const scrollTopBefore = root.scrollTop;
+
         let next = MonthScrollEngine.prependWeeks(this.window, LOAD_BATCH_WEEKS, this.events);
         const addedHeight = LOAD_BATCH_WEEKS * this.rowHeight;
+        const targetScrollTop = scrollTopBefore + addedHeight;
 
-        let prunedTail = false;
         if (next.weeks.length > MAX_LOADED_WEEKS) {
-            next = MonthScrollEngine.pruneTail(next, PRUNE_TARGET_WEEKS);
-            prunedTail = true;
-        }
+            // Symmetric bound: rows must be kept from the front far enough
+            // that the bottom sentinel stays outside its own trigger margin
+            // once the prepend's scrollTop compensation below is applied —
+            // same reasoning as the head-prune bound above, mirrored.
+            const minKeep = Math.ceil(
+                (targetScrollTop + root.clientHeight + LOAD_TRIGGER_MARGIN - this.headerHeight) / this.rowHeight,
+            );
+            const keepCount = Math.max(PRUNE_TARGET_WEEKS, minKeep);
 
-        if (prunedTail) this.bottomObserver?.unobserve(this.bottomSentinelRef.nativeElement);
+            if (next.weeks.length > keepCount) {
+                next = MonthScrollEngine.pruneTail(next, keepCount);
+            }
+        }
 
         this.window = next;
         this.cdr.detectChanges();
 
-        const root = this.scrollContainerRef.nativeElement;
-        root.scrollTop += addedHeight;
-
-        if (prunedTail) this.bottomObserver?.observe(this.bottomSentinelRef.nativeElement);
+        // Absolute assignment, computed from the pre-mutation scrollTop, for
+        // the same reason as onNearBottom above — immune to whatever the
+        // browser already clamped scrollTop to during detectChanges().
+        root.scrollTop = targetScrollTop;
 
         this.windowChange.emit(next);
         this.loadingMore = false;
