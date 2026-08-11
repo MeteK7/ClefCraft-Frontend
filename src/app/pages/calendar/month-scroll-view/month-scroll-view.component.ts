@@ -151,34 +151,51 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         const newLastWeekStart = this.addWeeks(this.window.weeks[this.window.weeks.length - 1].dates[0], LOAD_BATCH_WEEKS);
         this.needMoreEvents.emit({ start: this.window.loadedEnd, end: DateUtils.addDays(newLastWeekStart, 7) });
 
+        const root = this.scrollContainerRef.nativeElement;
+        const scrollTopBefore = root.scrollTop;
+
         let next = MonthScrollEngine.appendWeeks(this.window, LOAD_BATCH_WEEKS, this.events);
 
-        let removedHeight = 0;
+        let targetScrollTop = scrollTopBefore;
         if (next.weeks.length > MAX_LOADED_WEEKS) {
-            const root = this.scrollContainerRef.nativeElement;
-
-            // Rows above the viewport's top edge are the only ones safe to
-            // discard from the head — anything closer would need scrollTop
-            // to go negative to stay compensated, which clamps to 0 and
-            // lands inside the top sentinel's own trigger margin, spuriously
-            // signalling "the user scrolled to the top." Bounding removal by
-            // how far the user has actually scrolled keeps the compensation
-            // representable and prevents that false signal at the source.
-            const maxSafeRemovable = Math.floor(root.scrollTop / this.rowHeight);
+            // It's not enough for the compensated scrollTop to stay
+            // non-negative — it must stay outside the top sentinel's own
+            // trigger margin (the same LOAD_TRIGGER_MARGIN that governs when
+            // onNearTop fires), or the prune would land exactly inside the
+            // zone that immediately wakes the opposite loader: a real,
+            // correctly-detected crossing, not a false one, but one we
+            // triggered on ourselves by pruning right up to the edge. The
+            // sentinel's own document position is fixed at headerHeight
+            // (verified live — it doesn't move when rows are pruned/appended,
+            // since it isn't part of the *ngFor), so the margin is anchored
+            // there, not at scrollTop 0.
+            const maxSafeRemovable = Math.max(
+                0,
+                Math.floor((scrollTopBefore - this.headerHeight - LOAD_TRIGGER_MARGIN) / this.rowHeight),
+            );
             const removedCount = Math.min(next.weeks.length - PRUNE_TARGET_WEEKS, maxSafeRemovable);
 
             if (removedCount > 0) {
-                removedHeight = removedCount * this.rowHeight;
                 next = MonthScrollEngine.pruneHead(next, next.weeks.length - removedCount);
+                targetScrollTop = scrollTopBefore - removedCount * this.rowHeight;
             }
         }
 
         this.window = next;
         this.cdr.detectChanges();
 
-        if (removedHeight > 0) {
-            const root = this.scrollContainerRef.nativeElement;
-            root.scrollTop -= removedHeight;
+        // Absolute assignment, not a relative -=: pruning shrinks
+        // scrollHeight, and the browser clamps scrollTop to the new valid
+        // range the instant that shrink is applied during detectChanges()
+        // above — before this line would otherwise run. A relative
+        // decrement then applies on top of that already-clamped value,
+        // silently double-subtracting (verified live: a compensation
+        // computed from scrollTop=3500 landed at 1883 before this write even
+        // ran, because pruning alone had already clamped it there). Writing
+        // the absolute target computed from the pre-mutation scrollTop makes
+        // whatever the browser already did irrelevant.
+        if (targetScrollTop !== scrollTopBefore) {
+            root.scrollTop = targetScrollTop;
         }
 
         this.windowChange.emit(next);
@@ -192,18 +209,21 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         const newFirstWeekStart = this.addWeeks(this.window.weeks[0].dates[0], -LOAD_BATCH_WEEKS);
         this.needMoreEvents.emit({ start: newFirstWeekStart, end: this.window.loadedStart });
 
+        const root = this.scrollContainerRef.nativeElement;
+        const scrollTopBefore = root.scrollTop;
+
         let next = MonthScrollEngine.prependWeeks(this.window, LOAD_BATCH_WEEKS, this.events);
         const addedHeight = LOAD_BATCH_WEEKS * this.rowHeight;
+        const targetScrollTop = scrollTopBefore + addedHeight;
 
         if (next.weeks.length > MAX_LOADED_WEEKS) {
-            const root = this.scrollContainerRef.nativeElement;
-
-            // Symmetric bound: rows must be kept from the front at least far
-            // enough to still cover the viewport's bottom edge once the
-            // prepend's scrollTop compensation below is applied — otherwise
-            // pruning the tail could discard rows still on screen.
-            const scrollTopAfterCompensation = root.scrollTop + addedHeight;
-            const minKeep = Math.ceil((scrollTopAfterCompensation + root.clientHeight) / this.rowHeight);
+            // Symmetric bound: rows must be kept from the front far enough
+            // that the bottom sentinel stays outside its own trigger margin
+            // once the prepend's scrollTop compensation below is applied —
+            // same reasoning as the head-prune bound above, mirrored.
+            const minKeep = Math.ceil(
+                (targetScrollTop + root.clientHeight + LOAD_TRIGGER_MARGIN - this.headerHeight) / this.rowHeight,
+            );
             const keepCount = Math.max(PRUNE_TARGET_WEEKS, minKeep);
 
             if (next.weeks.length > keepCount) {
@@ -214,8 +234,10 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         this.window = next;
         this.cdr.detectChanges();
 
-        const root = this.scrollContainerRef.nativeElement;
-        root.scrollTop += addedHeight;
+        // Absolute assignment, computed from the pre-mutation scrollTop, for
+        // the same reason as onNearBottom above — immune to whatever the
+        // browser already clamped scrollTop to during detectChanges().
+        root.scrollTop = targetScrollTop;
 
         this.windowChange.emit(next);
         this.loadingMore = false;
