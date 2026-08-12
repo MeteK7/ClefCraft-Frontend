@@ -295,17 +295,27 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   openItemInNewTab(): void {
-    if (!this.data.item?.id) return;
+    const item = this.data.item;
 
-    const urlTree = this.router.createUrlTree([
-      // Use the route that normally displays this item.
-      '/items',
-      this.data.item.id
-    ]);
+    if (!item?.id) return;
 
-    const url = this.router.serializeUrl(urlTree);
+    const queryParams: Record<string, any> = {
+      openItemId: item.id
+    };
 
-    window.open(url, '_blank', 'noopener,noreferrer');
+    if (item.boardId != null) {
+      queryParams['boardId'] = item.boardId;
+    }
+
+    const urlTree = this.router.createUrlTree(['/board'], {
+      queryParams
+    });
+
+    window.open(
+      this.router.serializeUrl(urlTree),
+      '_blank',
+      'noopener,noreferrer'
+    );
   }
 
   get selectedTags(): Tag[] {
