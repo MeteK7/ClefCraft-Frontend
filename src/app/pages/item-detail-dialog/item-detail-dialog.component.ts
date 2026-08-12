@@ -65,7 +65,7 @@ export class ItemDetailDialogComponent implements OnInit {
   hasUnsavedChanges = false;
   originalItemData!: Item;
   isGraphMaximized = false;
-  
+
   /** True while creating a brand new item rather than editing an existing one. */
   get isNewItem(): boolean {
     return !this.data.item?.id;
@@ -292,6 +292,20 @@ export class ItemDetailDialogComponent implements OnInit {
 
     console.log("Open related item", itemId);
 
+  }
+
+  openItemInNewTab(): void {
+    if (!this.data.item?.id) return;
+
+    const urlTree = this.router.createUrlTree([
+      // Use the route that normally displays this item.
+      '/items',
+      this.data.item.id
+    ]);
+
+    const url = this.router.serializeUrl(urlTree);
+
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   get selectedTags(): Tag[] {
