@@ -1,1 +1,95 @@
-<p>home works!</p>
+<div class="home">
+  <h2 class="greeting">Welcome back{{ userFullName ? ', ' + userFullName : '' }}</h2>
+
+  <div class="panels">
+    <section class="panel">
+      <div class="panel-header">
+        <h3>Upcoming</h3>
+        <a routerLink="/calendar" class="view-all">View calendar</a>
+      </div>
+
+      <div class="panel-body">
+        <p class="loading" *ngIf="isLoadingEvents">Loading…</p>
+
+        <p class="empty" *ngIf="!isLoadingEvents && upcomingEvents.length === 0">
+          Nothing on your calendar in the next 7 days.
+        </p>
+
+        <ul class="row-list" *ngIf="!isLoadingEvents && upcomingEvents.length > 0">
+          <li
+            class="row"
+            *ngFor="let event of upcomingEvents"
+            (click)="openEvent(event)"
+          >
+            <mat-icon class="row-icon">event</mat-icon>
+            <div class="row-main">
+              <span class="row-title">{{ event.subject }}</span>
+              <span class="row-meta">
+                {{ event.startDate | date: 'EEE, MMM d · h:mm a' }}
+                <ng-container *ngIf="event.eventTypeName"> · {{ event.eventTypeName }}</ng-container>
+              </span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h3>Due &amp; Overdue</h3>
+        <a routerLink="/board" class="view-all">View board</a>
+      </div>
+
+      <div class="panel-body">
+        <p class="loading" *ngIf="isLoadingDueItems">Loading…</p>
+
+        <p class="empty" *ngIf="!isLoadingDueItems && dueItems.length === 0">
+          No items due soon.
+        </p>
+
+        <ul class="row-list" *ngIf="!isLoadingDueItems && dueItems.length > 0">
+          <li
+            class="row"
+            *ngFor="let entry of dueItems"
+            (click)="openItem(entry)"
+          >
+            <mat-icon class="row-icon" [class.overdue-icon]="isOverdue(entry.item.dueDate)">
+              {{ isOverdue(entry.item.dueDate) ? 'error' : 'assignment' }}
+            </mat-icon>
+            <div class="row-main">
+              <span class="row-title">{{ entry.item.title }}</span>
+              <span class="row-meta">
+                {{ entry.boardTitle }} ·
+                <span [class.overdue-text]="isOverdue(entry.item.dueDate)">
+                  Due {{ entry.item.dueDate | date: 'MMM d' }}
+                </span>
+              </span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <section class="tools">
+    <h3>Tools</h3>
+    <div class="tool-tiles">
+      <a routerLink="/metronome" class="tool-tile">
+        <mat-icon>speed</mat-icon>
+        <span>Metronome</span>
+      </a>
+      <a routerLink="/tuner" class="tool-tile">
+        <mat-icon>graphic_eq</mat-icon>
+        <span>Tuner</span>
+      </a>
+      <a routerLink="/playalong" class="tool-tile">
+        <mat-icon>music_note</mat-icon>
+        <span>Playalong</span>
+      </a>
+      <a routerLink="/management" class="tool-tile" *ngIf="isAdmin">
+        <mat-icon>admin_panel_settings</mat-icon>
+        <span>Management</span>
+      </a>
+    </div>
+  </section>
+</div>

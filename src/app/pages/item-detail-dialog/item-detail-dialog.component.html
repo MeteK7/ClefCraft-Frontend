@@ -1,9 +1,18 @@
 <div class="dialog-container" [formGroup]="form">
   <div class="dialog-header">
     <div class="header-main">
-      <h2 class="dialog-title">{{ isNewItem ? 'New Item' : 'Item Details' }}</h2>
-      <span class="item-id-badge" *ngIf="data.item?.id">#{{ data.item?.id }}</span>
+      <h2 class="dialog-title">
+        {{ isNewItem ? 'New Item' : 'Item Details' }}
+      </h2>
+
+      <button *ngIf="data.item?.id" type="button" class="item-id-badge" (click)="openItemInNewTab()"
+        matTooltip="Open item #{{ data.item?.id }} in a new tab"
+        [attr.aria-label]="'Open item #' + data.item?.id + ' in a new tab'">
+        #{{ data.item?.id }}
+        <mat-icon>open_in_new</mat-icon>
+      </button>
     </div>
+
     <button mat-icon-button (click)="onCancel()" aria-label="Close dialog" type="button">
       <mat-icon>close</mat-icon>
     </button>
