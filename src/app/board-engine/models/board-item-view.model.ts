@@ -1,4 +1,4 @@
-import { Item } from './board-state.model';
+import { Item } from '../../models/board.model';
 
 /**
  * UI-ready representation of an Item.

@@ -1,4 +1,4 @@
-import { Item } from '../models/board-state.model';
+import { Item } from '../../models/board.model';
 
 export type RuleTriggerType = 'statusChanged' | 'columnChanged' | 'dueDateReached' | 'assigneeChanged';
 
