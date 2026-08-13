@@ -32,7 +32,8 @@ import { QuillModule } from 'ngx-quill';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatRadioModule } from '@angular/material/radio';
 import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
-import { RecurrenceScopeDialogComponent, RecurrenceUpdateScope } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
+import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
+import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 
