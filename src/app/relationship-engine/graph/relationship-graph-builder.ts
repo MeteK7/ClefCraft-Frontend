@@ -71,10 +71,9 @@ export class RelationshipGraphBuilder {
                     graph.nodeMap.set(node.id, node);
                 }
 
-                // in expand(), replace the alreadyLinked check:
                 const alreadyLinked = graph.edges.some(e =>
-                    (e.sourceId === itemId && e.targetId === relationship.itemId) ||
-                    (e.sourceId === relationship.itemId && e.targetId === itemId)
+                    (e.sourceId === itemId && e.targetId === relationship.itemId && e.relationType === group.relationType) ||
+                    (e.sourceId === relationship.itemId && e.targetId === itemId && e.relationType === group.relationType)
                 );
 
                 if (!alreadyLinked) {
