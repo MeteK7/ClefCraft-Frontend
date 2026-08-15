@@ -1,5 +1,5 @@
 import { EventType } from "./event-type.model";
-import { RecurrenceUpdateScope } from "../pages/recurrence-scope-dialog/recurrence-scope-dialog.component";
+import { RecurrenceUpdateScope } from "./recurrence-update-scope.model";
 import { ImportanceLevel } from "./calendar-event.model";
 
 export interface CalendarEventUI {

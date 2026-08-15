@@ -1,4 +1,4 @@
-import { Item } from '../models/board-state.model';
+import { Item } from '../../models/board.model';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 

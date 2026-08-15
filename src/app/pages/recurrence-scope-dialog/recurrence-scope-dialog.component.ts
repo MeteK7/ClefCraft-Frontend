@@ -6,12 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
-
-export type RecurrenceUpdateScope =
-  | 'this'
-  | 'thisAndFollowing'
-  | 'allPreserve'
-  | 'allOverride';
+import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
 
 type ConfirmationMode =
   | 'none'

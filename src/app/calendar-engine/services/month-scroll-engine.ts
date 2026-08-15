@@ -6,7 +6,7 @@ import { DateUtils } from '../utils/date.utils';
 
 /**
  * Pure, stateless engine for building and mutating a MonthScrollWindow.
- * Kept as static methods (same style as MonthLayoutEngine / MonthViewGenerator)
+ * Kept as static methods (same style as MonthLayoutEngine)
  * so it's trivially unit-testable without Angular DI.
  *
  * The component/service layer owns the actual MonthScrollWindow instance;
@@ -151,20 +151,26 @@ export class MonthScrollEngine {
 
   /**
    * Best-effort "which month is the user looking at" — picks the month
-   * that owns the majority of days in the row closest to `anchorDate`
-   * (typically the row nearest the top of the scroll viewport).
+   * that owns the majority of days across every row currently visible in
+   * the scroll viewport (not just the single row nearest the top). A lone
+   * boundary row (e.g. the week containing the 1st, when that week has more
+   * days in the departing month than the new one) would otherwise skew a
+   * single-row vote toward the wrong month; weighing the whole visible
+   * viewport lets the other, unambiguous rows dominate instead.
    */
-  static getDominantMonthForRow(row: MonthWeekRow): { year: number; month: number } {
+  static getDominantMonthForVisibleRows(rows: MonthWeekRow[]): { year: number; month: number } {
     const counts = new Map<string, { year: number; month: number; count: number }>();
 
-    for (const date of row.dates) {
-      const key = `${date.getFullYear()}-${date.getMonth()}`;
-      const entry = counts.get(key) ?? { year: date.getFullYear(), month: date.getMonth(), count: 0 };
-      entry.count++;
-      counts.set(key, entry);
+    for (const row of rows) {
+      for (const date of row.dates) {
+        const key = `${date.getFullYear()}-${date.getMonth()}`;
+        const entry = counts.get(key) ?? { year: date.getFullYear(), month: date.getMonth(), count: 0 };
+        entry.count++;
+        counts.set(key, entry);
+      }
     }
 
-    let best = { year: row.dates[0].getFullYear(), month: row.dates[0].getMonth(), count: -1 };
+    let best = { year: rows[0].dates[0].getFullYear(), month: rows[0].dates[0].getMonth(), count: -1 };
     for (const entry of counts.values()) {
       if (entry.count > best.count) best = entry;
     }

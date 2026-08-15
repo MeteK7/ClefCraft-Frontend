@@ -1,4 +1,4 @@
-import { Board } from './board-state.model';
+import { Board } from '../../models/board.model';
 import { BoardColumnView, toBoardColumnView } from './board-column-view.model';
 
 /**

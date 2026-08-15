@@ -1,4 +1,4 @@
-import { Item } from '../models/board-state.model';
+import { Item } from '../../models/board.model';
 import { AutomationRule, RuleAction, RuleContext, findMatchingRules } from './rule-engine';
 
 export interface AutomationResult {
@@ -12,7 +12,7 @@ export interface AutomationResult {
  * Runs all enabled automation rules against an item change and returns
  * the resulting item with rule actions applied. Does not call the API;
  * the caller is responsible for persisting the returned item via
- * BoardEngineService.updateBoardItem / switchBoardItemColumn.
+ * BoardService.updateBoardItem / switchBoardItemColumn.
  */
 export function runAutomations(rules: AutomationRule[], context: RuleContext): AutomationResult {
   const matched = findMatchingRules(rules, context);
