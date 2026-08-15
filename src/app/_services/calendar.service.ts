@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { EventType } from '../models/event-type.model';
 import { WorkHistoryEntry } from '../models/work-history.model';
+import { RecurrenceUpdateScope } from '../models/recurrence-update-scope.model';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -124,5 +125,62 @@ export class CalendarService {
       `${this.apiUrl}/series/override-all`,
       payload
     );
+  }
+
+  /** Routes a recurring-event save to the correct occurrence/series endpoint based on the chosen scope. */
+  saveOccurrence(record: any, scope: RecurrenceUpdateScope): Observable<any> {
+    const occurrenceDate = record.originalOccurrenceDate
+      ? new Date(record.originalOccurrenceDate).toISOString()
+      : new Date(record.startDate).toISOString();
+
+    const startDate = new Date(record.startDate).toISOString();
+    const endDate = new Date(record.endDate).toISOString();
+
+    switch (scope) {
+      case 'this':
+        return this.updateSingleOccurrence({
+          seriesUid: record.seriesUid,
+          occurrenceDate,
+          subject: record.subject,
+          comment: record.comment,
+          startDate,
+          endDate,
+          location: record.location,
+          eventTypeId: record.eventTypeId,
+          isCancelled: false,
+        });
+
+      case 'thisAndFollowing':
+        return this.updateFromOccurrence({
+          seriesUid: record.seriesUid,
+          occurrenceDate,
+          subject: record.subject,
+          comment: record.comment,
+          startDate,
+          endDate,
+          location: record.location,
+        });
+
+      case 'allPreserve':
+        return this.updateSeriesPreserveExceptions({
+          seriesUid: record.seriesUid,
+          subject: record.subject,
+          comment: record.comment,
+          location: record.location,
+          recurrenceRuleJson: record.recurrenceRuleJson,
+        });
+
+      case 'allOverride':
+        return this.updateSeriesOverrideAll({
+          seriesUid: record.seriesUid,
+          subject: record.subject,
+          comment: record.comment,
+          location: record.location,
+          recurrenceRuleJson: record.recurrenceRuleJson,
+        });
+
+      default:
+        throw new Error(`Unsupported recurrence scope: ${scope}`);
+    }
   }
 }

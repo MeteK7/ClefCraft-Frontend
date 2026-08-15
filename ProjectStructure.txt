@@ -21,6 +21,8 @@ C:.
 |       \---18.2.11
 |           \---ClefCraft
 |               |   .tsbuildinfo
+|               |   angular-compiler.db
+|               |   angular-compiler.db-lock
 |               |   
 |               \---vite
 |                   \---deps
@@ -147,6 +149,11 @@ C:.
 |                           rxjs_operators.js.map
 |                           _metadata.json
 |                           
++---.claude
+|       launch.json
+|       scheduled_tasks.lock
+|       settings.local.json
+|       
 +---.vscode
 |       extensions.json
 |       launch.json
@@ -154,18 +161,46 @@ C:.
 |       
 +---dist
 |   \---clef-craft
-|       |   3rdpartylicenses.txt
-|       |   
 |       \---browser
-|               chunk-2LQLQAHO.js
-|               chunk-S2OUTFHP.js
-|               chunk-WNZBFZ7M.js
-|               chunk-WWX6BADO.js
+|               app.component.css.map
+|               board-column.component.css.map
+|               board-item.component.css.map
+|               board.component.css.map
+|               calendar-dialog.component.css.map
+|               calendar.component.css.map
+|               chunk-7T5AHIIV.js
+|               chunk-7T5AHIIV.js.map
+|               chunk-IBCT6SPL.js
+|               chunk-IBCT6SPL.js.map
+|               chunk-N6ESDQJH.js
+|               chunk-N6ESDQJH.js.map
+|               chunk-THBN2YSY.js
+|               chunk-THBN2YSY.js.map
 |               favicon.ico
+|               footer.component.css.map
+|               header.component.css.map
+|               home.component.css.map
 |               index.html
-|               main-CDW5LMPY.js
-|               polyfills-FFHMD2TL.js
-|               styles-3GW5UFN6.css
+|               item-detail-dialog.component.css.map
+|               item-detail-sidebar.component.css.map
+|               live-reminder-toast.component.css.map
+|               login.component.css.map
+|               main.js
+|               main.js.map
+|               management.component.css.map
+|               month-scroll-view.component.css.map
+|               polyfills.js
+|               polyfills.js.map
+|               protected-workspace.component.css.map
+|               recurrence-scope-dialog.component.css.map
+|               registration.component.css.map
+|               relationship-card.component.css.map
+|               relationship-dialog.component.css.map
+|               relationship-graph.component.css.map
+|               relationship-hub.component.css.map
+|               sidebar.component.css.map
+|               styles.css
+|               styles.css.map
 |               
 +---node_modules
 |   |   .package-lock.json
@@ -37147,9 +37182,14 @@ C:.
     |   |   |       agenda-view.generator.ts
     |   |   |       day-view.generator.ts
     |   |   |       month-view.generator.ts
+    |   |   |       week-row.generator.ts
     |   |   |       week-view.generator.ts
     |   |   |       
     |   |   +---interactions
+    |   |   |   +---create
+    |   |   |   |       create-session.model.ts
+    |   |   |   |       event-create-engine.ts
+    |   |   |   |       
     |   |   |   +---drag
     |   |   |   |       drag-position.util.ts
     |   |   |   |       drag-session.model.ts
@@ -37173,6 +37213,7 @@ C:.
     |   |   |       calendar-layout-item.model.ts
     |   |   |       day-view.model.ts
     |   |   |       engine-event.model.ts
+    |   |   |       month-scroll-window.model.ts
     |   |   |       month-view.model.ts
     |   |   |       week-view.model.ts
     |   |   |       
@@ -37184,6 +37225,7 @@ C:.
     |   |   |       
     |   |   +---services
     |   |   |       calendar-engine.service.ts
+    |   |   |       month-scroll-engine.ts
     |   |   |       
     |   |   +---types
     |   |   |       calendar-view-model.type.ts
@@ -37281,11 +37323,16 @@ C:.
     |   |   |       board-item.component.ts
     |   |   |       
     |   |   +---calendar
-    |   |   |       calendar.component.css
-    |   |   |       calendar.component.html
-    |   |   |       calendar.component.spec.ts
-    |   |   |       calendar.component.ts
-    |   |   |       
+    |   |   |   |   calendar.component.css
+    |   |   |   |   calendar.component.html
+    |   |   |   |   calendar.component.spec.ts
+    |   |   |   |   calendar.component.ts
+    |   |   |   |   
+    |   |   |   \---month-scroll-view
+    |   |   |           month-scroll-view.component.css
+    |   |   |           month-scroll-view.component.html
+    |   |   |           month-scroll-view.component.ts
+    |   |   |           
     |   |   +---calendar-dialog
     |   |   |       calendar-dialog.component.css
     |   |   |       calendar-dialog.component.html
@@ -37363,7 +37410,6 @@ C:.
     |   |           
     |   +---relationship-engine
     |   |   +---analytics
-    |   |   |       critical-path-engine.ts
     |   |   |       cycle-detector.ts
     |   |   |       dependency-engine.ts
     |   |   |       impact-engine.ts

@@ -1,10 +1,10 @@
 import { Component, ElementRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BoardColumnComponent } from '../board-column/board-column.component';
-import { BoardEngineService } from '../../board-engine/services/board-engine.service';
+import { BoardService } from '../../_services/board.service';
 import { BoardView, toBoardView } from '../../board-engine/models/board-view.model';
-import { BoardItemView } from '../../board-engine/models/board-item-view.model';
-import { Board, Item } from '../../board-engine/models/board-state.model';
+import { BoardItemView, toBoardItemView } from '../../board-engine/models/board-item-view.model';
+import { Board, Item } from '../../models/board.model';
 import {
   applyItemCreated,
   applyItemUpdate,
@@ -49,7 +49,7 @@ export class BoardComponent implements OnInit {
   };
 
   constructor(private readonly router: Router,
-    private boardEngine: BoardEngineService,
+    private boardEngine: BoardService,
     private dialog: MatDialog,
     private eRef: ElementRef,
     private route: ActivatedRoute
@@ -194,7 +194,7 @@ export class BoardComponent implements OnInit {
       return;
     }
 
-    const view: BoardItemView = toViewItem(item);
+    const view: BoardItemView = toBoardItemView(item);
     this.boardView = applyItemCreated(this.boardView, view);
   }
 
@@ -255,7 +255,7 @@ export class BoardComponent implements OnInit {
       return;
     }
 
-    const view: BoardItemView = 'raw' in updatedItem ? updatedItem : toViewItem(updatedItem);
+    const view: BoardItemView = 'raw' in updatedItem ? updatedItem : toBoardItemView(updatedItem);
 
     // Defensive: if the dialog/API response omits identity fields like
     // boardId/boardColumnId (since they aren't part of the edit form),
@@ -279,30 +279,4 @@ export class BoardComponent implements OnInit {
   toggleViewMode(): void {
     this.selection = toggleViewModeState(this.selection);
   }
-}
-
-/** Minimal mapper for items returned from the create dialog */
-function toViewItem(item: Item): BoardItemView {
-  const first = item.assigneeFirstName ?? '';
-  const last = item.assigneeLastName ?? '';
-  return {
-    raw: item,
-    id: item.id,
-    title: item.title,
-    description: item.description,
-    statusId: item.statusId,
-    priorityId: item.priorityId,
-    priorityName: item.priority?.name,
-    boardId: item.boardId,
-    boardColumnId: item.boardColumnId,
-    tags: item.tags ?? [],
-    assigneeId: item.assigneeId,
-    fullName: `${first} ${last}`.trim(),
-    initials: (first.charAt(0) + last.charAt(0)).toUpperCase(),
-    dueDate: item.dueDate,
-    estimatedTime: item.estimatedTime,
-    timeSpent: item.timeSpent,
-    createdByFullName: item.createdByFullName,
-    modifiedByFullName: item.modifiedByFullName,
-  };
 }

@@ -8,8 +8,6 @@ import {
   RecurrenceException,
   RecurrenceExceptionEngine,
 } from '../recurrence/recurrence-exception-engine';
-import { MonthViewGenerator } from '../generators/month-view.generator';
-import { MonthViewModel } from '../models/month-view.model';
 import { WeekViewGenerator } from '../generators/week-view.generator';
 import { WeekViewModel } from '../models/week-view.model';
 import { DayViewGenerator } from '../generators/day-view.generator';
@@ -95,10 +93,6 @@ export class CalendarEngineService {
     return MonthLayoutEngine.generate(events, week);
   }
 
-  buildMonthView(selectedDate: Date, events: CalendarEventUI[]): MonthViewModel {
-    return MonthViewGenerator.generate(selectedDate, events);
-  }
-
   buildWeekView(selectedDate: Date, events: CalendarEventUI[]): WeekViewModel {
     return WeekViewGenerator.generate(selectedDate, events);
   }
@@ -123,7 +117,7 @@ export class CalendarEngineService {
   initializeMonthScrollWindow(
     centerDate: Date,
     events: CalendarEventUI[],
-    weeksBefore: number = 4,
+    weeksBefore: number = 6,
     weeksAfter: number = 8,
   ): MonthScrollWindow {
     return MonthScrollEngine.initialize(centerDate, events, weeksBefore, weeksAfter);

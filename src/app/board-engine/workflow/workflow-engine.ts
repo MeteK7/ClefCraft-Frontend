@@ -1,10 +1,10 @@
-import { Item, Status } from '../models/board-state.model';
+import { Item, Status } from '../../models/board.model';
 import { StatusTransitionMap, getAvailableNextStatuses } from './status-validation-engine';
 import { applyColumnTransition, applyStatusTransition, TransitionResult } from './transition-engine';
 
 /**
  * High-level workflow operations combining validation + transition logic.
- * Intended to be called from BoardEngineService / components instead of
+ * Intended to be called from BoardService / components instead of
  * working with transition-engine and status-validation-engine directly.
  */
 export class WorkflowEngine {

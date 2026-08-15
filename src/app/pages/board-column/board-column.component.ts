@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { BoardItemComponent } from '../board-item/board-item.component';
-import { BoardEngineService } from '../../board-engine/services/board-engine.service';
+import { BoardService } from '../../_services/board.service';
 import { BoardColumnView } from '../../board-engine/models/board-column-view.model';
 import { BoardItemView } from '../../board-engine/models/board-item-view.model';
 import { handleBoardDrop } from '../../board-engine/interactions/board-drop-engine';
@@ -19,7 +19,7 @@ export class BoardColumnComponent {
   @Input() allColumnIds!: string[];
   @Output() itemClicked = new EventEmitter<BoardItemView>();
 
-  constructor(private boardEngine: BoardEngineService) { }
+  constructor(private boardEngine: BoardService) { }
 
   get connectedTo(): string[] {
     return this.allColumnIds;
