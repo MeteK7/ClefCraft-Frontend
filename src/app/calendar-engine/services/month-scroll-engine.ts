@@ -6,7 +6,7 @@ import { DateUtils } from '../utils/date.utils';
 
 /**
  * Pure, stateless engine for building and mutating a MonthScrollWindow.
- * Kept as static methods (same style as MonthLayoutEngine / MonthViewGenerator)
+ * Kept as static methods (same style as MonthLayoutEngine)
  * so it's trivially unit-testable without Angular DI.
  *
  * The component/service layer owns the actual MonthScrollWindow instance;

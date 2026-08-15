@@ -6,9 +6,3 @@ export interface MonthWeekRow {
   dates: Date[];
   layoutItems: MonthLayoutItem<CalendarEventUI>[];
 }
-
-export interface MonthViewModel {
-  viewStartDate: Date;
-  viewEndDate: Date;
-  weeks: MonthWeekRow[];
-}

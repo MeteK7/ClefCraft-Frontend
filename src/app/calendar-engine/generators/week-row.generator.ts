@@ -6,9 +6,8 @@ import { DateUtils } from '../utils/date.utils';
 /**
  * Builds a single week row (Mon..Sun) for the month view.
  *
- * Extracted from MonthViewGenerator so it can be reused as the atomic
- * unit of both the legacy fixed 6-week grid AND the infinite-scroll
- * month view (MonthScrollEngine appends/prepends one row at a time).
+ * Reused as the atomic unit of the infinite-scroll month view
+ * (MonthScrollEngine appends/prepends one row at a time).
  *
  * This file intentionally has ZERO knowledge of "month boundaries" —
  * it only knows how to build the row that starts on a given Monday.

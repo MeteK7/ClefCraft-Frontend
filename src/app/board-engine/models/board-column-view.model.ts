@@ -1,4 +1,4 @@
-import { Column } from './board-state.model';
+import { Column } from '../../models/board.model';
 import { BoardItemView, toBoardItemView } from './board-item-view.model';
 
 /**

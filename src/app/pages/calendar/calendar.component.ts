@@ -13,10 +13,8 @@ import { map, Observable, Subject, Subscription, switchMap } from 'rxjs';
 
 import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
 import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
-import {
-  RecurrenceScopeDialogComponent,
-  RecurrenceUpdateScope,
-} from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
+import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
+import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
 
 import { CalendarService } from '../../_services/calendar.service';
 import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
@@ -629,7 +627,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     dialogRef.componentInstance.onSave.subscribe(({ record, attachments }: SavePayload) => {
       const scope = record.recurrenceScope as RecurrenceUpdateScope | null;
       const save$ = record.isRecurring && record.id && scope
-        ? this.buildOccurrenceSave(record, scope)
+        ? this.calendarService.saveOccurrence(record, scope)
         : record.id
           ? this.calendarService.updateEvent(record.id, record)
           : this.calendarService.saveEvent(record);
@@ -658,62 +656,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // ==========================================================================
   // RECURRENCE SAVE HELPERS
   // ==========================================================================
-
-  private buildOccurrenceSave(record: any, scope: RecurrenceUpdateScope): Observable<any> {
-    const occurrenceDate = record.originalOccurrenceDate
-      ? new Date(record.originalOccurrenceDate).toISOString()
-      : new Date(record.startDate).toISOString();
-
-    const startDate = new Date(record.startDate).toISOString();
-    const endDate = new Date(record.endDate).toISOString();
-
-    switch (scope) {
-      case 'this':
-        return this.calendarService.updateSingleOccurrence({
-          seriesUid: record.seriesUid,
-          occurrenceDate,
-          subject: record.subject,
-          comment: record.comment,
-          startDate,
-          endDate,
-          location: record.location,
-          eventTypeId: record.eventTypeId,
-          isCancelled: false,
-        });
-
-      case 'thisAndFollowing':
-        return this.calendarService.updateFromOccurrence({
-          seriesUid: record.seriesUid,
-          occurrenceDate,
-          subject: record.subject,
-          comment: record.comment,
-          startDate,
-          endDate,
-          location: record.location,
-        });
-
-      case 'allPreserve':
-        return this.calendarService.updateSeriesPreserveExceptions({
-          seriesUid: record.seriesUid,
-          subject: record.subject,
-          comment: record.comment,
-          location: record.location,
-          recurrenceRuleJson: record.recurrenceRuleJson,
-        });
-
-      case 'allOverride':
-        return this.calendarService.updateSeriesOverrideAll({
-          seriesUid: record.seriesUid,
-          subject: record.subject,
-          comment: record.comment,
-          location: record.location,
-          recurrenceRuleJson: record.recurrenceRuleJson,
-        });
-
-      default:
-        throw new Error(`Unsupported recurrence scope: ${scope}`);
-    }
-  }
 
   private executeSave(
     save$: Observable<any>,

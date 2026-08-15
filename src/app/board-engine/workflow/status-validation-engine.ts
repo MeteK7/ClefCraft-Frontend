@@ -1,4 +1,4 @@
-import { Status } from '../models/board-state.model';
+import { Status } from '../../models/board.model';
 
 /**
  * Describes which status transitions are allowed.

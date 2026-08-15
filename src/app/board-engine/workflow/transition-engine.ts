@@ -1,4 +1,4 @@
-import { Item } from '../models/board-state.model';
+import { Item } from '../../models/board.model';
 import { StatusTransitionMap, isTransitionAllowed } from './status-validation-engine';
 
 export interface TransitionResult {
