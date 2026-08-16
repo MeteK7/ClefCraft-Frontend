@@ -5,6 +5,8 @@ import {
     EventEmitter,
     ElementRef,
     ViewChild,
+    ViewChildren,
+    QueryList,
     AfterViewInit,
     OnDestroy,
     OnChanges,
@@ -79,7 +81,9 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
     // Drag ghost/placeholder state — single-cell hover tracking (see onDragMoved).
     hoveredColumnIndex: number | null = null;
+    hoveredLane: number | null = null;
     dragPreviewWidth: number | null = null;
+    private draggedItem: MonthLayoutItem<CalendarEventUI> | null = null;
 
     // "+more" popover state — self-contained since it's purely a month-view concern.
     selectedMoreEvents: CalendarEventUI[] = [];
@@ -89,6 +93,7 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     @ViewChild('stickyHeader', { static: true }) stickyHeaderRef!: ElementRef<HTMLDivElement>;
     @ViewChild('topSentinel', { static: true }) topSentinelRef!: ElementRef<HTMLDivElement>;
     @ViewChild('bottomSentinel', { static: true }) bottomSentinelRef!: ElementRef<HTMLDivElement>;
+    @ViewChildren('weekRow') weekRowRefs!: QueryList<ElementRef<HTMLDivElement>>;
 
     private headerHeight = 0;
 
@@ -298,17 +303,38 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
         const rect = this.scrollContainerRef.nativeElement.getBoundingClientRect();
         this.dragPreviewWidth = rect.width / 7;
         this.hoveredColumnIndex = item.columnStart - 1;
+        this.hoveredLane = item.lane;
+        this.draggedItem = item;
         this.monthDragStart.emit(item.event);
     }
 
     onDragMoved(cdkEvent: CdkDragMove<CalendarEventUI>): void {
         const rect = this.scrollContainerRef.nativeElement.getBoundingClientRect();
         this.hoveredColumnIndex = MonthLayoutEngine.columnIndexFromPointerX(rect.left, rect.width, cdkEvent.pointerPosition.x);
+
+        const hoveredRow = this.findRowAtPointerY(cdkEvent.pointerPosition.y);
+        const targetColumn = this.hoveredColumnIndex + 1;
+        const rawLane = hoveredRow && this.draggedItem
+            ? MonthLayoutEngine.laneForColumn(hoveredRow.layoutItems, targetColumn, this.draggedItem.event.id)
+            : this.draggedItem?.lane ?? 0;
+        this.hoveredLane = Math.min(rawLane, this.maxVisibleLanes - 1);
+    }
+
+    private findRowAtPointerY(pointerY: number): MonthWeekRow | null {
+        const rows = this.weekRowRefs?.toArray() ?? [];
+        const weeks = this.window.weeks;
+        for (let i = 0; i < rows.length && i < weeks.length; i++) {
+            const r = rows[i].nativeElement.getBoundingClientRect();
+            if (pointerY >= r.top && pointerY < r.bottom) return weeks[i];
+        }
+        return null;
     }
 
     onDragEnded(): void {
         this.hoveredColumnIndex = null;
+        this.hoveredLane = null;
         this.dragPreviewWidth = null;
+        this.draggedItem = null;
         this.monthDragEnd.emit();
     }
 

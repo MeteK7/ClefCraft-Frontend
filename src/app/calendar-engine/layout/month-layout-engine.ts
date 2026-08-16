@@ -133,6 +133,28 @@ export class MonthLayoutEngine {
     return Math.max(1, diff + 1);
   }
 
+  /**
+   * Smallest lane (0-based) not occupied by another item at the given 1-based
+   * column — used to place a drag placeholder in a free slot within the
+   * hovered day, excluding the item currently being dragged.
+   */
+  static laneForColumn<T extends MonthEventInput>(
+    layoutItems: MonthLayoutItem<T>[],
+    targetColumn: number,
+    excludeEventId: number | undefined
+  ): number {
+    let lane = 0;
+    while (layoutItems.some(item =>
+      item.event.id !== excludeEventId &&
+      item.lane === lane &&
+      item.columnStart <= targetColumn &&
+      targetColumn <= item.columnStart + item.columnSpan - 1
+    )) {
+      lane++;
+    }
+    return lane;
+  }
+
   // Private helpers
 
   private static eventsOverlap<T extends MonthEventInput>(

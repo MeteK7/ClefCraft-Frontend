@@ -13,7 +13,7 @@
     <!-- Top sentinel: entering viewport triggers prepend of earlier weeks -->
     <div #topSentinel class="scroll-sentinel scroll-sentinel-top"></div>
 
-    <div *ngFor="let row of window.weeks; trackBy: trackByWeekStart" class="calendar-week"
+    <div #weekRow *ngFor="let row of window.weeks; trackBy: trackByWeekStart" class="calendar-week"
       [style.height.px]="rowHeight">
 
       <!-- Day grid -->
@@ -60,7 +60,7 @@
               <ng-template cdkDragPlaceholder>
                 <div class="event span-event drag-placeholder" [class.linked]="item.event.linkedBoardItemId"
                   [style.grid-column]="(hoveredColumnIndex ?? (item.columnStart - 1)) + 1 + ' / span 1'"
-                  [style.grid-row]="item.lane + 1"
+                  [style.grid-row]="(hoveredLane ?? item.lane) + 1"
                   [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}">
                   <span class="event-title">{{ item.event.subject }}</span>
                 </div>
