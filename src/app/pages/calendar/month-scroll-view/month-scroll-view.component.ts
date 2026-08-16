@@ -15,13 +15,14 @@ import {
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragDrop, CdkDragMove } from '@angular/cdk/drag-drop';
 
 import { MonthScrollWindow } from '../../../calendar-engine/models/month-scroll-window.model';
 import { MonthWeekRow } from '../../../calendar-engine/models/month-view.model';
 import { CalendarEventUI } from '../../../models/calendar-event.model-ui';
 import { DateUtils } from '../../../calendar-engine/utils/date.utils';
 import { MonthScrollEngine } from '../../../calendar-engine/services/month-scroll-engine';
+import { MonthLayoutEngine, MonthLayoutItem } from '../../../calendar-engine/layout/month-layout-engine';
 
 /** Fixed pixel height of one week row. Must match --month-row-height in CSS. */
 export const MONTH_ROW_HEIGHT = 140;
@@ -75,6 +76,10 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
     readonly rowHeight = MONTH_ROW_HEIGHT;
     readonly alwaysAllowDrop = (): boolean => true;
+
+    // Drag ghost/placeholder state — single-cell hover tracking (see onDragMoved).
+    hoveredColumnIndex: number | null = null;
+    dragPreviewWidth: number | null = null;
 
     // "+more" popover state — self-contained since it's purely a month-view concern.
     selectedMoreEvents: CalendarEventUI[] = [];
@@ -279,6 +284,32 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
     trackByWeekStart(_index: number, row: MonthWeekRow): number {
         return row.weekStartTimestamp;
+    }
+
+    // ==========================================================================
+    // DRAG & DROP: single-cell ghost/placeholder tracking
+    // ==========================================================================
+    // Column position is measured against `scrollContainerRef`, not the
+    // currently-hovered week's own drop list, because every week row shares
+    // identical horizontal grid geometry — see the plan's correction note on
+    // why `CdkDrag.dropContainer` cannot be used for this from `cdkDragMoved`.
+
+    onDragStarted(item: MonthLayoutItem<CalendarEventUI>): void {
+        const rect = this.scrollContainerRef.nativeElement.getBoundingClientRect();
+        this.dragPreviewWidth = rect.width / 7;
+        this.hoveredColumnIndex = item.columnStart - 1;
+        this.monthDragStart.emit(item.event);
+    }
+
+    onDragMoved(cdkEvent: CdkDragMove<CalendarEventUI>): void {
+        const rect = this.scrollContainerRef.nativeElement.getBoundingClientRect();
+        this.hoveredColumnIndex = MonthLayoutEngine.columnIndexFromPointerX(rect.left, rect.width, cdkEvent.pointerPosition.x);
+    }
+
+    onDragEnded(): void {
+        this.hoveredColumnIndex = null;
+        this.dragPreviewWidth = null;
+        this.monthDragEnd.emit();
     }
 
     onMoreClicked(date: Date, row: MonthWeekRow, mouseEvent: MouseEvent): void {

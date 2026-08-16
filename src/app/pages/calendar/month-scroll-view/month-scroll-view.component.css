@@ -164,6 +164,11 @@
   border-left: 3px solid var(--accent);
 }
 
+.drag-placeholder {
+  opacity: 0.5;
+  outline: 1px dashed var(--primary);
+}
+
 .linked-icon {
   margin-right: 4px;
   font-size: 16px;

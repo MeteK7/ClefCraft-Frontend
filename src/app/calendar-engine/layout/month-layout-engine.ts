@@ -91,6 +91,16 @@ export class MonthLayoutEngine {
   // Geometry helpers (also useful in component)
 
   /**
+   * 0-based day-column index (0–6) under a given pointer X position, given
+   * the bounding rect of a full-width, 7-column week row.
+   */
+  static columnIndexFromPointerX(containerLeft: number, containerWidth: number, pointerX: number): number {
+    const relativeX = pointerX - containerLeft;
+    const columnWidth = containerWidth / 7;
+    return Math.max(0, Math.min(6, Math.floor(relativeX / columnWidth)));
+  }
+
+  /**
    * 1-based column index of an event's effective start within the week.
    * Clamped so events starting before the week begin at column 1.
    */
