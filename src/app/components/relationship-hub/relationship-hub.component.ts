@@ -68,6 +68,9 @@ export class RelationshipHubComponent implements OnInit {
     viewMode: 'list' | 'graph' = 'list';
     readonly RelationshipType = RelationshipType;
 
+    /** Remembered expand/collapse choices for currently-populated relationship types. */
+    private expandedState = new Map<RelationshipType, boolean>();
+
     constructor(
         private boardService: BoardService,
         private dialog: MatDialog,
@@ -86,9 +89,23 @@ export class RelationshipHubComponent implements OnInit {
             .getRelationships(this.itemId)
             .subscribe({
                 next: hub => {
-                    hub.groups.forEach(g => {
-                        g.expanded = g.items.length > 0;
-                    });
+                    const populated = hub.groups.filter(g => g.items.length > 0);
+                    const populatedTypes = new Set(populated.map(g => g.relationType));
+
+                    for (const type of Array.from(this.expandedState.keys())) {
+                        if (!populatedTypes.has(type)) this.expandedState.delete(type);
+                    }
+
+                    const defaultExpanded = populated.length <= 2;
+
+                    for (const group of populated) {
+                        group.expanded = this.expandedState.has(group.relationType)
+                            ? this.expandedState.get(group.relationType)!
+                            : defaultExpanded;
+                        this.expandedState.set(group.relationType, group.expanded);
+                    }
+
+                    hub.groups = populated;
                     this.hub = hub;
                     this.loading = false;
                     this.cdr.detectChanges();
@@ -141,5 +158,10 @@ export class RelationshipHubComponent implements OnInit {
 
         return group.relationType;
 
+    }
+
+    onGroupExpandedChange(group: RelationshipGroup, expanded: boolean): void {
+        group.expanded = expanded;
+        this.expandedState.set(group.relationType, expanded);
     }
 }

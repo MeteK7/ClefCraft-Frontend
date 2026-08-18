@@ -51,40 +51,47 @@
             (maximizedChange)="graphMaximizedChange.emit($event)">
         </app-relationship-graph>
 
-        <mat-accordion *ngIf="viewMode==='list'">
+        <ng-container *ngIf="viewMode==='list'">
 
-            <mat-expansion-panel *ngFor="let group of hub.groups; trackBy: trackGroup" [expanded]="group.expanded">
+            <div class="empty-state" *ngIf="hub.groups.length===0">
 
-                <mat-expansion-panel-header>
+                <mat-icon>link_off</mat-icon>
 
-                    <mat-panel-title>
+                <p>No relationships yet.</p>
 
-                        {{group.name}}
+            </div>
 
-                    </mat-panel-title>
+            <mat-accordion *ngIf="hub.groups.length>0" multi="true">
 
-                    <mat-panel-description>
+                <mat-expansion-panel *ngFor="let group of hub.groups; trackBy: trackGroup" [expanded]="group.expanded"
+                    (expandedChange)="onGroupExpandedChange(group, $event)">
 
-                        {{group.items.length}}
+                    <mat-expansion-panel-header>
 
-                    </mat-panel-description>
+                        <mat-panel-title>
 
-                </mat-expansion-panel-header>
+                            {{group.name}}
 
-                <app-relationship-card *ngFor="let relationship of group.items" [relationship]="relationship"
-                    (open)="open($event)" (delete)="deleteRelationship($event)">
+                        </mat-panel-title>
 
-                </app-relationship-card>
+                        <mat-panel-description>
 
-                <div class="empty" *ngIf="group.items.length===0">
+                            {{group.items.length}}
 
-                    No relationships.
+                        </mat-panel-description>
 
-                </div>
+                    </mat-expansion-panel-header>
 
-            </mat-expansion-panel>
+                    <app-relationship-card *ngFor="let relationship of group.items" [relationship]="relationship"
+                        (open)="open($event)" (delete)="deleteRelationship($event)">
 
-        </mat-accordion>
+                    </app-relationship-card>
+
+                </mat-expansion-panel>
+
+            </mat-accordion>
+
+        </ng-container>
 
     </ng-container>
 </div>
