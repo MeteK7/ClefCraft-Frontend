@@ -225,15 +225,6 @@
                             {{truncateTitle(node.title)}}
                         </div>
 
-                        <div class="score-container">
-                            <div class="score-label">
-                                Relationship Score <strong>{{node.relationshipScore}}</strong>
-                            </div>
-                            <div class="score-bar">
-                                <div class="score-fill" [style.width.%]="node.relationshipScore"></div>
-                            </div>
-                        </div>
-
                         <div class="node-footer">
                             <div class="footer-left">
                                 <span class="metric-value">{{node.inDegree || 0}}</span>
