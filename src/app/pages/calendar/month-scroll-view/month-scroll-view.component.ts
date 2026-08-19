@@ -5,6 +5,8 @@ import {
     EventEmitter,
     ElementRef,
     ViewChild,
+    ViewChildren,
+    QueryList,
     AfterViewInit,
     OnDestroy,
     OnChanges,
@@ -15,13 +17,14 @@ import {
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragDrop, CdkDragMove } from '@angular/cdk/drag-drop';
 
 import { MonthScrollWindow } from '../../../calendar-engine/models/month-scroll-window.model';
 import { MonthWeekRow } from '../../../calendar-engine/models/month-view.model';
 import { CalendarEventUI } from '../../../models/calendar-event.model-ui';
 import { DateUtils } from '../../../calendar-engine/utils/date.utils';
 import { MonthScrollEngine } from '../../../calendar-engine/services/month-scroll-engine';
+import { MonthLayoutEngine, MonthLayoutItem } from '../../../calendar-engine/layout/month-layout-engine';
 
 /** Fixed pixel height of one week row. Must match --month-row-height in CSS. */
 export const MONTH_ROW_HEIGHT = 140;
@@ -76,6 +79,12 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     readonly rowHeight = MONTH_ROW_HEIGHT;
     readonly alwaysAllowDrop = (): boolean => true;
 
+    // Drag ghost/placeholder state — single-cell hover tracking (see onDragMoved).
+    hoveredColumnIndex: number | null = null;
+    hoveredLane: number | null = null;
+    dragPreviewWidth: number | null = null;
+    private draggedItem: MonthLayoutItem<CalendarEventUI> | null = null;
+
     // "+more" popover state — self-contained since it's purely a month-view concern.
     selectedMoreEvents: CalendarEventUI[] = [];
     selectedMoreDate: Date | null = null;
@@ -84,6 +93,7 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
     @ViewChild('stickyHeader', { static: true }) stickyHeaderRef!: ElementRef<HTMLDivElement>;
     @ViewChild('topSentinel', { static: true }) topSentinelRef!: ElementRef<HTMLDivElement>;
     @ViewChild('bottomSentinel', { static: true }) bottomSentinelRef!: ElementRef<HTMLDivElement>;
+    @ViewChildren('weekRow') weekRowRefs!: QueryList<ElementRef<HTMLDivElement>>;
 
     private headerHeight = 0;
 
@@ -231,15 +241,18 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
     private updateVisibleMonthLabel(): void {
         const root = this.scrollContainerRef.nativeElement;
-        const startIdx = Math.max(0, Math.floor(root.scrollTop / this.rowHeight));
-        const endIdx = Math.min(
-            this.window.weeks.length - 1,
-            Math.ceil((root.scrollTop + root.clientHeight) / this.rowHeight) - 1,
-        );
-        const visibleRows = this.window.weeks.slice(startIdx, endIdx + 1);
-        if (visibleRows.length === 0) return;
 
-        const dominant = MonthScrollEngine.getDominantMonthForVisibleRows(visibleRows);
+        // The sticky weekday header is a normal-flow child ahead of the week
+        // rows, so its height pushes rows down in the document by exactly as
+        // much as the sticky positioning re-covers at the top of the
+        // viewport — the two cancel out. That makes scrollTop / rowHeight
+        // already the index of the row whose top edge is the first one not
+        // covered by the header, with no header-height correction needed.
+        const topIdx = Math.max(0, Math.floor(root.scrollTop / this.rowHeight));
+        const anchorRow = this.window.weeks[Math.min(topIdx, this.window.weeks.length - 1)];
+        if (!anchorRow) return;
+
+        const dominant = MonthScrollEngine.getDominantMonthForVisibleRows([anchorRow]);
         this.emitVisibleMonth(dominant.year, dominant.month);
     }
 
@@ -279,6 +292,53 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
     trackByWeekStart(_index: number, row: MonthWeekRow): number {
         return row.weekStartTimestamp;
+    }
+
+    // ==========================================================================
+    // DRAG & DROP: single-cell ghost/placeholder tracking
+    // ==========================================================================
+    // Column position is measured against `scrollContainerRef`, not the
+    // currently-hovered week's own drop list, because every week row shares
+    // identical horizontal grid geometry — see the plan's correction note on
+    // why `CdkDrag.dropContainer` cannot be used for this from `cdkDragMoved`.
+
+    onDragStarted(item: MonthLayoutItem<CalendarEventUI>): void {
+        const rect = this.scrollContainerRef.nativeElement.getBoundingClientRect();
+        this.dragPreviewWidth = rect.width / 7;
+        this.hoveredColumnIndex = item.columnStart - 1;
+        this.hoveredLane = item.lane;
+        this.draggedItem = item;
+        this.monthDragStart.emit(item.event);
+    }
+
+    onDragMoved(cdkEvent: CdkDragMove<CalendarEventUI>): void {
+        const rect = this.scrollContainerRef.nativeElement.getBoundingClientRect();
+        this.hoveredColumnIndex = MonthLayoutEngine.columnIndexFromPointerX(rect.left, rect.width, cdkEvent.pointerPosition.x);
+
+        const hoveredRow = this.findRowAtPointerY(cdkEvent.pointerPosition.y);
+        const targetColumn = this.hoveredColumnIndex + 1;
+        const rawLane = hoveredRow && this.draggedItem
+            ? MonthLayoutEngine.laneForColumn(hoveredRow.layoutItems, targetColumn, this.draggedItem.event.id)
+            : this.draggedItem?.lane ?? 0;
+        this.hoveredLane = Math.min(rawLane, this.maxVisibleLanes - 1);
+    }
+
+    private findRowAtPointerY(pointerY: number): MonthWeekRow | null {
+        const rows = this.weekRowRefs?.toArray() ?? [];
+        const weeks = this.window.weeks;
+        for (let i = 0; i < rows.length && i < weeks.length; i++) {
+            const r = rows[i].nativeElement.getBoundingClientRect();
+            if (pointerY >= r.top && pointerY < r.bottom) return weeks[i];
+        }
+        return null;
+    }
+
+    onDragEnded(): void {
+        this.hoveredColumnIndex = null;
+        this.hoveredLane = null;
+        this.dragPreviewWidth = null;
+        this.draggedItem = null;
+        this.monthDragEnd.emit();
     }
 
     onMoreClicked(date: Date, row: MonthWeekRow, mouseEvent: MouseEvent): void {

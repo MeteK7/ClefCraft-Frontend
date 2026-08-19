@@ -24,6 +24,7 @@ import { CalendarEngineService } from '../../calendar-engine/services/calendar-e
 import { DateUtils } from '../../calendar-engine/utils/date.utils';
 import { CalendarViewMode } from '../../calendar-engine/types/calendar-view-model.type';
 import { MonthWeekRow } from '../../calendar-engine/models/month-view.model';
+import { MonthLayoutEngine } from '../../calendar-engine/layout/month-layout-engine';
 import { MonthScrollWindow } from '../../calendar-engine/models/month-scroll-window.model';
 import { WeekViewModel } from '../../calendar-engine/models/week-view.model';
 import { DayViewModel } from '../../calendar-engine/models/day-view.model';
@@ -940,10 +941,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
     const overlay = event.container.element.nativeElement as HTMLElement;
     const rect = overlay.getBoundingClientRect();
-    const relativeX = event.dropPoint.x - rect.left;
-    const columnWidth = rect.width / 7;
-
-    const columnIndex = Math.max(0, Math.min(6, Math.floor(relativeX / columnWidth)));
+    const columnIndex = MonthLayoutEngine.columnIndexFromPointerX(rect.left, rect.width, event.dropPoint.x);
 
     const targetDate = new Date(targetRowData.dates[columnIndex]);
 

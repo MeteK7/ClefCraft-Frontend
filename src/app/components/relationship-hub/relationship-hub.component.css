@@ -27,9 +27,22 @@ app-relationship-graph {
     color:var(--text-secondary);
 }
 
-.empty{
+.empty-state{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:40px 12px;
     color:var(--text-secondary);
-    padding:12px;
+    text-align:center;
+}
+
+.empty-state mat-icon{
+    font-size:32px;
+    width:32px;
+    height:32px;
+    opacity:0.6;
 }
 
 .view-selector{
