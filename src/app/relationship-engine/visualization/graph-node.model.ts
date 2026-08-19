@@ -45,7 +45,6 @@ export interface GraphNode {
     inDegree: number;
     outDegree: number;
     impactScore: number;
-    relationshipScore: number;
 
     metadata: Record<string, unknown>;
 }
@@ -105,7 +104,6 @@ export class GraphNodeFactory {
             inDegree: 0,
             outDegree: 0,
             impactScore: 0,
-            relationshipScore: 0,
 
             metadata: {}
         };

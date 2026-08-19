@@ -29,7 +29,6 @@ import { RelationshipGraphBuilder } from '../../relationship-engine/graph/relati
 import { GraphLayoutEngine } from '../../relationship-engine/graph/graph-layout-engine';
 
 import { CycleDetector, RelationshipCycle } from '../../relationship-engine/analytics/cycle-detector';
-import { RelationshipScoreEngine } from '../../relationship-engine/analytics/relationship-score-engine';
 import { ImpactEngine, ImpactAnalysis } from '../../relationship-engine/analytics/impact-engine';
 
 import { GraphNode } from '../../relationship-engine/visualization/graph-node.model';
@@ -425,7 +424,6 @@ export class RelationshipGraphComponent implements OnChanges {
         private readonly builder: RelationshipGraphBuilder,
         private readonly layoutEngine: GraphLayoutEngine,
         private readonly cycleDetector: CycleDetector,
-        private readonly scoreEngine: RelationshipScoreEngine,
         private readonly impactEngine: ImpactEngine,
         private readonly boardService: BoardService,
         private readonly router: Router
@@ -531,8 +529,7 @@ export class RelationshipGraphComponent implements OnChanges {
     }
 
     visualRadius(node: GraphNode): number {
-        const bump = (node.relationshipScore / 100) * 16;
-        return Math.max(node.width, node.height) / 2 + bump;
+        return Math.max(node.width, node.height) / 2;
     }
 
     truncateTitle(title: string): string {
@@ -1057,19 +1054,13 @@ export class RelationshipGraphComponent implements OnChanges {
     private applyAnalytics(graph: GraphViewModel): void {
 
         const cyclesMarked = this.cycleDetector.markCycles(graph);
-        const scores = this.scoreEngine.calculateScores(graph);
 
-        const scoreMap = new Map(scores.map(s => [s.nodeId, s]));
         const cyclicEdgeMap = new Map(cyclesMarked.edges.map(e => [e.id, e.cyclic]));
 
-        graph.nodes = cyclesMarked.nodes.map(node => {
-            const score = scoreMap.get(node.id);
-            return {
-                ...node,
-                critical: this.isPriorityCritical(node.priority),
-                relationshipScore: score?.score ?? node.relationshipScore
-            };
-        });
+        graph.nodes = cyclesMarked.nodes.map(node => ({
+            ...node,
+            critical: this.isPriorityCritical(node.priority)
+        }));
 
         const criticalNodeIds = new Set(graph.nodes.filter(n => n.critical).map(n => n.id));
 
