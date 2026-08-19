@@ -150,13 +150,11 @@ export class MonthScrollEngine {
   }
 
   /**
-   * Best-effort "which month is the user looking at" — picks the month
-   * that owns the majority of days across every row currently visible in
-   * the scroll viewport (not just the single row nearest the top). A lone
-   * boundary row (e.g. the week containing the 1st, when that week has more
-   * days in the departing month than the new one) would otherwise skew a
-   * single-row vote toward the wrong month; weighing the whole visible
-   * viewport lets the other, unambiguous rows dominate instead.
+   * Picks the month that owns the majority of days across the given rows.
+   * Callers typically pass a single anchor row (e.g. whichever week row is
+   * topmost in the scroll viewport) so a boundary row — one containing the
+   * 1st, with days split across two months — resolves to whichever month
+   * has more days in that row.
    */
   static getDominantMonthForVisibleRows(rows: MonthWeekRow[]): { year: number; month: number } {
     const counts = new Map<string, { year: number; month: number; count: number }>();

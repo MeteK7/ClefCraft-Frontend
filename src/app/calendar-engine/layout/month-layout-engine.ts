@@ -91,6 +91,16 @@ export class MonthLayoutEngine {
   // Geometry helpers (also useful in component)
 
   /**
+   * 0-based day-column index (0–6) under a given pointer X position, given
+   * the bounding rect of a full-width, 7-column week row.
+   */
+  static columnIndexFromPointerX(containerLeft: number, containerWidth: number, pointerX: number): number {
+    const relativeX = pointerX - containerLeft;
+    const columnWidth = containerWidth / 7;
+    return Math.max(0, Math.min(6, Math.floor(relativeX / columnWidth)));
+  }
+
+  /**
    * 1-based column index of an event's effective start within the week.
    * Clamped so events starting before the week begin at column 1.
    */
@@ -121,6 +131,28 @@ export class MonthLayoutEngine {
 
     const diff = Math.floor((effectiveEnd - effectiveStart) / this.DAY_MS);
     return Math.max(1, diff + 1);
+  }
+
+  /**
+   * Smallest lane (0-based) not occupied by another item at the given 1-based
+   * column — used to place a drag placeholder in a free slot within the
+   * hovered day, excluding the item currently being dragged.
+   */
+  static laneForColumn<T extends MonthEventInput>(
+    layoutItems: MonthLayoutItem<T>[],
+    targetColumn: number,
+    excludeEventId: number | undefined
+  ): number {
+    let lane = 0;
+    while (layoutItems.some(item =>
+      item.event.id !== excludeEventId &&
+      item.lane === lane &&
+      item.columnStart <= targetColumn &&
+      targetColumn <= item.columnStart + item.columnSpan - 1
+    )) {
+      lane++;
+    }
+    return lane;
   }
 
   // Private helpers
