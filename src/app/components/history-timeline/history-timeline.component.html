@@ -1,0 +1,32 @@
+<div class="history-timeline" *ngIf="!loading && !error && entries.length; else stateBlock">
+  <div class="history-entry-card" *ngFor="let entry of entries">
+    <div class="history-meta">
+      <mat-icon class="history-icon">person</mat-icon>
+      <span class="history-name">{{ entry.actorFullName }}</span>
+      <span class="history-action">{{ actionLabel(entry.actionType) }}</span>
+      <span class="history-date">{{ localTimestamp(entry) | date: 'medium' }}</span>
+    </div>
+    <ul class="history-changes" *ngIf="entry.changes.length">
+      <li *ngFor="let change of entry.changes">
+        <strong>{{ change.fieldName }}</strong>:
+        <ng-container *ngIf="change.oldValue !== null">{{ change.oldValue }} &rarr;</ng-container>
+        {{ change.newValue }}
+      </li>
+    </ul>
+  </div>
+
+  <button mat-button *ngIf="hasMore" (click)="loadMore()">Load more</button>
+</div>
+
+<ng-template #stateBlock>
+  <p *ngIf="loading">Loading...</p>
+
+  <p class="empty-state-text" *ngIf="!loading && !error && !entries.length">
+    No activity recorded yet.
+  </p>
+
+  <div *ngIf="error">
+    <p class="empty-state-text">Failed to load activity history.</p>
+    <button mat-button (click)="retry()">Retry</button>
+  </div>
+</ng-template>
