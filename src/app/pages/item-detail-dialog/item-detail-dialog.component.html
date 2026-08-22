@@ -185,7 +185,14 @@
             Item History
           </h4>
 
-          <app-history-timeline [entityType]="'BoardItem'" [entityId]="item.id"></app-history-timeline>
+          <app-history-timeline
+            [entityType]="'BoardItem'"
+            [entityId]="item.id"
+            [assignees]="assignees"
+            [columns]="columns"
+            [statuses]="statuses"
+            [priorities]="priorities">
+          </app-history-timeline>
         </div>
       </div>
     </mat-tab>
