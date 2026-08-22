@@ -185,17 +185,7 @@
             Item History
           </h4>
 
-          <div class="history-placeholder">
-            <mat-icon class="placeholder-icon">construction</mat-icon>
-
-            <h3>History is under construction</h3>
-
-            <p>
-              This tab will display a complete audit trail of this item, including
-              field changes, status updates, assignments, edits, and other user
-              activities.
-            </p>
-          </div>
+          <app-history-timeline [entityType]="'BoardItem'" [entityId]="item.id"></app-history-timeline>
         </div>
       </div>
     </mat-tab>
