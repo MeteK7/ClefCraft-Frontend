@@ -5,7 +5,10 @@ import { MatButtonModule } from '@angular/material/button';
 
 import { ActivityService } from '../../_services/activity.service';
 import { ActivityLogEntry } from '../../models/activity-log.model';
+import { Assignee } from '../../models/assignee.model';
+import { Column, Priority, Status } from '../../models/board.model';
 import { toLocalDate } from '../../shared/utils/date.utils';
+import { DisplayActivityChange, toDisplayChange } from '../../shared/utils/activity-log-display.utils';
 
 @Component({
   selector: 'app-history-timeline',
@@ -17,6 +20,11 @@ import { toLocalDate } from '../../shared/utils/date.utils';
 export class HistoryTimelineComponent implements OnInit {
   @Input() entityType!: string;
   @Input() entityId!: number;
+
+  @Input() assignees: Assignee[] = [];
+  @Input() columns: Column[] = [];
+  @Input() statuses: Status[] = [];
+  @Input() priorities: Priority[] = [];
 
   entries: ActivityLogEntry[] = [];
   loading = false;
@@ -62,6 +70,15 @@ export class HistoryTimelineComponent implements OnInit {
 
   localTimestamp(entry: ActivityLogEntry): Date {
     return toLocalDate(entry.timestamp);
+  }
+
+  displayChanges(entry: ActivityLogEntry): DisplayActivityChange[] {
+    return entry.changes.map(change => toDisplayChange(change, {
+      assignees: this.assignees,
+      columns: this.columns,
+      statuses: this.statuses,
+      priorities: this.priorities
+    }));
   }
 
   actionLabel(actionType: string): string {

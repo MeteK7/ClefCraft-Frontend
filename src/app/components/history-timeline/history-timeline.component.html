@@ -7,10 +7,10 @@
       <span class="history-date">{{ localTimestamp(entry) | date: 'medium' }}</span>
     </div>
     <ul class="history-changes" *ngIf="entry.changes.length">
-      <li *ngFor="let change of entry.changes">
-        <strong>{{ change.fieldName }}</strong>:
-        <ng-container *ngIf="change.oldValue !== null">{{ change.oldValue }} &rarr;</ng-container>
-        {{ change.newValue }}
+      <li *ngFor="let change of displayChanges(entry)">
+        <strong>{{ change.label }}</strong>:
+        <ng-container *ngIf="change.oldDisplay !== null">{{ change.oldDisplay }} &rarr;</ng-container>
+        {{ change.newDisplay }}
       </li>
     </ul>
   </div>

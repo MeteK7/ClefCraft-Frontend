@@ -92,6 +92,8 @@ describe('HistoryTimelineComponent', () => {
       changes: [{ fieldName: 'StatusId', oldValue: '2', newValue: '3' }]
     });
 
+    component.statuses = [{ id: 2, name: 'To Do' }, { id: 3, name: 'In Progress' }];
+
     activityServiceSpy.getActivityLog.and.returnValue(of(pagedResult([updated, created])));
 
     fixture.detectChanges();
@@ -99,9 +101,26 @@ describe('HistoryTimelineComponent', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('created this item');
     expect(text).toContain('updated this item');
-    expect(text).toContain('StatusId');
+    expect(text).toContain('Status');
+    expect(text).toContain('To Do');
+    expect(text).toContain('In Progress');
+  });
+
+  it('resolves an unmapped field to a humanized label and raw values', () => {
+    const updated = makeEntry({
+      id: 3,
+      actionType: 'UPDATED',
+      changes: [{ fieldName: 'EstimatedTime', oldValue: '2', newValue: '4' }]
+    });
+
+    activityServiceSpy.getActivityLog.and.returnValue(of(pagedResult([updated])));
+
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Estimated Time');
     expect(text).toContain('2');
-    expect(text).toContain('3');
+    expect(text).toContain('4');
   });
 
   it('requests the next page and appends rather than replaces entries on "Load more"', () => {
