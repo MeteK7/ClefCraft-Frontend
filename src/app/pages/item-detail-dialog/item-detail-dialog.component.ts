@@ -20,6 +20,7 @@ import { CalendarService } from '../../_services/calendar.service';
 import { Assignee } from '../../models/assignee.model';
 import { UserService } from '../../_services/user.service';
 import { RelationshipHubComponent } from '../../components/relationship-hub/relationship-hub.component';
+import { HistoryTimelineComponent } from '../../components/history-timeline/history-timeline.component';
 
 export interface ItemDetailDialogData {
   /** null => dialog is in "create new item" mode */
@@ -46,7 +47,8 @@ export interface ItemDetailDialogData {
     MatDatepickerModule,
     MatNativeDateModule,
     MatRippleModule,
-    RelationshipHubComponent
+    RelationshipHubComponent,
+    HistoryTimelineComponent
   ],
   templateUrl: './item-detail-dialog.component.html',
   styleUrl: './item-detail-dialog.component.css'
