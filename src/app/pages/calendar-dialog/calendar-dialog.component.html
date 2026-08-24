@@ -352,7 +352,20 @@
 
         </div>
       </mat-tab>
-      <mat-tab label="History">History logs here...</mat-tab>
+      <mat-tab *ngIf="data?.eventData">
+        <ng-template mat-tab-label>
+          <mat-icon class="tab-icon">history</mat-icon>
+          History
+        </ng-template>
+
+        <div class="history-tab-content">
+          <app-calendar-history-timeline
+            [eventId]="baseEventId!"
+            [seriesUid]="data.eventData?.seriesUid"
+            [eventTypes]="eventTypes">
+          </app-calendar-history-timeline>
+        </div>
+      </mat-tab>
     </mat-tab-group>
   </form>
 

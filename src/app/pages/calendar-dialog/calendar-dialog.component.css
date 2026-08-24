@@ -422,6 +422,17 @@ textarea[matInput] {
   padding: 8px 4px;
 }
 
+.tab-icon {
+  margin-right: 8px;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.history-tab-content {
+  padding: 16px;
+}
+
 .recurrence-empty-state {
   display: flex;
   flex-direction: column;
