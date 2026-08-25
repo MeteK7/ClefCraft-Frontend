@@ -36,6 +36,7 @@ import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recur
 import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
+import { CalendarHistoryTimelineComponent } from '../../components/calendar-history-timeline/calendar-history-timeline.component';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -56,7 +57,8 @@ import { Router } from '@angular/router';
     NgxMatTimepickerModule,
     QuillModule,
     MatAutocompleteModule,
-    MatRadioModule
+    MatRadioModule,
+    CalendarHistoryTimelineComponent
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
