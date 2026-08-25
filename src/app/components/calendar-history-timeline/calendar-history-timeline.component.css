@@ -1,0 +1,74 @@
+/* Self-contained, mirroring history-timeline.component.css's visual language, but with a scope
+   badge since a recurring calendar event's history spans three distinct scopes (series/segment/
+   exception) that BoardItem's flat single-entity history never needs to distinguish. */
+
+.history-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-entry-card {
+  padding: 12px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.history-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.history-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+
+.history-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.history-action {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.history-scope-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+.history-date {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin-left: auto;
+}
+
+.history-changes {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.history-changes li {
+  margin-bottom: 2px;
+}
+
+.empty-state-text {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: 8px 0;
+}
