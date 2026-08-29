@@ -6,6 +6,14 @@ export interface CalendarEventUI {
   id?: number;
   baseEventId?: number;
   seriesUid?: string;
+  /**
+   * Unique per occurrence (e.g. "<seriesUid>_20260905060000"), unlike `id`
+   * which is shared by every occurrence of the same recurring series (the
+   * backend always projects Id = BaseEventId = the root event's id). Use
+   * this, not `id`, whenever identifying one specific occurrence among
+   * possibly-several loaded from the same series.
+   */
+  occurrenceKey?: string;
   subject: string;
   startDate: Date;
   endDate: Date;

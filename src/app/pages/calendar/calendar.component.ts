@@ -345,7 +345,16 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.needMoreRange$.next({ start: fetchStart, end: fetchEnd });
   }
 
-  /** Merge newly-fetched events into this.events, deduping by id (recurring occurrences already carry stable ids from the server). */
+  /**
+   * Merge newly-fetched events into this.events, deduping by occurrenceKey.
+   *
+   * `id` is NOT unique here — every occurrence of a recurring series shares
+   * the same `id` (the backend projects Id = BaseEventId for each one), so
+   * deduping by `id` would collapse all of a series' occurrences down to
+   * whichever was processed last, silently dropping the rest. `occurrenceKey`
+   * is unique per occurrence (and still stable across re-fetches of the same
+   * occurrence, so repeated merges don't grow the array).
+   */
   private mergeEvents(fetched: any[]): void {
     const normalized: CalendarEventUI[] = fetched.map(event => ({
       ...event,
@@ -353,11 +362,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
       endDate: new Date(event.endDate),
     }));
 
-    const byId = new Map<number, CalendarEventUI>();
-    for (const e of this.events) byId.set(e.id!, e);
-    for (const e of normalized) byId.set(e.id!, e);
+    const byKey = new Map<string | number, CalendarEventUI>();
+    for (const e of this.events) byKey.set(e.occurrenceKey ?? e.id!, e);
+    for (const e of normalized) byKey.set(e.occurrenceKey ?? e.id!, e);
 
-    this.events = Array.from(byId.values());
+    this.events = Array.from(byKey.values());
   }
 
   // ── Month view helpers (used by calendar.component.html's +more menu, if kept there) ──
@@ -762,6 +771,20 @@ export class CalendarComponent implements OnInit, OnDestroy {
       : EventCreateEngine.buildClickRange(session.startMinutes);
   }
 
+  /**
+   * Finds the exact occurrence a drag/resize/drop interaction started on.
+   * Matching by `occurrenceKey` (falling back to `id` only if it's missing)
+   * is required, not optional — `id` alone is shared by every occurrence of
+   * a recurring series, so a plain `find(e => e.id === target.id)` can
+   * silently resolve to the wrong occurrence when more than one from the
+   * same series is currently loaded.
+   */
+  private findEventByOccurrence(target: { id?: number; occurrenceKey?: string }): CalendarEventUI | undefined {
+    return this.events.find(e =>
+      target.occurrenceKey ? e.occurrenceKey === target.occurrenceKey : e.id === target.id,
+    );
+  }
+
   // ==========================================================================
   // DRAG (week/day time-grid views — unchanged)
   // ==========================================================================
@@ -804,7 +827,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       minuteDelta,
     );
 
-    const source = this.events.find(x => x.id === this.dragSession!.event.id);
+    const source = this.findEventByOccurrence(this.dragSession!.event);
     if (!source) return;
 
     source.startDate = updated.start;
@@ -815,7 +838,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   stopDrag = (): void => {
     if (!this.dragSession) return;
 
-    const updated = this.events.find(x => x.id === this.dragSession!.event.id);
+    const updated = this.findEventByOccurrence(this.dragSession.event);
     if (updated) this.persistEventUpdate(updated, this.dragSession.originalStart);
 
     this.dragSession = null;
@@ -867,7 +890,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       ? EventResizeEngine.resizeTop(this.resizeSession.originalStart, this.resizeSession.originalEnd, deltaY)
       : EventResizeEngine.resizeBottom(this.resizeSession.originalStart, this.resizeSession.originalEnd, deltaY);
 
-    const source = this.events.find(x => x.id === this.resizeSession!.event.id);
+    const source = this.findEventByOccurrence(this.resizeSession!.event);
     if (!source) return;
 
     source.startDate = updated.start;
@@ -878,7 +901,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   stopResize = (): void => {
     if (!this.resizeSession) return;
 
-    const updated = this.events.find(x => x.id === this.resizeSession!.event.id);
+    const updated = this.findEventByOccurrence(this.resizeSession!.event);
     if (updated) this.persistEventUpdate(updated, this.resizeSession.originalStart);
 
     this.resizeSession = null;
@@ -930,7 +953,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const dragged = event.item.data as CalendarEventUI;
     if (!dragged?.id) return;
 
-    const draggedEvent = this.events.find(e => e.id === dragged.id);
+    const draggedEvent = this.findEventByOccurrence(dragged);
     if (!draggedEvent) return;
 
     const oldStart = new Date(draggedEvent.startDate);
