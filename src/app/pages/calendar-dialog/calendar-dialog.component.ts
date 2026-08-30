@@ -212,8 +212,13 @@ export class CalendarDialogComponent implements OnInit {
       const startTime = start.toTimeString().slice(0, 5);
       const endTime = end.toTimeString().slice(0, 5);
 
+      const recurrenceFormFields = this.deserializeRecurrenceRule(
+        this.data.eventData.recurrenceRuleJson
+      );
+
       this.generalForm.patchValue({
         ...this.data.eventData,
+        ...recurrenceFormFields,
         startDate: start,
         endDate: end,
         startTime,
@@ -237,12 +242,12 @@ export class CalendarDialogComponent implements OnInit {
 
       // ── Capture original occurrence date ──────────────────────────────────
       // Store this now, before the user edits startDate, so we have a stable
-      // key to identify the occurrence on the server side.
-      const isOccurrence =
-        this.data.eventData.isRecurring &&
-        this.data.eventData.id !== this.data.eventData.baseEventId;
-
-      if (isOccurrence) {
+      // key to identify the occurrence on the server side. Every open instance
+      // of a recurring event (including its first occurrence) is an occurrence
+      // — the backend always projects Id === baseEventId for every occurrence,
+      // so that comparison can never distinguish "the base event" from "an
+      // occurrence" and must not be used here.
+      if (this.data.eventData.isRecurring) {
         this.originalOccurrenceDate = new Date(this.data.eventData.startDate);
       }
 
@@ -281,6 +286,18 @@ export class CalendarDialogComponent implements OnInit {
 
     // Setup the Proactive Time-Shift Syncing
     this.setupDateTimeInterlocking();
+
+    // Clear the sibling end-condition control whenever the user switches
+    // radio options, so a value left over from a prior selection can't
+    // silently leak into the saved recurrence rule (see executeSave()).
+    this.generalForm.get('endType')?.valueChanges.subscribe(endType => {
+      if (endType !== 'until') {
+        this.generalForm.get('recurrenceEndDate')?.setValue(null, { emitEvent: false });
+      }
+      if (endType !== 'count') {
+        this.generalForm.get('recurrenceCount')?.setValue(null, { emitEvent: false });
+      }
+    });
 
     this.allLocations = ['Istanbul', 'Ankara', 'Berlin', 'London'];
     this.generalForm.get('location')?.valueChanges.subscribe(value => {
@@ -428,6 +445,48 @@ export class CalendarDialogComponent implements OnInit {
     };
   }
 
+  /**
+   * Parses a persisted recurrence rule (backend JSON: Frequency/Interval/
+   * DaysOfWeek/EndDate/Count) back into this dialog's form-control shape.
+   * Without this, opening an existing recurring event for edit left the
+   * recurrence controls at their constructor defaults, so saving with scope
+   * "apply to all" would silently overwrite the real series rule.
+   */
+  private deserializeRecurrenceRule(recurrenceRuleJson: string | null | undefined): {
+    frequency: string;
+    interval: number;
+    daysOfWeek: number[];
+    endType: 'never' | 'until' | 'count';
+    recurrenceEndDate: Date | null;
+    recurrenceCount: number | null;
+  } {
+    const defaults = {
+      frequency: 'WEEKLY',
+      interval: 1,
+      daysOfWeek: [] as number[],
+      endType: 'never' as const,
+      recurrenceEndDate: null,
+      recurrenceCount: null
+    };
+
+    if (!recurrenceRuleJson) return defaults;
+
+    try {
+      const rule = JSON.parse(recurrenceRuleJson);
+
+      return {
+        frequency: rule.Frequency ?? defaults.frequency,
+        interval: rule.Interval ?? defaults.interval,
+        daysOfWeek: rule.DaysOfWeek ?? defaults.daysOfWeek,
+        endType: rule.EndDate ? 'until' : rule.Count ? 'count' : 'never',
+        recurrenceEndDate: rule.EndDate ? new Date(rule.EndDate) : null,
+        recurrenceCount: rule.Count ?? null
+      };
+    } catch {
+      return defaults;
+    }
+  }
+
   private normalizeTime(time: string): string {
     if (!time) return time;
 
@@ -501,6 +560,24 @@ export class CalendarDialogComponent implements OnInit {
     });
   }
 
+  /**
+   * The recurrence "end date" picker yields a Date at local midnight of the
+   * chosen day. Serialized as-is (toISOString(), implicit on JSON.stringify),
+   * that UTC instant can fall *before* that same calendar day's occurrence
+   * time in any timezone ahead of UTC (e.g. a 09:00 local event picked to
+   * end "through Sep 19" serializes to Sep 18 21:00Z in UTC+3, which is
+   * earlier than Sep 19's own 06:00Z occurrence — silently excluding the
+   * very day the user picked as the last one). Pushing to the last instant
+   * of that local day before sending makes the end date inclusive of the
+   * whole day regardless of the viewer's UTC offset.
+   */
+  private endOfLocalDay(date: Date | null): Date | null {
+    if (!date) return null;
+    const result = new Date(date);
+    result.setHours(23, 59, 59, 999);
+    return result;
+  }
+
   private combineDateAndTime(date: Date, time: string): Date {
     const result = new Date(date);
 
@@ -524,9 +601,16 @@ export class CalendarDialogComponent implements OnInit {
       return;
     }
 
-    // 1. Determine if this is an edit to a recurring series instance
+    // 1. The "which occurrences" scope dialog only makes sense when editing
+    // an event that WAS already recurring AND still IS recurring after this
+    // edit — i.e. a genuine in-series change. Turning recurrence ON for a
+    // previously plain event, or OFF for a previously recurring one, is an
+    // unambiguous whole-event action with no "scope" to choose, so both
+    // must skip the dialog and go through the plain save path below (the
+    // original `||` here incorrectly treated either transition as needing
+    // scope selection, which routed the save to the wrong endpoint).
     const isRecurringInstance =
-      this.data.eventData?.isRecurring ||
+      (this.data.eventData?.isRecurring ?? false) &&
       this.generalForm.value.isRecurring;
 
     // We check if it has an ID, meaning it's an existing event being updated, not a brand new event creation
@@ -579,8 +663,15 @@ export class CalendarDialogComponent implements OnInit {
         Frequency: this.generalForm.value.frequency,
         Interval: this.generalForm.value.interval,
         DaysOfWeek: this.generalForm.value.daysOfWeek,
-        EndDate: this.generalForm.value.recurrenceEndDate,
-        Count: this.generalForm.value.recurrenceCount
+        // Only the end condition the user actually selected is sent —
+        // leftover values from a previously-selected radio option must
+        // not silently cap (or fail to cap) the series.
+        EndDate: this.generalForm.value.endType === 'until'
+          ? this.endOfLocalDay(this.generalForm.value.recurrenceEndDate)
+          : null,
+        Count: this.generalForm.value.endType === 'count'
+          ? this.generalForm.value.recurrenceCount
+          : null
       }
       : null;
 
@@ -686,9 +777,18 @@ export class CalendarDialogComponent implements OnInit {
   }
 
   quickEnableRecurrence(frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'): void {
+    // Reset the rest of the recurrence controls too — otherwise a custom
+    // configuration abandoned earlier in this same dialog session (a
+    // different interval/days/end-condition) silently carries forward into
+    // the "quick" rule the user is now picking.
     this.generalForm.patchValue({
       isRecurring: true,
-      frequency
+      frequency,
+      interval: 1,
+      daysOfWeek: [],
+      endType: 'never',
+      recurrenceEndDate: null,
+      recurrenceCount: null
     });
   }
 }
