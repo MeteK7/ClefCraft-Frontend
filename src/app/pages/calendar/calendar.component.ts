@@ -9,7 +9,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { map, Observable, Subject, Subscription, switchMap } from 'rxjs';
+import { finalize, map, Observable, Subject, Subscription, switchMap, tap } from 'rxjs';
 
 import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
 import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
@@ -160,10 +160,19 @@ export class CalendarComponent implements OnInit, OnDestroy {
     // switchMap cancels any in-flight "need more events" request the
     // instant a newer one comes in, so a stale, late-arriving response
     // for an older range can never overwrite state set by a fresher one.
+    // This is also the single place isLoading is driven for every month
+    // events refresh (scroll-triggered *and* save-triggered — see
+    // refreshAfterSave()), rather than toggling it manually at each call
+    // site: tap() sets it true the instant a range is requested, finalize()
+    // clears it exactly once the request settles (success, error, or
+    // superseded by a newer one), so it can never leak or need a matching
+    // reset at every caller.
     this.needMoreRangeSub = this.needMoreRange$.pipe(
+      tap(() => this.isLoading = true),
       switchMap(range =>
         this.calendarService.getEvents(range.start, range.end).pipe(
           map(fetched => ({ fetched, range })),
+          finalize(() => this.isLoading = false),
         ),
       ),
     ).subscribe({
@@ -1006,15 +1015,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Routed through the same needMoreRange$ pipeline scroll-triggered
+    // loads use (see ngOnInit), rather than fetching+merging independently
+    // here: this way a save-triggered refresh shows the same loading
+    // overlay (isLoading is driven entirely by that pipeline) and can't
+    // race against a concurrent scroll-triggered one — switchMap guarantees
+    // whichever request was issued last is the one that wins.
     const fetchStart = this.monthFetchedStart ?? this.monthScrollWindow.loadedStart;
     const fetchEnd = this.monthFetchedEnd ?? this.monthScrollWindow.loadedEnd;
 
-    this.calendarService.getEvents(fetchStart, fetchEnd).subscribe({
-      next: (fetched: any[]) => {
-        this.mergeEvents(fetched);
-        this.monthScrollWindow = this.engine.recomputeAllMonthScrollWeeks(this.monthScrollWindow, this.events);
-      },
-      error: err => console.error('Error refreshing month events:', err),
-    });
+    this.needMoreRange$.next({ start: fetchStart, end: fetchEnd });
   }
 }
