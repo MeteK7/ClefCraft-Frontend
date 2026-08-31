@@ -567,7 +567,6 @@
   border-right: 1px solid var(--border);
   box-sizing: border-box;
   background: var(--surface-2);
-  padding: 4px;
 }
 
 .week-day-column-allday:last-child {
@@ -579,10 +578,29 @@
   background: var(--today-bg);
 }
 
-.all-day-events-wrapper {
-  display: flex;
-  flex-direction: column;
+/* Stacking context for the background (separators/today-highlight) and the
+   spanning event overlay: the overlay is normal-flow so its content height
+   (driven by however many lanes are needed) sets this row's height, and the
+   absolutely-positioned background stretches to match via inset:0. */
+.week-allday-body {
+  position: relative;
+}
+
+.week-allday-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.week-allday-overlay {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: minmax(22px, auto);
   gap: 3px;
+  padding: 4px;
+  box-sizing: border-box;
   min-height: 24px;
 }
 
