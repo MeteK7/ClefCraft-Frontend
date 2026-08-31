@@ -81,14 +81,21 @@
 
         <div class="week-allday-row">
           <div class="time-header-allday-label">all-day</div>
-          <div class="week-days-container">
-            <div *ngFor="let col of weekView.columns" class="week-day-column-allday" [class.today]="col.isToday">
-              <div class="all-day-events-wrapper">
-                <div *ngFor="let event of col.allDayEvents" class="all-day-pill"
-                  [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
-                  (click)="onEventClicked(event, $event)">
-                  {{ event.subject }}
-                </div>
+          <div class="week-allday-body">
+            <!-- Background: today highlight + column separators only. -->
+            <div class="week-days-container week-allday-background">
+              <div *ngFor="let col of weekView.columns" class="week-day-column-allday" [class.today]="col.isToday"></div>
+            </div>
+            <!-- Foreground: one pill per event, spanning the columns it covers
+                 (columnStart/columnSpan), instead of a separate pill per day —
+                 so a multi-day event renders as a single continuous bar. -->
+            <div class="week-allday-overlay">
+              <div *ngFor="let item of weekView.allDayLayoutItems" class="all-day-pill"
+                [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan"
+                [style.grid-row]="item.lane + 1"
+                [ngStyle]="item.event.eventColor ? {'border-left': '4px solid ' + item.event.eventColor} : {}"
+                (click)="onEventClicked(item.event, $event)">
+                {{ item.event.subject }}
               </div>
             </div>
           </div>
