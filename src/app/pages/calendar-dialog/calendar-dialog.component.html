@@ -374,9 +374,10 @@
       Please fill in all required fields before saving.
     </div>
 
-    <button mat-raised-button color="primary" (click)="handleSave()">
-      Save
+    <button mat-raised-button color="primary" [disabled]="saving" (click)="handleSave()">
+      <span class="save-btn-spinner" *ngIf="saving"></span>
+      {{ saving ? 'Saving…' : 'Save' }}
     </button>
-    <button mat-button (click)="handleCancel()">Cancel</button>
+    <button mat-button [disabled]="saving" (click)="handleCancel()">Cancel</button>
   </div>
 </div>
