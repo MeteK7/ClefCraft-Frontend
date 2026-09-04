@@ -15,6 +15,11 @@
     <p>Week {{ getWeekNumber(selectedDate) }}, day {{ getDayOfYear(selectedDate) }} of the year</p>
   </div>
 
+  <div class="sync-indicator" *ngIf="isSyncing$ | async">
+    <span class="sync-spinner"></span>
+    <span class="sync-label">Syncing…</span>
+  </div>
+
   <div class="top-bar-spacer"></div>
 
   <!-- View mode selector -->
@@ -56,6 +61,7 @@
     [maxVisibleLanes]="MAX_VISIBLE_LANES"
     [monthDragEvent]="monthDragEvent"
     [scrollToDate]="scrollToDate"
+    [isFetchingMore]="!!(isFetchingMore$ | async)"
     (windowChange)="onMonthWindowChange($event)"
     (needMoreEvents)="onNeedMoreMonthEvents($event)"
     (visibleMonthChange)="onVisibleMonthChange($event)"

@@ -9,7 +9,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { finalize, map, Observable, Subject, Subscription, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, finalize, map, Observable, of, Subject, Subscription, switchMap, timer } from 'rxjs';
 
 import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
 import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
@@ -50,6 +50,9 @@ import { EventCreateEngine } from '../../calendar-engine/interactions/create/eve
 
 import { MonthScrollViewComponent, VisibleMonthChangeEvent } from './month-scroll-view/month-scroll-view.component';
 
+type RangeOrigin = 'scroll' | 'mutation';
+interface RangeRequest { start: Date; end: Date; origin: RangeOrigin; }
+
 @Component({
   selector: 'app-calendar',
   standalone: true,
@@ -79,6 +82,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   selectedDate: Date = new Date();
   linkedRecord: Item | null = null;
   userId: string | undefined;
+  /** Blocking overlay — initial load / recenter only. See activeRangeOrigin$ for mutation/scroll feedback. */
   isLoading: boolean = false;
 
   // ── View mode ──────────────────────────────────────────────────────────────
@@ -128,8 +132,33 @@ export class CalendarComponent implements OnInit, OnDestroy {
   private monthFetchedStart: Date | null = null;
   private monthFetchedEnd: Date | null = null;
 
-  private needMoreRange$ = new Subject<{ start: Date; end: Date }>();
+  private needMoreRange$ = new Subject<RangeRequest>();
   private needMoreRangeSub!: Subscription;
+
+  // ── Range-fetch lifecycle (scroll prefetch + mutation refresh) ─────────────
+  // Single shared authority for "which range fetch is current," used by both
+  // the needMoreRange$/switchMap pipeline (ngOnInit) and fetchEvents() — see
+  // the plan doc for why these can't be two independent mechanisms.
+  private rangeRequestSeq = 0;
+  private activeRangeOrigin$ = new BehaviorSubject<RangeOrigin | null>(null);
+
+  private nextSeq(): number { return ++this.rangeRequestSeq; }
+  private isCurrent(seq: number): boolean { return this.rangeRequestSeq === seq; }
+
+  /** Small delayed (~250ms) edge spinner for scroll-triggered prefetch — never blocks interaction. */
+  isFetchingMore$: Observable<boolean> = this.activeRangeOrigin$.pipe(
+    map(o => o === 'scroll'),
+    distinctUntilChanged(),
+    switchMap(pending => pending ? timer(250).pipe(map(() => true)) : of(false)),
+    distinctUntilChanged(),
+  );
+  /** Small delayed (~250ms) non-blocking "Syncing…" indicator for save/drag/resize refresh. */
+  isSyncing$: Observable<boolean> = this.activeRangeOrigin$.pipe(
+    map(o => o === 'mutation'),
+    distinctUntilChanged(),
+    switchMap(pending => pending ? timer(250).pipe(map(() => true)) : of(false)),
+    distinctUntilChanged(),
+  );
 
   constructor(
     private calendarService: CalendarService,
@@ -157,26 +186,26 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.nowTimer = setInterval(() => this.updateNowIndicator(), 60_000);
     this.listenForLiveReminders();
 
-    // switchMap cancels any in-flight "need more events" request the
-    // instant a newer one comes in, so a stale, late-arriving response
-    // for an older range can never overwrite state set by a fresher one.
-    // This is also the single place isLoading is driven for every month
-    // events refresh (scroll-triggered *and* save-triggered — see
-    // refreshAfterSave()), rather than toggling it manually at each call
-    // site: tap() sets it true the instant a range is requested, finalize()
-    // clears it exactly once the request settles (success, error, or
-    // superseded by a newer one), so it can never leak or need a matching
-    // reset at every caller.
+    // switchMap cancels any in-flight "need more events" request the instant
+    // a newer one comes in, so a stale, late-arriving response for an older
+    // range can never overwrite state set by a fresher one — this is the
+    // data-correctness guarantee from the original fix and is untouched here.
+    // On top of it, each request draws a ticket from the shared rangeRequestSeq
+    // counter (also used by fetchEvents() — see there) so UI state (
+    // activeRangeOrigin$) can never be released by a request that's since
+    // been superseded, from *either* code path, not just within this subject.
     this.needMoreRangeSub = this.needMoreRange$.pipe(
-      tap(() => this.isLoading = true),
-      switchMap(range =>
-        this.calendarService.getEvents(range.start, range.end).pipe(
-          map(fetched => ({ fetched, range })),
-          finalize(() => this.isLoading = false),
-        ),
-      ),
+      switchMap(range => {
+        const seq = this.nextSeq();
+        this.activeRangeOrigin$.next(range.origin);
+        return this.calendarService.getEvents(range.start, range.end).pipe(
+          map(fetched => ({ fetched, range, seq })),
+          finalize(() => { if (this.isCurrent(seq)) this.activeRangeOrigin$.next(null); }),
+        );
+      }),
     ).subscribe({
-      next: ({ fetched, range }) => {
+      next: ({ fetched, range, seq }) => {
+        if (!this.isCurrent(seq)) return; // superseded by a later fetch from either code path
         this.mergeEvents(fetched);
         this.monthFetchedStart = range.start;
         this.monthFetchedEnd = range.end;
@@ -351,7 +380,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const fetchStart = range.start < this.monthFetchedStart ? range.start : this.monthFetchedStart;
     const fetchEnd = range.end > this.monthFetchedEnd ? range.end : this.monthFetchedEnd;
 
-    this.needMoreRange$.next({ start: fetchStart, end: fetchEnd });
+    this.needMoreRange$.next({ start: fetchStart, end: fetchEnd, origin: 'scroll' });
   }
 
   /**
@@ -394,12 +423,30 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // FETCH EVENTS
   // ==========================================================================
 
-  fetchEvents(recenter: boolean = false): void {
+  /**
+   * `origin` distinguishes the blocking initial/recenter load from a
+   * mutation-triggered refresh (day/week view's save/drag/resize fallback —
+   * month view routes those through needMoreRange$ instead, see
+   * refreshAfterSave()). `seq` is drawn from the same counter that pipeline
+   * uses, so a stale response from either code path can never apply its data
+   * or release UI state after being superseded by a fresher one from either.
+   */
+  fetchEvents(recenter: boolean = false, origin: 'initial' | 'mutation' = 'initial'): void {
     const { start, end } = this.buildFetchRange(recenter);
-    this.isLoading = true;
+    const seq = this.nextSeq();
+    if (origin === 'initial') this.isLoading = true;
+    else this.activeRangeOrigin$.next('mutation');
+
+    const settle = () => {
+      if (!this.isCurrent(seq)) return; // a newer fetch, from either code path, already superseded this one
+      if (origin === 'initial') this.isLoading = false;
+      else this.activeRangeOrigin$.next(null);
+    };
 
     this.calendarService.getEvents(start, end).subscribe({
       next: (events: any[]) => {
+        if (!this.isCurrent(seq)) return; // stale — don't touch this.events/monthScrollWindow at all
+
         this.events = events.map(event => ({
           ...event,
           startDate: new Date(event.startDate),
@@ -417,11 +464,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
         }
 
         this.openPendingRedirectEventIfAny();
-        this.isLoading = false;
+        settle();
       },
       error: err => {
         console.error('Error fetching events:', err);
-        this.isLoading = false;
+        settle();
       },
     });
   }
@@ -698,7 +745,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
         dialogRef.close();
       },
-      error: (err: any) => console.error('Failed to save event:', err),
+      error: (err: any) => {
+        console.error('Failed to save event:', err);
+        dialogRef.componentInstance.saving = false; // let the user retry instead of leaving Save disabled forever
+      },
     });
   }
 
@@ -1011,19 +1061,20 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   private refreshAfterSave(): void {
     if (this.viewMode !== 'month' || !this.monthScrollWindow) {
-      this.fetchEvents();
+      this.fetchEvents(false, 'mutation');
       return;
     }
 
     // Routed through the same needMoreRange$ pipeline scroll-triggered
     // loads use (see ngOnInit), rather than fetching+merging independently
-    // here: this way a save-triggered refresh shows the same loading
-    // overlay (isLoading is driven entirely by that pipeline) and can't
-    // race against a concurrent scroll-triggered one — switchMap guarantees
-    // whichever request was issued last is the one that wins.
+    // here: this way a save-triggered refresh can't race against a
+    // concurrent scroll-triggered one — switchMap guarantees whichever
+    // request was issued last is the one that wins. Tagged 'mutation' so it
+    // gets the non-blocking "Syncing…" indicator instead of the scroll
+    // edge-spinner.
     const fetchStart = this.monthFetchedStart ?? this.monthScrollWindow.loadedStart;
     const fetchEnd = this.monthFetchedEnd ?? this.monthScrollWindow.loadedEnd;
 
-    this.needMoreRange$.next({ start: fetchStart, end: fetchEnd });
+    this.needMoreRange$.next({ start: fetchStart, end: fetchEnd, origin: 'mutation' });
   }
 }
