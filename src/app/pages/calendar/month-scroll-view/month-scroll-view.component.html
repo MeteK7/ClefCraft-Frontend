@@ -1,5 +1,13 @@
 <div class="month-scroll-root">
 
+  <!-- Outside the scrollable content on purpose: adding anything into that
+       flow would shift scrollTop/rowHeight alignment (see the comment on
+       updateVisibleMonthLabel below). This only resizes the outer viewport
+       clip, which doesn't affect that math. -->
+  <div class="scroll-edge-indicator scroll-edge-indicator-top" [class.active]="isFetchingMore">
+    <span class="edge-spinner"></span>
+  </div>
+
   <div #scrollContainer class="month-scroll-container" [class.month-dragging]="monthDragEvent" cdkDropListGroup>
 
     <!-- Sticky weekday header now lives INSIDE the scrollable element, as its
@@ -84,6 +92,11 @@
     <div #bottomSentinel class="scroll-sentinel scroll-sentinel-bottom"></div>
 
   </div>
+
+  <div class="scroll-edge-indicator scroll-edge-indicator-bottom" [class.active]="isFetchingMore">
+    <span class="edge-spinner"></span>
+  </div>
+
 </div>
 
 <!-- ==================== MORE MENU ==================== -->
