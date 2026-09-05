@@ -68,6 +68,9 @@ export class CalendarDialogComponent implements OnInit {
   @Output() onSave = new EventEmitter<any>();
   @Output() onCancel = new EventEmitter<void>();
 
+  /** True from the moment Save is actually submitted until the parent closes the dialog (success) or resets it (error). */
+  saving = false;
+
   generalForm: FormGroup;
 
   importanceLevels = [
@@ -601,6 +604,8 @@ export class CalendarDialogComponent implements OnInit {
       return;
     }
 
+    this.saving = true;
+
     // 1. The "which occurrences" scope dialog only makes sense when editing
     // an event that WAS already recurring AND still IS recurring after this
     // edit — i.e. a genuine in-series change. Turning recurrence ON for a
@@ -623,6 +628,7 @@ export class CalendarDialogComponent implements OnInit {
       dialogRef.afterClosed().subscribe((scope: RecurrenceUpdateScope | null) => {
         // If the user cancelled out of the recurrence dialog, abort saving completely
         if (!scope) {
+          this.saving = false;
           return;
         }
 

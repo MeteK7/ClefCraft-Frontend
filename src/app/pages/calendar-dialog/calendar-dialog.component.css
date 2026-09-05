@@ -211,6 +211,24 @@
   z-index: 10;
 }
 
+.save-btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  vertical-align: middle;
+  animation: save-btn-spin 0.75s linear infinite;
+}
+
+@keyframes save-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ================================
    INPUTS
 ================================ */
