@@ -1,0 +1,15 @@
+<div class="comment-composer">
+  <div class="composer-editor-wrapper">
+    <quill-editor
+      [formControl]="bodyControl"
+      [modules]="quillModules"
+      [placeholder]="placeholder"
+      class="comment-quill">
+    </quill-editor>
+  </div>
+
+  <div class="composer-actions">
+    <button mat-flat-button color="primary" [disabled]="!hasContent" (click)="onSubmit()">{{ submitLabel }}</button>
+    <button mat-button *ngIf="showCancel" (click)="onCancel()">Cancel</button>
+  </div>
+</div>

@@ -9,18 +9,30 @@ export interface ReminderPayload {
     message: string;
 }
 
+export interface MentionPayload {
+    entityType: string;
+    entityId: number;
+    commentId: number;
+    authorFullName: string;
+    excerpt: string;
+    boardId: number | null;
+}
+
 @Injectable({
     providedIn: 'root'
 })
 export class NotificationRealtimeService {
     private hubConnection!: signalR.HubConnection;
     private reminderSubject = new Subject<ReminderPayload>();
+    private mentionSubject = new Subject<MentionPayload>();
 
     public reminders$: Observable<ReminderPayload> = this.reminderSubject.asObservable();
+    public mentions$: Observable<MentionPayload> = this.mentionSubject.asObservable();
 
     constructor(private authService: AuthService) {  // ← inject AuthService
         this.startConnection();
         this.registerReminderListener();
+        this.registerMentionListener();
     }
 
     private startConnection(): void {
@@ -80,6 +92,16 @@ export class NotificationRealtimeService {
                     eventId: payload.eventId,
                     message: payload.message
                 });
+            }
+        );
+    }
+
+    private registerMentionListener(): void {
+        this.hubConnection.on(
+            'ReceiveMention',
+            (payload: MentionPayload) => {
+                console.log('MENTION RECEIVED', payload);
+                this.mentionSubject.next(payload);
             }
         );
     }

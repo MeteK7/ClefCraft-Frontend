@@ -33,7 +33,7 @@
     </div>
   </div>
   <form [formGroup]="generalForm" class="form-container">
-    <mat-tab-group animationDuration="300ms" class="tab-container">
+    <mat-tab-group animationDuration="300ms" class="tab-container" [selectedIndex]="initialTabIndex">
       <!-- General Tab -->
       <mat-tab label="General">
 
@@ -364,6 +364,21 @@
             [seriesUid]="data.eventData?.seriesUid"
             [eventTypes]="eventTypes">
           </app-calendar-history-timeline>
+        </div>
+      </mat-tab>
+
+      <mat-tab *ngIf="data?.eventData">
+        <ng-template mat-tab-label>
+          <mat-icon class="tab-icon">forum</mat-icon>
+          Comments
+        </ng-template>
+
+        <div class="history-tab-content">
+          <app-comment-thread
+            [entityType]="'CalendarEvent'"
+            [entityId]="baseEventId!"
+            [focusCommentId]="data.focusCommentId ?? null">
+          </app-comment-thread>
         </div>
       </mat-tab>
     </mat-tab-group>

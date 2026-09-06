@@ -37,6 +37,8 @@ import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.mode
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { CalendarHistoryTimelineComponent } from '../../components/calendar-history-timeline/calendar-history-timeline.component';
+import { CommentThreadComponent } from '../../components/comment-thread/comment-thread.component';
+import { defaultQuillModules } from '../../shared/quill-config';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -58,7 +60,8 @@ import { CalendarHistoryTimelineComponent } from '../../components/calendar-hist
     QuillModule,
     MatAutocompleteModule,
     MatRadioModule,
-    CalendarHistoryTimelineComponent
+    CalendarHistoryTimelineComponent,
+    CommentThreadComponent
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
@@ -116,22 +119,19 @@ export class CalendarDialogComponent implements OnInit {
 
   aiComment: string | null = null;
 
-  quillModules = {
-    toolbar: [
-      [{ header: [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ color: [] }, { background: [] }],
-      [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
-      ['link', 'blockquote', 'code-block', 'clean'],
-      ['undo', 'redo']
-    ]
-  };
+  quillModules = defaultQuillModules;
 
   filteredLocations: string[] = [];
   allLocations: string[] = [];
 
   attendanceLabel = getAttendanceLabel;
   attendanceColor = getAttendanceColor;
+
+  /** General/Attachments/Recurrence/History/Comments — Comments is a fixed tab position once
+   * an event is loaded, so jump straight to it when opened from a mention deep link. */
+  get initialTabIndex(): number {
+    return this.data?.focusCommentId != null ? 4 : 0;
+  }
 
   clearNotes(): void {
     this.generalForm.get('comment')?.setValue('');
