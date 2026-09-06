@@ -1,0 +1,113 @@
+<div class="comment-thread">
+  <button mat-button *ngIf="hasMore" (click)="loadMore()" class="load-more-btn">Load earlier comments</button>
+
+  <p *ngIf="loading && !comments.length" class="empty-state-text">Loading...</p>
+
+  <div *ngIf="error" class="error-state">
+    <p class="empty-state-text">Failed to load comments.</p>
+    <button mat-button (click)="retry()">Retry</button>
+  </div>
+
+  <p *ngIf="!loading && !error && !comments.length" class="empty-state-text">
+    No comments yet. Start the conversation below.
+  </p>
+
+  <div class="comment-list" *ngIf="!error">
+    <div class="comment-card" *ngFor="let comment of topLevelComments" [id]="'comment-' + comment.id">
+      <div class="comment-row">
+        <app-user-avatar [fullName]="comment.authorFullName"></app-user-avatar>
+
+        <div class="comment-body-col">
+          <div class="comment-meta">
+            <span class="comment-author">{{ comment.authorFullName }}</span>
+            <span class="comment-date">{{ localTimestamp(comment) | date: 'medium' }}</span>
+            <span class="comment-edited" *ngIf="comment.isEdited && !comment.isDeleted">(edited)</span>
+          </div>
+
+          <ng-container *ngIf="editingId !== comment.id; else editBlock">
+            <p class="comment-deleted-text" *ngIf="comment.isDeleted">Comment deleted</p>
+            <div class="comment-html" *ngIf="!comment.isDeleted" [innerHTML]="comment.bodyHtml"></div>
+
+            <div class="comment-actions" *ngIf="!comment.isDeleted">
+              <button mat-button class="action-link" (click)="startReply(comment)">Reply</button>
+              <ng-container *ngIf="isOwn(comment)">
+                <button mat-button class="action-link" (click)="startEdit(comment)">Edit</button>
+                <button mat-button class="action-link warn" (click)="deleteComment(comment)">Delete</button>
+              </ng-container>
+            </div>
+          </ng-container>
+
+          <ng-template #editBlock>
+            <app-comment-composer
+              [entityType]="entityType"
+              [entityId]="entityId"
+              [initialBodyHtml]="comment.bodyHtml"
+              submitLabel="Save"
+              [showCancel]="true"
+              (submitted)="submitEdit(comment, $event)"
+              (cancelled)="cancelEdit()">
+            </app-comment-composer>
+          </ng-template>
+
+          <div class="reply-list" *ngIf="repliesFor(comment.id).length">
+            <div class="comment-row reply-row" *ngFor="let reply of repliesFor(comment.id)" [id]="'comment-' + reply.id">
+              <app-user-avatar [fullName]="reply.authorFullName"></app-user-avatar>
+
+              <div class="comment-body-col">
+                <div class="comment-meta">
+                  <span class="comment-author">{{ reply.authorFullName }}</span>
+                  <span class="comment-date">{{ localTimestamp(reply) | date: 'medium' }}</span>
+                  <span class="comment-edited" *ngIf="reply.isEdited && !reply.isDeleted">(edited)</span>
+                </div>
+
+                <ng-container *ngIf="editingId !== reply.id; else editReplyBlock">
+                  <p class="comment-deleted-text" *ngIf="reply.isDeleted">Comment deleted</p>
+                  <div class="comment-html" *ngIf="!reply.isDeleted" [innerHTML]="reply.bodyHtml"></div>
+
+                  <div class="comment-actions" *ngIf="!reply.isDeleted && isOwn(reply)">
+                    <button mat-button class="action-link" (click)="startEdit(reply)">Edit</button>
+                    <button mat-button class="action-link warn" (click)="deleteComment(reply)">Delete</button>
+                  </div>
+                </ng-container>
+
+                <ng-template #editReplyBlock>
+                  <app-comment-composer
+                    [entityType]="entityType"
+                    [entityId]="entityId"
+                    [initialBodyHtml]="reply.bodyHtml"
+                    submitLabel="Save"
+                    [showCancel]="true"
+                    (submitted)="submitEdit(reply, $event)"
+                    (cancelled)="cancelEdit()">
+                  </app-comment-composer>
+                </ng-template>
+              </div>
+            </div>
+          </div>
+
+          <div class="reply-composer" *ngIf="replyingToId === comment.id">
+            <app-comment-composer
+              [entityType]="entityType"
+              [entityId]="entityId"
+              placeholder="Write a reply..."
+              submitLabel="Reply"
+              [showCancel]="true"
+              (submitted)="submitReply(comment.id, $event)"
+              (cancelled)="cancelReply()">
+            </app-comment-composer>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="new-comment-composer">
+    <app-comment-composer
+      [entityType]="entityType"
+      [entityId]="entityId"
+      placeholder="Write a comment..."
+      submitLabel="Comment"
+      (submitted)="submitTopLevel($event)">
+    </app-comment-composer>
+  </div>
+</div>
