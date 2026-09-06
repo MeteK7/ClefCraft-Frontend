@@ -1,0 +1,41 @@
+<div
+  class="reminder-toast"
+  role="alertdialog"
+  aria-live="assertive"
+  aria-label="Comment mention"
+  [class.reminder-toast--entering]="isEntering">
+
+  <div class="reminder-color-bar"></div>
+
+  <button
+    class="reminder-close"
+    mat-icon-button
+    aria-label="Dismiss notification"
+    (click)="onDismiss()">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <div class="reminder-body">
+    <div class="reminder-icon-wrap">
+      <mat-icon class="reminder-icon">alternate_email</mat-icon>
+    </div>
+
+    <div class="reminder-content">
+      <span class="reminder-eyebrow">{{ data.authorFullName }} mentioned you</span>
+      <p class="reminder-message">{{ data.excerpt }}</p>
+      <div class="reminder-actions">
+        <button mat-stroked-button class="reminder-btn-view" (click)="onActionClicked()">
+          <mat-icon>open_in_new</mat-icon>
+          View comment
+        </button>
+        <button mat-button class="reminder-btn-dismiss" (click)="onDismiss()">
+          Dismiss
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="reminder-progress-track">
+    <div class="reminder-progress-fill" [style.animation-duration]="duration + 'ms'"></div>
+  </div>
+</div>

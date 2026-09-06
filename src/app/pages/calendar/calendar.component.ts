@@ -126,6 +126,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   private readonly engine = inject(CalendarEngineService);
   private reminderSubscription!: Subscription;
   private pendingEventIdFromRedirect: number | null = null;
+  private pendingCommentIdFromRedirect: number | null = null;
   monthDragEvent: CalendarEventUI | null = null;
 
   /** Tracks the widest range of events we've fetched so far for month mode (incremental fetch). */
@@ -231,6 +232,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const params = this.route.snapshot.queryParamMap;
     const eventIdParam = params.get('eventId');
     const dateParam = params.get('date');
+    const commentIdParam = params.get('commentId');
 
     if (dateParam) {
       const parsedDate = new Date(dateParam);
@@ -243,6 +245,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
       const parsedId = Number(eventIdParam);
       if (!isNaN(parsedId)) {
         this.pendingEventIdFromRedirect = parsedId;
+      }
+    }
+
+    if (commentIdParam) {
+      const parsedCommentId = Number(commentIdParam);
+      if (!isNaN(parsedCommentId)) {
+        this.pendingCommentIdFromRedirect = parsedCommentId;
       }
     }
   }
@@ -477,17 +486,19 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (this.pendingEventIdFromRedirect == null) return;
 
     const eventId = this.pendingEventIdFromRedirect;
+    const commentId = this.pendingCommentIdFromRedirect;
     this.pendingEventIdFromRedirect = null;
+    this.pendingCommentIdFromRedirect = null;
 
-    this.openEventById(eventId);
+    this.openEventById(eventId, commentId);
 
     this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
   }
 
-  private openEventById(eventId: number): void {
+  private openEventById(eventId: number, focusCommentId: number | null = null): void {
     const matchedEvent = this.events.find(e => e.id === eventId);
     if (matchedEvent) {
-      this.openDialog(matchedEvent);
+      this.openDialog(matchedEvent, undefined, undefined, focusCommentId);
     } else {
       console.log(`Event #${eventId} is outside the current viewport scope.`);
       this.snackBar.open('Could not find that event on the calendar.', 'Dismiss', { duration: 5000 });
@@ -681,13 +692,14 @@ export class CalendarComponent implements OnInit, OnDestroy {
     eventData: CalendarEventUI | null = null,
     initialStart?: Date,
     initialEnd?: Date,
+    focusCommentId: number | null = null,
   ): void {
     const dialogRef = this.dialog.open(CalendarDialogComponent, {
       width: '70%',
       height: '80vh',
       maxWidth: 'none',
       disableClose: true,
-      data: { date: this.selectedDate, eventData, initialStart, initialEnd },
+      data: { date: this.selectedDate, eventData, initialStart, initialEnd, focusCommentId },
     });
 
     dialogRef.componentInstance.onSave.subscribe(({ record, attachments }: SavePayload) => {
