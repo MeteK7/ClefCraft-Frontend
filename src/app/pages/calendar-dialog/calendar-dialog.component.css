@@ -646,6 +646,23 @@ textarea[matInput] {
   border-bottom: 1px solid var(--warning-border);
 }
 
+.readonly-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  padding: 10px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.readonly-banner mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
 .linked-board-banner {
   display: flex;
   align-items: center;
