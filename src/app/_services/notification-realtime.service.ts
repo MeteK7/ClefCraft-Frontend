@@ -16,6 +16,10 @@ export interface MentionPayload {
     authorFullName: string;
     excerpt: string;
     boardId: number | null;
+    /** true when this mention is what just granted the recipient CalendarEventCollaborator
+     * access (as opposed to a plain ping to someone who already had access). Always false for
+     * BoardItem mentions. */
+    grantedAccess: boolean;
 }
 
 @Injectable({
