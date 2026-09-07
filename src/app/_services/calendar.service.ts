@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { EventType } from '../models/event-type.model';
 import { WorkHistoryEntry } from '../models/work-history.model';
 import { RecurrenceUpdateScope } from '../models/recurrence-update-scope.model';
+import { CalendarEventCollaborator } from '../models/calendar-event-collaborator.model';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -60,6 +61,14 @@ export class CalendarService {
 
   deleteAttachment(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/attachments/${id}`);
+  }
+
+  getCollaborators(eventId: number): Observable<CalendarEventCollaborator[]> {
+    return this.http.get<CalendarEventCollaborator[]>(`${this.apiUrl}/${eventId}/collaborators`);
+  }
+
+  removeCollaborator(eventId: number, userId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${eventId}/collaborators/${userId}`);
   }
 
   updateSingleOccurrence(payload: {
