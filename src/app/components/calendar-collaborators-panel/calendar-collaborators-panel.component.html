@@ -1,0 +1,17 @@
+<div class="collaborators-panel" *ngIf="collaborators.length || loading">
+  <div class="collaborators-header">
+    <mat-icon class="header-icon">group</mat-icon>
+    <span>Shared with</span>
+  </div>
+
+  <div class="collaborators-list">
+    <div class="collaborator-chip" *ngFor="let collaborator of collaborators" [matTooltip]="collaborator.fullName">
+      <app-user-avatar [fullName]="collaborator.fullName"></app-user-avatar>
+      <span class="collaborator-name">{{ collaborator.fullName }}</span>
+      <button mat-icon-button *ngIf="isOwner" class="remove-btn" (click)="removeCollaborator(collaborator)"
+        [matTooltip]="'Remove ' + collaborator.fullName">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+</div>

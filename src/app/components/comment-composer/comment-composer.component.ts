@@ -24,7 +24,11 @@ export class CommentComposerComponent implements OnInit {
   @Input() submitLabel = 'Comment';
   @Input() showCancel = false;
 
-  @Output() submitted = new EventEmitter<{ bodyHtml: string; mentionedUserIds: string[] }>();
+  @Output() submitted = new EventEmitter<{
+    bodyHtml: string;
+    mentionedUserIds: string[];
+    mentionedUsers: { userId: string; fullName: string }[];
+  }>();
   @Output() cancelled = new EventEmitter<void>();
 
   bodyControl = new FormControl('');
@@ -67,24 +71,33 @@ export class CommentComposerComponent implements OnInit {
   }
 
   // Mentions round-trip through the stored HTML itself (quill-mention's blot is recognized by
-  // Quill's HTML matcher on load), so the authoritative mentionedUserIds for a submission is
+  // Quill's HTML matcher on load), so the authoritative mention list for a submission is
   // whatever ".mention[data-id]" elements are actually present in the final body — no separate
-  // tracking of "which mentions were added this session" needed.
-  private extractMentionedUserIds(html: string): string[] {
+  // tracking of "which mentions were added this session" needed. data-value doubles as the
+  // display name, so the same parse gives the parent everything it needs to build a
+  // "this will share the event with X" confirmation without a second lookup.
+  private extractMentions(html: string): { userId: string; fullName: string }[] {
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const ids = Array.from(doc.querySelectorAll('.mention[data-id]'))
-      .map(el => el.getAttribute('data-id'))
-      .filter((id): id is string => !!id);
-    return Array.from(new Set(ids));
+    const seen = new Set<string>();
+    const mentions: { userId: string; fullName: string }[] = [];
+
+    doc.querySelectorAll('.mention[data-id]').forEach(el => {
+      const userId = el.getAttribute('data-id');
+      if (!userId || seen.has(userId)) return;
+      seen.add(userId);
+      mentions.push({ userId, fullName: el.getAttribute('data-value') ?? userId });
+    });
+
+    return mentions;
   }
 
   onSubmit(): void {
     if (!this.hasContent) return;
 
     const bodyHtml = this.bodyControl.value || '';
-    const mentionedUserIds = this.extractMentionedUserIds(bodyHtml);
+    const mentionedUsers = this.extractMentions(bodyHtml);
 
-    this.submitted.emit({ bodyHtml, mentionedUserIds });
+    this.submitted.emit({ bodyHtml, mentionedUserIds: mentionedUsers.map(m => m.userId), mentionedUsers });
 
     this.bodyControl.setValue('');
   }

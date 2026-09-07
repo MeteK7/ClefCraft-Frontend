@@ -17,16 +17,17 @@
 
   <div class="reminder-body">
     <div class="reminder-icon-wrap">
-      <mat-icon class="reminder-icon">alternate_email</mat-icon>
+      <mat-icon class="reminder-icon">{{ data.grantedAccess ? 'lock_open' : 'alternate_email' }}</mat-icon>
     </div>
 
     <div class="reminder-content">
-      <span class="reminder-eyebrow">{{ data.authorFullName }} mentioned you</span>
+      <span class="reminder-eyebrow" *ngIf="data.grantedAccess">{{ data.authorFullName }} shared a calendar event with you</span>
+      <span class="reminder-eyebrow" *ngIf="!data.grantedAccess">{{ data.authorFullName }} mentioned you</span>
       <p class="reminder-message">{{ data.excerpt }}</p>
       <div class="reminder-actions">
         <button mat-stroked-button class="reminder-btn-view" (click)="onActionClicked()">
           <mat-icon>open_in_new</mat-icon>
-          View comment
+          {{ data.grantedAccess ? 'View event' : 'View comment' }}
         </button>
         <button mat-button class="reminder-btn-dismiss" (click)="onDismiss()">
           Dismiss

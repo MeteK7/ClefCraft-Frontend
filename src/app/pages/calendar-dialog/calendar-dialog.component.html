@@ -2,6 +2,10 @@
   <div *ngIf="hasUnsavedChanges" class="unsaved-banner">
     ⚠ You have unsaved changes
   </div>
+  <div *ngIf="isReadOnlyViewer" class="readonly-banner">
+    <mat-icon>visibility</mat-icon>
+    You have read-only access to this event. You can view it and take part in the comments, but only the owner can edit it.
+  </div>
   <!-- Linked Board Item Context -->
   <div *ngIf="data?.eventData?.linkedBoardItemId" class="linked-board-banner">
     <mat-icon color="primary">link</mat-icon>
@@ -179,7 +183,7 @@
         <div class="attachment-section">
 
           <!-- Upload -->
-          <div class="upload-card">
+          <div class="upload-card" *ngIf="!isReadOnlyViewer">
             <button mat-raised-button color="primary" class="upload-btn" (click)="fileInput.click()">
               <mat-icon>upload</mat-icon>
               Add files
@@ -221,7 +225,7 @@
                   <span>{{ a.fileName }}</span>
                 </div>
 
-                <button mat-icon-button color="warn" (click)="deleteAttachment(a.id)" matTooltip="Delete">
+                <button mat-icon-button color="warn" *ngIf="!isReadOnlyViewer" (click)="deleteAttachment(a.id)" matTooltip="Delete">
                   <mat-icon>delete</mat-icon>
                 </button>
               </li>
@@ -250,7 +254,7 @@
               weekly, monthly, or yearly schedule.
             </p>
 
-            <div class="recurrence-quick-actions">
+            <div class="recurrence-quick-actions" *ngIf="!isReadOnlyViewer">
               <button type="button" class="quick-chip" (click)="quickEnableRecurrence('DAILY')">
                 <mat-icon>today</mat-icon> Daily
               </button>
@@ -265,7 +269,7 @@
               </button>
             </div>
 
-            <button mat-stroked-button color="primary" class="recurrence-enable-btn"
+            <button mat-stroked-button color="primary" class="recurrence-enable-btn" *ngIf="!isReadOnlyViewer"
               (click)="generalForm.get('isRecurring')?.setValue(true)">
               <mat-icon>add</mat-icon>
               Set up custom recurrence
@@ -374,10 +378,20 @@
         </ng-template>
 
         <div class="history-tab-content">
+          <app-calendar-collaborators-panel
+            [eventId]="baseEventId!"
+            [isOwner]="isEventOwner"
+            [refreshToken]="collaboratorsRefreshToken"
+            (collaboratorsLoaded)="onCollaboratorsLoaded($event)">
+          </app-calendar-collaborators-panel>
+
           <app-comment-thread
             [entityType]="'CalendarEvent'"
             [entityId]="baseEventId!"
-            [focusCommentId]="data.focusCommentId ?? null">
+            [focusCommentId]="data.focusCommentId ?? null"
+            [calendarEventOwnerUserId]="data.eventData?.ownerUserId"
+            [calendarCollaboratorUserIds]="collaboratorUserIds"
+            (calendarCollaboratorsGranted)="onCollaboratorsGranted()">
           </app-comment-thread>
         </div>
       </mat-tab>
@@ -389,10 +403,10 @@
       Please fill in all required fields before saving.
     </div>
 
-    <button mat-raised-button color="primary" [disabled]="saving" (click)="handleSave()">
+    <button mat-raised-button color="primary" *ngIf="!isReadOnlyViewer" [disabled]="saving" (click)="handleSave()">
       <span class="save-btn-spinner" *ngIf="saving"></span>
       {{ saving ? 'Saving…' : 'Save' }}
     </button>
-    <button mat-button [disabled]="saving" (click)="handleCancel()">Cancel</button>
+    <button mat-button [disabled]="saving" (click)="handleCancel()">{{ isReadOnlyViewer ? 'Close' : 'Cancel' }}</button>
   </div>
 </div>

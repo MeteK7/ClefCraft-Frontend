@@ -38,7 +38,9 @@ import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { CalendarHistoryTimelineComponent } from '../../components/calendar-history-timeline/calendar-history-timeline.component';
 import { CommentThreadComponent } from '../../components/comment-thread/comment-thread.component';
+import { CalendarCollaboratorsPanelComponent } from '../../components/calendar-collaborators-panel/calendar-collaborators-panel.component';
 import { defaultQuillModules } from '../../shared/quill-config';
+import { AuthService } from '../../_services/auth.service';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -61,7 +63,8 @@ import { defaultQuillModules } from '../../shared/quill-config';
     MatAutocompleteModule,
     MatRadioModule,
     CalendarHistoryTimelineComponent,
-    CommentThreadComponent
+    CommentThreadComponent,
+    CalendarCollaboratorsPanelComponent
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
@@ -133,6 +136,31 @@ export class CalendarDialogComponent implements OnInit {
     return this.data?.focusCommentId != null ? 4 : 0;
   }
 
+  // Collaborator state, owned here so the panel (display + owner's remove action) and the
+  // comment thread (needs to know who's already shared-with, to decide when a mention is
+  // about to share the event with someone new) stay in sync without each fetching separately.
+  collaboratorUserIds: string[] = [];
+  collaboratorsRefreshToken = 0;
+
+  get isEventOwner(): boolean {
+    return !!this.data?.eventData?.ownerUserId && this.authService.getUserId() === this.data.eventData.ownerUserId;
+  }
+
+  /** A collaborator viewing someone else's event — read-only everywhere except Comments. */
+  get isReadOnlyViewer(): boolean {
+    return !!this.data?.eventData && !this.isEventOwner;
+  }
+
+  onCollaboratorsLoaded(collaborators: { userId: string }[]): void {
+    this.collaboratorUserIds = collaborators.map(c => c.userId);
+  }
+
+  onCollaboratorsGranted(): void {
+    // A mention just granted access to someone new — bump the token so the panel refetches
+    // and picks up the new row.
+    this.collaboratorsRefreshToken++;
+  }
+
   clearNotes(): void {
     this.generalForm.get('comment')?.setValue('');
   }
@@ -148,7 +176,8 @@ export class CalendarDialogComponent implements OnInit {
     private fb: FormBuilder,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private calendarService: CalendarService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private authService: AuthService
   ) {
     this.generalForm = this.fb.group({
       subject: ['', Validators.required],
@@ -255,6 +284,13 @@ export class CalendarDialogComponent implements OnInit {
       }
 
       this.fetchAttachments(this.eventId!);
+
+      // A collaborator has read-only access to the event itself (comments are the only thing
+      // they can add to) — disable the whole form up front rather than letting them edit
+      // freely and only discovering the restriction when Save 403s.
+      if (this.isReadOnlyViewer) {
+        this.generalForm.disable({ emitEvent: false });
+      }
     }
 
     else {
