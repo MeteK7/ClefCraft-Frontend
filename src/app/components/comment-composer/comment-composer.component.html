@@ -1,10 +1,12 @@
-<div class="comment-composer">
+<div class="comment-composer" [class.collapsible]="collapsible" [class.collapsed]="isCollapsed">
   <div class="composer-editor-wrapper">
     <quill-editor
       [formControl]="bodyControl"
       [modules]="quillModules"
       [placeholder]="placeholder"
-      class="comment-quill">
+      class="comment-quill"
+      (onFocus)="onEditorFocus()"
+      (onBlur)="onEditorBlur()">
     </quill-editor>
   </div>
 

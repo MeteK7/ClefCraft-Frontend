@@ -23,6 +23,12 @@ export class CommentComposerComponent implements OnInit {
   @Input() placeholder = 'Write a comment...';
   @Input() submitLabel = 'Comment';
   @Input() showCancel = false;
+  /** Rests as a compact pill until focused; collapses back down when left empty. Used for the
+   *  always-visible top-level composer, not for reply/edit (which already appear only on demand
+   *  and already have an explicit Cancel). */
+  @Input() collapsible = false;
+
+  expanded = false;
 
   @Output() submitted = new EventEmitter<{
     bodyHtml: string;
@@ -70,6 +76,19 @@ export class CommentComposerComponent implements OnInit {
     return plain.length > 0;
   }
 
+  get isCollapsed(): boolean {
+    return this.collapsible && !this.expanded && !this.hasContent;
+  }
+
+  onEditorFocus(): void {
+    this.expanded = true;
+  }
+
+  onEditorBlur(): void {
+    // A draft in progress is never hidden — only rest back to the pill once it's genuinely empty.
+    if (!this.hasContent) this.expanded = false;
+  }
+
   // Mentions round-trip through the stored HTML itself (quill-mention's blot is recognized by
   // Quill's HTML matcher on load), so the authoritative mention list for a submission is
   // whatever ".mention[data-id]" elements are actually present in the final body — no separate
@@ -100,6 +119,7 @@ export class CommentComposerComponent implements OnInit {
     this.submitted.emit({ bodyHtml, mentionedUserIds: mentionedUsers.map(m => m.userId), mentionedUsers });
 
     this.bodyControl.setValue('');
+    this.expanded = false;
   }
 
   onCancel(): void {
