@@ -1,4 +1,4 @@
-<div class="comment-composer" [class.collapsible]="collapsible" [class.collapsed]="isCollapsed">
+<div #composerRoot class="comment-composer" [class.collapsible]="collapsible" [class.collapsed]="isCollapsed" (click)="onComposerClick()">
   <div class="composer-editor-wrapper">
     <quill-editor
       [formControl]="bodyControl"
