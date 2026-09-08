@@ -101,13 +101,17 @@
     </div>
   </div>
 
-  <div class="new-comment-composer">
-    <app-comment-composer
-      [entityType]="entityType"
-      [entityId]="entityId"
-      placeholder="Write a comment..."
-      submitLabel="Comment"
-      (submitted)="submitTopLevel($event)">
-    </app-comment-composer>
+  <div class="new-comment-row">
+    <app-user-avatar [fullName]="currentUserFullName"></app-user-avatar>
+    <div class="new-comment-col">
+      <app-comment-composer
+        [entityType]="entityType"
+        [entityId]="entityId"
+        placeholder="Add a comment..."
+        submitLabel="Comment"
+        [collapsible]="true"
+        (submitted)="submitTopLevel($event)">
+      </app-comment-composer>
+    </div>
   </div>
 </div>

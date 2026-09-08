@@ -24,8 +24,8 @@
 
 .comment-card.comment-highlighted,
 .reply-row.comment-highlighted {
-  background: rgba(79, 135, 245, 0.12);
-  border-color: #4f87f5;
+  background: var(--primary-light);
+  border-color: var(--primary);
 }
 
 .comment-row {
@@ -94,7 +94,7 @@
 }
 
 .action-link.warn {
-  color: #d32f2f;
+  color: var(--danger);
 }
 
 .reply-list {
@@ -112,9 +112,16 @@
   border-left: 2px solid var(--border);
 }
 
-.new-comment-composer {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
+.new-comment-row {
+  display: flex;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--divider);
+}
+
+.new-comment-col {
+  flex: 1;
+  min-width: 0;
 }
 
 .empty-state-text {
