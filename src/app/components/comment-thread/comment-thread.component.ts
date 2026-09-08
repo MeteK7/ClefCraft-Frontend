@@ -44,9 +44,11 @@ export class CommentThreadComponent implements OnInit {
   private pageNumber = 1;
   private readonly pageSize = 20;
   private readonly currentUserId: string | null;
+  readonly currentUserFullName: string;
 
   constructor(private commentService: CommentService, private authService: AuthService) {
     this.currentUserId = this.authService.getUserId();
+    this.currentUserFullName = this.authService.getCurrentUser()?.fullName ?? '';
   }
 
   ngOnInit(): void {
