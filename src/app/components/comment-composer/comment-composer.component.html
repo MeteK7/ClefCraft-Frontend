@@ -10,7 +10,7 @@
     </quill-editor>
   </div>
 
-  <div class="composer-actions">
+  <div class="composer-actions" (click)="$event.stopPropagation()">
     <button mat-flat-button color="primary" [disabled]="!hasContent" (click)="onSubmit()">{{ submitLabel }}</button>
     <button mat-button *ngIf="showCancel" (click)="onCancel()">Cancel</button>
   </div>

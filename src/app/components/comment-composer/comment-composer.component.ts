@@ -128,6 +128,10 @@ export class CommentComposerComponent implements OnInit {
   }
 
   onCancel(): void {
+    if (this.hasContent && !window.confirm('Discard this draft?')) return;
+
     this.cancelled.emit();
+    this.bodyControl.setValue('');
+    this.expanded = false;
   }
 }

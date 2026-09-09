@@ -157,15 +157,18 @@
   min-height: 0;
 }
 
-/* Toolbar */
-::ng-deep .ql-toolbar {
+/* Toolbar — scoped to .notes-body: a bare `::ng-deep .ql-toolbar` (with nothing before
+   ::ng-deep) compiles to a fully global, unscoped `.ql-toolbar` rule that leaks into every
+   Quill toolbar in the app, including the unrelated comment composer's. Scoping it to this
+   dialog's own Notes editor keeps it from bleeding elsewhere. */
+.notes-body ::ng-deep .ql-toolbar {
   border-radius: 8px 8px 0 0;
   border: 1px solid var(--border);
   background: var(--surface-2);
 }
 
 /* Editor */
-::ng-deep .ql-container {
+.notes-body ::ng-deep .ql-container {
   flex: 1;
   min-height: 0;
   border-radius: 0 0 8px 8px;
@@ -177,7 +180,7 @@
 }
 
 /* Editor content */
-::ng-deep .ql-editor {
+.notes-body ::ng-deep .ql-editor {
   min-height: 120px;
   font-size: 14px;
   line-height: 1.6;
@@ -185,12 +188,12 @@
 }
 
 /* Focus effect */
-::ng-deep .ql-container.ql-snow:focus-within {
+.notes-body ::ng-deep .ql-container.ql-snow:focus-within {
   border-color: var(--primary);
 }
 
 /* Placeholder text (Quill's own snow theme hardcodes a dark color here) */
-::ng-deep .ql-editor.ql-blank::before {
+.notes-body ::ng-deep .ql-editor.ql-blank::before {
   color: var(--text-secondary);
   font-style: normal;
 }
