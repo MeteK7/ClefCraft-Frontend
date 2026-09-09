@@ -42,14 +42,13 @@ export class CommentComposerComponent implements OnInit {
   bodyControl = new FormControl('');
   mentionableUsers: MentionableUser[] = [];
 
-  // Built as a getter (not a shared constant) because the `mention` module's `source`
-  // callback needs to close over this.mentionableUsers, which loads asynchronously.
   get quillModules() {
     return {
       ...commentQuillModules,
       mention: {
         allowedChars: /^[A-Za-z0-9_.\-\s]*$/,
         mentionDenotationChars: ['@'],
+        positioningStrategy: 'fixed',
         source: (
           searchTerm: string,
           renderList: (matches: { id: string; value: string }[], searchTerm: string) => void
