@@ -280,16 +280,19 @@ export class ItemDetailDialogComponent implements OnInit {
   markAsWorked(): void {
     if (this.isNewItem) return; // needs a saved id to link the calendar event to
 
-    const currentDate = new Date();
-    const endDate = new Date(currentDate.getTime() + 1);
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 1);
+
     const formValue = this.form.value;
 
     const calendarEvent = {
       subject: formValue.title,
       comment: formValue.description,
-      startDate: currentDate,
+      startDate: startDate,
       endDate: endDate,
-      allDayEvent: false,
+      allDayEvent: true,
       importance: 1,
       linkedBoardItemId: this.data.item!.id,
     };
