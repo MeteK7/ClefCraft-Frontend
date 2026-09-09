@@ -207,7 +207,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: ({ fetched, range, seq }) => {
         if (!this.isCurrent(seq)) return; // superseded by a later fetch from either code path
-        this.mergeEvents(fetched);
+        this.mergeEvents(fetched, range);
         this.monthFetchedStart = range.start;
         this.monthFetchedEnd = range.end;
         this.monthScrollWindow = this.engine.recomputeAllMonthScrollWeeks(this.monthScrollWindow, this.events);
@@ -400,9 +400,19 @@ export class CalendarComponent implements OnInit, OnDestroy {
    * deduping by `id` would collapse all of a series' occurrences down to
    * whichever was processed last, silently dropping the rest. `occurrenceKey`
    * is unique per occurrence (and still stable across re-fetches of the same
-   * occurrence, so repeated merges don't grow the array).
+   * occurrence, so repeated merges don't grow the array) — *unless* the
+   * occurrence's start date/time itself changed (edited, or dragged in month
+   * view), since occurrenceKey is derived from it. A moved occurrence comes
+   * back from `fetched` under a brand-new key, and a naive union would keep
+   * BOTH the stale entry under its old key and the fresh one under its new
+   * key forever — a duplicate that only a hard reload (full replace via
+   * fetchEvents) would clear. `fetched` is always complete for `range` (the
+   * range we just asked the server for), so any existing occurrence whose
+   * ORIGINAL start falls inside `range` is authoritatively superseded by
+   * this fetch: if it didn't come back under the same key, it's stale
+   * (moved, or deleted) and must be dropped rather than carried forward.
    */
-  private mergeEvents(fetched: any[]): void {
+  private mergeEvents(fetched: any[], range: { start: Date; end: Date }): void {
     const normalized: CalendarEventUI[] = fetched.map(event => ({
       ...event,
       startDate: new Date(event.startDate),
@@ -410,7 +420,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }));
 
     const byKey = new Map<string | number, CalendarEventUI>();
-    for (const e of this.events) byKey.set(e.occurrenceKey ?? e.id!, e);
+    for (const e of this.events) {
+      const supersededByThisFetch = e.startDate >= range.start && e.startDate < range.end;
+      if (supersededByThisFetch) continue;
+      byKey.set(e.occurrenceKey ?? e.id!, e);
+    }
     for (const e of normalized) byKey.set(e.occurrenceKey ?? e.id!, e);
 
     this.events = Array.from(byKey.values());

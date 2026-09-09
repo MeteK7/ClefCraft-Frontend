@@ -75,6 +75,10 @@ describe('CalendarComponent — mergeEvents() occurrence identity', () => {
     fixture.detectChanges();
   });
 
+  // A generous range comfortably covering every date used below, matching what a real
+  // "re-fetch the currently-loaded month window" call passes to mergeEvents().
+  const fullRange = { start: new Date('2026-08-01T00:00:00Z'), end: new Date('2026-10-01T00:00:00Z') };
+
   it('keeps every occurrence of a recurring series distinct across a merge, even though they share the same id', () => {
     const aug29 = makeOccurrence({ occurrenceKey: 'series-45_20260829060000', startDate: new Date('2026-08-29T06:00:00Z') });
     const sep5 = makeOccurrence({ occurrenceKey: 'series-45_20260905060000', startDate: new Date('2026-09-05T06:00:00Z') });
@@ -85,7 +89,7 @@ describe('CalendarComponent — mergeEvents() occurrence identity', () => {
 
     // Simulate exactly what a scroll-triggered (or post-save) re-fetch sends:
     // the union range comes back with all same-series occurrences again.
-    (component as any).mergeEvents([aug29, sep5, sep12, unrelated]);
+    (component as any).mergeEvents([aug29, sep5, sep12, unrelated], fullRange);
 
     const testRec = (component as any).events.filter((e: CalendarEventUI) => e.subject === 'Test Rec');
     expect(testRec.length).toBe(3);
@@ -99,7 +103,7 @@ describe('CalendarComponent — mergeEvents() occurrence identity', () => {
     (component as any).events = [original];
 
     const refetched = makeOccurrence({ subject: 'Renamed subject' }); // same occurrenceKey, updated field
-    (component as any).mergeEvents([refetched]);
+    (component as any).mergeEvents([refetched], fullRange);
 
     const events = (component as any).events as CalendarEventUI[];
     expect(events.length).toBe(1);
@@ -111,11 +115,84 @@ describe('CalendarComponent — mergeEvents() occurrence identity', () => {
     (component as any).events = [existing];
 
     const refetched = makeOccurrence({ occurrenceKey: undefined, id: 7, baseEventId: 7, subject: 'Updated' });
-    (component as any).mergeEvents([refetched]);
+    (component as any).mergeEvents([refetched], fullRange);
 
     const events = (component as any).events as CalendarEventUI[];
     expect(events.length).toBe(1);
     expect(events[0].subject).toBe('Updated');
+  });
+});
+
+/**
+ * Regression coverage for the bug reported 2026-09-09: editing (or dragging) a recurring
+ * occurrence to a new start date/time made it appear TWICE in month view — once under its
+ * stale old position, once under the updated one — until a hard page reload cleared it. Root
+ * cause: occurrenceKey is derived from the occurrence's start date/time, so a moved occurrence
+ * comes back from the post-save refetch under a brand-new key; mergeEvents()'s key-union never
+ * removed the old key, so both survived side by side. Fixed by treating `fetched` as
+ * authoritative for the whole requested `range`: any existing occurrence whose ORIGINAL start
+ * falls inside `range` but isn't present in the fresh fetch (moved out, or deleted) is now
+ * dropped instead of carried forward under its stale key.
+ */
+describe('CalendarComponent — mergeEvents() drops stale occurrences superseded by a move', () => {
+  let component: CalendarComponent;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [CalendarComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CalendarComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('removes the stale entry when an occurrence moves to a new start date within the refetched range', () => {
+    const original = makeOccurrence({
+      occurrenceKey: 'series-45_20260829060000',
+      startDate: new Date('2026-08-29T06:00:00Z'),
+      subject: 'Team sync',
+    });
+    (component as any).events = [original];
+
+    // The occurrence was edited/dragged to Sep 5 — the refetch for the whole loaded month
+    // window comes back with it under a NEW occurrenceKey (derived from the new start date),
+    // and no longer contains anything under the OLD key.
+    const moved = makeOccurrence({
+      occurrenceKey: 'series-45_20260905060000',
+      startDate: new Date('2026-09-05T06:00:00Z'),
+      subject: 'Team sync',
+    });
+    const range = { start: new Date('2026-08-01T00:00:00Z'), end: new Date('2026-10-01T00:00:00Z') };
+
+    (component as any).mergeEvents([moved], range);
+
+    const events = (component as any).events as CalendarEventUI[];
+    expect(events.length).toBe(1);
+    expect(events[0].occurrenceKey).toBe('series-45_20260905060000');
+  });
+
+  it('does not drop an occurrence whose original date falls outside the refetched range', () => {
+    const outOfRange = makeOccurrence({
+      occurrenceKey: 'series-7_20260601060000',
+      startDate: new Date('2026-06-01T06:00:00Z'),
+      id: 7, baseEventId: 7, seriesUid: 'series-7',
+    });
+    (component as any).events = [outOfRange];
+
+    // A merge for a September window shouldn't touch an event loaded from a June fetch.
+    const septemberRange = { start: new Date('2026-09-01T00:00:00Z'), end: new Date('2026-10-01T00:00:00Z') };
+    (component as any).mergeEvents([], septemberRange);
+
+    const events = (component as any).events as CalendarEventUI[];
+    expect(events.length).toBe(1);
+    expect(events[0]).toBe(outOfRange);
   });
 });
 
