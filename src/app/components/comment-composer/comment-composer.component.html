@@ -1,4 +1,4 @@
-<div class="comment-composer" [class.collapsible]="collapsible" [class.collapsed]="isCollapsed">
+<div #composerRoot class="comment-composer" [class.collapsible]="collapsible" [class.collapsed]="isCollapsed" (click)="onComposerClick()">
   <div class="composer-editor-wrapper">
     <quill-editor
       [formControl]="bodyControl"
@@ -10,7 +10,7 @@
     </quill-editor>
   </div>
 
-  <div class="composer-actions">
+  <div class="composer-actions" (click)="$event.stopPropagation()">
     <button mat-flat-button color="primary" [disabled]="!hasContent" (click)="onSubmit()">{{ submitLabel }}</button>
     <button mat-button *ngIf="showCancel" (click)="onCancel()">Cancel</button>
   </div>

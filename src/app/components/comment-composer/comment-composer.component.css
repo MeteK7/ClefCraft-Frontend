@@ -16,10 +16,14 @@
   position: relative;
 }
 
-/* Merge Quill's toolbar + editor into one seamless control filling this card, matching the
-   Notes editor's treatment in calendar-dialog.component.css so the two don't read as different
-   rich-text widgets. */
+.comment-quill {
+  display: block;
+}
+
 .comment-quill ::ng-deep .ql-toolbar.ql-snow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   border: none;
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
@@ -45,6 +49,15 @@
   left: 12px;
 }
 
+.comment-quill ::ng-deep .ql-stroke,
+.comment-quill ::ng-deep .ql-stroke-miter {
+  stroke: var(--text-secondary);
+}
+
+.comment-quill ::ng-deep .ql-fill {
+  fill: var(--text-secondary);
+}
+
 .composer-actions {
   display: flex;
   gap: 8px;
@@ -54,8 +67,6 @@
   background: var(--surface-2);
 }
 
-/* Collapsed (rest) state — a compact, low-commitment pill instead of a permanently open
-   document editor. Only applies when the composer opts into it via [collapsible]. */
 .comment-composer.collapsible.collapsed {
   border-radius: 20px;
   cursor: text;

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { afterNextRender, Component, ElementRef, EventEmitter, Injector, Input, OnInit, Output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,6 +30,8 @@ export class CommentComposerComponent implements OnInit {
 
   expanded = false;
 
+  @ViewChild('composerRoot') composerRoot?: ElementRef<HTMLElement>;
+
   @Output() submitted = new EventEmitter<{
     bodyHtml: string;
     mentionedUserIds: string[];
@@ -40,14 +42,13 @@ export class CommentComposerComponent implements OnInit {
   bodyControl = new FormControl('');
   mentionableUsers: MentionableUser[] = [];
 
-  // Built as a getter (not a shared constant) because the `mention` module's `source`
-  // callback needs to close over this.mentionableUsers, which loads asynchronously.
   get quillModules() {
     return {
       ...commentQuillModules,
       mention: {
         allowedChars: /^[A-Za-z0-9_.\-\s]*$/,
         mentionDenotationChars: ['@'],
+        positioningStrategy: 'fixed',
         source: (
           searchTerm: string,
           renderList: (matches: { id: string; value: string }[], searchTerm: string) => void
@@ -62,7 +63,7 @@ export class CommentComposerComponent implements OnInit {
     };
   }
 
-  constructor(private commentService: CommentService) { }
+  constructor(private commentService: CommentService, private injector: Injector) { }
 
   ngOnInit(): void {
     this.bodyControl.setValue(this.initialBodyHtml ?? '');
@@ -84,17 +85,20 @@ export class CommentComposerComponent implements OnInit {
     this.expanded = true;
   }
 
+  onComposerClick(): void {
+    if (!this.isCollapsed) return;
+
+    this.expanded = true;
+    afterNextRender(() => {
+      this.composerRoot?.nativeElement.querySelector<HTMLElement>('.ql-editor')?.focus();
+    }, { injector: this.injector });
+  }
+
   onEditorBlur(): void {
     // A draft in progress is never hidden — only rest back to the pill once it's genuinely empty.
     if (!this.hasContent) this.expanded = false;
   }
 
-  // Mentions round-trip through the stored HTML itself (quill-mention's blot is recognized by
-  // Quill's HTML matcher on load), so the authoritative mention list for a submission is
-  // whatever ".mention[data-id]" elements are actually present in the final body — no separate
-  // tracking of "which mentions were added this session" needed. data-value doubles as the
-  // display name, so the same parse gives the parent everything it needs to build a
-  // "this will share the event with X" confirmation without a second lookup.
   private extractMentions(html: string): { userId: string; fullName: string }[] {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const seen = new Set<string>();
@@ -123,6 +127,10 @@ export class CommentComposerComponent implements OnInit {
   }
 
   onCancel(): void {
+    if (this.hasContent && !window.confirm('Discard this draft?')) return;
+
     this.cancelled.emit();
+    this.bodyControl.setValue('');
+    this.expanded = false;
   }
 }

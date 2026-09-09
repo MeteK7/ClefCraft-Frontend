@@ -181,3 +181,22 @@ body.dark-theme .mat-mdc-radio-button label {
 .mat-datepicker-toggle .mat-datepicker-toggle-default-icon {
   color: var(--text-secondary) !important;
 }
+
+.ql-editor .mention,
+.comment-html .mention {
+  background-color: var(--primary-light);
+  color: var(--primary);
+}
+
+.ql-mention-list-container.ql-mention-list-container {
+  background-color: var(--surface);
+  border-color: var(--border);
+}
+
+.ql-mention-list-item.ql-mention-list-item {
+  color: var(--text);
+}
+
+.ql-mention-list-item.selected.selected {
+  background-color: var(--surface-hover);
+}

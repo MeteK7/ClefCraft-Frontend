@@ -5,7 +5,7 @@
   </div>
 
   <div class="collaborators-list">
-    <div class="collaborator-chip" *ngFor="let collaborator of collaborators" [matTooltip]="collaborator.fullName">
+    <div class="collaborator-chip" *ngFor="let collaborator of collaborators">
       <app-user-avatar [fullName]="collaborator.fullName"></app-user-avatar>
       <span class="collaborator-name">{{ collaborator.fullName }}</span>
       <button mat-icon-button *ngIf="isOwner" class="remove-btn" (click)="removeCollaborator(collaborator)"
