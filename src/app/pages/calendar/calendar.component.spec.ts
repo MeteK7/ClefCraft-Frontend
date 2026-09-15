@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
@@ -241,11 +241,19 @@ describe('CalendarComponent — findEventByOccurrence()', () => {
  * background refresh was still in flight, and clicking the just-edited
  * event again during that window opened it with stale (pre-save) data.
  * Root cause: refreshAfterSave()'s month-view branch fetched and merged
- * independently of the existing needMoreRange$ pipeline, so it never drove
- * `isLoading` (the flag already wired to the loading overlay + a
- * pointer-events:none grid) and could also race a concurrent
- * scroll-triggered refresh. Fixed by routing it through the same
- * needMoreRange$ -> switchMap pipeline instead of duplicating the fetch.
+ * independently of the existing needMoreRange$ pipeline, so it drove no
+ * loading feedback at all and could also race a concurrent scroll-triggered
+ * refresh. Fixed by routing it through the same needMoreRange$ -> switchMap
+ * pipeline instead of duplicating the fetch.
+ *
+ * NOTE: the feedback mechanism itself was later refined — `isLoading` (the
+ * blocking full-screen overlay) is now reserved for the initial/recenter
+ * load only; a mutation-triggered refresh instead drives `isSyncing$`, a
+ * small non-blocking "Syncing…" indicator debounced ~250ms so a fast
+ * refresh doesn't flicker the UI (see the doc comment on `isLoading` and on
+ * `isSyncing$`/`isFetchingMore$` in calendar.component.ts). These tests were
+ * updated to assert against `isSyncing$` accordingly — the original bug
+ * (silent refresh with zero feedback) is still what's being guarded against.
  */
 describe('CalendarComponent — refreshAfterSave() loading state and race safety', () => {
   let component: CalendarComponent;
@@ -275,31 +283,44 @@ describe('CalendarComponent — refreshAfterSave() loading state and race safety
 
   afterEach(() => httpMock.verify());
 
-  it('sets isLoading synchronously when triggered, and clears it once the response settles', () => {
+  it('drives isSyncing$ (debounced, non-blocking) rather than the blocking isLoading flag, and clears it once the response settles', fakeAsync(() => {
+    let syncing = false;
+    component.isSyncing$.subscribe(v => syncing = v);
+    expect(syncing).toBeFalse();
     expect(component.isLoading).toBeFalse();
 
     (component as any).refreshAfterSave();
 
-    // True immediately — before the HTTP response has arrived. This is the
-    // exact window the bug lived in: the dialog had already closed and the
-    // grid was fully interactive with stale data during this gap.
-    expect(component.isLoading).toBeTrue();
+    // isLoading is reserved for the initial/blocking load — a mutation-triggered
+    // refresh must never trip the full-screen overlay.
+    expect(component.isLoading).toBeFalse();
+    // isSyncing$ is intentionally debounced ~250ms so a fast refresh doesn't
+    // flicker the "Syncing…" indicator on and off.
+    expect(syncing).toBeFalse();
+
+    tick(250);
+    expect(syncing).toBeTrue();
 
     const req = httpMock.expectOne(r => r.url.includes('/Calendar/events'));
     req.flush([]);
 
+    expect(syncing).toBeFalse();
     expect(component.isLoading).toBeFalse();
-  });
+  }));
 
-  it('clears isLoading even when the refresh request errors', () => {
+  it('clears isSyncing$ even when the refresh request errors', fakeAsync(() => {
+    let syncing = false;
+    component.isSyncing$.subscribe(v => syncing = v);
+
     (component as any).refreshAfterSave();
-    expect(component.isLoading).toBeTrue();
+    tick(250);
+    expect(syncing).toBeTrue();
 
     const req = httpMock.expectOne(r => r.url.includes('/Calendar/events'));
     req.flush('error', { status: 500, statusText: 'Server Error' });
 
-    expect(component.isLoading).toBeFalse();
-  });
+    expect(syncing).toBeFalse();
+  }));
 
   it('a save-triggered refresh and a scroll-triggered refresh cannot race: switchMap cancels the older one', () => {
     // First trigger (e.g. a save-triggered refresh)...
