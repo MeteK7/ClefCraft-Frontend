@@ -31,7 +31,7 @@ import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { QuillModule } from 'ngx-quill';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatRadioModule } from '@angular/material/radio';
-import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
+import { getAttendanceColor, getAttendanceLabel, getAttendancePercent } from '../../utils/attendance.utils';
 import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
 import { Subscription } from 'rxjs';
@@ -129,6 +129,7 @@ export class CalendarDialogComponent implements OnInit {
 
   attendanceLabel = getAttendanceLabel;
   attendanceColor = getAttendanceColor;
+  attendancePercent = getAttendancePercent;
 
   /** General/Attachments/Recurrence/History/Comments — Comments is a fixed tab position once
    * an event is loaded, so jump straight to it when opened from a mention deep link. */
