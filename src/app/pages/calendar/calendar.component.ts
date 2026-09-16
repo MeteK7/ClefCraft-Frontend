@@ -612,7 +612,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
     if (event.attendanceScore != null) {
       const label = this.attendanceLabel(event.attendanceScore);
-      tip += `\nAttendance: ${label} (${(event.attendanceScore * 100).toFixed(0)}%)`;
+      tip += `\nExperimental attendance estimate: ${label}`;
     }
 
     return tip;
