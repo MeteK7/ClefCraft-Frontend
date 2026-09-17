@@ -40,7 +40,7 @@ import { ResizeSession } from '../../calendar-engine/interactions/resize/resize-
 import { EventDragEngine } from '../../calendar-engine/interactions/drag/event-drag-engine';
 import { EventResizeEngine } from '../../calendar-engine/interactions/resize/event-resize-engine';
 
-import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
+import { getAttendanceColor, getAttendanceLabel, getAttendancePercent } from '../../utils/attendance.utils';
 import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
@@ -612,7 +612,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
     if (event.attendanceScore != null) {
       const label = this.attendanceLabel(event.attendanceScore);
-      tip += `\nAttendance: ${label} (${(event.attendanceScore * 100).toFixed(0)}%)`;
+      const pct = getAttendancePercent(event.attendanceScore);
+      tip += `\nExperimental attendance estimate: ${label} (${pct}%)`;
     }
 
     return tip;

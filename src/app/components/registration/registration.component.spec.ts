@@ -1,4 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { ToastrService } from 'ngx-toastr';
 
 import { RegistrationComponent } from './registration.component';
 
@@ -8,7 +12,13 @@ describe('RegistrationComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RegistrationComponent]
+      imports: [RegistrationComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: ToastrService, useValue: jasmine.createSpyObj('ToastrService', ['success', 'error']) },
+      ]
     })
     .compileComponents();
     

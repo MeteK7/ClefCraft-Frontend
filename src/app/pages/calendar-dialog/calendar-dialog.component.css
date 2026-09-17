@@ -730,6 +730,17 @@ textarea[matInput] {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-info-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+  cursor: help;
 }
 
 .ai-verdict {

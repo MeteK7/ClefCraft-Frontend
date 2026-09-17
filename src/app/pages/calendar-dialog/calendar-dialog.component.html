@@ -22,16 +22,19 @@
     <mat-icon color="primary">auto_awesome</mat-icon>
 
     <div>
-      <div class="ai-section-label">AI Insight</div>
+      <div class="ai-section-label">
+        AI Insight
+        <mat-icon class="ai-info-icon" title="Experimental estimate based on available calendar and activity patterns, not yet validated on real-world attendance data.">info_outline</mat-icon>
+      </div>
 
       <div class="ai-row">
-        <span>Attendance Prediction:</span>
+        <span>Experimental attendance estimate:</span>
 
         <div class="ai-verdict" *ngIf="data?.eventData?.attendanceScore != null"
           [style.color]="attendanceColor(data.eventData.attendanceScore)">
 
           {{ attendanceLabel(data.eventData.attendanceScore) }}
-          ({{ (data.eventData.attendanceScore * 100) | number:'1.0-0' }}%)
+          ({{ attendancePercent(data.eventData.attendanceScore) }}%)
         </div>
       </div>
     </div>

@@ -33,4 +33,5 @@ export interface CalendarEventUI {
   linkedBoardItemId?: number | null;
   linkedBoardItemTitle?: string;
   reminderMinutes?: number[];
+  timeZoneId?: string;
 }

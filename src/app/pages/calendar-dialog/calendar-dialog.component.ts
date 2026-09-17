@@ -31,7 +31,7 @@ import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { QuillModule } from 'ngx-quill';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatRadioModule } from '@angular/material/radio';
-import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
+import { getAttendanceColor, getAttendanceLabel, getAttendancePercent } from '../../utils/attendance.utils';
 import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
 import { Subscription } from 'rxjs';
@@ -129,6 +129,7 @@ export class CalendarDialogComponent implements OnInit {
 
   attendanceLabel = getAttendanceLabel;
   attendanceColor = getAttendanceColor;
+  attendancePercent = getAttendancePercent;
 
   /** General/Attachments/Recurrence/History/Comments — Comments is a fixed tab position once
    * an event is loaded, so jump straight to it when opened from a mention deep link. */
@@ -717,6 +718,15 @@ export class CalendarDialogComponent implements OnInit {
       }
       : null;
 
+    // All-day events have no meaningful wall-clock hour, so they're always
+    // anchored to UTC (matches the backend's own all-day short-circuit in
+    // RecurrenceHelper.ExpandEvent). Otherwise capture the browser's live
+    // IANA zone so DST-correct recurrence expansion has something to work
+    // with, and so relocating and re-editing a series re-anchors it for free.
+    const timeZoneId = this.generalForm.value.allDayEvent
+      ? 'UTC'
+      : Intl.DateTimeFormat().resolvedOptions().timeZone;
+
     // Emit the data, now safely including the user's chosen recurrence selection scope
     this.onSave.emit({
       record: {
@@ -732,7 +742,8 @@ export class CalendarDialogComponent implements OnInit {
           : null,
         reminderMinutes: this.generalForm.value.reminderMinutes ?? [],
         originalOccurrenceDate: this.originalOccurrenceDate,
-        recurrenceScope: recurrenceScope // This will pass 'this', 'thisAndFollowing', 'allPreserve', or 'allOverride'
+        recurrenceScope: recurrenceScope, // This will pass 'this', 'thisAndFollowing', 'allPreserve', or 'allOverride'
+        timeZoneId
       },
       attachments: this.stagedAttachments
     });
