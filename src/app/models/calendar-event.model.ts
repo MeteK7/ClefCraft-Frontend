@@ -16,4 +16,5 @@ export interface CalendarEvent {
   recurrenceRuleJson?: string | null;
   linkedBoardItemId?: number | null;
   reminderMinutes?: number[];
+  timeZoneId?: string;
 }

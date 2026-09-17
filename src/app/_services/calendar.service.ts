@@ -103,6 +103,7 @@ export class CalendarService {
     startDate?: string;
     endDate?: string;
     location?: string | null;
+    timeZoneId?: string;
   }): Observable<void> {
     return this.http.put<void>(
       `${this.apiUrl}/occurrence/from`,
@@ -116,6 +117,7 @@ export class CalendarService {
     comment?: string;
     location?: string;
     recurrenceRuleJson: string;
+    timeZoneId?: string;
   }): Observable<void> {
     return this.http.put<void>(
       `${this.apiUrl}/series/preserve-exceptions`,
@@ -129,6 +131,7 @@ export class CalendarService {
     comment?: string;
     location?: string;
     recurrenceRuleJson: string;
+    timeZoneId: string;
   }): Observable<void> {
     return this.http.put<void>(
       `${this.apiUrl}/series/override-all`,
@@ -168,6 +171,7 @@ export class CalendarService {
           startDate,
           endDate,
           location: record.location,
+          timeZoneId: record.timeZoneId,
         });
 
       case 'allPreserve':
@@ -177,6 +181,7 @@ export class CalendarService {
           comment: record.comment,
           location: record.location,
           recurrenceRuleJson: record.recurrenceRuleJson,
+          timeZoneId: record.timeZoneId,
         });
 
       case 'allOverride':
@@ -186,6 +191,7 @@ export class CalendarService {
           comment: record.comment,
           location: record.location,
           recurrenceRuleJson: record.recurrenceRuleJson,
+          timeZoneId: record.timeZoneId,
         });
 
       default:
