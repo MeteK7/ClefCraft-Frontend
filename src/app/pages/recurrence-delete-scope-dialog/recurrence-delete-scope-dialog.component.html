@@ -1,0 +1,67 @@
+<div class="scope-dialog">
+
+  <!-- ── Header ───────────────────────────────────────────────────────────── -->
+  <div class="scope-header">
+    <div class="scope-header-icon">
+      <mat-icon color="warn">delete_outline</mat-icon>
+    </div>
+    <div>
+      <h2 class="scope-title">Delete Recurring Event</h2>
+      <p class="scope-subtitle">How much of this series do you want to delete?</p>
+    </div>
+  </div>
+
+  <!-- ── Persistent destructive warning — every choice below deletes data ── -->
+  <div class="override-warning">
+    <mat-icon color="warn">warning_amber</mat-icon>
+    <div class="override-warning-text">
+      <p class="warning-emphasis">This action cannot be undone.</p>
+    </div>
+  </div>
+
+  <!-- ── Scope selection ───────────────────────────────────────────────────── -->
+  <mat-radio-group [(ngModel)]="scope" class="scope-options">
+
+    <!-- 1. Only this occurrence -->
+    <label class="scope-option destructive" [class.selected]="scope === 'this'">
+      <mat-radio-button value="this">
+        <div class="option-content">
+          <span class="option-label">Only this occurrence</span>
+          <span class="option-desc">Removes this date only</span>
+        </div>
+      </mat-radio-button>
+    </label>
+
+    <!-- 2. This and all following -->
+    <label class="scope-option destructive" [class.selected]="scope === 'thisAndFollowing'">
+      <mat-radio-button value="thisAndFollowing">
+        <div class="option-content">
+          <span class="option-label">This and all following</span>
+          <span class="option-desc">Removes this occurrence onward; earlier occurrences stay</span>
+        </div>
+      </mat-radio-button>
+    </label>
+
+    <!-- 3. Entire series -->
+    <label class="scope-option destructive" [class.selected]="scope === 'all'">
+      <mat-radio-button value="all">
+        <div class="option-content">
+          <span class="option-label">Entire series</span>
+          <span class="option-desc">Removes every occurrence, including past ones</span>
+        </div>
+      </mat-radio-button>
+    </label>
+
+  </mat-radio-group>
+
+  <!-- ── Actions ──────────────────────────────────────────────────────────── -->
+  <div class="scope-actions">
+    <button mat-button (click)="cancel()">
+      Cancel
+    </button>
+    <button mat-raised-button color="warn" (click)="confirm()">
+      Delete
+    </button>
+  </div>
+
+</div>

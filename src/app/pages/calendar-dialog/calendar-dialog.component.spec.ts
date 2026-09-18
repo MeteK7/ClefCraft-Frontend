@@ -8,6 +8,8 @@ import { of } from 'rxjs';
 
 import { CalendarDialogComponent } from './calendar-dialog.component';
 import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
+import { RecurrenceDeleteScopeDialogComponent } from '../recurrence-delete-scope-dialog/recurrence-delete-scope-dialog.component';
+import { AuthService } from '../../_services/auth.service';
 
 describe('CalendarDialogComponent', () => {
   let component: CalendarDialogComponent;
@@ -65,6 +67,46 @@ async function createDialog(data: any): Promise<{
   // Grab the exact MatDialog instance the component itself holds (rather
   // than a separate TestBed.inject(MatDialog) call) so spying on it is
   // guaranteed to intercept the component's own this.dialog.open(...) call.
+  const dialog: MatDialog = (component as any).dialog;
+  fixture.detectChanges();
+
+  return { fixture, component, dialog };
+}
+
+/**
+ * Same as createDialog(), but also stubs AuthService.getUserId() so
+ * isEventOwner (which compares it against eventData.ownerUserId) can be
+ * driven deterministically — the real AuthService reads from a JWT that
+ * doesn't exist in a test environment, so it would otherwise always
+ * resolve to a non-owner.
+ */
+async function createDialogAsUser(data: any, currentUserId: string | null): Promise<{
+  fixture: ComponentFixture<CalendarDialogComponent>;
+  component: CalendarDialogComponent;
+  dialog: MatDialog;
+}> {
+  TestBed.resetTestingModule();
+
+  // getCurrentUser is also stubbed (not just getUserId) because the dialog's Comments tab
+  // renders a nested CommentThreadComponent that calls it directly.
+  const authServiceSpy = jasmine.createSpyObj('AuthService', ['getUserId', 'getCurrentUser']);
+  authServiceSpy.getUserId.and.returnValue(currentUserId);
+  authServiceSpy.getCurrentUser.and.returnValue({ fullName: 'Test User' } as any);
+
+  await TestBed.configureTestingModule({
+    imports: [CalendarDialogComponent],
+    providers: [
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      provideRouter([]),
+      provideNoopAnimations(),
+      { provide: MAT_DIALOG_DATA, useValue: data },
+      { provide: AuthService, useValue: authServiceSpy }
+    ]
+  }).compileComponents();
+
+  const fixture = TestBed.createComponent(CalendarDialogComponent);
+  const component = fixture.componentInstance;
   const dialog: MatDialog = (component as any).dialog;
   fixture.detectChanges();
 
@@ -397,5 +439,97 @@ describe('CalendarDialogComponent — originalOccurrenceDate capture', () => {
     const { component } = await createDialog({ eventData });
 
     expect(component.originalOccurrenceDate).toBeNull();
+  });
+});
+
+describe('CalendarDialogComponent — Delete button visibility', () => {
+  it('is hidden when creating a brand-new event (no eventId)', async () => {
+    const { component } = await createDialogAsUser({ eventData: null, date: new Date('2026-03-02') }, 'user-1');
+
+    expect(component.eventId).toBeNull();
+  });
+
+  it('is shown when editing an event owned by the current user', async () => {
+    const eventData = baseEventData({ ownerUserId: 'user-1', isRecurring: false });
+    const { component } = await createDialogAsUser({ eventData }, 'user-1');
+
+    expect(component.eventId).toBe(42);
+    expect(component.isEventOwner).toBeTrue();
+  });
+
+  it('is hidden when editing an event owned by someone else (read-only collaborator)', async () => {
+    const eventData = baseEventData({ ownerUserId: 'someone-else', isRecurring: false });
+    const { component } = await createDialogAsUser({ eventData }, 'user-1');
+
+    expect(component.eventId).toBe(42);
+    expect(component.isEventOwner).toBeFalse();
+  });
+});
+
+describe('CalendarDialogComponent — handleDelete()', () => {
+  it('non-recurring event: confirmed — emits onDelete with the event id, no scope dialog', async () => {
+    const eventData = baseEventData({ ownerUserId: 'user-1', isRecurring: false });
+    const { component, dialog } = await createDialogAsUser({ eventData }, 'user-1');
+    spyOn(dialog, 'open');
+    spyOn(window, 'confirm').and.returnValue(true);
+
+    let emitted: any = null;
+    component.onDelete.subscribe(payload => (emitted = payload));
+
+    component.handleDelete();
+
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(emitted).toEqual({ id: 42 });
+    expect(component.saving).toBeTrue();
+  });
+
+  it('non-recurring event: declined — emits nothing', async () => {
+    const eventData = baseEventData({ ownerUserId: 'user-1', isRecurring: false });
+    const { component } = await createDialogAsUser({ eventData }, 'user-1');
+    spyOn(window, 'confirm').and.returnValue(false);
+
+    let emitted: any = null;
+    component.onDelete.subscribe(payload => (emitted = payload));
+
+    component.handleDelete();
+
+    expect(emitted).toBeNull();
+    expect(component.saving).toBeFalse();
+  });
+
+  it('recurring event: opens the delete-scope dialog and emits onDelete with the chosen scope', async () => {
+    const eventData = baseEventData({
+      ownerUserId: 'user-1',
+      isRecurring: true,
+      recurrenceRuleJson: JSON.stringify({ Frequency: 'DAILY', Interval: 1 })
+    });
+    const { component, dialog } = await createDialogAsUser({ eventData }, 'user-1');
+    spyOn(dialog, 'open').and.returnValue({ afterClosed: () => of('thisAndFollowing') } as any);
+
+    let emitted: any = null;
+    component.onDelete.subscribe(payload => (emitted = payload));
+
+    component.handleDelete();
+
+    expect(dialog.open).toHaveBeenCalledWith(RecurrenceDeleteScopeDialogComponent, jasmine.any(Object));
+    expect(emitted).toEqual(jasmine.objectContaining({ seriesUid: 'series-1', scope: 'thisAndFollowing' }));
+  });
+
+  it('recurring event: cancelling the scope dialog emits nothing and resets saving', async () => {
+    const eventData = baseEventData({
+      ownerUserId: 'user-1',
+      isRecurring: true,
+      recurrenceRuleJson: JSON.stringify({ Frequency: 'DAILY', Interval: 1 })
+    });
+    const { component, dialog } = await createDialogAsUser({ eventData }, 'user-1');
+    spyOn(dialog, 'open').and.returnValue({ afterClosed: () => of(null) } as any);
+
+    let emitted: any = null;
+    component.onDelete.subscribe(payload => (emitted = payload));
+
+    component.handleDelete();
+
+    expect(emitted).toBeNull();
+    expect(component.saving).toBeFalse();
   });
 });

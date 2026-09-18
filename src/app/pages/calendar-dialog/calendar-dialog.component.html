@@ -402,6 +402,10 @@
   </form>
 
   <div class="dialog-actions fixed-actions">
+    <button mat-button color="warn" class="delete-btn" *ngIf="eventId && isEventOwner" [disabled]="saving" (click)="handleDelete()">
+      Delete
+    </button>
+
     <div class="validation-hint" *ngIf="generalForm.invalid && generalForm.touched">
       Please fill in all required fields before saving.
     </div>
