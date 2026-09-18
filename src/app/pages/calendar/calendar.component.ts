@@ -15,6 +15,7 @@ import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.comp
 import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
 import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
+import { RecurrenceDeleteScope } from '../../models/recurrence-delete-scope.model';
 
 import { CalendarService } from '../../_services/calendar.service';
 import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
@@ -729,6 +730,28 @@ export class CalendarComponent implements OnInit, OnDestroy {
     });
 
     dialogRef.componentInstance.onCancel.subscribe(() => dialogRef.close());
+
+    dialogRef.componentInstance.onDelete.subscribe(
+      (payload: { id?: number; seriesUid?: string; occurrenceDate?: Date | string; scope?: RecurrenceDeleteScope }) => {
+        const delete$ = payload.scope
+          ? this.calendarService.deleteOccurrence(
+              { seriesUid: payload.seriesUid!, occurrenceDate: payload.occurrenceDate },
+              payload.scope
+            )
+          : this.calendarService.deleteEvent(payload.id!);
+
+        delete$.subscribe({
+          next: () => {
+            this.refreshAfterSave();
+            dialogRef.close();
+          },
+          error: (err: any) => {
+            console.error('Failed to delete event:', err);
+            dialogRef.componentInstance.saving = false;
+          },
+        });
+      }
+    );
 
     const attemptClose = () => {
       if (!dialogRef.componentInstance.hasUnsavedChanges) {

@@ -34,6 +34,8 @@ import { MatRadioModule } from '@angular/material/radio';
 import { getAttendanceColor, getAttendanceLabel, getAttendancePercent } from '../../utils/attendance.utils';
 import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
+import { RecurrenceDeleteScopeDialogComponent } from '../recurrence-delete-scope-dialog/recurrence-delete-scope-dialog.component';
+import { RecurrenceDeleteScope } from '../../models/recurrence-delete-scope.model';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { CalendarHistoryTimelineComponent } from '../../components/calendar-history-timeline/calendar-history-timeline.component';
@@ -73,6 +75,12 @@ export class CalendarDialogComponent implements OnInit {
 
   @Output() onSave = new EventEmitter<any>();
   @Output() onCancel = new EventEmitter<void>();
+  @Output() onDelete = new EventEmitter<{
+    id?: number;
+    seriesUid?: string;
+    occurrenceDate?: Date | string;
+    scope?: RecurrenceDeleteScope;
+  }>();
 
   /** True from the moment Save is actually submitted until the parent closes the dialog (success) or resets it (error). */
   saving = false;
@@ -766,6 +774,38 @@ export class CalendarDialogComponent implements OnInit {
     if (confirm) {
       this.onCancel.emit();
     }
+  }
+
+  handleDelete(): void {
+    if (!this.generalForm.value.isRecurring) {
+      const confirmed = window.confirm('Delete this event? This cannot be undone.');
+      if (!confirmed) return;
+
+      this.saving = true;
+      this.onDelete.emit({ id: this.eventId! });
+      return;
+    }
+
+    // The scope-selection step itself is the confirmation for a recurring delete — every
+    // option in that dialog is already destructive-styled, matching how the edit-scope flow
+    // treats its own override-all warning as sufficient, without an extra confirm() on top.
+    this.saving = true;
+    const dialogRef = this.dialog.open(RecurrenceDeleteScopeDialogComponent, {
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe((scope: RecurrenceDeleteScope | null) => {
+      if (!scope) {
+        this.saving = false;
+        return;
+      }
+
+      this.onDelete.emit({
+        seriesUid: this.data.eventData?.seriesUid,
+        occurrenceDate: this.originalOccurrenceDate ?? undefined,
+        scope
+      });
+    });
   }
 
   openLinkedBoardItem(): void {
