@@ -23,7 +23,7 @@
     <span>You have unsaved changes. Don't forget to save your modifications.</span>
   </div>
 
-  <mat-tab-group class="dialog-tabs">
+  <mat-tab-group class="dialog-tabs" [selectedIndex]="initialTabIndex">
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon class="tab-icon">edit</mat-icon> Details
@@ -194,6 +194,21 @@
             [priorities]="priorities">
           </app-history-timeline>
         </div>
+      </div>
+    </mat-tab>
+
+    <mat-tab *ngIf="!isNewItem">
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">forum</mat-icon>
+        Comments
+      </ng-template>
+
+      <div class="dialog-content">
+        <app-comment-thread
+          [entityType]="'BoardItem'"
+          [entityId]="item.id"
+          [focusCommentId]="data.focusCommentId ?? null">
+        </app-comment-thread>
       </div>
     </mat-tab>
 

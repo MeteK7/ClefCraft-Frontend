@@ -3,6 +3,7 @@ export type ImportanceLevel = 0 | 1 | 2; // 0 = Low, 1 = Normal, 2 = High
 export interface CalendarEvent {
   id?: number;
   baseEventId?: number;
+  ownerUserId?: string;
   seriesUid?: string;
   subject: string;
   location?: string;
@@ -15,4 +16,5 @@ export interface CalendarEvent {
   recurrenceRuleJson?: string | null;
   linkedBoardItemId?: number | null;
   reminderMinutes?: number[];
+  timeZoneId?: string;
 }

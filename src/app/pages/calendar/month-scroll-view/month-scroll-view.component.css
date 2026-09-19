@@ -51,6 +51,39 @@
   width: 100%;
 }
 
+/* Non-blocking background-prefetch indicator, kept outside the scrollable
+   content so it can never perturb the scrollTop/rowHeight alignment used
+   throughout this component (see the comment in the template). Height is
+   0 until active so it never shows unless a fetch genuinely takes a while. */
+.scroll-edge-indicator {
+  height: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: height 0.15s ease;
+}
+
+.scroll-edge-indicator.active {
+  height: 22px;
+}
+
+.edge-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: edge-spin 0.75s linear infinite;
+}
+
+@keyframes edge-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Each week row: fixed height so scroll math (index * rowHeight) stays exact. */
 .calendar-week {
   position: relative;
