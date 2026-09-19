@@ -9,12 +9,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { map, Observable, Subject, Subscription, switchMap } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, finalize, map, Observable, of, Subject, Subscription, switchMap, timer } from 'rxjs';
 
 import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
 import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
 import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
+import { RecurrenceDeleteScope } from '../../models/recurrence-delete-scope.model';
 
 import { CalendarService } from '../../_services/calendar.service';
 import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
@@ -40,7 +41,7 @@ import { ResizeSession } from '../../calendar-engine/interactions/resize/resize-
 import { EventDragEngine } from '../../calendar-engine/interactions/drag/event-drag-engine';
 import { EventResizeEngine } from '../../calendar-engine/interactions/resize/event-resize-engine';
 
-import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
+import { getAttendanceColor, getAttendanceLabel, getAttendancePercent } from '../../utils/attendance.utils';
 import { CalendarTimeBlock } from '../../models/calendar-time-block.model';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
@@ -49,6 +50,9 @@ import { DragPositionUtil } from '../../calendar-engine/interactions/drag/drag-p
 import { EventCreateEngine } from '../../calendar-engine/interactions/create/event-create-engine';
 
 import { MonthScrollViewComponent, VisibleMonthChangeEvent } from './month-scroll-view/month-scroll-view.component';
+
+type RangeOrigin = 'scroll' | 'mutation';
+interface RangeRequest { start: Date; end: Date; origin: RangeOrigin; }
 
 @Component({
   selector: 'app-calendar',
@@ -79,6 +83,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   selectedDate: Date = new Date();
   linkedRecord: Item | null = null;
   userId: string | undefined;
+  /** Blocking overlay — initial load / recenter only. See activeRangeOrigin$ for mutation/scroll feedback. */
   isLoading: boolean = false;
 
   // ── View mode ──────────────────────────────────────────────────────────────
@@ -122,14 +127,40 @@ export class CalendarComponent implements OnInit, OnDestroy {
   private readonly engine = inject(CalendarEngineService);
   private reminderSubscription!: Subscription;
   private pendingEventIdFromRedirect: number | null = null;
+  private pendingCommentIdFromRedirect: number | null = null;
   monthDragEvent: CalendarEventUI | null = null;
 
   /** Tracks the widest range of events we've fetched so far for month mode (incremental fetch). */
   private monthFetchedStart: Date | null = null;
   private monthFetchedEnd: Date | null = null;
 
-  private needMoreRange$ = new Subject<{ start: Date; end: Date }>();
+  private needMoreRange$ = new Subject<RangeRequest>();
   private needMoreRangeSub!: Subscription;
+
+  // ── Range-fetch lifecycle (scroll prefetch + mutation refresh) ─────────────
+  // Single shared authority for "which range fetch is current," used by both
+  // the needMoreRange$/switchMap pipeline (ngOnInit) and fetchEvents() — see
+  // the plan doc for why these can't be two independent mechanisms.
+  private rangeRequestSeq = 0;
+  private activeRangeOrigin$ = new BehaviorSubject<RangeOrigin | null>(null);
+
+  private nextSeq(): number { return ++this.rangeRequestSeq; }
+  private isCurrent(seq: number): boolean { return this.rangeRequestSeq === seq; }
+
+  /** Small delayed (~250ms) edge spinner for scroll-triggered prefetch — never blocks interaction. */
+  isFetchingMore$: Observable<boolean> = this.activeRangeOrigin$.pipe(
+    map(o => o === 'scroll'),
+    distinctUntilChanged(),
+    switchMap(pending => pending ? timer(250).pipe(map(() => true)) : of(false)),
+    distinctUntilChanged(),
+  );
+  /** Small delayed (~250ms) non-blocking "Syncing…" indicator for save/drag/resize refresh. */
+  isSyncing$: Observable<boolean> = this.activeRangeOrigin$.pipe(
+    map(o => o === 'mutation'),
+    distinctUntilChanged(),
+    switchMap(pending => pending ? timer(250).pipe(map(() => true)) : of(false)),
+    distinctUntilChanged(),
+  );
 
   constructor(
     private calendarService: CalendarService,
@@ -157,18 +188,27 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.nowTimer = setInterval(() => this.updateNowIndicator(), 60_000);
     this.listenForLiveReminders();
 
-    // switchMap cancels any in-flight "need more events" request the
-    // instant a newer one comes in, so a stale, late-arriving response
-    // for an older range can never overwrite state set by a fresher one.
+    // switchMap cancels any in-flight "need more events" request the instant
+    // a newer one comes in, so a stale, late-arriving response for an older
+    // range can never overwrite state set by a fresher one — this is the
+    // data-correctness guarantee from the original fix and is untouched here.
+    // On top of it, each request draws a ticket from the shared rangeRequestSeq
+    // counter (also used by fetchEvents() — see there) so UI state (
+    // activeRangeOrigin$) can never be released by a request that's since
+    // been superseded, from *either* code path, not just within this subject.
     this.needMoreRangeSub = this.needMoreRange$.pipe(
-      switchMap(range =>
-        this.calendarService.getEvents(range.start, range.end).pipe(
-          map(fetched => ({ fetched, range })),
-        ),
-      ),
+      switchMap(range => {
+        const seq = this.nextSeq();
+        this.activeRangeOrigin$.next(range.origin);
+        return this.calendarService.getEvents(range.start, range.end).pipe(
+          map(fetched => ({ fetched, range, seq })),
+          finalize(() => { if (this.isCurrent(seq)) this.activeRangeOrigin$.next(null); }),
+        );
+      }),
     ).subscribe({
-      next: ({ fetched, range }) => {
-        this.mergeEvents(fetched);
+      next: ({ fetched, range, seq }) => {
+        if (!this.isCurrent(seq)) return; // superseded by a later fetch from either code path
+        this.mergeEvents(fetched, range);
         this.monthFetchedStart = range.start;
         this.monthFetchedEnd = range.end;
         this.monthScrollWindow = this.engine.recomputeAllMonthScrollWeeks(this.monthScrollWindow, this.events);
@@ -193,6 +233,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const params = this.route.snapshot.queryParamMap;
     const eventIdParam = params.get('eventId');
     const dateParam = params.get('date');
+    const commentIdParam = params.get('commentId');
 
     if (dateParam) {
       const parsedDate = new Date(dateParam);
@@ -205,6 +246,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
       const parsedId = Number(eventIdParam);
       if (!isNaN(parsedId)) {
         this.pendingEventIdFromRedirect = parsedId;
+      }
+    }
+
+    if (commentIdParam) {
+      const parsedCommentId = Number(commentIdParam);
+      if (!isNaN(parsedCommentId)) {
+        this.pendingCommentIdFromRedirect = parsedCommentId;
       }
     }
   }
@@ -342,22 +390,45 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const fetchStart = range.start < this.monthFetchedStart ? range.start : this.monthFetchedStart;
     const fetchEnd = range.end > this.monthFetchedEnd ? range.end : this.monthFetchedEnd;
 
-    this.needMoreRange$.next({ start: fetchStart, end: fetchEnd });
+    this.needMoreRange$.next({ start: fetchStart, end: fetchEnd, origin: 'scroll' });
   }
 
-  /** Merge newly-fetched events into this.events, deduping by id (recurring occurrences already carry stable ids from the server). */
-  private mergeEvents(fetched: any[]): void {
+  /**
+   * Merge newly-fetched events into this.events, deduping by occurrenceKey.
+   *
+   * `id` is NOT unique here — every occurrence of a recurring series shares
+   * the same `id` (the backend projects Id = BaseEventId for each one), so
+   * deduping by `id` would collapse all of a series' occurrences down to
+   * whichever was processed last, silently dropping the rest. `occurrenceKey`
+   * is unique per occurrence (and still stable across re-fetches of the same
+   * occurrence, so repeated merges don't grow the array) — *unless* the
+   * occurrence's start date/time itself changed (edited, or dragged in month
+   * view), since occurrenceKey is derived from it. A moved occurrence comes
+   * back from `fetched` under a brand-new key, and a naive union would keep
+   * BOTH the stale entry under its old key and the fresh one under its new
+   * key forever — a duplicate that only a hard reload (full replace via
+   * fetchEvents) would clear. `fetched` is always complete for `range` (the
+   * range we just asked the server for), so any existing occurrence whose
+   * ORIGINAL start falls inside `range` is authoritatively superseded by
+   * this fetch: if it didn't come back under the same key, it's stale
+   * (moved, or deleted) and must be dropped rather than carried forward.
+   */
+  private mergeEvents(fetched: any[], range: { start: Date; end: Date }): void {
     const normalized: CalendarEventUI[] = fetched.map(event => ({
       ...event,
       startDate: new Date(event.startDate),
       endDate: new Date(event.endDate),
     }));
 
-    const byId = new Map<number, CalendarEventUI>();
-    for (const e of this.events) byId.set(e.id!, e);
-    for (const e of normalized) byId.set(e.id!, e);
+    const byKey = new Map<string | number, CalendarEventUI>();
+    for (const e of this.events) {
+      const supersededByThisFetch = e.startDate >= range.start && e.startDate < range.end;
+      if (supersededByThisFetch) continue;
+      byKey.set(e.occurrenceKey ?? e.id!, e);
+    }
+    for (const e of normalized) byKey.set(e.occurrenceKey ?? e.id!, e);
 
-    this.events = Array.from(byId.values());
+    this.events = Array.from(byKey.values());
   }
 
   // ── Month view helpers (used by calendar.component.html's +more menu, if kept there) ──
@@ -376,12 +447,30 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // FETCH EVENTS
   // ==========================================================================
 
-  fetchEvents(recenter: boolean = false): void {
+  /**
+   * `origin` distinguishes the blocking initial/recenter load from a
+   * mutation-triggered refresh (day/week view's save/drag/resize fallback —
+   * month view routes those through needMoreRange$ instead, see
+   * refreshAfterSave()). `seq` is drawn from the same counter that pipeline
+   * uses, so a stale response from either code path can never apply its data
+   * or release UI state after being superseded by a fresher one from either.
+   */
+  fetchEvents(recenter: boolean = false, origin: 'initial' | 'mutation' = 'initial'): void {
     const { start, end } = this.buildFetchRange(recenter);
-    this.isLoading = true;
+    const seq = this.nextSeq();
+    if (origin === 'initial') this.isLoading = true;
+    else this.activeRangeOrigin$.next('mutation');
+
+    const settle = () => {
+      if (!this.isCurrent(seq)) return; // a newer fetch, from either code path, already superseded this one
+      if (origin === 'initial') this.isLoading = false;
+      else this.activeRangeOrigin$.next(null);
+    };
 
     this.calendarService.getEvents(start, end).subscribe({
       next: (events: any[]) => {
+        if (!this.isCurrent(seq)) return; // stale — don't touch this.events/monthScrollWindow at all
+
         this.events = events.map(event => ({
           ...event,
           startDate: new Date(event.startDate),
@@ -399,11 +488,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
         }
 
         this.openPendingRedirectEventIfAny();
-        this.isLoading = false;
+        settle();
       },
       error: err => {
         console.error('Error fetching events:', err);
-        this.isLoading = false;
+        settle();
       },
     });
   }
@@ -412,17 +501,19 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (this.pendingEventIdFromRedirect == null) return;
 
     const eventId = this.pendingEventIdFromRedirect;
+    const commentId = this.pendingCommentIdFromRedirect;
     this.pendingEventIdFromRedirect = null;
+    this.pendingCommentIdFromRedirect = null;
 
-    this.openEventById(eventId);
+    this.openEventById(eventId, commentId);
 
     this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
   }
 
-  private openEventById(eventId: number): void {
+  private openEventById(eventId: number, focusCommentId: number | null = null): void {
     const matchedEvent = this.events.find(e => e.id === eventId);
     if (matchedEvent) {
-      this.openDialog(matchedEvent);
+      this.openDialog(matchedEvent, undefined, undefined, focusCommentId);
     } else {
       console.log(`Event #${eventId} is outside the current viewport scope.`);
       this.snackBar.open('Could not find that event on the calendar.', 'Dismiss', { duration: 5000 });
@@ -522,7 +613,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
     if (event.attendanceScore != null) {
       const label = this.attendanceLabel(event.attendanceScore);
-      tip += `\nAttendance: ${label} (${(event.attendanceScore * 100).toFixed(0)}%)`;
+      const pct = getAttendancePercent(event.attendanceScore);
+      tip += `\nExperimental attendance estimate: ${label} (${pct}%)`;
     }
 
     return tip;
@@ -616,13 +708,14 @@ export class CalendarComponent implements OnInit, OnDestroy {
     eventData: CalendarEventUI | null = null,
     initialStart?: Date,
     initialEnd?: Date,
+    focusCommentId: number | null = null,
   ): void {
     const dialogRef = this.dialog.open(CalendarDialogComponent, {
       width: '70%',
       height: '80vh',
       maxWidth: 'none',
       disableClose: true,
-      data: { date: this.selectedDate, eventData, initialStart, initialEnd },
+      data: { date: this.selectedDate, eventData, initialStart, initialEnd, focusCommentId },
     });
 
     dialogRef.componentInstance.onSave.subscribe(({ record, attachments }: SavePayload) => {
@@ -637,6 +730,28 @@ export class CalendarComponent implements OnInit, OnDestroy {
     });
 
     dialogRef.componentInstance.onCancel.subscribe(() => dialogRef.close());
+
+    dialogRef.componentInstance.onDelete.subscribe(
+      (payload: { id?: number; seriesUid?: string; occurrenceDate?: Date | string; scope?: RecurrenceDeleteScope }) => {
+        const delete$ = payload.scope
+          ? this.calendarService.deleteOccurrence(
+              { seriesUid: payload.seriesUid!, occurrenceDate: payload.occurrenceDate },
+              payload.scope
+            )
+          : this.calendarService.deleteEvent(payload.id!);
+
+        delete$.subscribe({
+          next: () => {
+            this.refreshAfterSave();
+            dialogRef.close();
+          },
+          error: (err: any) => {
+            console.error('Failed to delete event:', err);
+            dialogRef.componentInstance.saving = false;
+          },
+        });
+      }
+    );
 
     const attemptClose = () => {
       if (!dialogRef.componentInstance.hasUnsavedChanges) {
@@ -680,7 +795,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
         dialogRef.close();
       },
-      error: (err: any) => console.error('Failed to save event:', err),
+      error: (err: any) => {
+        console.error('Failed to save event:', err);
+        dialogRef.componentInstance.saving = false; // let the user retry instead of leaving Save disabled forever
+      },
     });
   }
 
@@ -762,6 +880,20 @@ export class CalendarComponent implements OnInit, OnDestroy {
       : EventCreateEngine.buildClickRange(session.startMinutes);
   }
 
+  /**
+   * Finds the exact occurrence a drag/resize/drop interaction started on.
+   * Matching by `occurrenceKey` (falling back to `id` only if it's missing)
+   * is required, not optional — `id` alone is shared by every occurrence of
+   * a recurring series, so a plain `find(e => e.id === target.id)` can
+   * silently resolve to the wrong occurrence when more than one from the
+   * same series is currently loaded.
+   */
+  private findEventByOccurrence(target: { id?: number; occurrenceKey?: string }): CalendarEventUI | undefined {
+    return this.events.find(e =>
+      target.occurrenceKey ? e.occurrenceKey === target.occurrenceKey : e.id === target.id,
+    );
+  }
+
   // ==========================================================================
   // DRAG (week/day time-grid views — unchanged)
   // ==========================================================================
@@ -804,7 +936,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       minuteDelta,
     );
 
-    const source = this.events.find(x => x.id === this.dragSession!.event.id);
+    const source = this.findEventByOccurrence(this.dragSession!.event);
     if (!source) return;
 
     source.startDate = updated.start;
@@ -815,7 +947,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   stopDrag = (): void => {
     if (!this.dragSession) return;
 
-    const updated = this.events.find(x => x.id === this.dragSession!.event.id);
+    const updated = this.findEventByOccurrence(this.dragSession.event);
     if (updated) this.persistEventUpdate(updated, this.dragSession.originalStart);
 
     this.dragSession = null;
@@ -867,7 +999,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       ? EventResizeEngine.resizeTop(this.resizeSession.originalStart, this.resizeSession.originalEnd, deltaY)
       : EventResizeEngine.resizeBottom(this.resizeSession.originalStart, this.resizeSession.originalEnd, deltaY);
 
-    const source = this.events.find(x => x.id === this.resizeSession!.event.id);
+    const source = this.findEventByOccurrence(this.resizeSession!.event);
     if (!source) return;
 
     source.startDate = updated.start;
@@ -878,7 +1010,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   stopResize = (): void => {
     if (!this.resizeSession) return;
 
-    const updated = this.events.find(x => x.id === this.resizeSession!.event.id);
+    const updated = this.findEventByOccurrence(this.resizeSession!.event);
     if (updated) this.persistEventUpdate(updated, this.resizeSession.originalStart);
 
     this.resizeSession = null;
@@ -930,7 +1062,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const dragged = event.item.data as CalendarEventUI;
     if (!dragged?.id) return;
 
-    const draggedEvent = this.events.find(e => e.id === dragged.id);
+    const draggedEvent = this.findEventByOccurrence(dragged);
     if (!draggedEvent) return;
 
     const oldStart = new Date(draggedEvent.startDate);
@@ -979,19 +1111,20 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   private refreshAfterSave(): void {
     if (this.viewMode !== 'month' || !this.monthScrollWindow) {
-      this.fetchEvents();
+      this.fetchEvents(false, 'mutation');
       return;
     }
 
+    // Routed through the same needMoreRange$ pipeline scroll-triggered
+    // loads use (see ngOnInit), rather than fetching+merging independently
+    // here: this way a save-triggered refresh can't race against a
+    // concurrent scroll-triggered one — switchMap guarantees whichever
+    // request was issued last is the one that wins. Tagged 'mutation' so it
+    // gets the non-blocking "Syncing…" indicator instead of the scroll
+    // edge-spinner.
     const fetchStart = this.monthFetchedStart ?? this.monthScrollWindow.loadedStart;
     const fetchEnd = this.monthFetchedEnd ?? this.monthScrollWindow.loadedEnd;
 
-    this.calendarService.getEvents(fetchStart, fetchEnd).subscribe({
-      next: (fetched: any[]) => {
-        this.mergeEvents(fetched);
-        this.monthScrollWindow = this.engine.recomputeAllMonthScrollWeeks(this.monthScrollWindow, this.events);
-      },
-      error: err => console.error('Error refreshing month events:', err),
-    });
+    this.needMoreRange$.next({ start: fetchStart, end: fetchEnd, origin: 'mutation' });
   }
 }

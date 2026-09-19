@@ -157,15 +157,18 @@
   min-height: 0;
 }
 
-/* Toolbar */
-::ng-deep .ql-toolbar {
+/* Toolbar — scoped to .notes-body: a bare `::ng-deep .ql-toolbar` (with nothing before
+   ::ng-deep) compiles to a fully global, unscoped `.ql-toolbar` rule that leaks into every
+   Quill toolbar in the app, including the unrelated comment composer's. Scoping it to this
+   dialog's own Notes editor keeps it from bleeding elsewhere. */
+.notes-body ::ng-deep .ql-toolbar {
   border-radius: 8px 8px 0 0;
   border: 1px solid var(--border);
   background: var(--surface-2);
 }
 
 /* Editor */
-::ng-deep .ql-container {
+.notes-body ::ng-deep .ql-container {
   flex: 1;
   min-height: 0;
   border-radius: 0 0 8px 8px;
@@ -177,7 +180,7 @@
 }
 
 /* Editor content */
-::ng-deep .ql-editor {
+.notes-body ::ng-deep .ql-editor {
   min-height: 120px;
   font-size: 14px;
   line-height: 1.6;
@@ -185,12 +188,12 @@
 }
 
 /* Focus effect */
-::ng-deep .ql-container.ql-snow:focus-within {
+.notes-body ::ng-deep .ql-container.ql-snow:focus-within {
   border-color: var(--primary);
 }
 
 /* Placeholder text (Quill's own snow theme hardcodes a dark color here) */
-::ng-deep .ql-editor.ql-blank::before {
+.notes-body ::ng-deep .ql-editor.ql-blank::before {
   color: var(--text-secondary);
   font-style: normal;
 }
@@ -208,7 +211,29 @@
   justify-content: flex-end;
   gap: 12px;
   border-top: 1px solid var(--divider);
+}
+
+.dialog-actions.fixed-actions .delete-btn {
+  margin-right: auto;
   z-index: 10;
+}
+
+.save-btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  vertical-align: middle;
+  animation: save-btn-spin 0.75s linear infinite;
+}
+
+@keyframes save-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ================================
@@ -628,6 +653,23 @@ textarea[matInput] {
   border-bottom: 1px solid var(--warning-border);
 }
 
+.readonly-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  padding: 10px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.readonly-banner mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
 .linked-board-banner {
   display: flex;
   align-items: center;
@@ -692,6 +734,17 @@ textarea[matInput] {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-info-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+  cursor: help;
 }
 
 .ai-verdict {

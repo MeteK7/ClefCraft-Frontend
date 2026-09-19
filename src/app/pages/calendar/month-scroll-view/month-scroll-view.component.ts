@@ -32,8 +32,10 @@ export const MONTH_ROW_HEIGHT = 140;
 /** How many week rows to add per append/prepend batch. */
 const LOAD_BATCH_WEEKS = 4;
 
-/** Distance (px) from an edge sentinel that triggers a load. */
-const LOAD_TRIGGER_MARGIN = 600;
+/** Distance (px) from an edge sentinel that triggers a load — generous so the
+ *  fetch usually completes before the user has actually scrolled that far,
+ *  keeping the edge indicator rarely seen at all. */
+const LOAD_TRIGGER_MARGIN = 800;
 
 /** Weeks kept loaded before the far edge is pruned. */
 const MAX_LOADED_WEEKS = 26;
@@ -64,6 +66,9 @@ export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDes
 
     /** Set by the parent when it needs to force-scroll to a specific date (nav buttons, datepicker, "Today"). */
     @Input() scrollToDate: Date | null = null;
+
+    /** Non-blocking background prefetch in progress — shows a small edge indicator, never blocks scrolling/clicking. */
+    @Input() isFetchingMore = false;
 
     @Output() windowChange = new EventEmitter<MonthScrollWindow>();
     @Output() needMoreEvents = new EventEmitter<{ start: Date; end: Date }>();

@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import { EventType } from '../models/event-type.model';
 import { WorkHistoryEntry } from '../models/work-history.model';
 import { RecurrenceUpdateScope } from '../models/recurrence-update-scope.model';
+import { RecurrenceDeleteScope } from '../models/recurrence-delete-scope.model';
+import { CalendarEventCollaborator } from '../models/calendar-event-collaborator.model';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -36,6 +38,10 @@ export class CalendarService {
     return this.http.put<any>(`${this.apiUrl}/${id}`, event);
   }
 
+  deleteEvent(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
   getEventTypes(): Observable<EventType[]> {
     return this.http.get<EventType[]>(`${this.apiUrl}/event-types`);
   }
@@ -60,6 +66,14 @@ export class CalendarService {
 
   deleteAttachment(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/attachments/${id}`);
+  }
+
+  getCollaborators(eventId: number): Observable<CalendarEventCollaborator[]> {
+    return this.http.get<CalendarEventCollaborator[]>(`${this.apiUrl}/${eventId}/collaborators`);
+  }
+
+  removeCollaborator(eventId: number, userId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${eventId}/collaborators/${userId}`);
   }
 
   updateSingleOccurrence(payload: {
@@ -94,6 +108,7 @@ export class CalendarService {
     startDate?: string;
     endDate?: string;
     location?: string | null;
+    timeZoneId?: string;
   }): Observable<void> {
     return this.http.put<void>(
       `${this.apiUrl}/occurrence/from`,
@@ -107,6 +122,7 @@ export class CalendarService {
     comment?: string;
     location?: string;
     recurrenceRuleJson: string;
+    timeZoneId?: string;
   }): Observable<void> {
     return this.http.put<void>(
       `${this.apiUrl}/series/preserve-exceptions`,
@@ -120,6 +136,7 @@ export class CalendarService {
     comment?: string;
     location?: string;
     recurrenceRuleJson: string;
+    timeZoneId: string;
   }): Observable<void> {
     return this.http.put<void>(
       `${this.apiUrl}/series/override-all`,
@@ -159,6 +176,7 @@ export class CalendarService {
           startDate,
           endDate,
           location: record.location,
+          timeZoneId: record.timeZoneId,
         });
 
       case 'allPreserve':
@@ -168,6 +186,7 @@ export class CalendarService {
           comment: record.comment,
           location: record.location,
           recurrenceRuleJson: record.recurrenceRuleJson,
+          timeZoneId: record.timeZoneId,
         });
 
       case 'allOverride':
@@ -177,10 +196,53 @@ export class CalendarService {
           comment: record.comment,
           location: record.location,
           recurrenceRuleJson: record.recurrenceRuleJson,
+          timeZoneId: record.timeZoneId,
         });
 
       default:
         throw new Error(`Unsupported recurrence scope: ${scope}`);
+    }
+  }
+
+  deleteSingleOccurrence(seriesUid: string, occurrenceDate: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.apiUrl}/occurrence`,
+      { body: { seriesUid, occurrenceDate } }
+    );
+  }
+
+  deleteFromOccurrence(seriesUid: string, occurrenceDate: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.apiUrl}/occurrence/from`,
+      { body: { seriesUid, occurrenceDate } }
+    );
+  }
+
+  deleteSeries(seriesUid: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.apiUrl}/series`,
+      { body: { seriesUid } }
+    );
+  }
+
+  /** Routes a recurring-event delete to the correct occurrence/series endpoint based on the chosen scope. */
+  deleteOccurrence(payload: { seriesUid: string; occurrenceDate?: Date | string }, scope: RecurrenceDeleteScope): Observable<void> {
+    const occurrenceDate = payload.occurrenceDate
+      ? new Date(payload.occurrenceDate).toISOString()
+      : new Date().toISOString();
+
+    switch (scope) {
+      case 'this':
+        return this.deleteSingleOccurrence(payload.seriesUid, occurrenceDate);
+
+      case 'thisAndFollowing':
+        return this.deleteFromOccurrence(payload.seriesUid, occurrenceDate);
+
+      case 'all':
+        return this.deleteSeries(payload.seriesUid);
+
+      default:
+        throw new Error(`Unsupported recurrence delete scope: ${scope}`);
     }
   }
 }

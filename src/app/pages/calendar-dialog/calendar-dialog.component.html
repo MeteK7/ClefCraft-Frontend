@@ -2,6 +2,10 @@
   <div *ngIf="hasUnsavedChanges" class="unsaved-banner">
     ⚠ You have unsaved changes
   </div>
+  <div *ngIf="isReadOnlyViewer" class="readonly-banner">
+    <mat-icon>visibility</mat-icon>
+    You have read-only access to this event. You can view it and take part in the comments, but only the owner can edit it.
+  </div>
   <!-- Linked Board Item Context -->
   <div *ngIf="data?.eventData?.linkedBoardItemId" class="linked-board-banner">
     <mat-icon color="primary">link</mat-icon>
@@ -18,22 +22,25 @@
     <mat-icon color="primary">auto_awesome</mat-icon>
 
     <div>
-      <div class="ai-section-label">AI Insight</div>
+      <div class="ai-section-label">
+        AI Insight
+        <mat-icon class="ai-info-icon" title="Experimental estimate based on available calendar and activity patterns, not yet validated on real-world attendance data.">info_outline</mat-icon>
+      </div>
 
       <div class="ai-row">
-        <span>Attendance Prediction:</span>
+        <span>Experimental attendance estimate:</span>
 
         <div class="ai-verdict" *ngIf="data?.eventData?.attendanceScore != null"
           [style.color]="attendanceColor(data.eventData.attendanceScore)">
 
           {{ attendanceLabel(data.eventData.attendanceScore) }}
-          ({{ (data.eventData.attendanceScore * 100) | number:'1.0-0' }}%)
+          ({{ attendancePercent(data.eventData.attendanceScore) }}%)
         </div>
       </div>
     </div>
   </div>
   <form [formGroup]="generalForm" class="form-container">
-    <mat-tab-group animationDuration="300ms" class="tab-container">
+    <mat-tab-group animationDuration="300ms" class="tab-container" [selectedIndex]="initialTabIndex">
       <!-- General Tab -->
       <mat-tab label="General">
 
@@ -179,7 +186,7 @@
         <div class="attachment-section">
 
           <!-- Upload -->
-          <div class="upload-card">
+          <div class="upload-card" *ngIf="!isReadOnlyViewer">
             <button mat-raised-button color="primary" class="upload-btn" (click)="fileInput.click()">
               <mat-icon>upload</mat-icon>
               Add files
@@ -221,7 +228,7 @@
                   <span>{{ a.fileName }}</span>
                 </div>
 
-                <button mat-icon-button color="warn" (click)="deleteAttachment(a.id)" matTooltip="Delete">
+                <button mat-icon-button color="warn" *ngIf="!isReadOnlyViewer" (click)="deleteAttachment(a.id)" matTooltip="Delete">
                   <mat-icon>delete</mat-icon>
                 </button>
               </li>
@@ -250,7 +257,7 @@
               weekly, monthly, or yearly schedule.
             </p>
 
-            <div class="recurrence-quick-actions">
+            <div class="recurrence-quick-actions" *ngIf="!isReadOnlyViewer">
               <button type="button" class="quick-chip" (click)="quickEnableRecurrence('DAILY')">
                 <mat-icon>today</mat-icon> Daily
               </button>
@@ -265,7 +272,7 @@
               </button>
             </div>
 
-            <button mat-stroked-button color="primary" class="recurrence-enable-btn"
+            <button mat-stroked-button color="primary" class="recurrence-enable-btn" *ngIf="!isReadOnlyViewer"
               (click)="generalForm.get('isRecurring')?.setValue(true)">
               <mat-icon>add</mat-icon>
               Set up custom recurrence
@@ -366,17 +373,47 @@
           </app-calendar-history-timeline>
         </div>
       </mat-tab>
+
+      <mat-tab *ngIf="data?.eventData">
+        <ng-template mat-tab-label>
+          <mat-icon class="tab-icon">forum</mat-icon>
+          Comments
+        </ng-template>
+
+        <div class="history-tab-content">
+          <app-calendar-collaborators-panel
+            [eventId]="baseEventId!"
+            [isOwner]="isEventOwner"
+            [refreshToken]="collaboratorsRefreshToken"
+            (collaboratorsLoaded)="onCollaboratorsLoaded($event)">
+          </app-calendar-collaborators-panel>
+
+          <app-comment-thread
+            [entityType]="'CalendarEvent'"
+            [entityId]="baseEventId!"
+            [focusCommentId]="data.focusCommentId ?? null"
+            [calendarEventOwnerUserId]="data.eventData?.ownerUserId"
+            [calendarCollaboratorUserIds]="collaboratorUserIds"
+            (calendarCollaboratorsGranted)="onCollaboratorsGranted()">
+          </app-comment-thread>
+        </div>
+      </mat-tab>
     </mat-tab-group>
   </form>
 
   <div class="dialog-actions fixed-actions">
+    <button mat-button color="warn" class="delete-btn" *ngIf="eventId && isEventOwner" [disabled]="saving" (click)="handleDelete()">
+      Delete
+    </button>
+
     <div class="validation-hint" *ngIf="generalForm.invalid && generalForm.touched">
       Please fill in all required fields before saving.
     </div>
 
-    <button mat-raised-button color="primary" (click)="handleSave()">
-      Save
+    <button mat-raised-button color="primary" *ngIf="!isReadOnlyViewer" [disabled]="saving" (click)="handleSave()">
+      <span class="save-btn-spinner" *ngIf="saving"></span>
+      {{ saving ? 'Saving…' : 'Save' }}
     </button>
-    <button mat-button (click)="handleCancel()">Cancel</button>
+    <button mat-button [disabled]="saving" (click)="handleCancel()">{{ isReadOnlyViewer ? 'Close' : 'Cancel' }}</button>
   </div>
 </div>
