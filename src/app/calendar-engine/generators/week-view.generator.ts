@@ -1,5 +1,6 @@
 import { WeekViewModel, WeekDayColumn } from '../models/week-view.model';
 import { TimeBlockLayoutEngine } from '../layout/time-block-layout-engine';
+import { MonthLayoutEngine } from '../layout/month-layout-engine';
 import { EventNormalizer } from '../utils/event-normalizer';
 import { DateUtils } from '../utils/date.utils';
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
@@ -13,22 +14,23 @@ export class WeekViewGenerator {
     current.setDate(current.getDate() - ISOOffsetDay);
     current.setHours(0, 0, 0, 0);
 
-    const columns: WeekDayColumn[] = Array.from({ length: 7 }, (_, i) => {
-      const columnDate = new Date(current);
-      columnDate.setDate(current.getDate() + i);
+    const weekDates: Date[] = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(current);
+      d.setDate(current.getDate() + i);
+      return d;
+    });
 
-      // Filter events down to this column day spectrum boundary exclusively
+    const columns: WeekDayColumn[] = weekDates.map(columnDate => {
       const dayTimestamp = DateUtils.toDateOnly(columnDate);
-      const dayEvents = events.filter(event => {
+
+      // Timed events only here — all-day events are laid out once for the
+      // whole week below, not duplicated per column (see WeekViewModel).
+      const timedEvents = events.filter(event => {
+        if (event.allDayEvent) return false;
         const start = DateUtils.toDateOnly(new Date(event.startDate));
-        let end = DateUtils.toDateOnly(new Date(event.endDate));
-        if (event.allDayEvent) {
-          end = DateUtils.toDateOnly(DateUtils.addDays(new Date(event.endDate), -1));
-        }
+        const end = DateUtils.toDateOnly(new Date(event.endDate));
         return start <= dayTimestamp && end >= dayTimestamp;
       });
-      const allDayEvents = dayEvents.filter(e => e.allDayEvent);
-      const timedEvents = dayEvents.filter(e => !e.allDayEvent);
 
       const normalized = EventNormalizer.normalize(timedEvents);
       const layoutItems = TimeBlockLayoutEngine.generate(normalized);
@@ -36,15 +38,18 @@ export class WeekViewGenerator {
       return {
         date: columnDate,
         isToday: DateUtils.isSameDate(columnDate, today),
-        layoutItems,
-        allDayEvents
+        layoutItems
       };
     });
+
+    const allDayEvents = events.filter(e => e.allDayEvent);
+    const allDayLayoutItems = MonthLayoutEngine.generate(allDayEvents, weekDates);
 
     return {
       viewStartDate: columns[0].date,
       viewEndDate: columns[6].date,
-      columns
+      columns,
+      allDayLayoutItems
     };
   }
 }

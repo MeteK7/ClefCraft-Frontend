@@ -21,6 +21,7 @@ import { Assignee } from '../../models/assignee.model';
 import { UserService } from '../../_services/user.service';
 import { RelationshipHubComponent } from '../../components/relationship-hub/relationship-hub.component';
 import { HistoryTimelineComponent } from '../../components/history-timeline/history-timeline.component';
+import { CommentThreadComponent } from '../../components/comment-thread/comment-thread.component';
 
 export interface ItemDetailDialogData {
   /** null => dialog is in "create new item" mode */
@@ -28,6 +29,8 @@ export interface ItemDetailDialogData {
   boardId: number;
   /** only needed in create mode, to let the user pick a starting column */
   columns?: Column[];
+  /** set when opened from a mention notification/deep link — selects the Comments tab and scrolls to it */
+  focusCommentId?: number | null;
 }
 
 @Component({
@@ -48,7 +51,8 @@ export interface ItemDetailDialogData {
     MatNativeDateModule,
     MatRippleModule,
     RelationshipHubComponent,
-    HistoryTimelineComponent
+    HistoryTimelineComponent,
+    CommentThreadComponent
   ],
   templateUrl: './item-detail-dialog.component.html',
   styleUrl: './item-detail-dialog.component.css'
@@ -76,6 +80,12 @@ export class ItemDetailDialogComponent implements OnInit {
   /** Non-null accessor for template use inside *ngIf="!isNewItem" blocks. */
   get item(): Item {
     return this.data.item!;
+  }
+
+  /** Comments is a fixed tab position once past create-mode (Details/Relationships/Work
+   * History/History/Comments/Info) — jump straight to it when opened from a mention deep link. */
+  get initialTabIndex(): number {
+    return this.data.focusCommentId != null ? 4 : 0;
   }
 
   constructor(
@@ -270,16 +280,19 @@ export class ItemDetailDialogComponent implements OnInit {
   markAsWorked(): void {
     if (this.isNewItem) return; // needs a saved id to link the calendar event to
 
-    const currentDate = new Date();
-    const endDate = new Date(currentDate.getTime() + 1);
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 1);
+
     const formValue = this.form.value;
 
     const calendarEvent = {
       subject: formValue.title,
       comment: formValue.description,
-      startDate: currentDate,
+      startDate: startDate,
       endDate: endDate,
-      allDayEvent: false,
+      allDayEvent: true,
       importance: 1,
       linkedBoardItemId: this.data.item!.id,
     };

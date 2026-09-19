@@ -31,12 +31,18 @@ import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { QuillModule } from 'ngx-quill';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatRadioModule } from '@angular/material/radio';
-import { getAttendanceColor, getAttendanceLabel } from '../../utils/attendance.utils';
+import { getAttendanceColor, getAttendanceLabel, getAttendancePercent } from '../../utils/attendance.utils';
 import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
+import { RecurrenceDeleteScopeDialogComponent } from '../recurrence-delete-scope-dialog/recurrence-delete-scope-dialog.component';
+import { RecurrenceDeleteScope } from '../../models/recurrence-delete-scope.model';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { CalendarHistoryTimelineComponent } from '../../components/calendar-history-timeline/calendar-history-timeline.component';
+import { CommentThreadComponent } from '../../components/comment-thread/comment-thread.component';
+import { CalendarCollaboratorsPanelComponent } from '../../components/calendar-collaborators-panel/calendar-collaborators-panel.component';
+import { defaultQuillModules } from '../../shared/quill-config';
+import { AuthService } from '../../_services/auth.service';
 
 @Component({
   selector: 'app-calendar-dialog',
@@ -58,7 +64,9 @@ import { CalendarHistoryTimelineComponent } from '../../components/calendar-hist
     QuillModule,
     MatAutocompleteModule,
     MatRadioModule,
-    CalendarHistoryTimelineComponent
+    CalendarHistoryTimelineComponent,
+    CommentThreadComponent,
+    CalendarCollaboratorsPanelComponent
   ],
   templateUrl: './calendar-dialog.component.html',
   styleUrls: ['./calendar-dialog.component.css'],
@@ -67,6 +75,15 @@ export class CalendarDialogComponent implements OnInit {
 
   @Output() onSave = new EventEmitter<any>();
   @Output() onCancel = new EventEmitter<void>();
+  @Output() onDelete = new EventEmitter<{
+    id?: number;
+    seriesUid?: string;
+    occurrenceDate?: Date | string;
+    scope?: RecurrenceDeleteScope;
+  }>();
+
+  /** True from the moment Save is actually submitted until the parent closes the dialog (success) or resets it (error). */
+  saving = false;
 
   generalForm: FormGroup;
 
@@ -113,22 +130,45 @@ export class CalendarDialogComponent implements OnInit {
 
   aiComment: string | null = null;
 
-  quillModules = {
-    toolbar: [
-      [{ header: [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ color: [] }, { background: [] }],
-      [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
-      ['link', 'blockquote', 'code-block', 'clean'],
-      ['undo', 'redo']
-    ]
-  };
+  quillModules = defaultQuillModules;
 
   filteredLocations: string[] = [];
   allLocations: string[] = [];
 
   attendanceLabel = getAttendanceLabel;
   attendanceColor = getAttendanceColor;
+  attendancePercent = getAttendancePercent;
+
+  /** General/Attachments/Recurrence/History/Comments — Comments is a fixed tab position once
+   * an event is loaded, so jump straight to it when opened from a mention deep link. */
+  get initialTabIndex(): number {
+    return this.data?.focusCommentId != null ? 4 : 0;
+  }
+
+  // Collaborator state, owned here so the panel (display + owner's remove action) and the
+  // comment thread (needs to know who's already shared-with, to decide when a mention is
+  // about to share the event with someone new) stay in sync without each fetching separately.
+  collaboratorUserIds: string[] = [];
+  collaboratorsRefreshToken = 0;
+
+  get isEventOwner(): boolean {
+    return !!this.data?.eventData?.ownerUserId && this.authService.getUserId() === this.data.eventData.ownerUserId;
+  }
+
+  /** A collaborator viewing someone else's event — read-only everywhere except Comments. */
+  get isReadOnlyViewer(): boolean {
+    return !!this.data?.eventData && !this.isEventOwner;
+  }
+
+  onCollaboratorsLoaded(collaborators: { userId: string }[]): void {
+    this.collaboratorUserIds = collaborators.map(c => c.userId);
+  }
+
+  onCollaboratorsGranted(): void {
+    // A mention just granted access to someone new — bump the token so the panel refetches
+    // and picks up the new row.
+    this.collaboratorsRefreshToken++;
+  }
 
   clearNotes(): void {
     this.generalForm.get('comment')?.setValue('');
@@ -145,7 +185,8 @@ export class CalendarDialogComponent implements OnInit {
     private fb: FormBuilder,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private calendarService: CalendarService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private authService: AuthService
   ) {
     this.generalForm = this.fb.group({
       subject: ['', Validators.required],
@@ -212,8 +253,13 @@ export class CalendarDialogComponent implements OnInit {
       const startTime = start.toTimeString().slice(0, 5);
       const endTime = end.toTimeString().slice(0, 5);
 
+      const recurrenceFormFields = this.deserializeRecurrenceRule(
+        this.data.eventData.recurrenceRuleJson
+      );
+
       this.generalForm.patchValue({
         ...this.data.eventData,
+        ...recurrenceFormFields,
         startDate: start,
         endDate: end,
         startTime,
@@ -237,16 +283,23 @@ export class CalendarDialogComponent implements OnInit {
 
       // ── Capture original occurrence date ──────────────────────────────────
       // Store this now, before the user edits startDate, so we have a stable
-      // key to identify the occurrence on the server side.
-      const isOccurrence =
-        this.data.eventData.isRecurring &&
-        this.data.eventData.id !== this.data.eventData.baseEventId;
-
-      if (isOccurrence) {
+      // key to identify the occurrence on the server side. Every open instance
+      // of a recurring event (including its first occurrence) is an occurrence
+      // — the backend always projects Id === baseEventId for every occurrence,
+      // so that comparison can never distinguish "the base event" from "an
+      // occurrence" and must not be used here.
+      if (this.data.eventData.isRecurring) {
         this.originalOccurrenceDate = new Date(this.data.eventData.startDate);
       }
 
       this.fetchAttachments(this.eventId!);
+
+      // A collaborator has read-only access to the event itself (comments are the only thing
+      // they can add to) — disable the whole form up front rather than letting them edit
+      // freely and only discovering the restriction when Save 403s.
+      if (this.isReadOnlyViewer) {
+        this.generalForm.disable({ emitEvent: false });
+      }
     }
 
     else {
@@ -281,6 +334,18 @@ export class CalendarDialogComponent implements OnInit {
 
     // Setup the Proactive Time-Shift Syncing
     this.setupDateTimeInterlocking();
+
+    // Clear the sibling end-condition control whenever the user switches
+    // radio options, so a value left over from a prior selection can't
+    // silently leak into the saved recurrence rule (see executeSave()).
+    this.generalForm.get('endType')?.valueChanges.subscribe(endType => {
+      if (endType !== 'until') {
+        this.generalForm.get('recurrenceEndDate')?.setValue(null, { emitEvent: false });
+      }
+      if (endType !== 'count') {
+        this.generalForm.get('recurrenceCount')?.setValue(null, { emitEvent: false });
+      }
+    });
 
     this.allLocations = ['Istanbul', 'Ankara', 'Berlin', 'London'];
     this.generalForm.get('location')?.valueChanges.subscribe(value => {
@@ -428,6 +493,48 @@ export class CalendarDialogComponent implements OnInit {
     };
   }
 
+  /**
+   * Parses a persisted recurrence rule (backend JSON: Frequency/Interval/
+   * DaysOfWeek/EndDate/Count) back into this dialog's form-control shape.
+   * Without this, opening an existing recurring event for edit left the
+   * recurrence controls at their constructor defaults, so saving with scope
+   * "apply to all" would silently overwrite the real series rule.
+   */
+  private deserializeRecurrenceRule(recurrenceRuleJson: string | null | undefined): {
+    frequency: string;
+    interval: number;
+    daysOfWeek: number[];
+    endType: 'never' | 'until' | 'count';
+    recurrenceEndDate: Date | null;
+    recurrenceCount: number | null;
+  } {
+    const defaults = {
+      frequency: 'WEEKLY',
+      interval: 1,
+      daysOfWeek: [] as number[],
+      endType: 'never' as const,
+      recurrenceEndDate: null,
+      recurrenceCount: null
+    };
+
+    if (!recurrenceRuleJson) return defaults;
+
+    try {
+      const rule = JSON.parse(recurrenceRuleJson);
+
+      return {
+        frequency: rule.Frequency ?? defaults.frequency,
+        interval: rule.Interval ?? defaults.interval,
+        daysOfWeek: rule.DaysOfWeek ?? defaults.daysOfWeek,
+        endType: rule.EndDate ? 'until' : rule.Count ? 'count' : 'never',
+        recurrenceEndDate: rule.EndDate ? new Date(rule.EndDate) : null,
+        recurrenceCount: rule.Count ?? null
+      };
+    } catch {
+      return defaults;
+    }
+  }
+
   private normalizeTime(time: string): string {
     if (!time) return time;
 
@@ -501,6 +608,24 @@ export class CalendarDialogComponent implements OnInit {
     });
   }
 
+  /**
+   * The recurrence "end date" picker yields a Date at local midnight of the
+   * chosen day. Serialized as-is (toISOString(), implicit on JSON.stringify),
+   * that UTC instant can fall *before* that same calendar day's occurrence
+   * time in any timezone ahead of UTC (e.g. a 09:00 local event picked to
+   * end "through Sep 19" serializes to Sep 18 21:00Z in UTC+3, which is
+   * earlier than Sep 19's own 06:00Z occurrence — silently excluding the
+   * very day the user picked as the last one). Pushing to the last instant
+   * of that local day before sending makes the end date inclusive of the
+   * whole day regardless of the viewer's UTC offset.
+   */
+  private endOfLocalDay(date: Date | null): Date | null {
+    if (!date) return null;
+    const result = new Date(date);
+    result.setHours(23, 59, 59, 999);
+    return result;
+  }
+
   private combineDateAndTime(date: Date, time: string): Date {
     const result = new Date(date);
 
@@ -524,9 +649,18 @@ export class CalendarDialogComponent implements OnInit {
       return;
     }
 
-    // 1. Determine if this is an edit to a recurring series instance
+    this.saving = true;
+
+    // 1. The "which occurrences" scope dialog only makes sense when editing
+    // an event that WAS already recurring AND still IS recurring after this
+    // edit — i.e. a genuine in-series change. Turning recurrence ON for a
+    // previously plain event, or OFF for a previously recurring one, is an
+    // unambiguous whole-event action with no "scope" to choose, so both
+    // must skip the dialog and go through the plain save path below (the
+    // original `||` here incorrectly treated either transition as needing
+    // scope selection, which routed the save to the wrong endpoint).
     const isRecurringInstance =
-      this.data.eventData?.isRecurring ||
+      (this.data.eventData?.isRecurring ?? false) &&
       this.generalForm.value.isRecurring;
 
     // We check if it has an ID, meaning it's an existing event being updated, not a brand new event creation
@@ -539,6 +673,7 @@ export class CalendarDialogComponent implements OnInit {
       dialogRef.afterClosed().subscribe((scope: RecurrenceUpdateScope | null) => {
         // If the user cancelled out of the recurrence dialog, abort saving completely
         if (!scope) {
+          this.saving = false;
           return;
         }
 
@@ -579,10 +714,26 @@ export class CalendarDialogComponent implements OnInit {
         Frequency: this.generalForm.value.frequency,
         Interval: this.generalForm.value.interval,
         DaysOfWeek: this.generalForm.value.daysOfWeek,
-        EndDate: this.generalForm.value.recurrenceEndDate,
-        Count: this.generalForm.value.recurrenceCount
+        // Only the end condition the user actually selected is sent —
+        // leftover values from a previously-selected radio option must
+        // not silently cap (or fail to cap) the series.
+        EndDate: this.generalForm.value.endType === 'until'
+          ? this.endOfLocalDay(this.generalForm.value.recurrenceEndDate)
+          : null,
+        Count: this.generalForm.value.endType === 'count'
+          ? this.generalForm.value.recurrenceCount
+          : null
       }
       : null;
+
+    // All-day events have no meaningful wall-clock hour, so they're always
+    // anchored to UTC (matches the backend's own all-day short-circuit in
+    // RecurrenceHelper.ExpandEvent). Otherwise capture the browser's live
+    // IANA zone so DST-correct recurrence expansion has something to work
+    // with, and so relocating and re-editing a series re-anchors it for free.
+    const timeZoneId = this.generalForm.value.allDayEvent
+      ? 'UTC'
+      : Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     // Emit the data, now safely including the user's chosen recurrence selection scope
     this.onSave.emit({
@@ -599,7 +750,8 @@ export class CalendarDialogComponent implements OnInit {
           : null,
         reminderMinutes: this.generalForm.value.reminderMinutes ?? [],
         originalOccurrenceDate: this.originalOccurrenceDate,
-        recurrenceScope: recurrenceScope // This will pass 'this', 'thisAndFollowing', 'allPreserve', or 'allOverride'
+        recurrenceScope: recurrenceScope, // This will pass 'this', 'thisAndFollowing', 'allPreserve', or 'allOverride'
+        timeZoneId
       },
       attachments: this.stagedAttachments
     });
@@ -622,6 +774,38 @@ export class CalendarDialogComponent implements OnInit {
     if (confirm) {
       this.onCancel.emit();
     }
+  }
+
+  handleDelete(): void {
+    if (!this.generalForm.value.isRecurring) {
+      const confirmed = window.confirm('Delete this event? This cannot be undone.');
+      if (!confirmed) return;
+
+      this.saving = true;
+      this.onDelete.emit({ id: this.eventId! });
+      return;
+    }
+
+    // The scope-selection step itself is the confirmation for a recurring delete — every
+    // option in that dialog is already destructive-styled, matching how the edit-scope flow
+    // treats its own override-all warning as sufficient, without an extra confirm() on top.
+    this.saving = true;
+    const dialogRef = this.dialog.open(RecurrenceDeleteScopeDialogComponent, {
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe((scope: RecurrenceDeleteScope | null) => {
+      if (!scope) {
+        this.saving = false;
+        return;
+      }
+
+      this.onDelete.emit({
+        seriesUid: this.data.eventData?.seriesUid,
+        occurrenceDate: this.originalOccurrenceDate ?? undefined,
+        scope
+      });
+    });
   }
 
   openLinkedBoardItem(): void {
@@ -686,9 +870,18 @@ export class CalendarDialogComponent implements OnInit {
   }
 
   quickEnableRecurrence(frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'): void {
+    // Reset the rest of the recurrence controls too — otherwise a custom
+    // configuration abandoned earlier in this same dialog session (a
+    // different interval/days/end-condition) silently carries forward into
+    // the "quick" rule the user is now picking.
     this.generalForm.patchValue({
       isRecurring: true,
-      frequency
+      frequency,
+      interval: 1,
+      daysOfWeek: [],
+      endType: 'never',
+      recurrenceEndDate: null,
+      recurrenceCount: null
     });
   }
 }

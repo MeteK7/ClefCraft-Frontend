@@ -152,6 +152,8 @@ export class BoardComponent implements OnInit {
       if (!targetIdStr || !this.boardView) return;
 
       const targetId = Number(targetIdStr);
+      const commentIdStr = params['commentId'];
+      const focusCommentId = commentIdStr ? Number(commentIdStr) : null;
 
       const matchedItem = this.boardView.columns
         .flatMap(c => c.boardItems)
@@ -161,7 +163,7 @@ export class BoardComponent implements OnInit {
         this.selection = selectItem(this.selection, matchedItem);
 
         if (this.selection.viewMode === 'dialog') {
-          this.openItemDetailDialog(matchedItem);
+          this.openItemDetailDialog(matchedItem, focusCommentId);
         }
 
         // Consume the deep-link params so this doesn't re-trigger.
@@ -210,7 +212,7 @@ export class BoardComponent implements OnInit {
     }
   }
 
-  openItemDetailDialog(item: BoardItemView | null): void {
+  openItemDetailDialog(item: BoardItemView | null, focusCommentId: number | null = null): void {
     const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
       width: '900px',
       height: '100vh',
@@ -221,6 +223,7 @@ export class BoardComponent implements OnInit {
         item: item?.raw ?? null,
         boardId: this.selectedBoardId,
         columns: this.boardView?.columns ?? [],
+        focusCommentId,
       },
     });
 
