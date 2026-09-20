@@ -51,6 +51,46 @@
   background-color: var(--primary-hover); /* Darker shade on hover */
 }
 
+.add-item-btn:disabled {
+  background-color: var(--border);
+  cursor: not-allowed;
+}
+
+.new-board-btn {
+  margin-left: 10px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background-color: var(--input-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.new-board-btn:hover {
+  background-color: var(--primary-hover);
+  color: var(--text-inverse);
+}
+
+.new-board-btn.primary {
+  background-color: var(--primary);
+  color: var(--text-inverse);
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+
+.empty-boards-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 .sidebar-container {
   position: fixed;
   top: 0;

@@ -5,6 +5,10 @@ export interface Board {
   boardColumns: Column[];
 }
 
+export interface CreateBoardRequest {
+  title: string;
+}
+
 export interface Column {
   id: number;
   title: string;
