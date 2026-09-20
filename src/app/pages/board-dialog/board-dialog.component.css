@@ -1,0 +1,29 @@
+.board-dialog {
+  min-width: 360px;
+  max-width: 440px;
+  padding: 20px 24px 16px;
+  color: var(--text);
+}
+
+.dialog-title {
+  margin: 0 0 16px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.title-field {
+  width: 100%;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}

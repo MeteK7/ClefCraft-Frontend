@@ -1,34 +1,44 @@
 <!-- pages/board/board.component.html -->
-<div class="board-header">
-  <label for="boardId">Board:</label>
-  <select id="boardId" [(ngModel)]="selectedBoardId" name="boardId" (change)="onBoardSelection(selectedBoardId)">
-    <option *ngFor="let board of boards" [value]="board.id">{{ board.title }}</option>
-  </select>
-  <div class="view-toggle">
-    <button [class.active]="viewMode === 'dialog'" (click)="viewMode = 'dialog'">
-      Dialog
-    </button>
+<ng-container *ngIf="boards.length > 0; else noBoards">
+  <div class="board-header">
+    <label for="boardId">Board:</label>
+    <select id="boardId" [(ngModel)]="selectedBoardId" name="boardId" (change)="onBoardSelection(selectedBoardId)">
+      <option *ngFor="let board of boards" [value]="board.id">{{ board.title }}</option>
+    </select>
+    <button class="new-board-btn" (click)="openCreateBoardDialog()">New Board</button>
+    <div class="view-toggle">
+      <button [class.active]="viewMode === 'dialog'" (click)="viewMode = 'dialog'">
+        Dialog
+      </button>
 
-    <button [class.active]="viewMode === 'sidebar'" (click)="viewMode = 'sidebar'">
-      Sidebar
-    </button>
+      <button [class.active]="viewMode === 'sidebar'" (click)="viewMode = 'sidebar'">
+        Sidebar
+      </button>
+    </div>
   </div>
-</div>
 
-<button class="add-item-btn" (click)="openAddItemDialog()">Add New Item</button>
+  <button class="add-item-btn" [disabled]="!selectedBoardId" (click)="openAddItemDialog()">Add New Item</button>
 
-<div class="board-columns">
-  <app-board-column
-    *ngFor="let column of columns"
-    [column]="column"
-    [allColumnIds]="allColumnIds"
-    (itemClicked)="onItemClick($event)"
-  ></app-board-column>
-</div>
+  <div class="board-columns">
+    <app-board-column
+      *ngFor="let column of columns"
+      [column]="column"
+      [allColumnIds]="allColumnIds"
+      (itemClicked)="onItemClick($event)"
+    ></app-board-column>
+  </div>
 
-<!-- Sidebar View -->
-<app-item-detail-sidebar
-  *ngIf="viewMode === 'sidebar' && selectedItem"
-  [item]="selectedItem"
-  (itemUpdated)="onItemUpdated($event)"
-></app-item-detail-sidebar>
+  <!-- Sidebar View -->
+  <app-item-detail-sidebar
+    *ngIf="viewMode === 'sidebar' && selectedItem"
+    [item]="selectedItem"
+    (itemUpdated)="onItemUpdated($event)"
+  ></app-item-detail-sidebar>
+</ng-container>
+
+<ng-template #noBoards>
+  <div class="empty-boards-state">
+    <p>You don't have any boards yet.</p>
+    <button class="new-board-btn primary" (click)="openCreateBoardDialog()">Create your first board</button>
+  </div>
+</ng-template>

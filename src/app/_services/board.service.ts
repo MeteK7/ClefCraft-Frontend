@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Board, BoardItemSearchResult, Column, CreateRelationshipRequest, Item, Priority, RelationshipHub, Status, Tag } from '../models/board.model';
+import { Board, BoardItemSearchResult, Column, CreateBoardRequest, CreateRelationshipRequest, Item, Priority, RelationshipHub, Status, Tag } from '../models/board.model';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -14,6 +14,13 @@ export class BoardService {
 
   getBoards(): Observable<Board[]> {
     return this.http.get<Board[]>(`${this.apiUrl}/Boards`, { withCredentials: true });
+  }
+
+  createBoard(request: CreateBoardRequest): Observable<Board> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+    return this.http.post<Board>(`${this.apiUrl}/Boards`, request, { headers, withCredentials: true });
   }
 
   getBoardItemsByBoardId(boardId: number): Observable<Column[]> {

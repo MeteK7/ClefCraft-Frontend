@@ -18,6 +18,7 @@ import { getConnectedDropListIds } from '../../board-engine/interactions/board-d
 import { MatDialog } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
+import { BoardDialogComponent } from '../board-dialog/board-dialog.component';
 import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-sidebar.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
@@ -188,7 +189,30 @@ export class BoardComponent implements OnInit {
   // ---------------------------------------------------------------------
 
   openAddItemDialog(): void {
+    if (!this.selectedBoardId) {
+      return;
+    }
     this.openItemDetailDialog(null);
+  }
+
+  // ---------------------------------------------------------------------
+  // Board creation
+  // ---------------------------------------------------------------------
+
+  openCreateBoardDialog(): void {
+    const dialogRef = this.dialog.open(BoardDialogComponent, {
+      data: { board: null },
+    });
+
+    dialogRef.afterClosed().subscribe((result: { title: string } | null) => {
+      if (!result) return;
+
+      this.boardEngine.createBoard({ title: result.title }).subscribe(newBoard => {
+        this.boards = [...this.boards, newBoard];
+        this.selectedBoardId = newBoard.id;
+        this.loadBoardColumnItems(newBoard.id);
+      });
+    });
   }
 
   onItemCreated(item: Item): void {
