@@ -1,0 +1,20 @@
+<div class="board-dialog">
+  <h2 class="dialog-title">{{ isEdit ? 'Rename Board' : 'New Board' }}</h2>
+
+  <form [formGroup]="form" class="dialog-form">
+    <mat-form-field appearance="outline" class="title-field">
+      <mat-label>Board title</mat-label>
+      <input matInput formControlName="title" autocomplete="off" maxlength="200" cdkFocusInitial />
+      <mat-error *ngIf="form.get('title')?.hasError('required')">
+        Title is required.
+      </mat-error>
+    </mat-form-field>
+  </form>
+
+  <div class="dialog-actions">
+    <button mat-raised-button color="primary" [disabled]="saving" (click)="handleSave()">
+      {{ isEdit ? 'Save' : 'Create' }}
+    </button>
+    <button mat-button [disabled]="saving" (click)="handleCancel()">Cancel</button>
+  </div>
+</div>
