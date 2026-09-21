@@ -1,5 +1,6 @@
-import { Component, ElementRef, HostListener, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 import { BoardColumnComponent } from '../board-column/board-column.component';
 import { BoardService } from '../../_services/board.service';
 import { BoardView, toBoardView } from '../../board-engine/models/board-view.model';
@@ -22,7 +23,7 @@ import { BoardDialogComponent } from '../board-dialog/board-dialog.component';
 import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-sidebar.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Params, Router } from '@angular/router';
 
 @Component({
   selector: 'app-board',
@@ -38,7 +39,7 @@ import { ActivatedRoute, Router } from '@angular/router';
   templateUrl: './board.component.html',
   styleUrls: ['./board.component.css'],
 })
-export class BoardComponent implements OnInit {
+export class BoardComponent implements OnInit, OnDestroy {
   boards: Board[] = [];
   boardView: BoardView | null = null;
   selectedBoardId: number | null = null;
@@ -49,6 +50,12 @@ export class BoardComponent implements OnInit {
     isSidebarOpen: false,
   };
 
+  private latestQueryParams: Params | null = null;
+
+  private boardsSub?: Subscription;
+  private boardColumnItemsSub?: Subscription;
+  private queryParamsSub?: Subscription;
+
   constructor(private readonly router: Router,
     private boardEngine: BoardService,
     private dialog: MatDialog,
@@ -57,7 +64,22 @@ export class BoardComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    // Subscribed once for the component's lifetime so it also reacts to
+    // deep-link query params that arrive after the initial load (e.g. from
+    // a notification click while already on this page), without piling up
+    // a new subscription every time loadBoardColumnItems() runs.
+    this.queryParamsSub = this.route.queryParams.subscribe(params => {
+      this.latestQueryParams = params;
+      this.tryHandleDeepLinkedItem();
+    });
+
     this.loadBoards();
+  }
+
+  ngOnDestroy(): void {
+    this.boardsSub?.unsubscribe();
+    this.boardColumnItemsSub?.unsubscribe();
+    this.queryParamsSub?.unsubscribe();
   }
 
   // ---------------------------------------------------------------------
@@ -116,7 +138,7 @@ export class BoardComponent implements OnInit {
   // ---------------------------------------------------------------------
 
   loadBoards(): void {
-    this.boardEngine.getBoards().subscribe(boards => {
+    this.boardsSub = this.boardEngine.getBoards().subscribe(boards => {
       this.boards = boards;
 
       if (boards.length) {
@@ -132,7 +154,8 @@ export class BoardComponent implements OnInit {
   }
 
   loadBoardColumnItems(boardId: number): void {
-    this.boardEngine.getBoardItemsByBoardId(boardId).subscribe(columns => {
+    this.boardColumnItemsSub?.unsubscribe();
+    this.boardColumnItemsSub = this.boardEngine.getBoardItemsByBoardId(boardId).subscribe(columns => {
       const board = this.boards.find(b => b.id === boardId);
       const title = board?.title ?? '';
 
@@ -142,39 +165,39 @@ export class BoardComponent implements OnInit {
         boardColumns: columns,
       });
 
-      // Check query params after the view configuration has populated
-      this.checkDeepLinkedItem();
+      // Re-check the latest query params now that the view has populated —
+      // this covers deep-link params that arrived before the board data did.
+      this.tryHandleDeepLinkedItem();
     });
   }
 
-  private checkDeepLinkedItem(): void {
-    this.route.queryParams.subscribe(params => {
-      const targetIdStr = params['openItemId'];
-      if (!targetIdStr || !this.boardView) return;
+  private tryHandleDeepLinkedItem(): void {
+    const params = this.latestQueryParams;
+    const targetIdStr = params?.['openItemId'];
+    if (!targetIdStr || !this.boardView) return;
 
-      const targetId = Number(targetIdStr);
-      const commentIdStr = params['commentId'];
-      const focusCommentId = commentIdStr ? Number(commentIdStr) : null;
+    const targetId = Number(targetIdStr);
+    const commentIdStr = params?.['commentId'];
+    const focusCommentId = commentIdStr ? Number(commentIdStr) : null;
 
-      const matchedItem = this.boardView.columns
-        .flatMap(c => c.boardItems)
-        .find(item => item.id === targetId);
+    const matchedItem = this.boardView.columns
+      .flatMap(c => c.boardItems)
+      .find(item => item.id === targetId);
 
-      if (matchedItem) {
-        this.selection = selectItem(this.selection, matchedItem);
+    if (matchedItem) {
+      this.selection = selectItem(this.selection, matchedItem);
 
-        if (this.selection.viewMode === 'dialog') {
-          this.openItemDetailDialog(matchedItem, focusCommentId);
-        }
-
-        // Consume the deep-link params so this doesn't re-trigger.
-        this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: {},
-          replaceUrl: true,
-        });
+      if (this.selection.viewMode === 'dialog') {
+        this.openItemDetailDialog(matchedItem, focusCommentId);
       }
-    });
+
+      // Consume the deep-link params so this doesn't re-trigger.
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: {},
+        replaceUrl: true,
+      });
+    }
   }
 
   onBoardSelection(boardId: number | null): void {
