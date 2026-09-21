@@ -56,18 +56,6 @@ export class BoardService {
     return this.http.put<Item>(`${this.apiUrl}/BoardItems/Update`, item, { withCredentials: true });
   }
 
-  deleteItem(itemId: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/BoardItems/Delete/${itemId}`, { withCredentials: true });
-  }
-
-  closeSidebar(): void {
-    // Logic to close sidebar
-  }
-
-  saveChanges(): void {
-    // Logic to save the item changes
-  }
-
   getTags(boardId: number): Observable<Tag[]> {
     return this.http.get<Tag[]>(
       `${this.apiUrl}/BoardItems/GetTags?boardId=${boardId}`,
