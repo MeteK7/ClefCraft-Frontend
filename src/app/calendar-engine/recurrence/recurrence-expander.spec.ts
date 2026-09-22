@@ -152,6 +152,25 @@ describe('RecurrenceExpander', () => {
 
       expect(result.map(d => d.getDate())).toEqual([1, 2, 3]);
     });
+
+    /**
+     * Regression: the until check used to run after the occurrence was
+     * already pushed, so it only caught the *next* occurrence one iteration
+     * late - meaning one occurrence past `until` always leaked through
+     * whenever rangeEnd extended past it (the common case for a real
+     * calendar view, whose rangeEnd is a display window, not the rule's own
+     * end date). Fixed by checking `until` before pushing.
+     */
+    it('does not include an occurrence past until even when rangeEnd extends well beyond it', () => {
+      const result = RecurrenceExpander.expand(
+        new Date('2026-01-01T09:00:00'),
+        rule({ frequency: 'daily', interval: 1, until: new Date('2026-01-03T09:00:00') }),
+        new Date('2026-01-01T00:00:00'),
+        new Date('2026-01-10T23:59:59') // well beyond until
+      );
+
+      expect(result.map(d => d.getDate())).toEqual([1, 2, 3]);
+    });
   });
 
   describe('range boundaries', () => {

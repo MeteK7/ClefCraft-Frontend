@@ -26,6 +26,16 @@ export class RecurrenceExpander {
 
     while (current <= rangeEnd) {
 
+      // Checked before pushing: otherwise an occurrence computed one step
+      // past `until` (but still within rangeEnd) would get pushed on this
+      // iteration, with the break only catching it one iteration too late.
+      if (
+        rule.until &&
+        current > rule.until
+      ) {
+        break;
+      }
+
       if (current >= rangeStart) {
         dates.push(new Date(current));
       }
@@ -35,13 +45,6 @@ export class RecurrenceExpander {
       if (
         rule.count &&
         generated >= rule.count
-      ) {
-        break;
-      }
-
-      if (
-        rule.until &&
-        current > rule.until
       ) {
         break;
       }
