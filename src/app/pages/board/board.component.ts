@@ -8,6 +8,7 @@ import { BoardItemView, toBoardItemView } from '../../board-engine/models/board-
 import { Board, Item } from '../../models/board.model';
 import {
   applyItemCreated,
+  applyItemDeleted,
   applyItemUpdate,
   closeSidebar as closeSidebarState,
   selectItem,
@@ -18,7 +19,7 @@ import {
 import { getConnectedDropListIds } from '../../board-engine/interactions/board-drag-engine';
 import { MatDialog } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
-import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
+import { ItemDetailDialogComponent, ItemDetailDialogResult } from '../item-detail-dialog/item-detail-dialog.component';
 import { BoardDialogComponent } from '../board-dialog/board-dialog.component';
 import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-sidebar.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
@@ -294,9 +295,15 @@ export class BoardComponent implements OnInit, OnDestroy {
 
     dialogRef.backdropClick().subscribe(() => attemptClose());
 
-    dialogRef.afterClosed().subscribe((result: Item | undefined) => {
+    dialogRef.afterClosed().subscribe((result: ItemDetailDialogResult | undefined) => {
       if (!result) return;
-      item ? this.onItemUpdated(result) : this.onItemCreated(result);
+
+      if (result.type === 'deleted') {
+        this.onItemDeleted(result.itemId);
+        return;
+      }
+
+      item ? this.onItemUpdated(result.item) : this.onItemCreated(result.item);
     });
   }
 
@@ -324,6 +331,18 @@ export class BoardComponent implements OnInit, OnDestroy {
       : view;
 
     this.boardView = applyItemUpdate(this.boardView, merged);
+  }
+
+  onItemDeleted(itemId: number): void {
+    if (!this.boardView) {
+      return;
+    }
+
+    this.boardView = applyItemDeleted(this.boardView, itemId);
+
+    if (this.selection.selectedItem?.id === itemId) {
+      this.selection = closeSidebarState(this.selection);
+    }
   }
 
   toggleViewMode(): void {
