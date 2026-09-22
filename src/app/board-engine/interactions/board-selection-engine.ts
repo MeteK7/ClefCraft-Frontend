@@ -100,3 +100,14 @@ export function applyItemCreated(board: BoardView, newItem: BoardItemView): Boar
     ),
   };
 }
+
+/** Removes a deleted item from whichever column currently holds it */
+export function applyItemDeleted(board: BoardView, itemId: number): BoardView {
+  return {
+    ...board,
+    columns: board.columns.map((c: BoardColumnView) => ({
+      ...c,
+      boardItems: c.boardItems.filter(i => i.id !== itemId),
+    })),
+  };
+}

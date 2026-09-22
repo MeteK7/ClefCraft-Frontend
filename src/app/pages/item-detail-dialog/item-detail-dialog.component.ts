@@ -23,6 +23,10 @@ import { RelationshipHubComponent } from '../../components/relationship-hub/rela
 import { HistoryTimelineComponent } from '../../components/history-timeline/history-timeline.component';
 import { CommentThreadComponent } from '../../components/comment-thread/comment-thread.component';
 
+export type ItemDetailDialogResult =
+  | { type: 'saved'; item: Item }
+  | { type: 'deleted'; itemId: number };
+
 export interface ItemDetailDialogData {
   /** null => dialog is in "create new item" mode */
   item: Item | null;
@@ -89,7 +93,7 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   constructor(
-    public dialogRef: MatDialogRef<ItemDetailDialogComponent>,
+    public dialogRef: MatDialogRef<ItemDetailDialogComponent, ItemDetailDialogResult>,
     @Inject(MAT_DIALOG_DATA) public data: ItemDetailDialogData,
     private fb: FormBuilder,
     private boardService: BoardService,
@@ -179,7 +183,7 @@ export class ItemDetailDialogComponent implements OnInit {
 
       this.boardService.createBoardItem(newItem).subscribe(createdItem => {
         this.hasUnsavedChanges = false;
-        this.dialogRef.close(createdItem);
+        this.dialogRef.close({ type: 'saved', item: createdItem });
       });
       return;
     }
@@ -195,8 +199,11 @@ export class ItemDetailDialogComponent implements OnInit {
     this.boardService.updateBoardItem(updateData).subscribe(updatedItemFromApi => {
       this.hasUnsavedChanges = false;
       this.dialogRef.close({
-        ...updatedItemFromApi,
-        boardColumnId: this.data.item!.boardColumnId
+        type: 'saved',
+        item: {
+          ...updatedItemFromApi,
+          boardColumnId: this.data.item!.boardColumnId
+        }
       });
     });
   }
@@ -205,8 +212,9 @@ export class ItemDetailDialogComponent implements OnInit {
     if (this.isNewItem) return;
 
     if (window.confirm('Are you absolutely sure you want to delete this item?')) {
-      this.boardService.deleteBoardItem(this.data.item!.id).subscribe(() => {
-        this.dialogRef.close(this.data.item);
+      const itemId = this.data.item!.id;
+      this.boardService.deleteBoardItem(itemId).subscribe(() => {
+        this.dialogRef.close({ type: 'deleted', itemId });
       });
     }
   }

@@ -14,6 +14,7 @@ import { BoardService } from '../../_services/board.service';
 export class ItemDetailSidebarComponent {
   @Input() item!: Item;
   @Output() itemUpdated = new EventEmitter<Item>();
+  @Output() itemDeleted = new EventEmitter<number>();
 
   constructor(private boardService: BoardService) {}
 
@@ -26,6 +27,8 @@ export class ItemDetailSidebarComponent {
   }
 
   onDelete(): void {
-    this.boardService.deleteBoardItem(this.item.id).subscribe();
+    this.boardService.deleteBoardItem(this.item.id).subscribe(() => {
+      this.itemDeleted.emit(this.item.id);
+    });
   }
 }

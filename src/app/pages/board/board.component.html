@@ -33,6 +33,7 @@
     *ngIf="viewMode === 'sidebar' && selectedItem"
     [item]="selectedItem"
     (itemUpdated)="onItemUpdated($event)"
+    (itemDeleted)="onItemDeleted($event)"
   ></app-item-detail-sidebar>
 </ng-container>
 
