@@ -3,11 +3,6 @@ import { CalendarLayoutItem } from '../models/calendar-layout-item.model';
 import { MonthEventInput, MonthLayoutEngine, MonthLayoutItem } from '../layout/month-layout-engine';
 import { TimeBlockLayoutEngine } from '../layout/time-block-layout-engine';
 import { EventNormalizer } from '../utils/event-normalizer';
-import { OccurrenceGenerator } from '../recurrence/occurrence-generator';
-import {
-  RecurrenceException,
-  RecurrenceExceptionEngine,
-} from '../recurrence/recurrence-exception-engine';
 import { WeekViewGenerator } from '../generators/week-view.generator';
 import { WeekViewModel } from '../models/week-view.model';
 import { DayViewGenerator } from '../generators/day-view.generator';
@@ -25,50 +20,8 @@ export interface TimeGridEventInput {
   allDayEvent?: boolean;
 }
 
-export interface RecurringEventInput extends TimeGridEventInput {
-  recurrenceRule?: string;
-}
-
 @Injectable({ providedIn: 'root' })
 export class CalendarEngineService {
-
-  expandRecurring<T extends RecurringEventInput>(
-    events: T[],
-    rangeStart: Date,
-    rangeEnd: Date,
-    exceptions: RecurrenceException[] = []
-  ): T[] {
-
-    const result: T[] = [];
-
-    for (const event of events) {
-
-      if (!event.recurrenceRule) {
-        result.push(event);
-        continue;
-      }
-
-      const baseId = (event as any).id as number;
-
-      let occurrences = OccurrenceGenerator.generateOccurrences(
-        { ...event, startDate: new Date(event.startDate), endDate: new Date(event.endDate) },
-        rangeStart,
-        rangeEnd
-      ) as T[];
-
-      if (exceptions.length) {
-        occurrences = RecurrenceExceptionEngine.applyForBaseEvent(
-          occurrences,
-          baseId,
-          exceptions
-        ) as T[];
-      }
-
-      result.push(...occurrences);
-    }
-
-    return result;
-  }
 
   getDayTimeLayouts<T extends TimeGridEventInput>(
     events: T[]
