@@ -350,3 +350,89 @@ describe('CalendarComponent — refreshAfterSave() loading state and race safety
     expect(component.isLoading).toBeFalse();
   });
 });
+
+/**
+ * getWeekNumber()/getDayOfYear() feed the "Week N, day D of the year" label
+ * in the top bar (calendar.component.html) - the only place either method is
+ * called. Investigated for correctness (ISO week year-boundary/53-week-year
+ * cases, leap years, DST) rather than assumed broken just for living in a
+ * large component; both are correct as written, so this adds the missing
+ * regression coverage rather than changing the implementation.
+ */
+describe('CalendarComponent — getWeekNumber() / getDayOfYear()', () => {
+  let component: CalendarComponent;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [CalendarComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CalendarComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  describe('getWeekNumber (ISO-8601)', () => {
+    it('returns 1 for a date in the same week as Jan 4 (the ISO week-1 anchor)', () => {
+      // Jan 1, 2026 is a Thursday - the same ISO week as Jan 4, 2026.
+      expect(component.getWeekNumber(new Date(2026, 0, 1))).toBe(1);
+    });
+
+    it('increments by exactly 1 across a plain week boundary', () => {
+      // Jan 1, 2024 is a Monday (week 1); the following Monday is week 2.
+      expect(component.getWeekNumber(new Date(2024, 0, 1))).toBe(1);
+      expect(component.getWeekNumber(new Date(2024, 0, 8))).toBe(2);
+    });
+
+    it('assigns an early-January date to the previous ISO year\'s last week', () => {
+      // Jan 1, 2022 is a Saturday, which ISO-8601 assigns to week 52 of 2021,
+      // not week 1 of 2022 - the algorithm must re-derive the year from the
+      // Thursday-shifted date, not from the input date's own calendar year.
+      expect(component.getWeekNumber(new Date(2022, 0, 1))).toBe(52);
+    });
+
+    it('assigns a late-December date to the next ISO year\'s week 1', () => {
+      // Dec 31, 2018 is a Monday, which ISO-8601 assigns to week 1 of 2019.
+      expect(component.getWeekNumber(new Date(2018, 11, 31))).toBe(1);
+    });
+
+    it('correctly produces week 53 for an ISO year that has one', () => {
+      // 2020 is a 53-ISO-week year; Dec 31, 2020 (a Thursday) falls in it.
+      expect(component.getWeekNumber(new Date(2020, 11, 31))).toBe(53);
+    });
+  });
+
+  describe('getDayOfYear', () => {
+    it('returns 1 for January 1st', () => {
+      expect(component.getDayOfYear(new Date(2026, 0, 1))).toBe(1);
+    });
+
+    it('returns 365 for December 31st in a non-leap year', () => {
+      expect(component.getDayOfYear(new Date(2026, 11, 31))).toBe(365);
+    });
+
+    it('returns 366 for December 31st in a leap year', () => {
+      expect(component.getDayOfYear(new Date(2024, 11, 31))).toBe(366);
+    });
+
+    it('correctly counts Feb 29th in a leap year', () => {
+      expect(component.getDayOfYear(new Date(2024, 1, 29))).toBe(60); // Jan (31) + Feb 29
+    });
+
+    it('produces the correct whole-day count across a DST transition, if the local machine observes one', () => {
+      // Mar 9, 2026 is the day after the 2nd Sunday of March (a common DST
+      // "spring forward" date). Without the explicit getTimezoneOffset()
+      // correction in getDayOfYear(), a real transition would shift this
+      // result by whole hours worth of drift, not just the days elapsed.
+      // On a machine whose local zone doesn't observe DST on this date,
+      // this is equivalent to the plain non-leap-year case (68 = 31 + 28 + 9).
+      expect(component.getDayOfYear(new Date(2026, 2, 9))).toBe(68);
+    });
+  });
+});
