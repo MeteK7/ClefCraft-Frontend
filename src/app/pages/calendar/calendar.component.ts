@@ -1036,12 +1036,20 @@ export class CalendarComponent implements OnInit, OnDestroy {
         isCancelled: false,
       }).subscribe({
         next: () => this.refreshAfterSave(),
-        error: err => console.error('Failed to update recurring event:', err),
+        error: err => {
+          console.error('Failed to update recurring event:', err);
+          this.snackBar.open('Failed to save event changes. Reverting to last saved state.', 'Dismiss', { duration: 5000 });
+          this.refreshAfterSave();
+        },
       });
     } else {
       this.calendarService.updateEvent(event.id!, event).subscribe({
         next: () => this.refreshAfterSave(),
-        error: err => console.error('Failed to update event:', err),
+        error: err => {
+          console.error('Failed to update event:', err);
+          this.snackBar.open('Failed to save event changes. Reverting to last saved state.', 'Dismiss', { duration: 5000 });
+          this.refreshAfterSave();
+        },
       });
     }
   }
