@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { BoardItemComponent } from '../board-item/board-item.component';
 import { BoardService } from '../../_services/board.service';
 import { BoardColumnView } from '../../board-engine/models/board-column-view.model';
@@ -10,7 +11,7 @@ import { handleBoardDrop } from '../../board-engine/interactions/board-drop-engi
 @Component({
   selector: 'app-board-column',
   standalone: true,
-  imports: [CommonModule, DragDropModule, BoardItemComponent],
+  imports: [CommonModule, DragDropModule, BoardItemComponent, MatSnackBarModule],
   templateUrl: './board-column.component.html',
   styleUrls: ['./board-column.component.css'],
 })
@@ -18,8 +19,9 @@ export class BoardColumnComponent {
   @Input() column!: BoardColumnView;
   @Input() allColumnIds!: string[];
   @Output() itemClicked = new EventEmitter<BoardItemView>();
+  @Output() itemMoveFailed = new EventEmitter<void>();
 
-  constructor(private boardEngine: BoardService) { }
+  constructor(private boardEngine: BoardService, private snackBar: MatSnackBar) { }
 
   get connectedTo(): string[] {
     return this.allColumnIds;
@@ -42,6 +44,8 @@ export class BoardColumnComponent {
         },
         error => {
           console.error('Error updating item:', error);
+          this.snackBar.open('Failed to move item. Reverting to last saved state.', 'Dismiss', { duration: 5000 });
+          this.itemMoveFailed.emit();
         }
       );
   }

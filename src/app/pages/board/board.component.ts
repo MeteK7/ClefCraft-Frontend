@@ -208,6 +208,12 @@ export class BoardComponent implements OnInit, OnDestroy {
     }
   }
 
+  onItemMoveFailed(): void {
+    if (this.selectedBoardId !== null) {
+      this.loadBoardColumnItems(this.selectedBoardId);
+    }
+  }
+
   // ---------------------------------------------------------------------
   // Item creation
   // ---------------------------------------------------------------------
