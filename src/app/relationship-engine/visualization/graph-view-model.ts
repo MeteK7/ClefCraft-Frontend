@@ -45,7 +45,7 @@ export interface GraphViewport {
 export interface GraphAnalytics {
     nodeCount: number;
     edgeCount: number;
-    /** Populated by DependencyEngine.calculateAllDepths — 0 until computed. */
+    /** Currently unpopulated — nothing computes this field; always 0. */
     maxDepth: number;
     isolatedNodes: number;
     /** Populated by CycleDetector — false/0 until computed. */
