@@ -1,7 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../_services/auth.service';
 import { ToastrService } from 'ngx-toastr';
 
@@ -12,9 +12,11 @@ import { ToastrService } from 'ngx-toastr';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   isLoading = false;
   showPassword = false;
+  /** Why the user landed here without logging out themselves (inactivity or expired session). */
+  signOutNotice: string | null = null;
 
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -25,8 +27,19 @@ export class LoginComponent {
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
+    private route: ActivatedRoute,
     private toastr: ToastrService
   ) { }
+
+  ngOnInit(): void {
+    const reason = this.route.snapshot.queryParamMap.get('reason');
+
+    if (reason === 'idle') {
+      this.signOutNotice = 'You were signed out after 15 minutes of inactivity.';
+    } else if (reason === 'expired') {
+      this.signOutNotice = 'Your session has expired. Please sign in again.';
+    }
+  }
 
   togglePassword(): void {
     this.showPassword = !this.showPassword;
@@ -41,12 +54,12 @@ export class LoginComponent {
 
     this.authService.login(email!, password!).subscribe({
       next: res => {
-        this.authService.setToken(res.token);
+        this.authService.setSession(res);
 
         this.authService.loadCurrentUser().subscribe({
           next: user => {
             this.authService.setCurrentUser(user);
-            this.router.navigate(['/calendar']);
+            this.router.navigateByUrl(this.returnUrl());
           }
         });
       },
@@ -55,5 +68,13 @@ export class LoginComponent {
         this.toastr.error('Invalid email or password', 'Login failed');
       }
     });
+  }
+
+  /** Where the user was headed before being sent to log in — only ever an in-app path. */
+  private returnUrl(): string {
+    const url = this.route.snapshot.queryParamMap.get('returnUrl');
+    const isInternalPath = !!url && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/\\');
+
+    return url && isInternalPath && !url.startsWith('/login') ? url : '/calendar';
   }
 }
