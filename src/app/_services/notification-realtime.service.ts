@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
-import { Subject, Observable } from 'rxjs';
+import { Subject, Observable, distinctUntilChanged } from 'rxjs';
 import { AuthService } from './auth.service';  // ← adjust path if needed
 import { environment } from '../../environments/environment';
 
@@ -33,17 +33,30 @@ export class NotificationRealtimeService {
     public reminders$: Observable<ReminderPayload> = this.reminderSubject.asObservable();
     public mentions$: Observable<MentionPayload> = this.mentionSubject.asObservable();
 
+    // start()/stop() are async and SignalR rejects start() unless fully Disconnected, so a quick
+    // logout -> login must wait for the stop to finish. Chaining transitions guarantees that.
+    private lifecycle: Promise<void> = Promise.resolve();
+
     constructor(private authService: AuthService) {  // ← inject AuthService
-        this.startConnection();
+        this.buildConnection();
         this.registerReminderListener();
         this.registerMentionListener();
+
+        // Connect only while logged in. Connecting at app boot before login produced an
+        // anonymous connection that never received user-addressed notifications, even after
+        // the user logged in.
+        this.authService.isAuthenticated$
+            .pipe(distinctUntilChanged())
+            .subscribe(isAuthenticated => isAuthenticated ? this.startConnection() : this.stopConnection());
     }
 
-    private startConnection(): void {
+    private buildConnection(): void {
         const hubUrl = environment.apiUrl.replace('/api', '');
         this.hubConnection = new signalR.HubConnectionBuilder()
             .withUrl(`${hubUrl}/hubs/notifications`, {
-                accessTokenFactory: () => this.authService.getToken() ?? '',
+                // Called on every (re)connect, so a reconnect after the access token expired
+                // refreshes it first instead of being rejected.
+                accessTokenFactory: async () => (await this.authService.getValidAccessToken()) ?? '',
                 withCredentials: true
             })
             .withAutomaticReconnect()
@@ -61,28 +74,33 @@ export class NotificationRealtimeService {
         this.hubConnection.onclose(error => {
             console.log('SignalR closed', error);
         });
+    }
 
-        this.hubConnection
-            .start()
-            .then(() => {
-                console.log('Successfully synchronized with Notification Hub.');
+    private startConnection(): void {
+        this.queueTransition(async () => {
+            if (this.hubConnection.state !== signalR.HubConnectionState.Disconnected) {
+                return;
+            }
 
-                console.log(
-                    'Connection State:',
-                    this.hubConnection.state
-                );
+            await this.hubConnection.start();
+            console.log('Successfully synchronized with Notification Hub.');
+        });
+    }
 
-                console.log(
-                    'Connection Id:',
-                    this.hubConnection.connectionId
-                );
-            })
-            .catch(err =>
-                console.error(
-                    'Error establishing SignalR connection:',
-                    err
-                )
-            );
+    public stopConnection(): void {
+        this.queueTransition(async () => {
+            if (this.hubConnection.state === signalR.HubConnectionState.Disconnected) {
+                return;
+            }
+
+            await this.hubConnection.stop();
+        });
+    }
+
+    private queueTransition(transition: () => Promise<void>): void {
+        this.lifecycle = this.lifecycle
+            .then(transition)
+            .catch(err => console.error('Error changing SignalR connection state:', err));
     }
 
     private registerReminderListener(): void {
@@ -110,9 +128,4 @@ export class NotificationRealtimeService {
         );
     }
 
-    public stopConnection(): void {
-        if (this.hubConnection) {
-            this.hubConnection.stop();
-        }
-    }
 }
