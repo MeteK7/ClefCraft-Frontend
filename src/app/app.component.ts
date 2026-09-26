@@ -8,6 +8,7 @@ import { AuthService } from './_services/auth.service';
 import { ThemeService } from './services/theme.service';
 import { NotificationRealtimeService, MentionPayload } from './_services/notification-realtime.service';
 import { MentionToastComponent } from './pages/mention-toast/mention-toast.component';
+import { IdleSessionService } from './_services/idle-session.service';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +27,7 @@ export class AppComponent implements OnInit {
     // page (unlike calendar reminders, which are only ever relevant while already on the
     // Calendar page) — so this listener lives at the app shell, not a specific page component.
     private notificationRealtimeService: NotificationRealtimeService,
+    private idleSessionService: IdleSessionService,
     private snackBar: MatSnackBar,
     private router: Router,
     private zone: NgZone
@@ -33,6 +35,7 @@ export class AppComponent implements OnInit {
 
   ngOnInit() {
     this.authService.initializeUser();
+    this.idleSessionService.start();
     this.listenForMentions();
   }
 

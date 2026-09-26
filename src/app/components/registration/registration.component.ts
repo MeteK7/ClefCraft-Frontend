@@ -54,7 +54,8 @@ export class RegistrationComponent {
 
         this.toastr.success('Registration successful', 'Success');
 
-        this.router.navigate(['/home']);
+        // Registration doesn't sign the user in; /home requires a session.
+        this.router.navigate(['/login']);
       },
 
       error: (error) => {

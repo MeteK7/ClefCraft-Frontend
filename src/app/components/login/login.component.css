@@ -98,6 +98,16 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.notice {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border-left: 4px solid var(--warning);
+  border-radius: 6px;
+  background: var(--warning-bg);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
 .error {
   color: var(--danger);
   font-size: 0.8rem;

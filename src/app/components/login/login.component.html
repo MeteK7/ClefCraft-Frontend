@@ -4,6 +4,8 @@
     <h2>Login</h2>
     <p class="subtitle">Welcome back! Please sign in.</p>
 
+    <p class="notice" *ngIf="signOutNotice" role="status">{{ signOutNotice }}</p>
+
     <form [formGroup]="form" (ngSubmit)="submit()" autocomplete="on">
 
       <!-- Email -->
