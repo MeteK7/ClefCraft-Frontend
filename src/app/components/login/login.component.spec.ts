@@ -1,9 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../_services/auth.service';
@@ -90,5 +90,28 @@ describe('LoginComponent', () => {
         expect(loginWithReturnUrl(unsafe)).toHaveBeenCalledWith('/calendar');
       });
     }
+  });
+
+  describe('after a failed login', () => {
+    function failLoginWith(status: number): jasmine.SpyObj<ToastrService> {
+      const auth = TestBed.inject(AuthService);
+      spyOn(auth, 'login').and.returnValue(throwError(() => new HttpErrorResponse({ status })));
+
+      component.form.setValue({ email: 'a@test.com', password: 'secret1' });
+      component.submit();
+
+      expect(component.isLoading).toBeFalse();
+      return TestBed.inject(ToastrService) as jasmine.SpyObj<ToastrService>;
+    }
+
+    it('asks the user to wait when rate limited (429)', () => {
+      expect(failLoginWith(429).error).toHaveBeenCalledWith(
+        'Too many sign-in attempts. Please wait a minute and try again.', 'Login failed');
+    });
+
+    it('shows one generic message for rejected credentials (401)', () => {
+      expect(failLoginWith(401).error).toHaveBeenCalledWith(
+        'Invalid email or password, or the account is temporarily locked.', 'Login failed');
+    });
   });
 });

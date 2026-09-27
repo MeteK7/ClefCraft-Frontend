@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../_services/auth.service';
 import { ToastrService } from 'ngx-toastr';
@@ -63,9 +64,17 @@ export class LoginComponent implements OnInit {
           }
         });
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
         this.isLoading = false;
-        this.toastr.error('Invalid email or password', 'Login failed');
+
+        if (err.status === 429) {
+          this.toastr.error('Too many sign-in attempts. Please wait a minute and try again.', 'Login failed');
+          return;
+        }
+
+        // Deliberately one message for every failure: the API doesn't say whether the email
+        // exists or the account is locked, and neither should the UI.
+        this.toastr.error('Invalid email or password, or the account is temporarily locked.', 'Login failed');
       }
     });
   }
