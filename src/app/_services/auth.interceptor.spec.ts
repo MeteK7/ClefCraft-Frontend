@@ -99,6 +99,25 @@ describe('authInterceptorFn', () => {
     expect(auth.refreshSession).not.toHaveBeenCalled();
   });
 
+  // Login and register answer bad credentials with 401. That must reach the caller as-is, not be
+  // mistaken for an expired session (refresh, replay, or a logout redirect to /login?reason=expired).
+  for (const endpoint of ['login', 'register']) {
+    it(`passes a 401 from /Auth/${endpoint} straight to the caller`, () => {
+      const url = `https://localhost:7287/api/Auth/${endpoint}`;
+      let status: number | undefined;
+      http.post(url, {}).subscribe({ error: e => status = e.status });
+
+      const req = backend.expectOne(url);
+      expect(req.request.headers.has('Authorization')).toBeFalse();
+      req.flush(null, { status: 401, statusText: 'Unauthorized' });
+
+      // backend.verify() in afterEach also fails if the request was replayed.
+      expect(status).toBe(401);
+      expect(auth.refreshSession).not.toHaveBeenCalled();
+      expect(auth.logout).not.toHaveBeenCalled();
+    });
+  }
+
   it('passes non-401 errors through untouched', () => {
     let status: number | undefined;
     http.get('/api/Boards').subscribe({ error: e => status = e.status });
