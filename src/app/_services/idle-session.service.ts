@@ -17,9 +17,9 @@ export interface IdleSessionConfig {
 export const IDLE_SESSION_CONFIG = new InjectionToken<IdleSessionConfig>('IDLE_SESSION_CONFIG', {
   providedIn: 'root',
   factory: () => ({
-    idleLimitMs: 3 * 60_000, // TEMP-E2E: revert to 15 * 60_000
-    warningMs: 30_000, // TEMP-E2E: revert to 60_000
-    refreshWhenRemainingMs: 90_000, // TEMP-E2E: revert to 7 * 60_000
+    idleLimitMs: 15 * 60_000,
+    warningMs: 60_000,
+    refreshWhenRemainingMs: 7 * 60_000,
   }),
 });
 
