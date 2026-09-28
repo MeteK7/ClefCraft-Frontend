@@ -1,14 +1,14 @@
 import { formatDate } from '@angular/common';
 
 import { ActivityFieldChange } from '../../models/activity-log.model';
-import { Assignee } from '../../models/assignee.model';
 import { Column, Priority, Status } from '../../models/board.model';
 import { toLocalDate } from './date.utils';
 
 export type ActivityFieldType = 'text' | 'date' | 'assignee' | 'column' | 'status' | 'priority' | 'number';
 
+// Assignees aren't looked up here: the client only knows the board's *current* members, so the
+// server resolves assignee names itself (ActivityFieldChange.old/newDisplayValue).
 export interface ActivityLookups {
-  assignees?: Assignee[];
   columns?: Column[];
   statuses?: Status[];
   priorities?: Priority[];
@@ -58,8 +58,6 @@ function resolveById<T extends { id: number | string }>(
 
 function formatFieldValue(type: ActivityFieldType, rawValue: string, lookups: ActivityLookups): string {
   switch (type) {
-    case 'assignee':
-      return resolveById(lookups.assignees, rawValue, a => a.fullName);
     case 'column':
       return resolveById(lookups.columns, rawValue, c => c.title);
     case 'status':
@@ -81,9 +79,14 @@ export function toDisplayChange(change: ActivityFieldChange, lookups: ActivityLo
     type: 'text' as ActivityFieldType
   };
 
+  const display = (rawValue: string, serverDisplay: string | null | undefined): string =>
+    config.type === 'assignee'
+      ? serverDisplay ?? rawValue
+      : formatFieldValue(config.type, rawValue, lookups);
+
   return {
     label: config.label,
-    oldDisplay: change.oldValue === null ? null : formatFieldValue(config.type, change.oldValue, lookups),
-    newDisplay: change.newValue === null ? 'None' : formatFieldValue(config.type, change.newValue, lookups)
+    oldDisplay: change.oldValue === null ? null : display(change.oldValue, change.oldDisplayValue),
+    newDisplay: change.newValue === null ? 'None' : display(change.newValue, change.newDisplayValue)
   };
 }
