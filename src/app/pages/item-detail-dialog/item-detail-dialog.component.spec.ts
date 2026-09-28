@@ -129,3 +129,66 @@ describe('ItemDetailDialogComponent — markAsWorked()', () => {
     httpMock.expectOne(`${calendarApiUrl}/work-history/42`).flush([]);
   });
 });
+
+describe('ItemDetailDialogComponent — assignee options', () => {
+  let component: ItemDetailDialogComponent;
+  let httpMock: HttpTestingController;
+
+  const membersUrl = `${environment.apiUrl}/Boards/7/Members`;
+
+  function setup(item: Item | null): void {
+    TestBed.configureTestingModule({
+      imports: [ItemDetailDialogComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: { item, boardId: 7 } as ItemDetailDialogData },
+        { provide: MatDialogRef, useValue: { close: () => { } } }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ItemDetailDialogComponent);
+    component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+  }
+
+  const members = [
+    { id: 1, boardId: 7, userId: 'member-1', fullName: 'Member One' },
+    { id: 2, boardId: 7, userId: 'member-2', fullName: 'Member Two' }
+  ];
+
+  it("offers only the board's members, fetched for this item's board", () => {
+    setup(null);
+
+    httpMock.expectOne(membersUrl).flush(members);
+
+    expect(component.assignees).toEqual([
+      { id: 'member-1', fullName: 'Member One' },
+      { id: 'member-2', fullName: 'Member Two' }
+    ]);
+    httpMock.expectNone(req => req.url.endsWith('/users'));
+  });
+
+  it('keeps a current assignee who has left the board selectable, labelled as such', () => {
+    setup({
+      id: 5, title: 'Etude', boardId: 7, boardColumnId: 1,
+      assigneeId: 'former', assigneeFirstName: 'Old', assigneeLastName: 'Timer'
+    } as Item);
+
+    httpMock.expectOne(membersUrl).flush(members);
+
+    expect(component.assignees).toContain({ id: 'former', fullName: 'Old Timer (not a board member)' });
+    expect(component.form.value.assigneeId).toBe('former');
+  });
+
+  it('adds nothing extra when the current assignee is a member', () => {
+    setup({ id: 5, title: 'Etude', boardId: 7, boardColumnId: 1, assigneeId: 'member-2' } as Item);
+
+    httpMock.expectOne(membersUrl).flush(members);
+
+    expect(component.assignees.length).toBe(2);
+  });
+});
