@@ -2,10 +2,6 @@ import { ActivityLookups, humanizeFieldName, toDisplayChange } from './activity-
 
 describe('activity-log-display.utils', () => {
   const lookups: ActivityLookups = {
-    assignees: [
-      { id: 'user-1', email: 'john@example.com', firstname: 'John', lastname: 'Doe', fullName: 'John Doe' },
-      { id: 'user-2', email: 'jane@example.com', firstname: 'Jane', lastname: 'Smith', fullName: 'Jane Smith' }
-    ],
     columns: [
       { id: 1, title: 'To Do', boardItems: [] },
       { id: 4, title: 'In Progress', boardItems: [] }
@@ -23,9 +19,15 @@ describe('activity-log-display.utils', () => {
   });
 
   describe('toDisplayChange', () => {
-    it('resolves an assignee change to full names', () => {
+    it('shows the server-resolved names for an assignee change', () => {
+      // The server resolves assignee names by user id, so someone no longer on the board still
+      // shows by name; the client has no assignee lookup of its own.
       const result = toDisplayChange(
-        { fieldName: 'AssigneeId', oldValue: 'user-1', newValue: 'user-2' },
+        {
+          fieldName: 'AssigneeId',
+          oldValue: 'user-1', oldDisplayValue: 'John Doe',
+          newValue: 'user-2', newDisplayValue: 'Jane Smith'
+        },
         lookups
       );
 
@@ -61,12 +63,16 @@ describe('activity-log-display.utils', () => {
     });
 
     it('displays "None" when a value is cleared', () => {
-      const result = toDisplayChange({ fieldName: 'AssigneeId', oldValue: 'user-1', newValue: null }, lookups);
+      const result = toDisplayChange(
+        { fieldName: 'AssigneeId', oldValue: 'user-1', oldDisplayValue: 'John Doe', newValue: null, newDisplayValue: null },
+        lookups
+      );
 
+      expect(result.oldDisplay).toBe('John Doe');
       expect(result.newDisplay).toBe('None');
     });
 
-    it('falls back to the raw id when no match is found in the lookup', () => {
+    it('falls back to the raw id when the server sent no display name', () => {
       const result = toDisplayChange({ fieldName: 'AssigneeId', oldValue: null, newValue: 'unknown-user' }, lookups);
 
       expect(result.newDisplay).toBe('unknown-user');

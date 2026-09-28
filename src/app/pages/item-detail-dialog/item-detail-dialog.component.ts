@@ -252,13 +252,28 @@ export class ItemDetailDialogComponent implements OnInit {
   }
 
   fetchAssignees(): void {
-    this.userService.getAssignees().subscribe(data => {
-      this.assignees = data;
+    this.userService.getAssignees(this.data.boardId).subscribe(members => {
+      this.assignees = this.withCurrentAssignee(members);
       this.form.patchValue(
         { assigneeId: this.data.item?.assigneeId ?? null },
         { emitEvent: false }
       );
     });
+  }
+
+  /**
+   * Only board members can be newly assigned, but an item may still be assigned to someone who
+   * has since left the board. Keep them selectable so the picker doesn't go blank and saving an
+   * unrelated change leaves the assignment as it is.
+   */
+  private withCurrentAssignee(members: Assignee[]): Assignee[] {
+    const item = this.data.item;
+    if (!item?.assigneeId || members.some(m => m.id === item.assigneeId)) {
+      return members;
+    }
+
+    const name = [item.assigneeFirstName, item.assigneeLastName].filter(Boolean).join(' ') || 'Unknown user';
+    return [...members, { id: item.assigneeId, fullName: `${name} (not a board member)` }];
   }
 
   fetchMarkAsWorkedHistory(): void {
