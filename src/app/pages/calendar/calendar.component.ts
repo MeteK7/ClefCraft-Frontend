@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, NgZone, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,16 +11,14 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { HttpErrorResponse } from '@angular/common/http';
 import { uploadFailureMessage } from '../../shared/attachment-limits';
-import { BehaviorSubject, distinctUntilChanged, finalize, map, Observable, of, Subject, Subscription, switchMap, timer } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, finalize, map, Observable, of, skip, Subject, Subscription, switchMap, timer } from 'rxjs';
 
 import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
-import { LiveReminderToastComponent } from '../live-reminder-toast/live-reminder-toast.component';
 import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { RecurrenceUpdateScope } from '../../models/recurrence-update-scope.model';
 import { RecurrenceDeleteScope } from '../../models/recurrence-delete-scope.model';
 
 import { CalendarService } from '../../_services/calendar.service';
-import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
 import { AuthService } from '../../_services/auth.service';
 import { CalendarEngineService } from '../../calendar-engine/services/calendar-engine.service';
 
@@ -127,7 +125,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // ── Injected services ──────────────────────────────────────────────────────
 
   private readonly engine = inject(CalendarEngineService);
-  private reminderSubscription!: Subscription;
+  private redirectParamsSub?: Subscription;
   private pendingEventIdFromRedirect: number | null = null;
   private pendingCommentIdFromRedirect: number | null = null;
   monthDragEvent: CalendarEventUI | null = null;
@@ -167,10 +165,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
   constructor(
     private calendarService: CalendarService,
     private dialog: MatDialog,
-    private notificationService: NotificationRealtimeService,
     private snackBar: MatSnackBar,
     private authService: AuthService,
-    private zone: NgZone,
     private route: ActivatedRoute,
     private router: Router,
   ) { }
@@ -188,7 +184,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.fetchEvents();
     this.updateNowIndicator();
     this.nowTimer = setInterval(() => this.updateNowIndicator(), 60_000);
-    this.listenForLiveReminders();
+    this.listenForRedirectParams();
 
     // switchMap cancels any in-flight "need more events" request the instant
     // a newer one comes in, so a stale, late-arriving response for an older
@@ -221,7 +217,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     clearInterval(this.nowTimer);
-    this.reminderSubscription?.unsubscribe();
+    this.redirectParamsSub?.unsubscribe();
     this.needMoreRangeSub?.unsubscribe();
     window.removeEventListener('mousemove', this.onDragging);
     window.removeEventListener('mouseup', this.stopDrag);
@@ -259,46 +255,25 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ==========================================================================
-  // REMINDERS
-  // ==========================================================================
+  /**
+   * App-level toasts (reminders, mentions) open an event by navigating to /calendar?eventId=…
+   * While this page is already showing, Angular reuses the component, so ngOnInit's snapshot
+   * read never sees that param — handle later changes here. skip(1): the first emission is the
+   * one applyRedirectQueryParams() already handled.
+   */
+  private listenForRedirectParams(): void {
+    this.redirectParamsSub = this.route.queryParamMap.pipe(skip(1)).subscribe(params => {
+      const eventId = Number(params.get('eventId'));
+      if (!params.has('eventId') || isNaN(eventId)) return; // includes the param clearing below
 
-  private listenForLiveReminders(): void {
-    this.reminderSubscription = this.notificationService.reminders$.subscribe({
-      next: reminder => this.displayInteractiveReminder(reminder.message, reminder.eventId),
-      error: err => console.error('Real-time channel broadcast error:', err),
+      const commentId = Number(params.get('commentId'));
+      this.pendingEventIdFromRedirect = eventId;
+      this.pendingCommentIdFromRedirect = params.has('commentId') && !isNaN(commentId) ? commentId : null;
+
+      // Reload the visible range first: the event may have been created since this page loaded
+      // (another tab or device). fetchEvents() opens the pending event once the data is in.
+      this.fetchEvents(false, 'mutation');
     });
-  }
-
-  private displayInteractiveReminder(message: string, eventId: number): void {
-    this.zone.run(() => {
-      const matchedEvent = this.events.find(e => e.id === eventId);
-      const eventColor = matchedEvent?.eventColor ?? '#4f87f5';
-      const timeUntil = this.buildTimeUntilLabel(matchedEvent);
-
-      const ref = this.snackBar.openFromComponent(LiveReminderToastComponent, {
-        duration: 12_000,
-        horizontalPosition: 'right',
-        verticalPosition: 'top',
-        panelClass: ['clean-reminder-viewport-override'],
-        data: { message, eventId, color: eventColor, timeUntil },
-      });
-
-      ref.onAction().subscribe(() => this.openEventById(eventId));
-    });
-  }
-
-  private buildTimeUntilLabel(event: CalendarEventUI | undefined): string | undefined {
-    if (!event?.startDate) return undefined;
-
-    const diffMs = new Date(event.startDate).getTime() - Date.now();
-    const diffMin = Math.round(diffMs / 60_000);
-    const timeStr = new Date(event.startDate)
-      .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    return diffMin > 0
-      ? `Starts in ${diffMin} minute${diffMin !== 1 ? 's' : ''} · ${timeStr}`
-      : `Starting now · ${timeStr}`;
   }
 
   // ==========================================================================
