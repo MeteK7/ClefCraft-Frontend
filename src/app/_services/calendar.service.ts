@@ -59,7 +59,7 @@ export class CalendarService {
   }
 
   downloadAttachment(id: number): Observable<Blob> {
-    return this.http.get(`api/Calendar/attachments/download/${id}`, {
+    return this.http.get(`${this.apiUrl}/attachments/download/${id}`, {
       responseType: 'blob'
     });
   }
