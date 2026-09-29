@@ -6,6 +6,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { CalendarComponent } from './calendar.component';
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
+import { of } from 'rxjs';
 
 describe('CalendarComponent', () => {
   let component: CalendarComponent;
@@ -434,5 +435,40 @@ describe('CalendarComponent — getWeekNumber() / getDayOfYear()', () => {
       // this is equivalent to the plain non-leap-year case (68 = 31 + 28 + 9).
       expect(component.getDayOfYear(new Date(2026, 2, 9))).toBe(68);
     });
+  });
+});
+
+describe('CalendarComponent — attachment upload after save', () => {
+  let component: CalendarComponent;
+  let httpMock: HttpTestingController;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [CalendarComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CalendarComponent);
+    component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    httpMock.match(req => req.url.includes('/Calendar/events')).forEach(req => req.flush([]));
+  });
+
+  it('tells the user when the attachments are rejected, since the dialog has already closed', () => {
+    const snackBarOpen = spyOn((component as any).snackBar, 'open');
+    const dialogRef = { close: jasmine.createSpy('close'), componentInstance: {} };
+    const file = new File(['x'], 'notes.txt');
+
+    (component as any).executeSave(of({ id: 42 }), { id: 42, baseEventId: 42 }, [file], dialogRef);
+
+    httpMock.expectOne(req => req.url.endsWith('/Calendar/42/attachments')).flush(
+      { title: "Some files can't be uploaded.", errors: { Files: ['You can upload at most 10 files at a time.'] } },
+      { status: 400, statusText: 'Bad Request' });
+
+    expect(dialogRef.close).toHaveBeenCalled();
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Attachments not uploaded: You can upload at most 10 files at a time.', 'Dismiss', jasmine.any(Object));
+    httpMock.match(() => true); // the refresh that still follows
   });
 });

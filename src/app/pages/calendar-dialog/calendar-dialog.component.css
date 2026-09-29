@@ -570,6 +570,12 @@ textarea[matInput] {
   color: var(--text-secondary);
 }
 
+.attachment-error {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
 .upload-btn {
   border-radius: 9px;
   padding: 6px 14px;

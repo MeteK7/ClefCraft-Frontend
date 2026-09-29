@@ -9,6 +9,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { HttpErrorResponse } from '@angular/common/http';
+import { uploadFailureMessage } from '../../shared/attachment-limits';
 import { BehaviorSubject, distinctUntilChanged, finalize, map, Observable, of, Subject, Subscription, switchMap, timer } from 'rxjs';
 
 import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
@@ -787,8 +789,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
         if (attachments?.length && eventId) {
           const formData = new FormData();
           attachments.forEach((f: File) => formData.append('files', f));
-          this.calendarService.uploadAttachments(eventId, formData)
-            .subscribe(() => this.refreshAfterSave());
+          // The dialog is already closed by the time this finishes, so a rejection has to be
+          // reported here or the user never learns their files weren't attached.
+          this.calendarService.uploadAttachments(eventId, formData).subscribe({
+            next: () => this.refreshAfterSave(),
+            error: (err: HttpErrorResponse) => {
+              this.snackBar.open(uploadFailureMessage(err), 'Dismiss', { duration: 8000 });
+              this.refreshAfterSave();
+            }
+          });
         } else {
           this.refreshAfterSave();
         }
