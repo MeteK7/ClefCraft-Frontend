@@ -6,6 +6,23 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start"],
       "port": 4200
+    },
+    {
+      "name": "clefcraft-dev-attached",
+      "url": "http://localhost:4200"
+    },
+    {
+      "name": "clefcraft-api-short-tokens",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project", "C:/Projects/Backend/ClefCraft-Backend/ClefCraft.Api/ClefCraft.Api.csproj",
+        "--launch-profile", "https",
+        "--",
+        "--JwtSettings:DurationInMinutes=1",
+        "--JwtSettings:RefreshTokenIdleMinutes=3"
+      ],
+      "port": 5166
     }
   ]
 }
