@@ -1,11 +1,13 @@
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { CalendarComponent } from './calendar.component';
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
+import { of, Subject } from 'rxjs';
+import { NotificationRealtimeService, ReminderPayload } from '../../_services/notification-realtime.service';
 
 describe('CalendarComponent', () => {
   let component: CalendarComponent;
@@ -434,5 +436,136 @@ describe('CalendarComponent — getWeekNumber() / getDayOfYear()', () => {
       // this is equivalent to the plain non-leap-year case (68 = 31 + 28 + 9).
       expect(component.getDayOfYear(new Date(2026, 2, 9))).toBe(68);
     });
+  });
+});
+
+describe('CalendarComponent — attachment upload after save', () => {
+  let component: CalendarComponent;
+  let httpMock: HttpTestingController;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [CalendarComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CalendarComponent);
+    component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    httpMock.match(req => req.url.includes('/Calendar/events')).forEach(req => req.flush([]));
+  });
+
+  it('tells the user when the attachments are rejected, since the dialog has already closed', () => {
+    const snackBarOpen = spyOn((component as any).snackBar, 'open');
+    const dialogRef = { close: jasmine.createSpy('close'), componentInstance: {} };
+    const file = new File(['x'], 'notes.txt');
+
+    (component as any).executeSave(of({ id: 42 }), { id: 42, baseEventId: 42 }, [file], dialogRef);
+
+    httpMock.expectOne(req => req.url.endsWith('/Calendar/42/attachments')).flush(
+      { title: "Some files can't be uploaded.", errors: { Files: ['You can upload at most 10 files at a time.'] } },
+      { status: 400, statusText: 'Bad Request' });
+
+    expect(dialogRef.close).toHaveBeenCalled();
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Attachments not uploaded: You can upload at most 10 files at a time.', 'Dismiss', jasmine.any(Object));
+    httpMock.match(() => true); // the refresh that still follows
+  });
+});
+
+describe('CalendarComponent — reminders and redirect params', () => {
+  let httpMock: HttpTestingController;
+  let router: Router;
+  let reminders$: Subject<ReminderPayload>;
+
+  async function createCalendar(): Promise<CalendarComponent> {
+    const fixture = TestBed.createComponent(CalendarComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    return component;
+  }
+
+  const flushEvents = () =>
+    httpMock.match(req => req.url.includes('/Calendar/events')).forEach(req => req.flush([]));
+
+  beforeEach(async () => {
+    reminders$ = new Subject<ReminderPayload>();
+    await TestBed.configureTestingModule({
+      imports: [CalendarComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: NotificationRealtimeService, useValue: { reminders$, mentions$: new Subject() } },
+      ]
+    }).compileComponents();
+
+    httpMock = TestBed.inject(HttpTestingController);
+    router = TestBed.inject(Router);
+  });
+
+  it('does not listen for reminders itself (the app shell does), so there is never a second toast', async () => {
+    await createCalendar();
+    flushEvents();
+
+    expect(reminders$.observed).toBeFalse();
+  });
+
+  it('opens an event when ?eventId= changes while the calendar is already showing', async () => {
+    const component = await createCalendar();
+    flushEvents();
+    const openEventById = spyOn(component as any, 'openEventById');
+
+    await router.navigate([], { queryParams: { eventId: 62, commentId: 9 } });
+
+    // The visible range is reloaded first; the event opens once that data is in.
+    expect(openEventById).not.toHaveBeenCalled();
+    flushEvents();
+
+    expect(openEventById).toHaveBeenCalledOnceWith(62, 9);
+    // …and the params are cleared afterwards; that clearing emission opens nothing.
+    await Promise.resolve();
+    expect(router.url).toBe('/');
+    expect(openEventById).toHaveBeenCalledTimes(1);
+  });
+
+  it('finds an event created after the calendar loaded (e.g. in another tab)', async () => {
+    const component = await createCalendar();
+    flushEvents(); // loaded before the event existed
+    const openDialog = spyOn(component as any, 'openDialog');
+
+    await router.navigate([], { queryParams: { eventId: 65 } });
+    const start = new Date(Date.now() + 3 * 60_000);
+    httpMock.match(req => req.url.includes('/Calendar/events')).forEach(req => req.flush([{
+      id: 65, baseEventId: 65, subject: 'Created elsewhere', ownerUserId: 'u1',
+      startDate: start.toISOString(), endDate: new Date(start.getTime() + 30 * 60_000).toISOString(),
+      allDayEvent: false, isRecurring: false, timeZoneId: 'UTC', reminderMinutes: []
+    }]));
+
+    expect(openDialog).toHaveBeenCalledTimes(1);
+    expect(openDialog.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ id: 65 }));
+  });
+
+  it('ignores query param changes without an eventId', async () => {
+    const component = await createCalendar();
+    flushEvents();
+    const openEventById = spyOn(component as any, 'openEventById');
+
+    await router.navigate([], { queryParams: { date: '2026-10-01' } });
+
+    expect(openEventById).not.toHaveBeenCalled();
+  });
+
+  it('handles an eventId present on arrival exactly once', async () => {
+    await router.navigate([], { queryParams: { eventId: 7 } });
+    const openEventById = spyOn(CalendarComponent.prototype as any, 'openEventById');
+
+    await createCalendar();
+    flushEvents();
+    await Promise.resolve();
+
+    expect(openEventById).toHaveBeenCalledOnceWith(7, null);
   });
 });

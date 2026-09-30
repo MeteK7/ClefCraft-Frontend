@@ -42,6 +42,7 @@ import { CalendarHistoryTimelineComponent } from '../../components/calendar-hist
 import { CommentThreadComponent } from '../../components/comment-thread/comment-thread.component';
 import { CalendarCollaboratorsPanelComponent } from '../../components/calendar-collaborators-panel/calendar-collaborators-panel.component';
 import { defaultQuillModules } from '../../shared/quill-config';
+import { stageWithinLimits } from '../../shared/attachment-limits';
 import { AuthService } from '../../_services/auth.service';
 
 @Component({
@@ -105,6 +106,8 @@ export class CalendarDialogComponent implements OnInit {
 
   existingAttachments: any[] = [];
   stagedAttachments: File[] = [];
+  /** Why some picked files weren't staged (size/count limits); null when all were accepted. */
+  attachmentError: string | null = null;
 
   eventId: number | null = null;
   baseEventId: number | null = null;
@@ -589,12 +592,22 @@ export class CalendarDialogComponent implements OnInit {
 
     if (!input.files || input.files.length === 0) return;
 
-    this.stagedAttachments.push(...Array.from(input.files));
-    this.hasAttachmentChanges = true;
+    // The server enforces the same limits; checking here explains a rejection before the event
+    // is saved, instead of after the dialog has closed.
+    const { accepted, error } = stageWithinLimits(this.stagedAttachments, Array.from(input.files));
+    this.attachmentError = error;
+
+    if (accepted.length) {
+      this.stagedAttachments.push(...accepted);
+      this.hasAttachmentChanges = true;
+    }
+
+    input.value = ''; // so re-picking the same file fires (change) again
   }
 
   removeStagedFile(file: File): void {
     this.stagedAttachments = this.stagedAttachments.filter(f => f !== file);
+    this.attachmentError = null;
     this.hasAttachmentChanges = true;
   }
 

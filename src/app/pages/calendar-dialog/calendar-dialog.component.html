@@ -193,11 +193,13 @@
             </button>
 
             <span class="upload-hint">
-              You can attach multiple files
+              Up to 10 files, 100 MB each, 500 MB in total
             </span>
 
             <input #fileInput type="file" multiple hidden (change)="onFileSelected($event)" />
           </div>
+
+          <p class="attachment-error" role="alert" *ngIf="attachmentError">{{ attachmentError }}</p>
 
           <!-- Pending -->
           <ng-container *ngIf="stagedAttachments.length > 0">

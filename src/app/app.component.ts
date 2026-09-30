@@ -6,8 +6,9 @@ import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { AuthService } from './_services/auth.service';
 import { ThemeService } from './services/theme.service';
-import { NotificationRealtimeService, MentionPayload } from './_services/notification-realtime.service';
+import { NotificationRealtimeService, MentionPayload, ReminderPayload } from './_services/notification-realtime.service';
 import { MentionToastComponent } from './pages/mention-toast/mention-toast.component';
+import { LiveReminderToastComponent } from './pages/live-reminder-toast/live-reminder-toast.component';
 import { IdleSessionService } from './_services/idle-session.service';
 
 @Component({
@@ -23,9 +24,9 @@ export class AppComponent implements OnInit {
   constructor(
     private authService: AuthService,
     public themeService: ThemeService,
-    // Mentions can happen on a BoardItem or a CalendarEvent comment while the user is on any
-    // page (unlike calendar reminders, which are only ever relevant while already on the
-    // Calendar page) — so this listener lives at the app shell, not a specific page component.
+    // Reminders and mentions arrive whenever the server sends them, whatever page the user is
+    // on, and the server doesn't resend them — so they're listened for at the app shell, not in
+    // a page component that may not be showing.
     private notificationRealtimeService: NotificationRealtimeService,
     private idleSessionService: IdleSessionService,
     private snackBar: MatSnackBar,
@@ -36,7 +37,30 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     this.authService.initializeUser();
     this.idleSessionService.start();
+    this.listenForReminders();
     this.listenForMentions();
+  }
+
+  private listenForReminders(): void {
+    this.notificationRealtimeService.reminders$.subscribe({
+      next: reminder => this.zone.run(() => this.displayReminderToast(reminder)),
+      error: err => console.error('Reminder channel broadcast error:', err),
+    });
+  }
+
+  private displayReminderToast(reminder: ReminderPayload): void {
+    // The message already names the event and how soon it starts ("<Subject> starts in N
+    // minutes"); colour and start time aren't in the payload, so the toast uses its defaults.
+    const ref = this.snackBar.openFromComponent(LiveReminderToastComponent, {
+      duration: 12_000,
+      horizontalPosition: 'right',
+      verticalPosition: 'top',
+      panelClass: ['clean-reminder-viewport-override'],
+      data: { message: reminder.message, eventId: reminder.eventId },
+    });
+
+    ref.onAction().subscribe(() =>
+      this.router.navigate(['/calendar'], { queryParams: { eventId: reminder.eventId } }));
   }
 
   private listenForMentions(): void {

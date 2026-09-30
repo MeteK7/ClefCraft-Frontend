@@ -533,3 +533,55 @@ describe('CalendarDialogComponent — handleDelete()', () => {
     expect(component.saving).toBeFalse();
   });
 });
+
+describe('CalendarDialogComponent — staging attachments', () => {
+  let component: CalendarDialogComponent;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [CalendarDialogComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: { eventData: null, date: new Date() } }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CalendarDialogComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  // Only name and size are read, so plain objects stand in for (potentially huge) Files.
+  const pick = (...files: { name: string; size: number }[]) =>
+    ({ target: { files, value: 'score.pdf' } }) as unknown as Event;
+
+  it('stages files within the limits and clears the input so the same file can be picked again', () => {
+    const event = pick({ name: 'score.pdf', size: 1024 });
+
+    component.onFileSelected(event);
+
+    expect(component.stagedAttachments.map(f => f.name)).toEqual(['score.pdf']);
+    expect(component.attachmentError).toBeNull();
+    expect((event.target as HTMLInputElement).value).toBe('');
+  });
+
+  it('explains a file that is too large instead of staging it', () => {
+    component.onFileSelected(pick({ name: 'concert.mp4', size: 100 * 1024 * 1024 + 1 }));
+
+    expect(component.stagedAttachments).toEqual([]);
+    expect(component.attachmentError).toBe('"concert.mp4" is larger than 100 MB.');
+  });
+
+  it('clears the message once a staged file is removed', () => {
+    const files = Array.from({ length: 11 }, (_, i) => ({ name: `f${i}.txt`, size: 1 }));
+    component.onFileSelected(pick(...files));
+    expect(component.attachmentError).toContain('at most 10 files');
+
+    component.removeStagedFile(component.stagedAttachments[0]);
+
+    expect(component.attachmentError).toBeNull();
+  });
+});
