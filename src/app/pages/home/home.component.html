@@ -71,22 +71,10 @@
     </section>
   </div>
 
-  <section class="tools">
+  <section class="tools" *ngIf="isAdmin">
     <h3>Tools</h3>
     <div class="tool-tiles">
-      <a routerLink="/metronome" class="tool-tile">
-        <mat-icon>speed</mat-icon>
-        <span>Metronome</span>
-      </a>
-      <a routerLink="/tuner" class="tool-tile">
-        <mat-icon>graphic_eq</mat-icon>
-        <span>Tuner</span>
-      </a>
-      <a routerLink="/playalong" class="tool-tile">
-        <mat-icon>music_note</mat-icon>
-        <span>Playalong</span>
-      </a>
-      <a routerLink="/management" class="tool-tile" *ngIf="isAdmin">
+      <a routerLink="/management" class="tool-tile">
         <mat-icon>admin_panel_settings</mat-icon>
         <span>Management</span>
       </a>
