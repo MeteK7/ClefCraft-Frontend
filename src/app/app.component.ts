@@ -51,8 +51,8 @@ export class AppComponent implements OnInit {
   private displayReminderToast(reminder: ReminderPayload): void {
     // The message already names the event and how soon it starts ("<Subject> starts in N
     // minutes"); colour and start time aren't in the payload, so the toast uses its defaults.
+    // No `duration`: the toast dismisses itself so hovering can pause its countdown.
     const ref = this.snackBar.openFromComponent(LiveReminderToastComponent, {
-      duration: 12_000,
       horizontalPosition: 'right',
       verticalPosition: 'top',
       panelClass: ['clean-reminder-viewport-override'],
