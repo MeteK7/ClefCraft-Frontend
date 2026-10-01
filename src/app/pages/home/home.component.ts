@@ -34,7 +34,6 @@ const MAX_DUE_ITEMS = 8;
 })
 export class HomeComponent implements OnInit {
   userFullName = '';
-  isAdmin = false;
 
   upcomingEvents: CalendarEventUI[] = [];
   isLoadingEvents = false;
@@ -47,9 +46,7 @@ export class HomeComponent implements OnInit {
     private boardService: BoardService,
     private authService: AuthService,
     private dialog: MatDialog,
-  ) {
-    this.isAdmin = this.authService.hasRole('Administrator');
-  }
+  ) {}
 
   ngOnInit(): void {
     this.authService.currentUser$.subscribe(user => {
