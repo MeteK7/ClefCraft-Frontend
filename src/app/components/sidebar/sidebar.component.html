@@ -31,6 +31,13 @@
         <span class="label">Board</span>
       </a>
     </li>
+
+    <li *ngIf="isAdmin">
+      <a routerLink="/management" routerLinkActive="active-link">
+        <span class="icon">⚙️</span>
+        <span class="label">Management</span>
+      </a>
+    </li>
   </ul>
 
   <div class="user-info" *ngIf="userFullName">

@@ -12,9 +12,12 @@ import { AuthService } from '../../_services/auth.service';
   styleUrls: ['./sidebar.component.css']
 })
 export class SidebarComponent {
+  isAdmin: boolean = false;
   userFullName: string = '';
 
-  constructor(public  authService: AuthService) {}
+  constructor(public  authService: AuthService) {
+    this.isAdmin = this.authService.hasRole('Administrator');
+  }
 
   ngOnInit() {
     this.authService.currentUser$.subscribe(user => {

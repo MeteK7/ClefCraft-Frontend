@@ -70,4 +70,14 @@
       </div>
     </section>
   </div>
+
+  <section class="tools" *ngIf="isAdmin">
+    <h3>Tools</h3>
+    <div class="tool-tiles">
+      <a routerLink="/management" class="tool-tile">
+        <mat-icon>admin_panel_settings</mat-icon>
+        <span>Management</span>
+      </a>
+    </div>
+  </section>
 </div>
