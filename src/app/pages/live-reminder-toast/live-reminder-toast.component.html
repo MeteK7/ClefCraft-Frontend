@@ -3,7 +3,10 @@
   role="alertdialog"
   aria-live="assertive"
   aria-label="Event reminder"
-  [class.reminder-toast--entering]="isEntering">
+  [class.reminder-toast--entering]="isEntering"
+  [class.reminder-toast--paused]="isPaused"
+  (mouseenter)="pauseDismissTimer()"
+  (mouseleave)="resumeDismissTimer()">
 
   <!-- Left color bar, driven entirely by event color -->
   <div class="reminder-color-bar" [style.background]="data.color || defaultColor"></div>

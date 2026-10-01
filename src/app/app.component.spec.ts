@@ -85,6 +85,13 @@ describe('AppComponent — realtime toasts on every page', () => {
       jasmine.objectContaining({ data: { message: 'Lesson starts in 10 minutes', eventId: 62 } }));
   });
 
+  it('leaves the reminder toast to time its own dismissal, so hovering can pause it', () => {
+    reminders$.next({ eventId: 62, message: 'Lesson starts in 10 minutes' });
+
+    const config = snackBar.openFromComponent.calls.mostRecent().args[1];
+    expect(config?.duration).toBeUndefined();
+  });
+
   it('opens the event on the calendar from "View event"', () => {
     reminders$.next({ eventId: 62, message: 'Lesson starts in 10 minutes' });
 
