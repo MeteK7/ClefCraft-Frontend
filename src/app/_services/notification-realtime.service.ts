@@ -1,6 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
-import { Subject, Observable, distinctUntilChanged } from 'rxjs';
+import { Subject, Observable } from 'rxjs';
 import { AuthService } from './auth.service';  // ← adjust path if needed
 import { environment } from '../../environments/environment';
 
@@ -22,10 +22,17 @@ export interface MentionPayload {
     grantedAccess: boolean;
 }
 
+// Retry delays for (re)connecting after the first start() failed or after SignalR's own automatic
+// reconnect gave up: 2 s, 4 s, 8 s, 16 s, then every 30 s for as long as the user is signed in.
+// The cap keeps an idle outage cheap (one negotiate request per 30 s per tab) while bringing the
+// client back within half a minute of the backend returning.
+export const RETRY_INITIAL_DELAY_MS = 2_000;
+export const RETRY_MAX_DELAY_MS = 30_000;
+
 @Injectable({
     providedIn: 'root'
 })
-export class NotificationRealtimeService {
+export class NotificationRealtimeService implements OnDestroy {
     private hubConnection!: signalR.HubConnection;
     private reminderSubject = new Subject<ReminderPayload>();
     private mentionSubject = new Subject<MentionPayload>();
@@ -37,6 +44,12 @@ export class NotificationRealtimeService {
     // logout -> login must wait for the stop to finish. Chaining transitions guarantees that.
     private lifecycle: Promise<void> = Promise.resolve();
 
+    // True while the user is signed in, i.e. while the client should be connected. Retries and
+    // queued connection attempts check it, so nothing reconnects after logout.
+    private shouldBeConnected = false;
+    private retryTimer: ReturnType<typeof setTimeout> | null = null;
+    private retryAttempt = 0;
+
     constructor(private authService: AuthService) {  // ← inject AuthService
         this.buildConnection();
         this.registerReminderListener();
@@ -45,10 +58,28 @@ export class NotificationRealtimeService {
         // Connect only while logged in. Connecting at app boot before login produced an
         // anonymous connection that never received user-addressed notifications, even after
         // the user logged in.
+        // Every `true` is acted on, not just changes: a successful token refresh re-emits it, and
+        // that is the signal to resume after an attempt was skipped for lack of a valid token.
         this.authService.isAuthenticated$
-            .pipe(distinctUntilChanged())
             .subscribe(isAuthenticated => isAuthenticated ? this.startConnection() : this.stopConnection());
+
+        // Coming back online or to the tab (e.g. after laptop sleep) is a good moment to try again
+        // without waiting out the current retry delay.
+        window.addEventListener('online', this.onOnline);
+        document.addEventListener('visibilitychange', this.onVisibilityChange);
     }
+
+    ngOnDestroy(): void {
+        window.removeEventListener('online', this.onOnline);
+        document.removeEventListener('visibilitychange', this.onVisibilityChange);
+        this.clearRetry();
+    }
+
+    private readonly onOnline = (): void => this.retryNow();
+
+    private readonly onVisibilityChange = (): void => {
+        if (document.visibilityState === 'visible') this.retryNow();
+    };
 
     private buildConnection(): void {
         const hubUrl = environment.apiUrl.replace('/api', '');
@@ -71,23 +102,29 @@ export class NotificationRealtimeService {
             console.log('SignalR reconnected', connectionId);
         });
 
+        // Fires when an established connection ends: after automatic reconnect gave up, or after
+        // our own stop() on logout. Only the former should be retried.
         this.hubConnection.onclose(error => {
             console.log('SignalR closed', error);
+
+            if (this.shouldBeConnected) {
+                this.retryAttempt = 0;
+                this.scheduleRetry();
+            }
         });
     }
 
     private startConnection(): void {
-        this.queueTransition(async () => {
-            if (this.hubConnection.state !== signalR.HubConnectionState.Disconnected) {
-                return;
-            }
-
-            await this.hubConnection.start();
-            console.log('Successfully synchronized with Notification Hub.');
-        });
+        this.shouldBeConnected = true;
+        this.clearRetry();
+        this.queueTransition(() => this.connect());
     }
 
     public stopConnection(): void {
+        this.shouldBeConnected = false;
+        this.clearRetry();
+        this.retryAttempt = 0;
+
         this.queueTransition(async () => {
             if (this.hubConnection.state === signalR.HubConnectionState.Disconnected) {
                 return;
@@ -95,6 +132,61 @@ export class NotificationRealtimeService {
 
             await this.hubConnection.stop();
         });
+    }
+
+    /** One connection attempt; runs inside the serialized lifecycle chain. */
+    private async connect(): Promise<void> {
+        if (!this.shouldBeConnected || this.hubConnection.state !== signalR.HubConnectionState.Disconnected) {
+            return;
+        }
+
+        // Without a usable token the server can only answer 401, so don't try and don't retry.
+        // The auth lifecycle either ends the session (logout stops everything) or refreshes the
+        // token, which re-emits isAuthenticated$ = true and brings us back here.
+        const token = await this.authService.getValidAccessToken();
+        if (!token || !this.shouldBeConnected) {
+            return;
+        }
+
+        try {
+            await this.hubConnection.start();
+            this.retryAttempt = 0;
+            console.log('Successfully synchronized with Notification Hub.');
+        } catch (err) {
+            console.error('Could not connect to Notification Hub:', err);
+            this.scheduleRetry();
+        }
+    }
+
+    private scheduleRetry(): void {
+        if (!this.shouldBeConnected || this.retryTimer !== null) {
+            return;
+        }
+
+        const delay = Math.min(RETRY_INITIAL_DELAY_MS * 2 ** this.retryAttempt, RETRY_MAX_DELAY_MS);
+        this.retryAttempt++;
+
+        this.retryTimer = setTimeout(() => {
+            this.retryTimer = null;
+            this.queueTransition(() => this.connect());
+        }, delay);
+    }
+
+    /** Runs a pending retry immediately instead of waiting for its timer. */
+    private retryNow(): void {
+        if (this.retryTimer === null) {
+            return;
+        }
+
+        this.clearRetry();
+        this.queueTransition(() => this.connect());
+    }
+
+    private clearRetry(): void {
+        if (this.retryTimer !== null) {
+            clearTimeout(this.retryTimer);
+            this.retryTimer = null;
+        }
     }
 
     private queueTransition(transition: () => Promise<void>): void {
