@@ -7,7 +7,10 @@
     "build": "ng build ClefCraft",
     "build:prod": "ng build ClefCraft --configuration production",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "e2e": "playwright test",
+    "e2e:update-snapshots": "playwright test --update-snapshots",
+    "e2e:report": "playwright show-report"
   },
   "private": true,
   "dependencies": {
