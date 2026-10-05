@@ -1,27 +1,61 @@
-# ClefCraft
+# ClefCraft Frontend
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.0.2.
+Angular 18 client for ClefCraft: boards, calendar, comments and notifications. It talks to the
+ASP.NET Core API in the `ClefCraft-Backend` repo.
 
-## Development server
+## Prerequisites
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+- **Node.js 20** (20.11.1 or later, as Angular 18 requires; CI uses Node 20) with npm.
+- The **backend API running locally**. See the backend README for its setup, including the
+  development accounts and demo data.
 
-## Code scaffolding
+## Setup
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+```bash
+npm ci
+```
+
+## Run
+
+```bash
+npm start
+```
+
+This runs `ng serve` on `http://localhost:4200/` and reloads on changes. The API's CORS policy
+allows this origin.
+
+The API address is set in `src/environments/environment.ts`:
+
+```ts
+apiUrl: 'https://localhost:7287/api'
+```
+
+That is the backend's HTTPS launch profile. The browser must trust the ASP.NET Core development
+certificate, or every API call fails. On the backend machine, run once:
+
+```bash
+dotnet dev-certs https --trust
+```
+
+`src/environments/environment.prod.ts` (used by `ng build`) assumes the API is served from the same
+origin under `/api`; there is no deployment target yet.
+
+## Test
+
+```bash
+npm test
+```
+
+This runs the Karma/Jasmine unit tests in watch mode. For a single headless run, as CI does:
+
+```bash
+npx ng test --watch=false --browsers=ChromeHeadless
+```
 
 ## Build
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+```bash
+npx ng build
+```
 
-## Running unit tests
-
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
-
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+The output goes to `dist/`.
