@@ -52,6 +52,51 @@ This runs the Karma/Jasmine unit tests in watch mode. For a single headless run,
 npx ng test --watch=false --browsers=ChromeHeadless
 ```
 
+## End-to-end smoke tests
+
+A Playwright smoke suite in `e2e/` covers sign-in, token refresh and sign-out, the theme toggle,
+board drag, the @mention and reminder toasts, the calendar (create, drag, resize, recurrence edit)
+and screenshot comparisons of the calendar, the calendar dialog, the board and the item dialog.
+
+Before the first run, install the browser once:
+
+```bash
+npx playwright install chromium
+```
+
+Each run needs:
+
+- The **API running on its `https` launch profile** (`https://localhost:7287`) with the normal token
+  lifetimes. The setup fails if access tokens last less than 10 minutes, for example when the API
+  was started with short test lifetimes.
+- `ng serve` on `http://localhost:4200`. Playwright starts it if it isn't running and reuses it if
+  it is.
+
+The AI attendance service doesn't need to run; the visual tests fix the score they show.
+
+```bash
+npm run e2e                          # the whole suite
+npx playwright test calendar.spec.ts # one spec file (the setup still runs first)
+npm run e2e:update-snapshots         # regenerate the screenshot baselines
+npm run e2e:report                   # open the HTML report of the last run
+```
+
+Things to know:
+
+- **Each run registers 4 new users** and creates boards, items, comments and events for them in the
+  development database (`clefcraft_db`). Nothing is cleaned up.
+- **Start runs at least a minute apart**, single-file runs included. Login and register are limited
+  to 10 requests per minute per IP, and one run makes up to 8 of them.
+- **The screenshot baselines** (`e2e/visual.spec.ts-snapshots/*-smoke-win32.png`) were made on
+  Windows, and Playwright only compares against baselines for the same platform. After
+  `npm run e2e:update-snapshots`, look at every changed image before committing it.
+- **The calendar-dialog baseline will change** when the AI attendance feature is replaced (step 6 of
+  the backend's `docs/PLAN.md`). Regenerate it then, and accept the difference deliberately.
+
+> **Backend state.** The suite and its baselines were produced against backend branch
+> `fix/recurring-owner`, commit `b398911`. Update this line when that work is merged, so a later
+> baseline difference can be traced to a backend change.
+
 ## Build
 
 ```bash
