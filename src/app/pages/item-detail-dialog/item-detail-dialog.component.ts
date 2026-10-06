@@ -138,14 +138,24 @@ export class ItemDetailDialogComponent implements OnInit {
     this.trackFormChanges();
   }
 
+  // Items arrive as the API returns them: status and priority as nested objects, without
+  // statusId/priorityId (those are only sent on create/update). Read both, like the board card does.
+  private get currentStatusId(): number | undefined {
+    return this.data.item?.statusId ?? this.data.item?.status?.id;
+  }
+
+  private get currentPriorityId(): number | undefined {
+    return this.data.item?.priorityId ?? this.data.item?.priority?.id;
+  }
+
   private buildForm(): void {
     const item = this.data.item;
 
     this.form = this.fb.group({
       title: [item?.title ?? '', Validators.required],
       description: [item?.description ?? ''],
-      statusId: [item?.statusId ?? null],
-      priorityId: [item?.priorityId ?? null],
+      statusId: [this.currentStatusId ?? null],
+      priorityId: [this.currentPriorityId ?? null],
       tags: [item?.tags?.map(t => t.id) ?? []],
       assigneeId: [item?.assigneeId ?? null],
       boardColumnId: [
@@ -235,7 +245,7 @@ export class ItemDetailDialogComponent implements OnInit {
     this.boardService.getStatuses(this.data.boardId).subscribe(data => {
       this.statuses = data;
       this.form.patchValue(
-        { statusId: this.data.item?.statusId ?? data[0]?.id ?? null },
+        { statusId: this.currentStatusId ?? data[0]?.id ?? null },
         { emitEvent: false }
       );
     });
@@ -245,7 +255,7 @@ export class ItemDetailDialogComponent implements OnInit {
     this.boardService.getPriorities(this.data.boardId).subscribe(data => {
       this.priorities = data;
       this.form.patchValue(
-        { priorityId: this.data.item?.priorityId ?? data[0]?.id ?? null },
+        { priorityId: this.currentPriorityId ?? data[0]?.id ?? null },
         { emitEvent: false }
       );
     });

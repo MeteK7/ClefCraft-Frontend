@@ -41,3 +41,9 @@ testem.log
 .DS_Store
 Thumbs.db
 project-structure.txt
+
+# Playwright (e2e smoke suite)
+/test-results/
+/playwright-report/
+/blob-report/
+/e2e/.auth/

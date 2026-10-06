@@ -35,7 +35,8 @@ export interface Item {
   title: string;
   description: string;
 
-  // ✅ persistence
+  // ✅ persistence — sent on create/update only. API responses (BoardItemDto) don't include them;
+  // read status?.id / priority?.id there.
   statusId: number;
   priorityId: number;
 
