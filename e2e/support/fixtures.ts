@@ -74,6 +74,31 @@ async function writeBackSession(context: BrowserContext, role: StoredRole): Prom
 }
 
 /**
+ * Creates a board (with the API's default columns) and items on it, as the client's user.
+ * Returns the board id and the item ids keyed by title.
+ */
+export async function boardWithItems(
+  api: ApiClient,
+  title: string,
+  items: { title: string; column?: string; status?: string; priority?: string; description?: string }[]
+): Promise<{ boardId: number; itemIds: Record<string, number> }> {
+  const board = await api.createBoard(title);
+  const itemIds: Record<string, number> = {};
+  for (const item of items) {
+    const created = await api.createItem({
+      boardId: board.id,
+      title: item.title,
+      column: item.column ?? 'Backlog',
+      status: item.status ?? item.column ?? 'Backlog',
+      priority: item.priority ?? 'Medium',
+      description: item.description
+    });
+    itemIds[item.title] = created.id;
+  }
+  return { boardId: board.id, itemIds };
+}
+
+/**
  * Resolves once the page's SignalR hub has negotiated. Call it BEFORE the navigation that opens
  * the connection, and await the result before triggering anything realtime.
  */
