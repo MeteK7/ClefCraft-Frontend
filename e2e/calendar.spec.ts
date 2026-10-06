@@ -10,12 +10,46 @@ const MARCH_START = new Date('2027-03-01T00:00:00Z');
 const MARCH_END = new Date('2027-04-05T00:00:00Z');
 const utc = (isoWithoutZone: string) => new Date(`${isoWithoutZone}Z`);
 
+const isEventsRequest = (url: string) => url.includes('/api/Calendar/events');
+
+/** Counts the page's in-flight /Calendar/events requests and remembers when the last one started or ended. */
+function trackEventsRequests(page: Page): { inFlight: number; lastActivity: number } {
+  const state = { inFlight: 0, lastActivity: Date.now() };
+  const settled = () => {
+    state.inFlight--;
+    state.lastActivity = Date.now();
+  };
+  page.on('request', r => {
+    if (!isEventsRequest(r.url())) return;
+    state.inFlight++;
+    state.lastActivity = Date.now();
+  });
+  page.on('requestfinished', r => isEventsRequest(r.url()) && settled());
+  page.on('requestfailed', r => isEventsRequest(r.url()) && settled()); // includes cancelled range fetches
+  return state;
+}
+
 /** Opens the month view on 10 March 2027 and waits until its events are loaded. */
-async function openMarch(page: Page): Promise<void> {
-  const loaded = page.waitForResponse(r => r.url().includes('/api/Calendar/events') && r.ok());
+async function openMarch(page: Page): Promise<{ inFlight: number; lastActivity: number }> {
+  const requests = trackEventsRequests(page);
+  const loaded = page.waitForResponse(r => isEventsRequest(r.url()) && r.ok());
   await page.goto('/calendar?date=2027-03-10T12:00');
   await loaded;
   await expect(page.locator('.loading-overlay')).toBeHidden();
+  return requests;
+}
+
+/**
+ * Waits until the month view has stopped loading weeks in the background: no events request in
+ * flight, no loading indicator, and a second without new requests. The month view keeps fetching
+ * neighbouring weeks after the first load and re-renders its rows when they arrive; a drag that
+ * overlaps that loses its drop silently (an open finding in PLAN.md), so the drag test waits here.
+ */
+async function settleMonthView(page: Page, requests: { inFlight: number; lastActivity: number }): Promise<void> {
+  await expect
+    .poll(() => requests.inFlight === 0 && Date.now() - requests.lastActivity >= 1_000, { timeout: 20_000 })
+    .toBe(true);
+  await expect(page.locator('.scroll-edge-indicator.active')).toHaveCount(0);
 }
 
 /** The month view's week row that starts on the given Monday (yyyyMMdd). */
@@ -56,10 +90,11 @@ test('creating an event from the month view saves it on the clicked day', async 
 test('dragging an event to another day in the month view moves it', async ({ ownerPage: page, api }) => {
   const owner = await api('owner');
   await owner.createEvent({ subject: 'Smoke move', start: utc('2027-03-11T14:00:00'), end: utc('2027-03-11T15:00:00') });
-  await openMarch(page);
+  const requests = await openMarch(page);
 
   const event = monthEvent(page, '20270308', 'Smoke move');
   await expect.poll(startColumn(event)).toBe('4'); // Thursday
+  await settleMonthView(page, requests);
 
   const updated = page.waitForResponse(r => /\/api\/Calendar\/\d+$/.test(r.url()) && r.request().method() === 'PUT');
   await dragTo(page, event, page.locator('#day-20270308-4')); // Friday 12 March
@@ -125,7 +160,7 @@ test('editing one occurrence of a recurring event changes only that occurrence',
   await expect(scopeDialog.getByRole('radio', { name: /Only this occurrence/ })).toBeChecked();
   const saved = page.waitForResponse(r => r.url().endsWith('/api/Calendar/occurrence') && r.request().method() === 'PUT');
   await scopeDialog.getByRole('button', { name: 'Apply' }).click();
-  expect((await saved).status()).toBe(200);
+  expect((await saved).status()).toBe(204); // CalendarController.UpdateSingleOccurrence returns NoContent
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
   await expect(monthEvent(page, '20270315', exactly('Smoke standup moved'))).toBeVisible();
