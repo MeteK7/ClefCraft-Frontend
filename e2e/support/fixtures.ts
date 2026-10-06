@@ -122,6 +122,19 @@ export async function dragTo(page: Page, source: Locator, target: Locator | { x:
   await page.mouse.up();
 }
 
+/**
+ * Presses on `handle` and moves the pointer by (dx, dy) pixels in small steps before releasing.
+ * For the calendar's week/day grids, which track raw mouse moves (80 px per hour, 15-minute snap).
+ */
+export async function dragBy(page: Page, handle: Locator, dx: number, dy: number, steps = 10): Promise<void> {
+  const from = await centerOf(handle);
+
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + dx, from.y + dy, { steps });
+  await page.mouse.up();
+}
+
 async function centerOf(locator: Locator): Promise<{ x: number; y: number }> {
   await locator.scrollIntoViewIfNeeded();
   const box = await locator.boundingBox();
