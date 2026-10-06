@@ -192,3 +192,65 @@ describe('ItemDetailDialogComponent — assignee options', () => {
     expect(component.assignees.length).toBe(2);
   });
 });
+
+describe('ItemDetailDialogComponent — current status and priority', () => {
+  let component: ItemDetailDialogComponent;
+  let httpMock: HttpTestingController;
+
+  const statusesUrl = `${environment.apiUrl}/BoardItems/GetStatuses?boardId=7`;
+  const prioritiesUrl = `${environment.apiUrl}/BoardItems/GetPriorities?boardId=7`;
+
+  const statuses = [
+    { id: 1, name: 'Backlog' }, { id: 2, name: 'To Do' }, { id: 3, name: 'In Progress' },
+    { id: 4, name: 'In Review' }, { id: 5, name: 'Done' }
+  ];
+  const priorities = [{ id: 1, name: 'Critical' }, { id: 2, name: 'High' }, { id: 3, name: 'Medium' }, { id: 4, name: 'Low' }];
+
+  function setup(item: Item | null): void {
+    TestBed.configureTestingModule({
+      imports: [ItemDetailDialogComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: { item, boardId: 7 } as ItemDetailDialogData },
+        { provide: MatDialogRef, useValue: { close: () => { } } }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ItemDetailDialogComponent);
+    component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    httpMock.expectOne(statusesUrl).flush(statuses);
+    httpMock.expectOne(prioritiesUrl).flush(priorities);
+  }
+
+  // The board passes the item as the API returns it: status and priority as nested objects,
+  // without statusId/priorityId (BoardItemDto has none). Falling back to the first option here
+  // would show, and on Save write, Backlog/Critical for every item.
+  it('shows the status and priority the item has, as returned by the API', () => {
+    setup({
+      id: 5, title: 'Review the API', boardId: 7, boardColumnId: 3,
+      status: { id: 3, name: 'In Progress' }, priority: { id: 3, name: 'Medium' }
+    } as Item);
+
+    expect(component.form.value.statusId).toBe(3);
+    expect(component.form.value.priorityId).toBe(3);
+  });
+
+  it('still uses statusId/priorityId when an item carries them', () => {
+    setup({ id: 5, title: 'Etude', boardId: 7, boardColumnId: 3, statusId: 4, priorityId: 2 } as Item);
+
+    expect(component.form.value.statusId).toBe(4);
+    expect(component.form.value.priorityId).toBe(2);
+  });
+
+  it('defaults a new item to the first status and priority', () => {
+    setup(null);
+
+    expect(component.form.value.statusId).toBe(1);
+    expect(component.form.value.priorityId).toBe(1);
+  });
+});

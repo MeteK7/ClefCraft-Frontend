@@ -76,6 +76,11 @@ export class ApiClient {
     });
   }
 
+  /** Assigns an item to a board member (the API keeps every field sent as null). */
+  assignItem(item: BoardItemDto, assigneeId: string): Promise<unknown> {
+    return this.send('PUT', `BoardItems/${item.id}`, { id: item.id, boardColumnId: item.boardColumnId, assigneeId });
+  }
+
   // ---- Calendar ---------------------------------------------------------------------------
 
   createEvent(event: {

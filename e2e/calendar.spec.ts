@@ -1,5 +1,6 @@
 import { Locator, Page } from '@playwright/test';
 import { ApiClient, CalendarEventDto } from './support/api';
+import { openCalendarAt, settleMonthView } from './support/calendar';
 import { dragBy, dragTo, expect, test } from './support/fixtures';
 
 // All calendar data lives in March 2027, which doesn't contain "today": no today marker or
@@ -10,47 +11,8 @@ const MARCH_START = new Date('2027-03-01T00:00:00Z');
 const MARCH_END = new Date('2027-04-05T00:00:00Z');
 const utc = (isoWithoutZone: string) => new Date(`${isoWithoutZone}Z`);
 
-const isEventsRequest = (url: string) => url.includes('/api/Calendar/events');
-
-/** Counts the page's in-flight /Calendar/events requests and remembers when the last one started or ended. */
-function trackEventsRequests(page: Page): { inFlight: number; lastActivity: number } {
-  const state = { inFlight: 0, lastActivity: Date.now() };
-  const settled = () => {
-    state.inFlight--;
-    state.lastActivity = Date.now();
-  };
-  page.on('request', r => {
-    if (!isEventsRequest(r.url())) return;
-    state.inFlight++;
-    state.lastActivity = Date.now();
-  });
-  page.on('requestfinished', r => isEventsRequest(r.url()) && settled());
-  page.on('requestfailed', r => isEventsRequest(r.url()) && settled()); // includes cancelled range fetches
-  return state;
-}
-
 /** Opens the month view on 10 March 2027 and waits until its events are loaded. */
-async function openMarch(page: Page): Promise<{ inFlight: number; lastActivity: number }> {
-  const requests = trackEventsRequests(page);
-  const loaded = page.waitForResponse(r => isEventsRequest(r.url()) && r.ok());
-  await page.goto('/calendar?date=2027-03-10T12:00');
-  await loaded;
-  await expect(page.locator('.loading-overlay')).toBeHidden();
-  return requests;
-}
-
-/**
- * Waits until the month view has stopped loading weeks in the background: no events request in
- * flight, no loading indicator, and a second without new requests. The month view keeps fetching
- * neighbouring weeks after the first load and re-renders its rows when they arrive; a drag that
- * overlaps that loses its drop silently (an open finding in PLAN.md), so the drag test waits here.
- */
-async function settleMonthView(page: Page, requests: { inFlight: number; lastActivity: number }): Promise<void> {
-  await expect
-    .poll(() => requests.inFlight === 0 && Date.now() - requests.lastActivity >= 1_000, { timeout: 20_000 })
-    .toBe(true);
-  await expect(page.locator('.scroll-edge-indicator.active')).toHaveCount(0);
-}
+const openMarch = (page: Page) => openCalendarAt(page, '2027-03-10T12:00');
 
 /** The month view's week row that starts on the given Monday (yyyyMMdd). */
 const weekRow = (page: Page, monday: string) => page.locator('.calendar-week', { has: page.locator(`#day-${monday}-0`) });
