@@ -9,6 +9,10 @@
 
         <div class="metadata">
 
+            <span class="direction" *ngIf="directionLabel">
+                {{directionLabel}}
+            </span>
+
             <span class="status">
                 {{relationship.status}}
             </span>

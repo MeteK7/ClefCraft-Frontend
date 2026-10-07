@@ -78,6 +78,7 @@ export class RelationshipGraphComponent implements OnChanges {
     @Input({ required: true }) rootItemId!: number;
     @Input() rootStatus = '';
     @Input() rootPriority = '';
+    @Input() rootBoardId?: number;
 
     @Output() openItem = new EventEmitter<number>();
     @Output() maximizedChange = new EventEmitter<boolean>();
@@ -430,7 +431,7 @@ export class RelationshipGraphComponent implements OnChanges {
     ) { }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['hub'] || changes['rootItemId'] || changes['rootStatus'] || changes['rootPriority']) {
+        if (changes['hub'] || changes['rootItemId'] || changes['rootStatus'] || changes['rootPriority'] || changes['rootBoardId']) {
             this.rebuild();
         }
     }
@@ -1022,7 +1023,7 @@ export class RelationshipGraphComponent implements OnChanges {
             return;
         }
 
-        const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority);
+        const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority, this.rootBoardId);
         this.layoutEngine.layout(built);
         this.applyAnalytics(built);
 
@@ -1106,12 +1107,16 @@ export class RelationshipGraphComponent implements OnChanges {
             edge.targetId === hoveredNodeId;
     }
 
-    openItemInNewTab(itemId: number, event: MouseEvent): void {
+    openItemInNewTab(node: GraphNode, event: MouseEvent): void {
         event.stopPropagation(); // Prevents card selection activation
 
-        const urlTree = this.router.createUrlTree(['/board'], {
-            queryParams: { openItemId: itemId }
-        });
+        // Without boardId the board page opens the first board and can't find the item.
+        const queryParams: Record<string, number> = { openItemId: node.id };
+        if (node.boardId != null) {
+            queryParams['boardId'] = node.boardId;
+        }
+
+        const urlTree = this.router.createUrlTree(['/board'], { queryParams });
 
         window.open(this.router.serializeUrl(urlTree), '_blank');
     }
