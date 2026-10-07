@@ -27,6 +27,7 @@ import { BoardService } from '../../_services/board.service';
 
 import { RelationshipGraphBuilder } from '../../relationship-engine/graph/relationship-graph-builder';
 import { GraphLayoutEngine } from '../../relationship-engine/graph/graph-layout-engine';
+import { GraphExpansionTracker } from '../../relationship-engine/graph/graph-expansion-tracker';
 
 import { CycleDetector, RelationshipCycle } from '../../relationship-engine/analytics/cycle-detector';
 import { ImpactEngine, ImpactAnalysis } from '../../relationship-engine/analytics/impact-engine';
@@ -421,6 +422,9 @@ export class RelationshipGraphComponent implements OnChanges {
     private panStartClient = { x: 0, y: 0 };
     private panOrigin: Viewport = this.defaultViewport();
 
+    /** Lets a collapse undo exactly what its expansion placed, pushed and drew. */
+    private readonly expansionTracker: GraphExpansionTracker;
+
     constructor(
         private readonly builder: RelationshipGraphBuilder,
         private readonly layoutEngine: GraphLayoutEngine,
@@ -428,7 +432,9 @@ export class RelationshipGraphComponent implements OnChanges {
         private readonly impactEngine: ImpactEngine,
         private readonly boardService: BoardService,
         private readonly router: Router
-    ) { }
+    ) {
+        this.expansionTracker = new GraphExpansionTracker(layoutEngine);
+    }
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['hub'] || changes['rootItemId'] || changes['rootStatus'] || changes['rootPriority'] || changes['rootBoardId']) {
@@ -635,12 +641,16 @@ export class RelationshipGraphComponent implements OnChanges {
             next: hub => {
 
                 const expanded = this.builder.expand(graph, node.id, hub);
-                this.layoutEngine.layout(expanded);
-                this.applyAnalytics(expanded);
 
                 const addedIds = new Set(
                     expanded.nodes.map(n => n.id).filter(id => !beforeIds.has(id))
                 );
+
+                // Incremental: existing nodes (this one included) keep their positions, so the
+                // viewport stays as it is.
+                this.expansionTracker.recordExpansion(expanded, node.id, hub, addedIds);
+                this.applyAnalytics(expanded);
+
                 this.expandedChildren.set(node.id, addedIds);
                 this.expandedNodeIds.update(set => new Set(set).add(node.id));
 
@@ -662,6 +672,8 @@ export class RelationshipGraphComponent implements OnChanges {
         const toRemove = new Set<number>();
         this.collectDescendants(nodeId, toRemove);
 
+        const collapsedExpansionIds = [nodeId, ...Array.from(toRemove).filter(id => this.isExpanded(id))];
+
         this.expandedChildren.delete(nodeId);
         this.expandedNodeIds.update(set => {
             const next = new Set(set);
@@ -670,13 +682,9 @@ export class RelationshipGraphComponent implements OnChanges {
             return next;
         });
 
-        if (!toRemove.size) return;
-
-        graph.nodes = graph.nodes.filter(n => !toRemove.has(n.id));
-        graph.edges = graph.edges.filter(e => !toRemove.has(e.sourceId) && !toRemove.has(e.targetId));
-
-        rebuildIndex(graph);
-        this.layoutEngine.layout(graph);
+        // Runs even when the expansion added no nodes: it may still have drawn edges between
+        // existing ones, which the collapse removes.
+        this.expansionTracker.collapse(graph, toRemove, collapsedExpansionIds);
         this.applyAnalytics(graph);
 
         if (this.selectedNodeId() !== null && toRemove.has(this.selectedNodeId()!)) {
@@ -759,6 +767,7 @@ export class RelationshipGraphComponent implements OnChanges {
         } finally {
 
             this.layoutEngine.layout(graph);
+            this.expansionTracker.invalidate();
             this.applyAnalytics(graph);
 
             this.graph.set({ ...graph });
@@ -1025,6 +1034,7 @@ export class RelationshipGraphComponent implements OnChanges {
 
         const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority, this.rootBoardId);
         this.layoutEngine.layout(built);
+        this.expansionTracker.reset(this.rootItemId, this.hub);
         this.applyAnalytics(built);
 
         this.graph.set(built);
