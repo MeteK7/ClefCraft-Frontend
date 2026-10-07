@@ -47,7 +47,7 @@
     <ng-container *ngIf="!loading">
 
         <app-relationship-graph *ngIf="viewMode==='graph'" [hub]="hub" [rootItemId]="itemId" [rootStatus]="itemStatus"
-            [rootPriority]="itemPriority" (openItem)="open($event)"
+            [rootPriority]="itemPriority" [rootBoardId]="boardId" (openItem)="open($event)"
             (maximizedChange)="graphMaximizedChange.emit($event)">
         </app-relationship-graph>
 
@@ -83,7 +83,7 @@
                     </mat-expansion-panel-header>
 
                     <app-relationship-card *ngFor="let relationship of group.items" [relationship]="relationship"
-                        (open)="open($event)" (delete)="deleteRelationship($event)">
+                        [relationType]="group.relationType" (open)="open($event)" (delete)="deleteRelationship($event)">
 
                     </app-relationship-card>
 

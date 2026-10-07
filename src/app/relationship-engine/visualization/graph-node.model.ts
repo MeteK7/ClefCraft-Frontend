@@ -5,6 +5,9 @@ export interface GraphNode {
     /** Board Item Id */
     id: number;
 
+    /** Board the item is on; used to link to it. */
+    boardId?: number;
+
     title: string;
 
     /** Relationship type from the root node. Undefined for the root itself. */

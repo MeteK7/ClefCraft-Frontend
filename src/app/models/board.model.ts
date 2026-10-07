@@ -76,6 +76,10 @@ export interface BoardItemSearchResult {
 export interface RelationshipCard {
   relationId: number;
   itemId: number;
+  /** Board of the related item. */
+  boardId: number;
+  /** True when the item the hub was loaded for is the relation's source ("this item Blocks itemId"). */
+  isOutgoing: boolean;
   title: string;
   status: string;
   priority: string;
@@ -120,29 +124,31 @@ export interface RelationshipTypeOption {
   name: string;
 }
 
+/**
+ * How a relation reads from one of its two items. A relation is stored once as
+ * "source <type> target"; the source sees the outgoing wording ("Blocks"), the target
+ * the inverse ("Blocked by").
+ */
+const RELATIONSHIP_LABELS: Record<RelationshipType, { outgoing: string; incoming: string }> = {
+  [RelationshipType.Parent]: { outgoing: 'Parent of', incoming: 'Child of' },
+  [RelationshipType.Blocks]: { outgoing: 'Blocks', incoming: 'Blocked by' },
+  [RelationshipType.DependsOn]: { outgoing: 'Depends on', incoming: 'Required by' },
+  [RelationshipType.Related]: { outgoing: 'Related to', incoming: 'Related to' },
+  [RelationshipType.Duplicate]: { outgoing: 'Duplicate of', incoming: 'Duplicated by' },
+  [RelationshipType.SplitFrom]: { outgoing: 'Split from', incoming: 'Split into' }
+};
+
+export function relationshipLabel(type: RelationshipType, isOutgoing: boolean): string {
+  const labels = RELATIONSHIP_LABELS[type] ?? RELATIONSHIP_LABELS[RelationshipType.Related];
+  return isOutgoing ? labels.outgoing : labels.incoming;
+}
+
+/** Options for adding a relation; the item it is added from becomes the source. */
 export const RELATIONSHIP_TYPES: RelationshipTypeOption[] = [
-  {
-    value: RelationshipType.Parent,
-    name: 'Parent'
-  },
-  {
-    value: RelationshipType.Blocks,
-    name: 'Blocks'
-  },
-  {
-    value: RelationshipType.DependsOn,
-    name: 'Depends On'
-  },
-  {
-    value: RelationshipType.Related,
-    name: 'Related'
-  },
-  {
-    value: RelationshipType.Duplicate,
-    name: 'Duplicate'
-  },
-  {
-    value: RelationshipType.SplitFrom,
-    name: 'Split From'
-  }
-];
+  RelationshipType.Parent,
+  RelationshipType.Blocks,
+  RelationshipType.DependsOn,
+  RelationshipType.Related,
+  RelationshipType.Duplicate,
+  RelationshipType.SplitFrom
+].map(value => ({ value, name: relationshipLabel(value, true) }));

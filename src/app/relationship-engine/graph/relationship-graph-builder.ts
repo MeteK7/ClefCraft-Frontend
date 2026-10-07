@@ -15,9 +15,9 @@ import { GraphViewModel, GraphViewModelFactory, rebuildIndex } from '../visualiz
 })
 export class RelationshipGraphBuilder {
 
-    build(centerItemId: number, hub: RelationshipHub, centerStatus: string, centerPriority: string): GraphViewModel {
+    build(centerItemId: number, hub: RelationshipHub, centerStatus: string, centerPriority: string, centerBoardId?: number): GraphViewModel {
 
-        const nodes: GraphNode[] = [this.createCenterNode(centerItemId, centerStatus, centerPriority)];
+        const nodes: GraphNode[] = [this.createCenterNode(centerItemId, centerStatus, centerPriority, centerBoardId)];
         const edges: GraphEdge[] = [];
 
         let nextEdgeId = 1;
@@ -35,11 +35,13 @@ export class RelationshipGraphBuilder {
                     nodes.push(this.createNode(relationship, group.relationType));
                 }
 
+                const [sourceId, targetId] = this.edgeEnds(centerItemId, relationship);
+
                 edges.push(
                     GraphEdgeFactory.create(
                         nextEdgeId++,
-                        centerItemId,
-                        relationship.itemId,
+                        sourceId,
+                        targetId,
                         group.relationType,
                         this.labelFor(group.relationType)
                     )
@@ -77,11 +79,13 @@ export class RelationshipGraphBuilder {
                 );
 
                 if (!alreadyLinked) {
+                    const [sourceId, targetId] = this.edgeEnds(itemId, relationship);
+
                     graph.edges.push(
                         GraphEdgeFactory.create(
                             nextEdgeId++,
-                            itemId,
-                            relationship.itemId,
+                            sourceId,
+                            targetId,
                             group.relationType,
                             this.labelFor(group.relationType)
                         )
@@ -95,10 +99,22 @@ export class RelationshipGraphBuilder {
         return graph;
     }
 
-    private createCenterNode(id: number, status: string, priority: string): GraphNode {
+    /**
+     * A hub lists relations from the point of view of the item it was loaded for (the anchor).
+     * The edge keeps the stored direction: anchor -> related when the anchor is the source,
+     * related -> anchor when it is the target.
+     */
+    private edgeEnds(anchorId: number, relationship: RelationshipCard): [number, number] {
+        return relationship.isOutgoing
+            ? [anchorId, relationship.itemId]
+            : [relationship.itemId, anchorId];
+    }
+
+    private createCenterNode(id: number, status: string, priority: string, boardId?: number): GraphNode {
 
         const node = GraphNodeFactory.create(id, 'Current Item', status, priority);
 
+        node.boardId = boardId;
         node.radius = 42;
         node.color = '#3f51b5';
         node.selected = true;
@@ -116,6 +132,7 @@ export class RelationshipGraphBuilder {
         );
 
         node.relationshipType = relationType;
+        node.boardId = relationship.boardId;
         node.assignee = relationship.assigneeId;
         node.dueDate = relationship.dueDate;
         node.radius = 28;
