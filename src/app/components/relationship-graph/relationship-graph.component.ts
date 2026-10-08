@@ -35,7 +35,8 @@ import { ImpactEngine, ImpactAnalysis } from '../../relationship-engine/analytic
 import { GraphNode } from '../../relationship-engine/visualization/graph-node.model';
 import { GraphEdge } from '../../relationship-engine/visualization/graph-edge.model';
 import { GraphViewModel, rebuildIndex } from '../../relationship-engine/visualization/graph-view-model';
-import { routeEdge } from '../../relationship-engine/visualization/edge-router';
+import { Point, RouteCard, cardRect, routeEdge } from '../../relationship-engine/visualization/edge-router';
+import { GraphCardSizeDirective } from './graph-card-size.directive';
 import { Router } from '@angular/router';
 
 interface Viewport {
@@ -56,6 +57,7 @@ interface RenderableEdge {
     edge: GraphEdge;
     /** SVG path 'd' attribute — an orthogonal "M...L...L...L..." route: straight segments joined by 90° elbow turns, never a curve. */
     path: string;
+    points: Point[];
     mx: number;
     my: number;
 }
@@ -69,7 +71,7 @@ type RelationshipStyle = {
 @Component({
     selector: 'app-relationship-graph',
     standalone: true,
-    imports: [CommonModule, MatIconModule, MatButtonModule, MatTooltipModule],
+    imports: [CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, GraphCardSizeDirective],
     templateUrl: './relationship-graph.component.html',
     styleUrls: ['./relationship-graph.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -193,45 +195,110 @@ export class RelationshipGraphComponent implements OnChanges {
             incomingGroups.get(edge.targetId)!.push(edge);
         }
 
+        // Ties (other ends at the same x) broken by id, so lanes don't depend on edge insertion order.
         const sortByOtherEndX = (groups: Map<number, GraphEdge[]>, otherIdOf: (e: GraphEdge) => number) => {
             for (const list of groups.values()) {
                 list.sort((a, b) => {
                     const na = graph.nodeMap.get(otherIdOf(a));
                     const nb = graph.nodeMap.get(otherIdOf(b));
-                    return (na?.x ?? 0) - (nb?.x ?? 0);
+                    return (na?.x ?? 0) - (nb?.x ?? 0) || otherIdOf(a) - otherIdOf(b);
                 });
             }
         };
         sortByOtherEndX(outgoingGroups, e => e.targetId);
         sortByOtherEndX(incomingGroups, e => e.sourceId);
 
+        // Route against the cards as rendered. A card not measured yet counts with its default size
+        // as an obstacle, but an edge is only drawn once both of its own cards are measured.
+        const heights = this.cardHeights();
+        const cards: RouteCard[] = graph.nodes.map(n => ({
+            id: n.id,
+            x: n.x,
+            y: n.y,
+            rect: cardRect(n, heights.get(n.id) ?? n.height)
+        }));
+        const cardById = new Map(cards.map(c => [c.id, c]));
+
         const lines: RenderableEdge[] = [];
 
         for (const edge of graph.edges) {
-            const source = graph.nodeMap.get(edge.sourceId);
-            const target = graph.nodeMap.get(edge.targetId);
+            if (!heights.has(edge.sourceId) || !heights.has(edge.targetId)) continue;
+
+            const source = cardById.get(edge.sourceId);
+            const target = cardById.get(edge.targetId);
             if (!source || !target) continue;
 
             const outGroup = outgoingGroups.get(edge.sourceId) ?? [edge];
             const inGroup = incomingGroups.get(edge.targetId) ?? [edge];
 
-            // Anything that isn't one of this edge's own endpoints is a
-            // potential obstacle — real collision testing, not a special case
-            // for one node id.
-            const obstacles = graph.nodes.filter(n => n.id !== source.id && n.id !== target.id);
-
-            lines.push({
-                edge,
-                ...routeEdge(
-                    source, target,
-                    outGroup.indexOf(edge), outGroup.length,
-                    inGroup.indexOf(edge), inGroup.length,
-                    obstacles
-                )
+            const route = routeEdge({
+                edgeId: edge.id,
+                relationType: edge.relationType,
+                source,
+                target,
+                outIndex: outGroup.indexOf(edge),
+                outCount: outGroup.length,
+                inIndex: inGroup.indexOf(edge),
+                inCount: inGroup.length,
+                cards
             });
+
+            lines.push({ edge, path: route.path, points: route.points, mx: route.mx, my: route.my });
         }
 
         return lines;
+    });
+
+    /**
+     * Rendered card heights in graph units, by node id, from GraphCardSizeDirective. A card without an
+     * entry hasn't been measured yet (or isn't rendered), and none of its edges are drawn.
+     */
+    readonly cardHeights = signal<ReadonlyMap<number, number>>(new Map());
+
+    onCardSize(nodeId: number, height: number | null): void {
+        const current = this.cardHeights();
+        if (height === null ? !current.has(nodeId) : current.get(nodeId) === height) return;
+
+        const next = new Map(current);
+        if (height === null) {
+            next.delete(nodeId);
+        } else {
+            next.set(nodeId, height);
+        }
+        this.cardHeights.set(next);
+    }
+
+    /** The card's height for its foreignObject: measured, or the default until it is. */
+    cardHeight(node: GraphNode): number {
+        return this.cardHeights().get(node.id) ?? node.height;
+    }
+
+    /**
+     * Filter region for #edgeGlow, in graph units: everything drawn (cards and routed edges) plus room
+     * for the widest stroke, the blur and an arrowhead. A user-space region, so a straight edge (whose
+     * geometry box is 0 wide) is never clipped the way a bounding-box percentage region clips it.
+     */
+    readonly edgeGlowRegion = computed(() => {
+        const padding = 40;
+        const xs: number[] = [];
+        const ys: number[] = [];
+        const graph = this.graph();
+        const heights = this.cardHeights();
+        for (const node of graph?.nodes ?? []) {
+            const rect = cardRect(node, heights.get(node.id) ?? node.height);
+            xs.push(rect.left, rect.right);
+            ys.push(rect.top, rect.bottom);
+        }
+        for (const line of this.renderableEdges()) {
+            for (const p of line.points) {
+                xs.push(p.x);
+                ys.push(p.y);
+            }
+        }
+        if (!xs.length) return { x: 0, y: 0, width: 0, height: 0 };
+        const x = Math.min(...xs) - padding;
+        const y = Math.min(...ys) - padding;
+        return { x, y, width: Math.max(...xs) + padding - x, height: Math.max(...ys) + padding - y };
     });
 
     readonly viewportTransform = computed<string>(() => {
@@ -521,6 +588,19 @@ export class RelationshipGraphComponent implements OnChanges {
         }
 
         this.graph.set({ ...graph });
+        this.forgetRemovedCards(graph);
+    }
+
+    /**
+     * Drops the measurements of cards that are no longer on the graph, so a card that comes back
+     * (re-expansion) is measured again before its edges are drawn. Cards that stay keep their entry:
+     * their element is kept (trackBy id) and won't report again unless it changes size.
+     */
+    private forgetRemovedCards(graph: GraphViewModel): void {
+        const current = this.cardHeights();
+        const ids = new Set(graph.nodes.map(n => n.id));
+        if ([...current.keys()].every(id => ids.has(id))) return;
+        this.cardHeights.set(new Map([...current].filter(([id]) => ids.has(id))));
     }
 
     /** Recursively collects every node id that was added, directly or indirectly, by expanding nodeId. */
@@ -861,6 +941,7 @@ export class RelationshipGraphComponent implements OnChanges {
         this.applyAnalytics(built);
 
         this.graph.set(built);
+        this.forgetRemovedCards(built);
         this.expandedNodeIds.set(new Set());
         this.expandedChildren.clear();
         this.selectedNodeId.set(null);

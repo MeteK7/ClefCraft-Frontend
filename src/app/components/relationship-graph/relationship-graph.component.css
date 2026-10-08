@@ -99,6 +99,15 @@
 }
 
 /*
+ * Critical width wins over the Blocks width (3), as for every other type: critical edges are drawn
+ * at 4, whatever their type. Three classes, so this doesn't depend on rule order. Hovered critical
+ * edges use .graph-edge.active.critical (5.5) further down, which comes after this rule.
+ */
+.graph-edge.critical.type-blocks {
+  stroke-width: 4;
+}
+
+/*
  * Cyclic membership used to be communicated by hijacking stroke-dasharray
  * (8 6), which would have collided with the type patterns above. Instead
  * cyclic edges get a quiet pulse (skipped while dimmed, so it doesn't

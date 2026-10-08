@@ -83,61 +83,72 @@
 
         <defs>
 
-            <!-- Parent: solid filled triangle -->
-            <marker id="arrow-parent" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+            <!--
+                Arrowheads. userSpaceOnUse, so their size never depends on the edge's stroke width:
+                viewBox 0 0 10 10 drawn at 20x20 graph units (one marker unit = 2 graph units).
+                The path ends at the arrowhead's BASE (refX); the shape extends from there to its TIP.
+                The base-to-tip distances are MARKER_TIP_OFFSET in relationship-engine/visualization/edge-router.ts
+                and must stay in step with these definitions.
+            -->
+
+            <!-- Parent: solid filled triangle. Base 0, tip 10 (20 graph units). -->
+            <marker id="arrow-parent" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20" markerHeight="20"
+                refX="0" refY="5" orient="auto-start-reverse">
                 <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"></path>
             </marker>
-            <marker id="arrow-parent-critical" markerWidth="10" markerHeight="10" refX="8" refY="5"
-                orient="auto-start-reverse">
+            <marker id="arrow-parent-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+                markerHeight="20" refX="0" refY="5" orient="auto-start-reverse">
                 <path d="M0,0 L10,5 L0,10 Z" fill="var(--danger)"></path>
             </marker>
 
-            <!-- Blocks: flat "stop bar" -->
-            <marker id="arrow-blocks" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+            <!-- Blocks: flat "stop bar". Base at the bar's back face 6, tip 10 (8 graph units). -->
+            <marker id="arrow-blocks" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20" markerHeight="20"
+                refX="6" refY="5" orient="auto-start-reverse">
                 <path d="M6,0 L10,0 L10,10 L6,10 Z" fill="var(--text-secondary)"></path>
             </marker>
-            <marker id="arrow-blocks-critical" markerWidth="10" markerHeight="10" refX="8" refY="5"
-                orient="auto-start-reverse">
+            <marker id="arrow-blocks-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+                markerHeight="20" refX="6" refY="5" orient="auto-start-reverse">
                 <path d="M6,0 L10,0 L10,10 L6,10 Z" fill="var(--danger)"></path>
             </marker>
 
-            <!-- Depends on: notched / concave triangle -->
-            <marker id="arrow-depends-on" markerWidth="10" markerHeight="10" refX="8" refY="5"
-                orient="auto-start-reverse">
+            <!-- Depends on: notched / concave triangle. Base at the notch 2.5, tip 10 (15 graph units). -->
+            <marker id="arrow-depends-on" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+                markerHeight="20" refX="2.5" refY="5" orient="auto-start-reverse">
                 <path d="M0,0 L10,5 L0,10 L2.5,5 Z" fill="var(--text-secondary)"></path>
             </marker>
-            <marker id="arrow-depends-on-critical" markerWidth="10" markerHeight="10" refX="8" refY="5"
-                orient="auto-start-reverse">
+            <marker id="arrow-depends-on-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+                markerHeight="20" refX="2.5" refY="5" orient="auto-start-reverse">
                 <path d="M0,0 L10,5 L0,10 L2.5,5 Z" fill="var(--danger)"></path>
             </marker>
 
-            <!-- Related: small dot (soft, undirected feel) -->
-            <marker id="arrow-related" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse">
+            <!-- Related: small dot (soft, undirected feel). Base at the centre 5, tip 8.5 (7 graph units). -->
+            <marker id="arrow-related" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20" markerHeight="20"
+                refX="5" refY="5" orient="auto-start-reverse">
                 <circle cx="5" cy="5" r="3.5" fill="var(--text-secondary)"></circle>
             </marker>
-            <marker id="arrow-related-critical" markerWidth="10" markerHeight="10" refX="8" refY="5"
-                orient="auto-start-reverse">
+            <marker id="arrow-related-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+                markerHeight="20" refX="5" refY="5" orient="auto-start-reverse">
                 <circle cx="5" cy="5" r="3.5" fill="var(--danger)"></circle>
             </marker>
 
-            <!-- Duplicate: diamond -->
-            <marker id="arrow-duplicate" markerWidth="10" markerHeight="10" refX="8" refY="5"
-                orient="auto-start-reverse">
+            <!-- Duplicate: diamond. Base 0, tip 10 (20 graph units). -->
+            <marker id="arrow-duplicate" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+                markerHeight="20" refX="0" refY="5" orient="auto-start-reverse">
                 <path d="M0,5 L5,0 L10,5 L5,10 Z" fill="var(--text-secondary)"></path>
             </marker>
-            <marker id="arrow-duplicate-critical" markerWidth="10" markerHeight="10" refX="8" refY="5"
-                orient="auto-start-reverse">
+            <marker id="arrow-duplicate-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+                markerHeight="20" refX="0" refY="5" orient="auto-start-reverse">
                 <path d="M0,5 L5,0 L10,5 L5,10 Z" fill="var(--danger)"></path>
             </marker>
 
-            <!-- Split from: double chevron -->
-            <marker id="arrow-split-from" markerWidth="12" markerHeight="10" refX="9" refY="5"
-                orient="auto-start-reverse">
+            <!-- Split from: double chevron (viewBox 0 0 12 10 at 24x20). Base 8, tip 10 = outer vertex 9 plus half its stroke (4 graph units). -->
+            <marker id="arrow-split-from" markerUnits="userSpaceOnUse" viewBox="0 0 12 10" markerWidth="24"
+                markerHeight="20" refX="8" refY="5" orient="auto-start-reverse">
                 <path d="M0,0 L4,5 L0,10 M5,0 L9,5 L5,10" fill="none" stroke="var(--text-secondary)" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round"></path>
             </marker>
-            <marker id="arrow-split-from-critical" markerWidth="12" markerHeight="10" refX="9" refY="5"
-                orient="auto-start-reverse">
+            <marker id="arrow-split-from-critical" markerUnits="userSpaceOnUse" viewBox="0 0 12 10" markerWidth="24"
+                markerHeight="20" refX="8" refY="5" orient="auto-start-reverse">
                 <path d="M0,0 L4,5 L0,10 M5,0 L9,5 L5,10" fill="none" stroke="var(--danger)" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round"></path>
             </marker>
@@ -160,7 +171,12 @@
                 </feDropShadow>
             </filter>
 
-            <filter id="edgeGlow">
+            <!--
+                Explicit user-space region covering everything drawn (edgeGlowRegion): the default region is a
+                percentage of the path's geometry box, which clips the stroke, glow and arrowhead of a straight edge.
+            -->
+            <filter id="edgeGlow" filterUnits="userSpaceOnUse" [attr.x]="edgeGlowRegion().x" [attr.y]="edgeGlowRegion().y"
+                [attr.width]="edgeGlowRegion().width" [attr.height]="edgeGlowRegion().height">
                 <feGaussianBlur stdDeviation="2" result="blur"></feGaussianBlur>
                 <feMerge>
                     <feMergeNode in="blur"></feMergeNode>
@@ -194,12 +210,13 @@
 
             <g class="graph-nodes">
                 <foreignObject *ngFor="let node of nodes(); trackBy: trackNode" [attr.x]="nodeLeft(node)"
-                    [attr.y]="nodeTop(node)" [attr.width]="node.width" [attr.height]="node.height"
+                    [attr.y]="nodeTop(node)" [attr.width]="node.width" [attr.height]="cardHeight(node)"
                     class="graph-node-container" [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
                     [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node, $event)"
                     (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
 
-                    <div xmlns="http://www.w3.org/1999/xhtml" class="node-card"
+                    <div xmlns="http://www.w3.org/1999/xhtml" class="node-card" appGraphCardSize
+                        (cardSizeChange)="onCardSize(node.id, $event)"
                         [style.filter]="isSelected(node.id) ? 'url(#selectedGlow)' : 'url(#nodeShadow)'">
 
                         <div class="status-strip" [class.center]="isCenter(node)" [class.critical]="node.critical"
