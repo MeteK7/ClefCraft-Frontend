@@ -27,6 +27,7 @@ import { BoardService } from '../../_services/board.service';
 
 import { RelationshipGraphBuilder } from '../../relationship-engine/graph/relationship-graph-builder';
 import { GraphLayoutEngine } from '../../relationship-engine/graph/graph-layout-engine';
+import { GraphExpansionTracker } from '../../relationship-engine/graph/graph-expansion-tracker';
 
 import { CycleDetector, RelationshipCycle } from '../../relationship-engine/analytics/cycle-detector';
 import { ImpactEngine, ImpactAnalysis } from '../../relationship-engine/analytics/impact-engine';
@@ -34,6 +35,8 @@ import { ImpactEngine, ImpactAnalysis } from '../../relationship-engine/analytic
 import { GraphNode } from '../../relationship-engine/visualization/graph-node.model';
 import { GraphEdge } from '../../relationship-engine/visualization/graph-edge.model';
 import { GraphViewModel, rebuildIndex } from '../../relationship-engine/visualization/graph-view-model';
+import { Point, RouteCard, cardRect, routeEdge } from '../../relationship-engine/visualization/edge-router';
+import { GraphCardSizeDirective } from './graph-card-size.directive';
 import { Router } from '@angular/router';
 
 interface Viewport {
@@ -54,6 +57,7 @@ interface RenderableEdge {
     edge: GraphEdge;
     /** SVG path 'd' attribute — an orthogonal "M...L...L...L..." route: straight segments joined by 90° elbow turns, never a curve. */
     path: string;
+    points: Point[];
     mx: number;
     my: number;
 }
@@ -67,7 +71,7 @@ type RelationshipStyle = {
 @Component({
     selector: 'app-relationship-graph',
     standalone: true,
-    imports: [CommonModule, MatIconModule, MatButtonModule, MatTooltipModule],
+    imports: [CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, GraphCardSizeDirective],
     templateUrl: './relationship-graph.component.html',
     styleUrls: ['./relationship-graph.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -93,9 +97,6 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly viewBoxSize = 800;
     readonly minZoom = 0.2;
     readonly maxZoom = 3;
-
-    /** Extra gap (world units) beyond a card's edge before an arrowhead is drawn, so the tip is visible instead of hidden under the target card. */
-    private readonly arrowGap = 6;
 
     private readonly typeStyleMap: Record<RelationshipType, RelationshipStyle> = {
         [RelationshipType.Parent]: {
@@ -194,221 +195,111 @@ export class RelationshipGraphComponent implements OnChanges {
             incomingGroups.get(edge.targetId)!.push(edge);
         }
 
+        // Ties (other ends at the same x) broken by id, so lanes don't depend on edge insertion order.
         const sortByOtherEndX = (groups: Map<number, GraphEdge[]>, otherIdOf: (e: GraphEdge) => number) => {
             for (const list of groups.values()) {
                 list.sort((a, b) => {
                     const na = graph.nodeMap.get(otherIdOf(a));
                     const nb = graph.nodeMap.get(otherIdOf(b));
-                    return (na?.x ?? 0) - (nb?.x ?? 0);
+                    return (na?.x ?? 0) - (nb?.x ?? 0) || otherIdOf(a) - otherIdOf(b);
                 });
             }
         };
         sortByOtherEndX(outgoingGroups, e => e.targetId);
         sortByOtherEndX(incomingGroups, e => e.sourceId);
 
+        // Route against the cards as rendered. A card not measured yet counts with its default size
+        // as an obstacle, but an edge is only drawn once both of its own cards are measured.
+        const heights = this.cardHeights();
+        const cards: RouteCard[] = graph.nodes.map(n => ({
+            id: n.id,
+            x: n.x,
+            y: n.y,
+            rect: cardRect(n, heights.get(n.id) ?? n.height)
+        }));
+        const cardById = new Map(cards.map(c => [c.id, c]));
+
         const lines: RenderableEdge[] = [];
 
         for (const edge of graph.edges) {
-            const source = graph.nodeMap.get(edge.sourceId);
-            const target = graph.nodeMap.get(edge.targetId);
+            if (!heights.has(edge.sourceId) || !heights.has(edge.targetId)) continue;
+
+            const source = cardById.get(edge.sourceId);
+            const target = cardById.get(edge.targetId);
             if (!source || !target) continue;
 
             const outGroup = outgoingGroups.get(edge.sourceId) ?? [edge];
             const inGroup = incomingGroups.get(edge.targetId) ?? [edge];
 
-            // Anything that isn't one of this edge's own endpoints is a
-            // potential obstacle — real collision testing, not a special case
-            // for one node id.
-            const obstacles = graph.nodes.filter(n => n.id !== source.id && n.id !== target.id);
-
-            lines.push({
-                edge,
-                ...this.routeEdge(
-                    source, target,
-                    outGroup.indexOf(edge), outGroup.length,
-                    inGroup.indexOf(edge), inGroup.length,
-                    obstacles
-                )
+            const route = routeEdge({
+                edgeId: edge.id,
+                relationType: edge.relationType,
+                source,
+                target,
+                outIndex: outGroup.indexOf(edge),
+                outCount: outGroup.length,
+                inIndex: inGroup.indexOf(edge),
+                inCount: inGroup.length,
+                cards
             });
+
+            lines.push({ edge, path: route.path, points: route.points, mx: route.mx, my: route.my });
         }
 
         return lines;
     });
 
-    /** Gap (world units) between parallel edge lanes leaving/entering the same node. */
-    private readonly laneGap = 12;
+    /**
+     * Rendered card heights in graph units, by node id, from GraphCardSizeDirective. A card without an
+     * entry hasn't been measured yet (or isn't rendered), and none of its edges are drawn.
+     */
+    readonly cardHeights = signal<ReadonlyMap<number, number>>(new Map());
 
-    /** Extra clearance kept between a detour corridor and the node it's routing around. */
-    private readonly detourMargin = 28;
+    onCardSize(nodeId: number, height: number | null): void {
+        const current = this.cardHeights();
+        if (height === null ? !current.has(nodeId) : current.get(nodeId) === height) return;
 
-    private routeEdge(
-        source: GraphNode,
-        target: GraphNode,
-        outIndex: number,
-        outCount: number,
-        inIndex: number,
-        inCount: number,
-        obstacles: GraphNode[]
-    ): { path: string; mx: number; my: number } {
-
-        const exitOffset = outCount > 1 ? (outIndex - (outCount - 1) / 2) * this.laneGap : 0;
-        const entryOffset = inCount > 1 ? (inIndex - (inCount - 1) / 2) * this.laneGap : 0;
-
-        const sourceHalfW = source.width / 2, sourceHalfH = source.height / 2;
-        const targetHalfW = target.width / 2, targetHalfH = target.height / 2;
-
-        const dx = target.x - source.x;
-        const dy = target.y - source.y;
-
-        const sameRow = Math.abs(dy) < Math.max(sourceHalfH, targetHalfH) + 20;
-        const sameColumn = Math.abs(dx) < Math.max(sourceHalfW, targetHalfW) + 20;
-
-        let points: { x: number; y: number }[];
-
-        if (sameRow && !sameColumn) {
-            // Natural left<->right flow: exit/enter from the facing sides.
-            const goRight = dx > 0;
-            const startX = source.x + (goRight ? sourceHalfW : -sourceHalfW);
-            const startY = source.y + exitOffset;
-            const endX = target.x + (goRight ? -targetHalfW - this.arrowGap : targetHalfW + this.arrowGap);
-            const endY = target.y + entryOffset;
-
-            points = startY === endY
-                ? [{ x: startX, y: startY }, { x: endX, y: endY }]
-                : [
-                    { x: startX, y: startY },
-                    { x: (startX + endX) / 2, y: startY },
-                    { x: (startX + endX) / 2, y: endY },
-                    { x: endX, y: endY }
-                ];
-
-        } else if (sameColumn) {
-            // Natural up<->down flow: straight drop/rise, offset within each card's edge.
-            const goDown = dy > 0;
-            const startX = source.x + exitOffset;
-            const startY = source.y + (goDown ? sourceHalfH : -sourceHalfH);
-            const endX = target.x + entryOffset;
-            const endY = target.y + (goDown ? -targetHalfH - this.arrowGap : targetHalfH + this.arrowGap);
-
-            points = [{ x: startX, y: startY }, { x: endX, y: startY }, { x: endX, y: endY }];
-
+        const next = new Map(current);
+        if (height === null) {
+            next.delete(nodeId);
         } else {
-            // Diagonal: leave the side facing the target, one elbow into the
-            // target's top or bottom edge.
-            const goRight = dx > 0;
-            const goDown = dy > 0;
-            const startX = source.x + (goRight ? sourceHalfW : -sourceHalfW);
-            const startY = source.y + exitOffset;
-            const endX = target.x + entryOffset;
-            const endY = target.y + (goDown ? -targetHalfH - this.arrowGap : targetHalfH + this.arrowGap);
-
-            points = [{ x: startX, y: startY }, { x: endX, y: startY }, { x: endX, y: endY }];
+            next.set(nodeId, height);
         }
-
-        // Only now do we check for a real collision — this replaces the old
-        // "always detour if far enough right" hack with an actual test.
-        const blocker = obstacles.find(n => this.pathIntersectsRect(points, n));
-        if (blocker) {
-            points = this.detourAroundNode(points, blocker);
-        }
-
-        const path = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
-        const mid = points[Math.floor((points.length - 1) / 2)];
-        return { path, mx: (mid.x + points[Math.min(points.length - 1, Math.floor((points.length - 1) / 2) + 1)].x) / 2, my: mid.y };
+        this.cardHeights.set(next);
     }
 
-    private detourAroundNode(
-        points: { x: number; y: number }[],
-        blocker: GraphNode
-    ): { x: number; y: number }[] {
-
-        const start = points[0];
-        const end = points[points.length - 1];
-
-        const distanceAbove = Math.abs(start.y - (blocker.y - blocker.height / 2 - this.detourMargin));
-        const distanceBelow = Math.abs(start.y - (blocker.y + blocker.height / 2 + this.detourMargin));
-        const goAbove = distanceAbove <= distanceBelow;
-
-        const corridorY = goAbove
-            ? blocker.y - blocker.height / 2 - this.detourMargin
-            : blocker.y + blocker.height / 2 + this.detourMargin;
-
-        return [
-            start,
-            { x: start.x, y: corridorY },
-            { x: end.x, y: corridorY },
-            end
-        ];
+    /** The card's height for its foreignObject: measured, or the default until it is. */
+    cardHeight(node: GraphNode): number {
+        return this.cardHeights().get(node.id) ?? node.height;
     }
 
-    /** True if any segment of an orthogonal (multi-point) path passes through node's bounding box. */
-    private pathIntersectsRect(
-        points: { x: number; y: number }[],
-        node: GraphNode
-    ): boolean {
-        for (let i = 0; i < points.length - 1; i++) {
-            if (this.segmentIntersectsRect(points[i], points[i + 1], node)) {
-                return true;
+    /**
+     * Filter region for #edgeGlow, in graph units: everything drawn (cards and routed edges) plus room
+     * for the widest stroke, the blur and an arrowhead. A user-space region, so a straight edge (whose
+     * geometry box is 0 wide) is never clipped the way a bounding-box percentage region clips it.
+     */
+    readonly edgeGlowRegion = computed(() => {
+        const padding = 40;
+        const xs: number[] = [];
+        const ys: number[] = [];
+        const graph = this.graph();
+        const heights = this.cardHeights();
+        for (const node of graph?.nodes ?? []) {
+            const rect = cardRect(node, heights.get(node.id) ?? node.height);
+            xs.push(rect.left, rect.right);
+            ys.push(rect.top, rect.bottom);
+        }
+        for (const line of this.renderableEdges()) {
+            for (const p of line.points) {
+                xs.push(p.x);
+                ys.push(p.y);
             }
         }
-        return false;
-    }
-
-    /** True if the segment p1->p2 passes through node's bounding box (padded slightly so near-misses still count). */
-    private segmentIntersectsRect(
-        p1: { x: number; y: number },
-        p2: { x: number; y: number },
-        node: GraphNode
-    ): boolean {
-
-        const pad = 10;
-        const left = node.x - node.width / 2 - pad;
-        const right = node.x + node.width / 2 + pad;
-        const top = node.y - node.height / 2 - pad;
-        const bottom = node.y + node.height / 2 + pad;
-
-        const segMinX = Math.min(p1.x, p2.x), segMaxX = Math.max(p1.x, p2.x);
-        const segMinY = Math.min(p1.y, p2.y), segMaxY = Math.max(p1.y, p2.y);
-        if (segMaxX < left || segMinX > right || segMaxY < top || segMinY > bottom) {
-            return false;
-        }
-
-        const inside = (p: { x: number; y: number }) =>
-            p.x >= left && p.x <= right && p.y >= top && p.y <= bottom;
-        if (inside(p1) || inside(p2)) return true;
-
-        const corners = [
-            { x: left, y: top }, { x: right, y: top },
-            { x: right, y: bottom }, { x: left, y: bottom }
-        ];
-
-        for (let i = 0; i < 4; i++) {
-            if (this.segmentsIntersect(p1, p2, corners[i], corners[(i + 1) % 4])) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private segmentsIntersect(
-        p1: { x: number; y: number }, p2: { x: number; y: number },
-        p3: { x: number; y: number }, p4: { x: number; y: number }
-    ): boolean {
-        const d1 = this.cross(p3, p4, p1);
-        const d2 = this.cross(p3, p4, p2);
-        const d3 = this.cross(p1, p2, p3);
-        const d4 = this.cross(p1, p2, p4);
-
-        return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0))
-            && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
-    }
-
-    private cross(
-        a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }
-    ): number {
-        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-    }
+        if (!xs.length) return { x: 0, y: 0, width: 0, height: 0 };
+        const x = Math.min(...xs) - padding;
+        const y = Math.min(...ys) - padding;
+        return { x, y, width: Math.max(...xs) + padding - x, height: Math.max(...ys) + padding - y };
+    });
 
     readonly viewportTransform = computed<string>(() => {
         const v = this.viewport();
@@ -421,6 +312,9 @@ export class RelationshipGraphComponent implements OnChanges {
     private panStartClient = { x: 0, y: 0 };
     private panOrigin: Viewport = this.defaultViewport();
 
+    /** Lets a collapse undo exactly what its expansion placed, pushed and drew. */
+    private readonly expansionTracker: GraphExpansionTracker;
+
     constructor(
         private readonly builder: RelationshipGraphBuilder,
         private readonly layoutEngine: GraphLayoutEngine,
@@ -428,7 +322,9 @@ export class RelationshipGraphComponent implements OnChanges {
         private readonly impactEngine: ImpactEngine,
         private readonly boardService: BoardService,
         private readonly router: Router
-    ) { }
+    ) {
+        this.expansionTracker = new GraphExpansionTracker(layoutEngine);
+    }
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['hub'] || changes['rootItemId'] || changes['rootStatus'] || changes['rootPriority'] || changes['rootBoardId']) {
@@ -635,12 +531,16 @@ export class RelationshipGraphComponent implements OnChanges {
             next: hub => {
 
                 const expanded = this.builder.expand(graph, node.id, hub);
-                this.layoutEngine.layout(expanded);
-                this.applyAnalytics(expanded);
 
                 const addedIds = new Set(
                     expanded.nodes.map(n => n.id).filter(id => !beforeIds.has(id))
                 );
+
+                // Incremental: existing nodes (this one included) keep their positions, so the
+                // viewport stays as it is.
+                this.expansionTracker.recordExpansion(expanded, node.id, hub, addedIds);
+                this.applyAnalytics(expanded);
+
                 this.expandedChildren.set(node.id, addedIds);
                 this.expandedNodeIds.update(set => new Set(set).add(node.id));
 
@@ -662,6 +562,8 @@ export class RelationshipGraphComponent implements OnChanges {
         const toRemove = new Set<number>();
         this.collectDescendants(nodeId, toRemove);
 
+        const collapsedExpansionIds = [nodeId, ...Array.from(toRemove).filter(id => this.isExpanded(id))];
+
         this.expandedChildren.delete(nodeId);
         this.expandedNodeIds.update(set => {
             const next = new Set(set);
@@ -670,13 +572,9 @@ export class RelationshipGraphComponent implements OnChanges {
             return next;
         });
 
-        if (!toRemove.size) return;
-
-        graph.nodes = graph.nodes.filter(n => !toRemove.has(n.id));
-        graph.edges = graph.edges.filter(e => !toRemove.has(e.sourceId) && !toRemove.has(e.targetId));
-
-        rebuildIndex(graph);
-        this.layoutEngine.layout(graph);
+        // Runs even when the expansion added no nodes: it may still have drawn edges between
+        // existing ones, which the collapse removes.
+        this.expansionTracker.collapse(graph, toRemove, collapsedExpansionIds);
         this.applyAnalytics(graph);
 
         if (this.selectedNodeId() !== null && toRemove.has(this.selectedNodeId()!)) {
@@ -690,6 +588,19 @@ export class RelationshipGraphComponent implements OnChanges {
         }
 
         this.graph.set({ ...graph });
+        this.forgetRemovedCards(graph);
+    }
+
+    /**
+     * Drops the measurements of cards that are no longer on the graph, so a card that comes back
+     * (re-expansion) is measured again before its edges are drawn. Cards that stay keep their entry:
+     * their element is kept (trackBy id) and won't report again unless it changes size.
+     */
+    private forgetRemovedCards(graph: GraphViewModel): void {
+        const current = this.cardHeights();
+        const ids = new Set(graph.nodes.map(n => n.id));
+        if ([...current.keys()].every(id => ids.has(id))) return;
+        this.cardHeights.set(new Map([...current].filter(([id]) => ids.has(id))));
     }
 
     /** Recursively collects every node id that was added, directly or indirectly, by expanding nodeId. */
@@ -759,6 +670,7 @@ export class RelationshipGraphComponent implements OnChanges {
         } finally {
 
             this.layoutEngine.layout(graph);
+            this.expansionTracker.invalidate();
             this.applyAnalytics(graph);
 
             this.graph.set({ ...graph });
@@ -1025,9 +937,11 @@ export class RelationshipGraphComponent implements OnChanges {
 
         const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority, this.rootBoardId);
         this.layoutEngine.layout(built);
+        this.expansionTracker.reset(this.rootItemId, this.hub);
         this.applyAnalytics(built);
 
         this.graph.set(built);
+        this.forgetRemovedCards(built);
         this.expandedNodeIds.set(new Set());
         this.expandedChildren.clear();
         this.selectedNodeId.set(null);
