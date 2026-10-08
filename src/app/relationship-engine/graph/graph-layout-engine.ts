@@ -2,6 +2,9 @@ import { Injectable } from '@angular/core';
 
 import { GraphViewModel } from '../visualization/graph-view-model';
 
+/** Nodes an incremental placement pushed sideways: node id -> x before and after the push. */
+export type NodeShifts = Map<number, { from: number; to: number }>;
+
 @Injectable({
     providedIn: 'root'
 })
@@ -48,7 +51,9 @@ export class GraphLayoutEngine {
             const current = queue.shift()!;
             const neighborIds = [...(graph.adjacency.get(current) ?? [])];
 
-            neighborIds.sort((a, b) => this.edgeTypeRank(graph, current, a) - this.edgeTypeRank(graph, current, b));
+            // Ties broken by id, so the layout depends on the graph alone and not on the order
+            // its nodes and edges were added in (expansion history, API row order).
+            neighborIds.sort((a, b) => this.compareByTypeThenId(graph, current, a, b));
 
             const kids: number[] = [];
 
@@ -70,6 +75,10 @@ export class GraphLayoutEngine {
         const edge = (graph.outgoingEdges.get(a) ?? []).find(e => e.targetId === b)
             ?? (graph.incomingEdges.get(a) ?? []).find(e => e.sourceId === b);
         return edge?.relationType ?? 0;
+    }
+
+    private compareByTypeThenId(graph: GraphViewModel, from: number, a: number, b: number): number {
+        return this.edgeTypeRank(graph, from, a) - this.edgeTypeRank(graph, from, b) || a - b;
     }
 
     private assignRows(graph: GraphViewModel, tree: Map<number, number[]>): number[][] {
@@ -207,7 +216,7 @@ export class GraphLayoutEngine {
         const placed = new Set<number>();
         rows.forEach(row => row.forEach(id => placed.add(id)));
 
-        const stray = graph.nodes.filter(n => !placed.has(n.id));
+        const stray = graph.nodes.filter(n => !placed.has(n.id)).sort((a, b) => a.id - b.id);
         if (!stray.length) {
             return;
         }
@@ -222,5 +231,108 @@ export class GraphLayoutEngine {
             node.x = startX + idx * spacing;
             node.y = level * this.rowSpacing;
         });
+    }
+
+    // =====================================================================
+    // Incremental placement (expand / collapse)
+    // =====================================================================
+
+    /**
+     * Places the nodes an expansion added without re-laying-out the graph. Every existing node
+     * keeps its position, the expanded node included. The new nodes are the expanded node's
+     * children, so they go one row below it, as a block centered under it. Existing nodes in that
+     * row that would overlap the block are pushed outward, only as far as needed.
+     * Returns the pushed nodes so the expansion can be undone.
+     */
+    placeExpansion(graph: GraphViewModel, anchorId: number, addedIds: ReadonlySet<number>): NodeShifts {
+
+        const shifts: NodeShifts = new Map();
+
+        const anchor = graph.nodeMap.get(anchorId);
+        const added = graph.nodes
+            .filter(n => addedIds.has(n.id))
+            .sort((a, b) => this.compareByTypeThenId(graph, anchorId, a.id, b.id));
+
+        if (!anchor || !added.length) {
+            return shifts;
+        }
+
+        const targetY = anchor.y + this.rowSpacing;
+        const existing = graph.nodes.filter(n => !addedIds.has(n.id) && this.sameRow(n.y, targetY));
+        const spacing = this.computeRowSpacing(graph, [...existing, ...added].map(n => n.id));
+
+        const firstX = anchor.x - ((added.length - 1) * spacing) / 2;
+        added.forEach((node, idx) => {
+            node.x = firstX + idx * spacing;
+            node.y = targetY;
+        });
+
+        const blockLeft = added[0].x;
+        const blockRight = added[added.length - 1].x;
+
+        const push = (node: { id: number; x: number }, x: number) => {
+            shifts.set(node.id, { from: node.x, to: x });
+            node.x = x;
+        };
+
+        // Nodes at or right of the anchor go right, the others left; each sweep starts at the block.
+        const right = existing.filter(n => n.x >= anchor.x).sort((a, b) => a.x - b.x || a.id - b.id);
+        let edge = blockRight;
+        for (const node of right) {
+            if (node.x < edge + spacing) push(node, edge + spacing);
+            edge = node.x;
+        }
+
+        const left = existing.filter(n => n.x < anchor.x).sort((a, b) => b.x - a.x || b.id - a.id);
+        edge = blockLeft;
+        for (const node of left) {
+            if (node.x > edge - spacing) push(node, edge - spacing);
+            edge = node.x;
+        }
+
+        return shifts;
+    }
+
+    /**
+     * Undoes expansions' pushes, newest first: a node goes back to where it was before the push,
+     * unless something has moved it since. Then resolves any overlap that leaves.
+     */
+    undoExpansions(graph: GraphViewModel, newestFirst: NodeShifts[]): void {
+
+        for (const shifts of newestFirst) {
+            for (const [id, { from, to }] of shifts) {
+                const node = graph.nodeMap.get(id);
+                if (node && node.x === to) {
+                    node.x = from;
+                }
+            }
+        }
+
+        this.resolveOverlaps(graph);
+    }
+
+    /** Pushes nodes right, only as far as needed, wherever two nodes in a row are closer than the row spacing. */
+    resolveOverlaps(graph: GraphViewModel): void {
+
+        const rows = new Map<number, typeof graph.nodes>();
+        for (const node of graph.nodes) {
+            const key = Math.round(node.y);
+            if (!rows.has(key)) rows.set(key, []);
+            rows.get(key)!.push(node);
+        }
+
+        for (const row of rows.values()) {
+            const spacing = this.computeRowSpacing(graph, row.map(n => n.id));
+            row.sort((a, b) => a.x - b.x || a.id - b.id);
+            for (let i = 1; i < row.length; i++) {
+                if (row[i].x < row[i - 1].x + spacing) {
+                    row[i].x = row[i - 1].x + spacing;
+                }
+            }
+        }
+    }
+
+    private sameRow(a: number, b: number): boolean {
+        return Math.abs(a - b) < 0.5;
     }
 }

@@ -55,8 +55,13 @@ export interface GraphNode {
 /** Factory helper. Keeps node creation consistent across the entire engine. */
 export class GraphNodeFactory {
 
-    /** Single source of truth for default card size — CSS reads 100% of this via the foreignObject. */
+    /** Card width; the card's CSS fills 100% of it via the foreignObject. */
     static readonly DEFAULT_WIDTH = 220;
+    /**
+     * Anchor height, not the rendered one: a card's top sits half of this above its row y, and the card
+     * grows downward with its content. Edges route against the measured height (cardRect in
+     * edge-router.ts); this is only the size used until a card has been measured.
+     */
     static readonly DEFAULT_HEIGHT = 108;
 
     static create(
