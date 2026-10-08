@@ -5,7 +5,8 @@ ASP.NET Core API in the `ClefCraft-Backend` repo.
 
 ## Prerequisites
 
-- **Node.js 20** (20.11.1 or later, as Angular 18 requires; CI uses Node 20) with npm.
+- **Node.js 24** (24.15.0 or a later 24.x, the Node 24 range Angular 22 supports, which this
+  project is being upgraded to; CI uses Node 24) with npm.
 - The **backend API running locally**. See the backend README for its setup, including the
   development accounts and demo data.
 
