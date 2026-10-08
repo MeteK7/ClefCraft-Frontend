@@ -1,5 +1,7 @@
 import { RelationshipType } from '../../models/board.model';
 import {
+    ARROWHEAD_WIDTH,
+    ENTRY_LANE_GAP,
     EdgeRoute,
     EdgeRouteInput,
     MARKER_TIP_OFFSET,
@@ -310,6 +312,57 @@ describe('edge-router', () => {
             expectClean(route(colS, colT, cards, type, lanes), cards, colT, type, `same column type ${type}`);
         }
         expect(finalSegmentMin(RelationshipType.Parent)).toBe(TIP_CLEARANCE + 20 + MIN_VISIBLE_STROKE);
+    });
+
+    it('spaces incoming arrowheads on one border so they stay visibly separate', () => {
+        const target = card(81, 0, 0, 100);
+        const sources = [-840, -560, -280, 0, 280, 560].map((x, i) => card(i + 1, x, 200, 124));
+        const cards = [target, ...sources];
+        const byId = new Map(cards.map(c => [c.id, c]));
+        const pairs = sources.map(s => [s.id, target.id] as [number, number]);
+
+        const tipsX = pairs.map(pair => {
+            const r = route(byId.get(pair[0])!, target, cards, RelationshipType.Blocks, laneOf(pairs, byId, pair));
+            expectClean(r, cards, target, RelationshipType.Blocks, `${pair[0]}->81`);
+            return r.points[r.points.length - 1].x;
+        }).sort((a, b) => a - b);
+
+        expect(ENTRY_LANE_GAP).toBeGreaterThan(ARROWHEAD_WIDTH); // visibly separate, not just touching
+        for (let i = 1; i < tipsX.length; i++) {
+            expect(tipsX[i] - tipsX[i - 1]).toBeGreaterThanOrEqual(ENTRY_LANE_GAP - 1e-6);
+        }
+    });
+
+    // The #96 -> #81 geometry from the full #104 graph: the entry lane lands on the source's own side.
+    it('leaves through the top when the entry lane is not clear of the source side', () => {
+        const target = card(81, 0, 0, 100);       // entry lanes along its bottom
+        const source = card(96, 140, 200, 100);   // left side at x 30, one row below
+        const cards = [target, source];
+        for (let inIndex = 0; inIndex < 6; inIndex++) {
+            const lanes = { outIndex: 0, outCount: 1, inIndex, inCount: 6 };
+            for (const type of ALL_TYPES) {
+                const warn = jasmine.createSpy('warn');
+                const r = route(source, target, cards, type, lanes, warn);
+                expectClean(r, cards, target, type, `lane ${inIndex} type ${type}`);
+                expect(warn).not.toHaveBeenCalled();
+            }
+        }
+    });
+
+    it('compresses incoming lanes to keep every arrowhead on a short border', () => {
+        const target = card(1, 280, 200, 100);           // side border 146..246, row y 200
+        const sources = [card(2, 0, 200), card(3, -280, 0), card(4, -280, 400), card(5, -560, 200), card(6, -560, 0)];
+        const cards = [target, ...sources];
+        sources.forEach((s, i) => {
+            const r = route(s, target, cards, RelationshipType.DependsOn, { outIndex: 0, outCount: 1, inIndex: i, inCount: sources.length });
+            const end = r.points[r.points.length - 1];
+            const turn = r.points[r.points.length - 2];
+            if (turn.y === end.y) { // entering the side: the whole arrowhead (±10) stays on the border
+                expect(end.y - 10).toBeGreaterThanOrEqual(target.rect.top);
+                expect(end.y + 10).toBeLessThanOrEqual(target.rect.bottom);
+            }
+            expectClean(r, cards, target, RelationshipType.DependsOn, `${s.id}->1`);
+        });
     });
 
     // 15

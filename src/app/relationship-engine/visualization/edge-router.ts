@@ -49,11 +49,26 @@ export interface EdgeRoute {
 
 export type RouteWarn = (message: string, details: Record<string, unknown>) => void;
 
-/** Gap between parallel lanes leaving/entering the same card. */
+/** Gap between parallel lanes leaving the same card. */
 export const LANE_GAP = 12;
 
-/** Distance between an arrowhead's tip and the target card's border. */
-export const TIP_CLEARANCE = 2;
+/** Width of every arrowhead across its edge (the markers are drawn 20 graph units high). */
+export const ARROWHEAD_WIDTH = 20;
+const ARROWHEAD_HALF_WIDTH = ARROWHEAD_WIDTH / 2;
+
+/**
+ * Gap between lanes entering the same card: an arrowhead's width plus a little space, so neighbouring
+ * arrowheads (Blocks' stop bars especially) stay visibly separate. Compressed when the border is too
+ * short to fit them all.
+ */
+export const ENTRY_LANE_GAP = ARROWHEAD_WIDTH + 4;
+
+/**
+ * Distance between an arrowhead's tip and the target card's border. Larger than the most a card grows
+ * when selected (scale 1.05: 5.5 at the sides of a 220 card) or hovered (scale 1.03 and 2 up: about 4.2
+ * at the top), so the grown card never covers a tip.
+ */
+export const TIP_CLEARANCE = 6;
 
 /** Stroke that stays visible between the last turn and the arrowhead's base. */
 export const MIN_VISIBLE_STROKE = 6;
@@ -211,7 +226,8 @@ function preferredRoute(ctx: RouteContext): Point[] {
     const s = source.rect, t = target.rect;
 
     const exitOffset = outCount > 1 ? (outIndex - (outCount - 1) / 2) * LANE_GAP : 0;
-    const entryOffset = inCount > 1 ? (inIndex - (inCount - 1) / 2) * LANE_GAP : 0;
+    const topBottomEntry = entryLaneOffset(inIndex, inCount, target.x, t.left, t.right);
+    const sideEntry = entryLaneOffset(inIndex, inCount, target.y, t.top, t.bottom);
 
     const dx = target.x - source.x;
     const dy = target.y - source.y;
@@ -224,7 +240,7 @@ function preferredRoute(ctx: RouteContext): Point[] {
         const goRight = dx > 0;
         const start = { x: goRight ? s.right : s.left, y: source.y + exitOffset };
         const border = goRight ? t.left : t.right;
-        const end = { x: border + (goRight ? -ctx.reach : ctx.reach), y: target.y + entryOffset };
+        const end = { x: border + (goRight ? -ctx.reach : ctx.reach), y: target.y + sideEntry };
 
         if (start.y === end.y) {
             return [start, end];
@@ -236,31 +252,45 @@ function preferredRoute(ctx: RouteContext): Point[] {
         return [start, { x: turnX, y: start.y }, { x: turnX, y: end.y }, end];
     }
 
-    if (sameColumn) {
-        // Up <-> down: out of the bottom/top, into the top/bottom.
-        const goDown = dy > 0;
-        const start = { x: source.x + exitOffset, y: goDown ? s.bottom : s.top };
-        const border = goDown ? t.top : t.bottom;
-        const end = { x: target.x + entryOffset, y: border + (goDown ? -ctx.reach : ctx.reach) };
+    const goDown = dy > 0;
+    const border = goDown ? t.top : t.bottom;
+    const end = { x: target.x + topBottomEntry, y: border + (goDown ? -ctx.reach : ctx.reach) };
 
-        if (start.x === end.x) {
-            return [start, end];
+    if (!sameColumn) {
+        // Diagonal: out of the side facing the target, one elbow into its top or bottom. Only when the
+        // entry lane lies clear of that side: otherwise the elbow would sit on (or inside) the source's
+        // border, so leave through the top/bottom like a same-column edge.
+        const goRight = dx > 0;
+        const start = { x: goRight ? s.right : s.left, y: source.y + exitOffset };
+        const clearOfSide = goRight ? end.x >= start.x + MIN_CORRIDOR_MARGIN : end.x <= start.x - MIN_CORRIDOR_MARGIN;
+        if (clearOfSide) {
+            return [start, { x: end.x, y: start.y }, end];
         }
-
-        // Jog in the middle of the free band: off the source's border, and far enough from the target's.
-        let jogY = (start.y + border) / 2;
-        jogY = goDown ? Math.min(jogY, border - ctx.finalMin) : Math.max(jogY, border + ctx.finalMin);
-        jogY = goDown ? Math.max(jogY, start.y + MIN_CORRIDOR_MARGIN) : Math.min(jogY, start.y - MIN_CORRIDOR_MARGIN);
-        return [start, { x: start.x, y: jogY }, { x: end.x, y: jogY }, end];
     }
 
-    // Diagonal: out of the side facing the target, one elbow into its top or bottom.
-    const goRight = dx > 0;
-    const goDown = dy > 0;
-    const start = { x: goRight ? s.right : s.left, y: source.y + exitOffset };
-    const border = goDown ? t.top : t.bottom;
-    const end = { x: target.x + entryOffset, y: border + (goDown ? -ctx.reach : ctx.reach) };
-    return [start, { x: end.x, y: start.y }, end];
+    // Up <-> down: out of the bottom/top, into the top/bottom.
+    const start = { x: source.x + exitOffset, y: goDown ? s.bottom : s.top };
+
+    if (start.x === end.x) {
+        return [start, end];
+    }
+
+    // Jog in the middle of the free band: off the source's border, and far enough from the target's.
+    let jogY = (start.y + border) / 2;
+    jogY = goDown ? Math.min(jogY, border - ctx.finalMin) : Math.max(jogY, border + ctx.finalMin);
+    jogY = goDown ? Math.max(jogY, start.y + MIN_CORRIDOR_MARGIN) : Math.min(jogY, start.y - MIN_CORRIDOR_MARGIN);
+    return [start, { x: start.x, y: jogY }, { x: end.x, y: jogY }, end];
+}
+
+/**
+ * Offset of an incoming lane along the border it enters (centred on the node's x, or row y for a
+ * side): ENTRY_LANE_GAP apart, compressed if needed so every arrowhead stays within the border.
+ */
+function entryLaneOffset(index: number, count: number, centre: number, borderStart: number, borderEnd: number): number {
+    if (count <= 1) return 0;
+    const room = Math.min(centre - borderStart, borderEnd - centre) - ARROWHEAD_HALF_WIDTH;
+    const gap = Math.max(0, Math.min(ENTRY_LANE_GAP, (2 * room) / (count - 1)));
+    return (index - (count - 1) / 2) * gap;
 }
 
 // =====================================================================
