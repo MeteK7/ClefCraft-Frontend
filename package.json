@@ -25,8 +25,6 @@
     "@angular/platform-browser-dynamic": "^18.2.11",
     "@angular/router": "^18.2.11",
     "@microsoft/signalr": "^10.0.0",
-    "bootstrap": "^5.3.3",
-    "jquery": "^3.7.1",
     "jwt-decode": "^4.0.0",
     "ngx-mat-timepicker": "^18.0.1",
     "ngx-quill": "^26.0.10",
