@@ -1,4 +1,5 @@
 /* You can add global styles to this file, and also import other style files */
+@import "./themes/material-typography.css";
 @import "./themes/_variables.css";
 @import "./themes/light-theme.css";
 @import "./themes/dark-theme.css";
