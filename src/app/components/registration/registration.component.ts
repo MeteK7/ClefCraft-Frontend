@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../_services/auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ToastrService } from 'ngx-toastr';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-registration',
@@ -28,7 +28,7 @@ export class RegistrationComponent {
   constructor(
     private authService: AuthService,
     private router: Router,
-    private toastr: ToastrService
+    private snackBar: MatSnackBar
   ) {}
 
   togglePassword(): void {
@@ -52,7 +52,7 @@ export class RegistrationComponent {
 
         console.log('Registration successful', response);
 
-        this.toastr.success('Registration successful', 'Success');
+        this.snackBar.open('Registration successful', 'Dismiss', { duration: 5000 });
 
         // Registration doesn't sign the user in; /home requires a session.
         this.router.navigate(['/login']);
@@ -66,7 +66,7 @@ export class RegistrationComponent {
 
         this.handleErrorResponse(error);
 
-        this.toastr.error(this.errorMessage, 'Registration failed');
+        this.snackBar.open(this.errorMessage, 'Dismiss', { duration: 5000 });
       }
     });
   }
