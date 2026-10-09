@@ -13,15 +13,14 @@ import { Router } from '@angular/router'; // Added Router import
 import { RelationshipCard, RelationshipType, relationshipLabel } from '../../models/board.model';
 
 @Component({
-  selector: 'app-relationship-card',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatIconModule,
-    MatButtonModule
-  ],
-  templateUrl: './relationship-card.component.html',
-  styleUrls: ['./relationship-card.component.css']
+    selector: 'app-relationship-card',
+    imports: [
+        CommonModule,
+        MatIconModule,
+        MatButtonModule
+    ],
+    templateUrl: './relationship-card.component.html',
+    styleUrls: ['./relationship-card.component.css']
 })
 export class RelationshipCardComponent {
 

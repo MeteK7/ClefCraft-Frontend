@@ -27,18 +27,17 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Params, Router } from '@angular/router';
 
 @Component({
-  selector: 'app-board',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    BoardColumnComponent,
-    DragDropModule,
-    ItemDetailSidebarComponent,
-    MatIconModule,
-  ],
-  templateUrl: './board.component.html',
-  styleUrls: ['./board.component.css'],
+    selector: 'app-board',
+    imports: [
+        CommonModule,
+        FormsModule,
+        BoardColumnComponent,
+        DragDropModule,
+        ItemDetailSidebarComponent,
+        MatIconModule,
+    ],
+    templateUrl: './board.component.html',
+    styleUrls: ['./board.component.css']
 })
 export class BoardComponent implements OnInit, OnDestroy {
   boards: Board[] = [];

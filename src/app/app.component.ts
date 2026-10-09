@@ -12,11 +12,10 @@ import { LiveReminderToastComponent } from './pages/live-reminder-toast/live-rem
 import { IdleSessionService } from './_services/idle-session.service';
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [RouterOutlet, RouterModule, HeaderComponent, SidebarComponent, FooterComponent],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+    selector: 'app-root',
+    imports: [RouterOutlet, RouterModule, HeaderComponent, SidebarComponent, FooterComponent],
+    templateUrl: './app.component.html',
+    styleUrl: './app.component.css'
 })
 export class AppComponent implements OnInit {
   title = 'Activity Management';

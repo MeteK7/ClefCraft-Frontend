@@ -12,11 +12,10 @@ import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
 // someone (see CommentThreadComponent's confirm-before-share flow) — this panel is read-only
 // discovery plus the owner's remove action, never a place to add someone directly.
 @Component({
-  selector: 'app-calendar-collaborators-panel',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, UserAvatarComponent],
-  templateUrl: './calendar-collaborators-panel.component.html',
-  styleUrl: './calendar-collaborators-panel.component.css'
+    selector: 'app-calendar-collaborators-panel',
+    imports: [CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, UserAvatarComponent],
+    templateUrl: './calendar-collaborators-panel.component.html',
+    styleUrl: './calendar-collaborators-panel.component.css'
 })
 export class CalendarCollaboratorsPanelComponent implements OnChanges {
   @Input() eventId!: number;

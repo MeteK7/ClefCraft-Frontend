@@ -14,19 +14,18 @@ type ConfirmationMode =
   | 'allOverride';
 
 @Component({
-  selector: 'app-recurrence-scope-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatRadioModule,
-    MatIconModule,
-    MatDividerModule,
-  ],
-  templateUrl: './recurrence-scope-dialog.component.html',
-  styleUrls: ['./recurrence-scope-dialog.component.css'],
+    selector: 'app-recurrence-scope-dialog',
+    imports: [
+        CommonModule,
+        FormsModule,
+        MatDialogModule,
+        MatButtonModule,
+        MatRadioModule,
+        MatIconModule,
+        MatDividerModule,
+    ],
+    templateUrl: './recurrence-scope-dialog.component.html',
+    styleUrls: ['./recurrence-scope-dialog.component.css']
 })
 export class RecurrenceScopeDialogComponent {
 

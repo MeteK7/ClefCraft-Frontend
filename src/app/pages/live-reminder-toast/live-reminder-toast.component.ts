@@ -12,11 +12,10 @@ export interface ReminderToastData {
 }
 
 @Component({
-  selector: 'app-live-reminder-toast',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
-  templateUrl: './live-reminder-toast.component.html',
-  styleUrls: ['./live-reminder-toast.component.css']
+    selector: 'app-live-reminder-toast',
+    imports: [CommonModule, MatIconModule, MatButtonModule],
+    templateUrl: './live-reminder-toast.component.html',
+    styleUrls: ['./live-reminder-toast.component.css']
 })
 export class LiveReminderToastComponent implements OnInit, OnDestroy {
   readonly defaultColor = '#4f87f5';

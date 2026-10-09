@@ -9,11 +9,10 @@ export interface IdleWarningDialogData {
 }
 
 @Component({
-  selector: 'app-idle-warning-dialog',
-  standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule],
-  templateUrl: './idle-warning-dialog.component.html',
-  styleUrls: ['./idle-warning-dialog.component.css'],
+    selector: 'app-idle-warning-dialog',
+    imports: [MatDialogModule, MatButtonModule, MatIconModule],
+    templateUrl: './idle-warning-dialog.component.html',
+    styleUrls: ['./idle-warning-dialog.component.css']
 })
 export class IdleWarningDialogComponent implements OnInit, OnDestroy {
   secondsLeft = 0;

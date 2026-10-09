@@ -6,11 +6,10 @@ import { MAT_SNACK_BAR_DATA, MatSnackBarRef } from '@angular/material/snack-bar'
 import { MentionPayload } from '../../_services/notification-realtime.service';
 
 @Component({
-  selector: 'app-mention-toast',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
-  templateUrl: './mention-toast.component.html',
-  styleUrls: ['./mention-toast.component.css']
+    selector: 'app-mention-toast',
+    imports: [CommonModule, MatIconModule, MatButtonModule],
+    templateUrl: './mention-toast.component.html',
+    styleUrls: ['./mention-toast.component.css']
 })
 export class MentionToastComponent implements OnInit {
   readonly duration = 12000;

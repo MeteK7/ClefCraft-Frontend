@@ -46,31 +46,30 @@ import { stageWithinLimits } from '../../shared/attachment-limits';
 import { AuthService } from '../../_services/auth.service';
 
 @Component({
-  selector: 'app-calendar-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatCheckboxModule,
-    MatSelectModule,
-    MatTabsModule,
-    MatButtonModule,
-    MatIconModule,
-    MatDividerModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    NgxMatTimepickerModule,
-    QuillModule,
-    MatAutocompleteModule,
-    MatRadioModule,
-    CalendarHistoryTimelineComponent,
-    CommentThreadComponent,
-    CalendarCollaboratorsPanelComponent
-  ],
-  templateUrl: './calendar-dialog.component.html',
-  styleUrls: ['./calendar-dialog.component.css'],
+    selector: 'app-calendar-dialog',
+    imports: [
+        CommonModule,
+        ReactiveFormsModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatCheckboxModule,
+        MatSelectModule,
+        MatTabsModule,
+        MatButtonModule,
+        MatIconModule,
+        MatDividerModule,
+        MatDatepickerModule,
+        MatNativeDateModule,
+        NgxMatTimepickerModule,
+        QuillModule,
+        MatAutocompleteModule,
+        MatRadioModule,
+        CalendarHistoryTimelineComponent,
+        CommentThreadComponent,
+        CalendarCollaboratorsPanelComponent
+    ],
+    templateUrl: './calendar-dialog.component.html',
+    styleUrls: ['./calendar-dialog.component.css']
 })
 export class CalendarDialogComponent implements OnInit {
 

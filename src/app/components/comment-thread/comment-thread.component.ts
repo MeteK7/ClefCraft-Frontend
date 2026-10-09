@@ -13,11 +13,10 @@ import { CommentComposerComponent } from '../comment-composer/comment-composer.c
 type ComposerPayload = { bodyHtml: string; mentionedUserIds: string[]; mentionedUsers: { userId: string; fullName: string }[] };
 
 @Component({
-  selector: 'app-comment-thread',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule, UserAvatarComponent, CommentComposerComponent],
-  templateUrl: './comment-thread.component.html',
-  styleUrl: './comment-thread.component.css'
+    selector: 'app-comment-thread',
+    imports: [CommonModule, MatIconModule, MatButtonModule, UserAvatarComponent, CommentComposerComponent],
+    templateUrl: './comment-thread.component.html',
+    styleUrl: './comment-thread.component.css'
 })
 export class CommentThreadComponent implements OnInit {
   @Input() entityType!: string;

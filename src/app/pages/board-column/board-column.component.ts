@@ -9,11 +9,10 @@ import { BoardItemView } from '../../board-engine/models/board-item-view.model';
 import { handleBoardDrop } from '../../board-engine/interactions/board-drop-engine';
 
 @Component({
-  selector: 'app-board-column',
-  standalone: true,
-  imports: [CommonModule, DragDropModule, BoardItemComponent, MatSnackBarModule],
-  templateUrl: './board-column.component.html',
-  styleUrls: ['./board-column.component.css'],
+    selector: 'app-board-column',
+    imports: [CommonModule, DragDropModule, BoardItemComponent, MatSnackBarModule],
+    templateUrl: './board-column.component.html',
+    styleUrls: ['./board-column.component.css']
 })
 export class BoardColumnComponent {
   @Input() column!: BoardColumnView;

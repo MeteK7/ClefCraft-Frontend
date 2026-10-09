@@ -10,11 +10,10 @@ import { toLocalDate } from '../../shared/utils/date.utils';
 import { DisplayActivityChange, toDisplayChange } from '../../shared/utils/activity-log-display.utils';
 
 @Component({
-  selector: 'app-history-timeline',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
-  templateUrl: './history-timeline.component.html',
-  styleUrl: './history-timeline.component.css'
+    selector: 'app-history-timeline',
+    imports: [CommonModule, MatIconModule, MatButtonModule],
+    templateUrl: './history-timeline.component.html',
+    styleUrl: './history-timeline.component.css'
 })
 export class HistoryTimelineComponent implements OnInit {
   @Input() entityType!: string;

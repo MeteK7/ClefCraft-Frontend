@@ -13,18 +13,17 @@ import { Board } from '../../models/board.model';
  * elsewhere in the app, so this dialog can grow an edit path later without rework.
  */
 @Component({
-  selector: 'app-board-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-  ],
-  templateUrl: './board-dialog.component.html',
-  styleUrls: ['./board-dialog.component.css'],
+    selector: 'app-board-dialog',
+    imports: [
+        CommonModule,
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+    ],
+    templateUrl: './board-dialog.component.html',
+    styleUrls: ['./board-dialog.component.css']
 })
 export class BoardDialogComponent {
   form: FormGroup;

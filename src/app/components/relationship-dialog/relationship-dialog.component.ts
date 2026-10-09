@@ -39,7 +39,6 @@ import { BoardService } from '../../_services/board.service';
 
 @Component({
     selector: 'app-relationship-dialog',
-    standalone: true,
     imports: [
         CommonModule,
         ReactiveFormsModule,

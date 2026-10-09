@@ -8,18 +8,17 @@ import { MatIconModule } from '@angular/material/icon';
 import { RecurrenceDeleteScope } from '../../models/recurrence-delete-scope.model';
 
 @Component({
-  selector: 'app-recurrence-delete-scope-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatRadioModule,
-    MatIconModule,
-  ],
-  templateUrl: './recurrence-delete-scope-dialog.component.html',
-  styleUrls: ['./recurrence-delete-scope-dialog.component.css'],
+    selector: 'app-recurrence-delete-scope-dialog',
+    imports: [
+        CommonModule,
+        FormsModule,
+        MatDialogModule,
+        MatButtonModule,
+        MatRadioModule,
+        MatIconModule,
+    ],
+    templateUrl: './recurrence-delete-scope-dialog.component.html',
+    styleUrls: ['./recurrence-delete-scope-dialog.component.css']
 })
 export class RecurrenceDeleteScopeDialogComponent {
 

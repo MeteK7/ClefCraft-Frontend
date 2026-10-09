@@ -48,10 +48,9 @@ export interface VisibleMonthChangeEvent {
 
 @Component({
     selector: 'app-month-scroll-view',
-    standalone: true,
     imports: [CommonModule, MatIconModule, MatMenuModule, DragDropModule],
     templateUrl: './month-scroll-view.component.html',
-    styleUrls: ['./month-scroll-view.component.css'],
+    styleUrls: ['./month-scroll-view.component.css']
 })
 export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDestroy {
 

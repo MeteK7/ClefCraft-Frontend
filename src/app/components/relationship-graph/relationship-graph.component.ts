@@ -70,7 +70,6 @@ type RelationshipStyle = {
 
 @Component({
     selector: 'app-relationship-graph',
-    standalone: true,
     imports: [CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, GraphCardSizeDirective],
     templateUrl: './relationship-graph.component.html',
     styleUrls: ['./relationship-graph.component.css'],

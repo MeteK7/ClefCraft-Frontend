@@ -10,11 +10,10 @@ import { MentionableUser } from '../../models/comment.model';
 import { commentQuillModules } from '../../shared/quill-config';
 
 @Component({
-  selector: 'app-comment-composer',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatButtonModule, QuillModule],
-  templateUrl: './comment-composer.component.html',
-  styleUrl: './comment-composer.component.css'
+    selector: 'app-comment-composer',
+    imports: [CommonModule, ReactiveFormsModule, MatButtonModule, QuillModule],
+    templateUrl: './comment-composer.component.html',
+    styleUrl: './comment-composer.component.css'
 })
 export class CommentComposerComponent implements OnInit {
   @Input() entityType!: string;

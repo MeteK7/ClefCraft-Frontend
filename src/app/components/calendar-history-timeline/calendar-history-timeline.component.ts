@@ -11,11 +11,10 @@ import { DisplayActivityChange } from '../../shared/utils/activity-log-display.u
 import { toCalendarDisplayChanges } from '../../shared/utils/calendar-activity-log-display.utils';
 
 @Component({
-  selector: 'app-calendar-history-timeline',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
-  templateUrl: './calendar-history-timeline.component.html',
-  styleUrl: './calendar-history-timeline.component.css'
+    selector: 'app-calendar-history-timeline',
+    imports: [CommonModule, MatIconModule, MatButtonModule],
+    templateUrl: './calendar-history-timeline.component.html',
+    styleUrl: './calendar-history-timeline.component.css'
 })
 export class CalendarHistoryTimelineComponent implements OnInit {
   @Input() eventId!: number;

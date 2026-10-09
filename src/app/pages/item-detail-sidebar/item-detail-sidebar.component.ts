@@ -5,11 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { BoardService } from '../../_services/board.service';
 
 @Component({
-  selector: 'app-item-detail-sidebar',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './item-detail-sidebar.component.html',
-  styleUrl: './item-detail-sidebar.component.css'
+    selector: 'app-item-detail-sidebar',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './item-detail-sidebar.component.html',
+    styleUrl: './item-detail-sidebar.component.css'
 })
 export class ItemDetailSidebarComponent {
   @Input() item!: Item;

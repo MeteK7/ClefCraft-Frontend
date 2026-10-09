@@ -7,11 +7,10 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
-  selector: 'app-registration',
-  standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
-  templateUrl: './registration.component.html',
-  styleUrls: ['./registration.component.css']
+    selector: 'app-registration',
+    imports: [CommonModule, FormsModule, RouterModule],
+    templateUrl: './registration.component.html',
+    styleUrls: ['./registration.component.css']
 })
 export class RegistrationComponent {
 

@@ -26,11 +26,10 @@ const MAX_UPCOMING_EVENTS = 5;
 const MAX_DUE_ITEMS = 8;
 
 @Component({
-  selector: 'app-home',
-  standalone: true,
-  imports: [CommonModule, RouterModule, MatDialogModule, MatIconModule],
-  templateUrl: './home.component.html',
-  styleUrl: './home.component.css',
+    selector: 'app-home',
+    imports: [CommonModule, RouterModule, MatDialogModule, MatIconModule],
+    templateUrl: './home.component.html',
+    styleUrl: './home.component.css'
 })
 export class HomeComponent implements OnInit {
   userFullName = '';

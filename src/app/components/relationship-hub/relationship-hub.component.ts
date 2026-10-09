@@ -32,7 +32,6 @@ import { FormsModule } from '@angular/forms';
 
 @Component({
     selector: 'app-relationship-hub',
-    standalone: true,
     imports: [
         FormsModule,
         CommonModule,

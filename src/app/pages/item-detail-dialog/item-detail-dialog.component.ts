@@ -38,28 +38,27 @@ export interface ItemDetailDialogData {
 }
 
 @Component({
-  selector: 'app-item-detail-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatTabsModule,
-    MatSelectModule,
-    MatRadioModule,
-    MatTooltipModule,
-    MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatRippleModule,
-    RelationshipHubComponent,
-    HistoryTimelineComponent,
-    CommentThreadComponent
-  ],
-  templateUrl: './item-detail-dialog.component.html',
-  styleUrl: './item-detail-dialog.component.css'
+    selector: 'app-item-detail-dialog',
+    imports: [
+        CommonModule,
+        ReactiveFormsModule,
+        MatTabsModule,
+        MatSelectModule,
+        MatRadioModule,
+        MatTooltipModule,
+        MatIconModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatDatepickerModule,
+        MatNativeDateModule,
+        MatRippleModule,
+        RelationshipHubComponent,
+        HistoryTimelineComponent,
+        CommentThreadComponent
+    ],
+    templateUrl: './item-detail-dialog.component.html',
+    styleUrl: './item-detail-dialog.component.css'
 })
 export class ItemDetailDialogComponent implements OnInit {
   form!: FormGroup;

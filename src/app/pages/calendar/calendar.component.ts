@@ -55,25 +55,24 @@ type RangeOrigin = 'scroll' | 'mutation';
 interface RangeRequest { start: Date; end: Date; origin: RangeOrigin; }
 
 @Component({
-  selector: 'app-calendar',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatDialogModule,
-    MatTooltipModule,
-    MatButtonModule,
-    MatInputModule,
-    MatIconModule,
-    MatMenuModule,
-    MatSnackBarModule,
-    DragDropModule,
-    CalendarDialogComponent,
-    MonthScrollViewComponent,
-  ],
-  templateUrl: './calendar.component.html',
-  styleUrls: ['./calendar.component.css'],
+    selector: 'app-calendar',
+    imports: [
+        CommonModule,
+        MatDatepickerModule,
+        MatNativeDateModule,
+        MatDialogModule,
+        MatTooltipModule,
+        MatButtonModule,
+        MatInputModule,
+        MatIconModule,
+        MatMenuModule,
+        MatSnackBarModule,
+        DragDropModule,
+        CalendarDialogComponent,
+        MonthScrollViewComponent,
+    ],
+    templateUrl: './calendar.component.html',
+    styleUrls: ['./calendar.component.css']
 })
 export class CalendarComponent implements OnInit, OnDestroy {
 

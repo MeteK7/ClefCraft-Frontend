@@ -5,11 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 @Component({
-  selector: 'app-item-detail',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './item-detail.component.html',
-  styleUrl: './item-detail.component.css'
+    selector: 'app-item-detail',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './item-detail.component.html',
+    styleUrl: './item-detail.component.css'
 })
 export class ItemDetailComponent {
   @Input() item!: Item; // This will be used for sidebar

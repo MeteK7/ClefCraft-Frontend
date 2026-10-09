@@ -12,6 +12,16 @@
       "url": "http://localhost:4200"
     },
     {
+      "name": "clefcraft-api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project", "C:/Projects/Backend/ClefCraft-Backend/ClefCraft.Api/ClefCraft.Api.csproj",
+        "--launch-profile", "https"
+      ],
+      "port": 5166
+    },
+    {
       "name": "clefcraft-api-short-tokens",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": [
