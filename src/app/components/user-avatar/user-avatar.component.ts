@@ -1,13 +1,13 @@
-import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
-  selector: 'app-user-avatar',
-  standalone: true,
-  imports: [CommonModule, MatTooltipModule],
-  templateUrl: './user-avatar.component.html',
-  styleUrl: './user-avatar.component.css'
+    selector: 'app-user-avatar',
+    imports: [MatTooltipModule],
+    templateUrl: './user-avatar.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './user-avatar.component.css'
 })
 export class UserAvatarComponent {
   @Input() fullName = '';

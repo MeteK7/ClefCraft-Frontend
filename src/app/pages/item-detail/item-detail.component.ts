@@ -1,15 +1,15 @@
-import { Component, EventEmitter, Inject, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Inject, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { Item } from '../../models/board.model';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 @Component({
-  selector: 'app-item-detail',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './item-detail.component.html',
-  styleUrl: './item-detail.component.css'
+    selector: 'app-item-detail',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './item-detail.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './item-detail.component.css'
 })
 export class ItemDetailComponent {
   @Input() item!: Item; // This will be used for sidebar

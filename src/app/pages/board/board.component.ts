@@ -1,5 +1,5 @@
-import { Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
+
 import { Subscription } from 'rxjs';
 import { BoardColumnComponent } from '../board-column/board-column.component';
 import { BoardService } from '../../_services/board.service';
@@ -27,18 +27,17 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Params, Router } from '@angular/router';
 
 @Component({
-  selector: 'app-board',
-  standalone: true,
-  imports: [
-    CommonModule,
+    selector: 'app-board',
+    imports: [
     FormsModule,
     BoardColumnComponent,
     DragDropModule,
     ItemDetailSidebarComponent,
-    MatIconModule,
-  ],
-  templateUrl: './board.component.html',
-  styleUrls: ['./board.component.css'],
+    MatIconModule
+],
+    templateUrl: './board.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrls: ['./board.component.css']
 })
 export class BoardComponent implements OnInit, OnDestroy {
   boards: Board[] = [];

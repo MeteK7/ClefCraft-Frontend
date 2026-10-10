@@ -4,24 +4,30 @@
   </div>
 
   <div class="tags">
-    <span class="tag" *ngFor="let tag of item.tags">
-      {{ tag.name }}
-    </span>
+    @for (tag of item.tags; track tag) {
+      <span class="tag">
+        {{ tag.name }}
+      </span>
+    }
   </div>
 
   <div class="item-footer">
-    <div class="priority-container" *ngIf="item.priorityId">
-      <span
-        class="priority-indicator"
-        [ngClass]="'priority-' + item.priorityId"
-        [matTooltip]="item.priorityName"
-        matTooltipPosition="above"
-      >
-      </span>
-    </div>
-    <div class="assignee-container" *ngIf="item.fullName">
-      <span class="assignee">{{ item.fullName }}</span>
-      <div class="avatar">{{ item.initials }}</div>
-    </div>
+    @if (item.priorityId) {
+      <div class="priority-container">
+        <span
+          class="priority-indicator"
+          [ngClass]="'priority-' + item.priorityId"
+          [matTooltip]="item.priorityName"
+          matTooltipPosition="above"
+          >
+        </span>
+      </div>
+    }
+    @if (item.fullName) {
+      <div class="assignee-container">
+        <span class="assignee">{{ item.fullName }}</span>
+        <div class="avatar">{{ item.initials }}</div>
+      </div>
+    }
   </div>
 </div>

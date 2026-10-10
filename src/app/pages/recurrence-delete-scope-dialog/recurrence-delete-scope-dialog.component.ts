@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
+
 import { FormsModule } from '@angular/forms';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,18 +8,17 @@ import { MatIconModule } from '@angular/material/icon';
 import { RecurrenceDeleteScope } from '../../models/recurrence-delete-scope.model';
 
 @Component({
-  selector: 'app-recurrence-delete-scope-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
+    selector: 'app-recurrence-delete-scope-dialog',
+    imports: [
     FormsModule,
     MatDialogModule,
     MatButtonModule,
     MatRadioModule,
-    MatIconModule,
-  ],
-  templateUrl: './recurrence-delete-scope-dialog.component.html',
-  styleUrls: ['./recurrence-delete-scope-dialog.component.css'],
+    MatIconModule
+],
+    templateUrl: './recurrence-delete-scope-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrls: ['./recurrence-delete-scope-dialog.component.css']
 })
 export class RecurrenceDeleteScopeDialogComponent {
 

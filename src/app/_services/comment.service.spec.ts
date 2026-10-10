@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { CommentService, CreateCommentRequest, UpdateCommentRequest } from './comment.service';
 import { Comment, MentionableUser } from '../models/comment.model';
@@ -30,7 +30,7 @@ describe('CommentService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()]
     });
     service = TestBed.inject(CommentService);
     httpMock = TestBed.inject(HttpTestingController);

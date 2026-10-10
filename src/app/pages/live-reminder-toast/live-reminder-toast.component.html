@@ -33,10 +33,12 @@
     <div class="reminder-content">
       <span class="reminder-eyebrow">Reminder</span>
       <p class="reminder-message">{{ data.message }}</p>
-      <div class="reminder-meta" *ngIf="data.timeUntil">
-        <mat-icon class="reminder-meta-icon">schedule</mat-icon>
-        {{ data.timeUntil }}
-      </div>
+      @if (data.timeUntil) {
+        <div class="reminder-meta">
+          <mat-icon class="reminder-meta-icon">schedule</mat-icon>
+          {{ data.timeUntil }}
+        </div>
+      }
       <div class="reminder-actions">
         <button
           mat-stroked-button

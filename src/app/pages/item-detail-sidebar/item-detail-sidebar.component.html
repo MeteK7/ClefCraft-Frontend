@@ -29,7 +29,9 @@
   <div>
     <label>Linked Items:</label>
     <ul>
-      <li *ngFor="let linkedItem of item.linkedItems">{{ linkedItem.title }}</li>
+      @for (linkedItem of item.linkedItems; track linkedItem) {
+        <li>{{ linkedItem.title }}</li>
+      }
     </ul>
   </div>
 

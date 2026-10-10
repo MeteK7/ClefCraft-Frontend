@@ -3,8 +3,9 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "rootDir": "..",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "types": ["node"]
   },
   "include": ["**/*.ts", "../playwright.config.ts"]

@@ -1,11 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
-  selector: 'app-management',
-  standalone: true,
-  imports: [],
-  templateUrl: './management.component.html',
-  styleUrl: './management.component.css'
+    selector: 'app-management',
+    imports: [],
+    templateUrl: './management.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './management.component.css'
 })
 export class ManagementComponent {
 

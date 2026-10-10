@@ -1,5 +1,5 @@
-import { Component, Inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Inject, ChangeDetectionStrategy } from '@angular/core';
+
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,18 +13,17 @@ import { Board } from '../../models/board.model';
  * elsewhere in the app, so this dialog can grow an edit path later without rework.
  */
 @Component({
-  selector: 'app-board-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
+    selector: 'app-board-dialog',
+    imports: [
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
-    MatButtonModule,
-  ],
-  templateUrl: './board-dialog.component.html',
-  styleUrls: ['./board-dialog.component.css'],
+    MatButtonModule
+],
+    templateUrl: './board-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrls: ['./board-dialog.component.css']
 })
 export class BoardDialogComponent {
   form: FormGroup;

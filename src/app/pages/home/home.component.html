@@ -9,28 +9,37 @@
       </div>
 
       <div class="panel-body">
-        <p class="loading" *ngIf="isLoadingEvents">Loading…</p>
+        @if (isLoadingEvents) {
+          <p class="loading">Loading…</p>
+        }
 
-        <p class="empty" *ngIf="!isLoadingEvents && upcomingEvents.length === 0">
-          Nothing on your calendar in the next 7 days.
-        </p>
+        @if (!isLoadingEvents && upcomingEvents.length === 0) {
+          <p class="empty">
+            Nothing on your calendar in the next 7 days.
+          </p>
+        }
 
-        <ul class="row-list" *ngIf="!isLoadingEvents && upcomingEvents.length > 0">
-          <li
-            class="row"
-            *ngFor="let event of upcomingEvents"
-            (click)="openEvent(event)"
-          >
-            <mat-icon class="row-icon">event</mat-icon>
-            <div class="row-main">
-              <span class="row-title">{{ event.subject }}</span>
-              <span class="row-meta">
-                {{ event.startDate | date: 'EEE, MMM d · h:mm a' }}
-                <ng-container *ngIf="event.eventTypeName"> · {{ event.eventTypeName }}</ng-container>
-              </span>
-            </div>
-          </li>
-        </ul>
+        @if (!isLoadingEvents && upcomingEvents.length > 0) {
+          <ul class="row-list">
+            @for (event of upcomingEvents; track event) {
+              <li
+                class="row"
+                (click)="openEvent(event)"
+                >
+                <mat-icon class="row-icon">event</mat-icon>
+                <div class="row-main">
+                  <span class="row-title">{{ event.subject }}</span>
+                  <span class="row-meta">
+                    {{ event.startDate | date: 'EEE, MMM d · h:mm a' }}
+                    @if (event.eventTypeName) {
+                      · {{ event.eventTypeName }}
+                    }
+                  </span>
+                </div>
+              </li>
+            }
+          </ul>
+        }
       </div>
     </section>
 
@@ -41,43 +50,52 @@
       </div>
 
       <div class="panel-body">
-        <p class="loading" *ngIf="isLoadingDueItems">Loading…</p>
+        @if (isLoadingDueItems) {
+          <p class="loading">Loading…</p>
+        }
 
-        <p class="empty" *ngIf="!isLoadingDueItems && dueItems.length === 0">
-          No items due soon.
-        </p>
+        @if (!isLoadingDueItems && dueItems.length === 0) {
+          <p class="empty">
+            No items due soon.
+          </p>
+        }
 
-        <ul class="row-list" *ngIf="!isLoadingDueItems && dueItems.length > 0">
-          <li
-            class="row"
-            *ngFor="let entry of dueItems"
-            (click)="openItem(entry)"
-          >
-            <mat-icon class="row-icon" [class.overdue-icon]="isOverdue(entry.item.dueDate)">
-              {{ isOverdue(entry.item.dueDate) ? 'error' : 'assignment' }}
-            </mat-icon>
-            <div class="row-main">
-              <span class="row-title">{{ entry.item.title }}</span>
-              <span class="row-meta">
-                {{ entry.boardTitle }} ·
-                <span [class.overdue-text]="isOverdue(entry.item.dueDate)">
-                  Due {{ entry.item.dueDate | date: 'MMM d' }}
-                </span>
-              </span>
-            </div>
-          </li>
-        </ul>
+        @if (!isLoadingDueItems && dueItems.length > 0) {
+          <ul class="row-list">
+            @for (entry of dueItems; track entry) {
+              <li
+                class="row"
+                (click)="openItem(entry)"
+                >
+                <mat-icon class="row-icon" [class.overdue-icon]="isOverdue(entry.item.dueDate)">
+                  {{ isOverdue(entry.item.dueDate) ? 'error' : 'assignment' }}
+                </mat-icon>
+                <div class="row-main">
+                  <span class="row-title">{{ entry.item.title }}</span>
+                  <span class="row-meta">
+                    {{ entry.boardTitle }} ·
+                    <span [class.overdue-text]="isOverdue(entry.item.dueDate)">
+                      Due {{ entry.item.dueDate | date: 'MMM d' }}
+                    </span>
+                  </span>
+                </div>
+              </li>
+            }
+          </ul>
+        }
       </div>
     </section>
   </div>
 
-  <section class="tools" *ngIf="isAdmin">
-    <h3>Tools</h3>
-    <div class="tool-tiles">
-      <a routerLink="/management" class="tool-tile">
-        <mat-icon>admin_panel_settings</mat-icon>
-        <span>Management</span>
-      </a>
-    </div>
-  </section>
+  @if (isAdmin) {
+    <section class="tools">
+      <h3>Tools</h3>
+      <div class="tool-tiles">
+        <a routerLink="/management" class="tool-tile">
+          <mat-icon>admin_panel_settings</mat-icon>
+          <span>Management</span>
+        </a>
+      </div>
+    </section>
+  }
 </div>

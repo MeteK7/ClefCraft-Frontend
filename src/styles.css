@@ -1,4 +1,5 @@
 /* You can add global styles to this file, and also import other style files */
+@import "./themes/material-typography.css";
 @import "./themes/_variables.css";
 @import "./themes/light-theme.css";
 @import "./themes/dark-theme.css";
@@ -16,8 +17,8 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 }
 
 .clean-reminder-viewport-override .mat-mdc-snack-bar-container {
-  --mdc-snackbar-container-color: transparent;
-  --mdc-snackbar-supporting-text-color: inherit;
+  --mat-snackbar-container-color: transparent;
+  --mat-snackbar-supporting-text-color: inherit;
   padding: 0 !important;
   box-shadow: none !important;
 }

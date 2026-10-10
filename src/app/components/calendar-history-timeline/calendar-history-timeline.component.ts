@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, formatDate } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,11 +11,11 @@ import { DisplayActivityChange } from '../../shared/utils/activity-log-display.u
 import { toCalendarDisplayChanges } from '../../shared/utils/calendar-activity-log-display.utils';
 
 @Component({
-  selector: 'app-calendar-history-timeline',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
-  templateUrl: './calendar-history-timeline.component.html',
-  styleUrl: './calendar-history-timeline.component.css'
+    selector: 'app-calendar-history-timeline',
+    imports: [CommonModule, MatIconModule, MatButtonModule],
+    templateUrl: './calendar-history-timeline.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './calendar-history-timeline.component.css'
 })
 export class CalendarHistoryTimelineComponent implements OnInit {
   @Input() eventId!: number;

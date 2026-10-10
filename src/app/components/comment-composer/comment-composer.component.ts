@@ -1,5 +1,5 @@
-import { afterNextRender, Component, ElementRef, EventEmitter, Injector, Input, OnInit, Output, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { afterNextRender, Component, ElementRef, EventEmitter, Injector, Input, OnInit, Output, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { QuillModule } from 'ngx-quill';
@@ -10,11 +10,11 @@ import { MentionableUser } from '../../models/comment.model';
 import { commentQuillModules } from '../../shared/quill-config';
 
 @Component({
-  selector: 'app-comment-composer',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatButtonModule, QuillModule],
-  templateUrl: './comment-composer.component.html',
-  styleUrl: './comment-composer.component.css'
+    selector: 'app-comment-composer',
+    imports: [ReactiveFormsModule, MatButtonModule, QuillModule],
+    templateUrl: './comment-composer.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './comment-composer.component.css'
 })
 export class CommentComposerComponent implements OnInit {
   @Input() entityType!: string;

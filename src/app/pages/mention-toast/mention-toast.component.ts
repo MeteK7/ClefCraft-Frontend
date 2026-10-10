@@ -1,16 +1,16 @@
-import { Component, Inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_SNACK_BAR_DATA, MatSnackBarRef } from '@angular/material/snack-bar';
 import { MentionPayload } from '../../_services/notification-realtime.service';
 
 @Component({
-  selector: 'app-mention-toast',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
-  templateUrl: './mention-toast.component.html',
-  styleUrls: ['./mention-toast.component.css']
+    selector: 'app-mention-toast',
+    imports: [MatIconModule, MatButtonModule],
+    templateUrl: './mention-toast.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrls: ['./mention-toast.component.css']
 })
 export class MentionToastComponent implements OnInit {
   readonly duration = 12000;

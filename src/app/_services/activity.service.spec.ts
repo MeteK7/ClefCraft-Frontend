@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivityService } from './activity.service';
 import { PagedResult, ActivityLogEntry } from '../models/activity-log.model';
@@ -12,7 +12,7 @@ describe('ActivityService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()]
     });
     service = TestBed.inject(ActivityService);
     httpMock = TestBed.inject(HttpTestingController);

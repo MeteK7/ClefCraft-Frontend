@@ -1,36 +1,40 @@
 <div class="relationship-card">
 
-    <div class="card-main">
+  <div class="card-main">
 
-        <!-- Hit box is now limited exactly to the title element bounds -->
-        <div class="title" (click)="openItemInNewTab($event)">
-            #{{relationship.itemId}} {{relationship.title}}
-        </div>
+    <!-- Hit box is now limited exactly to the title element bounds -->
+    <div class="title" (click)="openItemInNewTab($event)">
+      #{{relationship.itemId}} {{relationship.title}}
+    </div>
 
-        <div class="metadata">
+    <div class="metadata">
 
-            <span class="direction" *ngIf="directionLabel">
-                {{directionLabel}}
-            </span>
+      @if (directionLabel) {
+        <span class="direction">
+          {{directionLabel}}
+        </span>
+      }
 
-            <span class="status">
-                {{relationship.status}}
-            </span>
+      <span class="status">
+        {{relationship.status}}
+      </span>
 
-            <span class="priority">
-                {{relationship.priority}}
-            </span>
+      <span class="priority">
+        {{relationship.priority}}
+      </span>
 
-            <span *ngIf="relationship.dueDate">
-                {{relationship.dueDate | date:'shortDate'}}
-            </span>
-
-        </div>
+      @if (relationship.dueDate) {
+        <span>
+          {{relationship.dueDate | date:'shortDate'}}
+        </span>
+      }
 
     </div>
 
-    <button mat-icon-button color="warn" (click)="remove()">
-        <mat-icon>delete</mat-icon>
-    </button>
+  </div>
+
+  <button mat-icon-button color="warn" (click)="remove()">
+    <mat-icon>delete</mat-icon>
+  </button>
 
 </div>

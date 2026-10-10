@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,11 +10,11 @@ import { toLocalDate } from '../../shared/utils/date.utils';
 import { DisplayActivityChange, toDisplayChange } from '../../shared/utils/activity-log-display.utils';
 
 @Component({
-  selector: 'app-history-timeline',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
-  templateUrl: './history-timeline.component.html',
-  styleUrl: './history-timeline.component.css'
+    selector: 'app-history-timeline',
+    imports: [CommonModule, MatIconModule, MatButtonModule],
+    templateUrl: './history-timeline.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './history-timeline.component.css'
 })
 export class HistoryTimelineComponent implements OnInit {
   @Input() entityType!: string;

@@ -5,8 +5,27 @@ import { jwtDecode } from 'jwt-decode';
 import { environment } from '../../environments/environment';
 import { Router } from '@angular/router';
 
-// Replace "any" with your actual User model when available.
-type CurrentUser = any;
+/** The signed-in user, as returned by GET /api/Auth/me. */
+export interface CurrentUser {
+  id: string;
+  firstname: string;
+  lastname: string;
+  fullName: string;
+  email: string;
+}
+
+export interface RegistrationResponse {
+  userId: string;
+}
+
+/** The access-token claims this app reads. */
+interface TokenClaims {
+  exp?: number;
+  uid?: string;
+  role?: string | string[];
+  roles?: string | string[];
+  [claim: string]: unknown;
+}
 
 export interface AuthSession {
   token: string;
@@ -66,8 +85,8 @@ export class AuthService {
   // Authentication
   // ==========================================================
 
-  login(email: string, password: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/login`, {
+  login(email: string, password: string): Observable<AuthSession> {
+    return this.http.post<AuthSession>(`${this.apiUrl}/login`, {
       email,
       password
     });
@@ -79,8 +98,8 @@ export class AuthService {
     email: string,
     userName: string,
     password: string
-  ): Observable<any> {
-    return this.http.post(`${this.apiUrl}/register`, {
+  ): Observable<RegistrationResponse> {
+    return this.http.post<RegistrationResponse>(`${this.apiUrl}/register`, {
       firstName,
       lastName,
       email,
@@ -189,9 +208,9 @@ export class AuthService {
     }
   }
 
-  private withCrossTabLock<T>(action: () => Promise<T>): Promise<T> {
+  private async withCrossTabLock<T>(action: () => Promise<T>): Promise<T> {
     return typeof navigator !== 'undefined' && navigator.locks
-      ? navigator.locks.request('clefcraft-auth-refresh', action)
+      ? await navigator.locks.request('clefcraft-auth-refresh', action)
       : action();
   }
 
@@ -243,7 +262,7 @@ export class AuthService {
 
   private isAccessTokenUsable(token: string, skewMs = ACCESS_TOKEN_SKEW_MS): boolean {
     try {
-      const decoded: any = jwtDecode(token);
+      const decoded = jwtDecode<TokenClaims>(token);
 
       return !!decoded.exp && decoded.exp * 1000 - skewMs > Date.now();
     }
@@ -257,7 +276,7 @@ export class AuthService {
   // JWT Helpers
   // ==========================================================
 
-  decodeToken(): any | null {
+  decodeToken(): TokenClaims | null {
     const token = this.getToken();
 
     if (!token) {
@@ -265,7 +284,7 @@ export class AuthService {
     }
 
     try {
-      return jwtDecode(token);
+      return jwtDecode<TokenClaims>(token);
     } catch (error) {
       console.error('Invalid JWT token.', error);
       return null;
@@ -302,7 +321,7 @@ export class AuthService {
     return (
       token.role ??
       token.roles ??
-      token['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
+      (token['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] as string | string[] | undefined) ??
       null
     );
   }

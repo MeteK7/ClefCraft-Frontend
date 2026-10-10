@@ -1,12 +1,12 @@
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { Router, provideRouter } from '@angular/router';
+import { NavigationEnd, Router, provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { CalendarComponent } from './calendar.component';
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
-import { of, Subject } from 'rxjs';
+import { filter, firstValueFrom, of, Subject } from 'rxjs';
 import { NotificationRealtimeService, ReminderPayload } from '../../_services/notification-realtime.service';
 
 describe('CalendarComponent', () => {
@@ -17,7 +17,7 @@ describe('CalendarComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
@@ -65,7 +65,7 @@ describe('CalendarComponent — mergeEvents() occurrence identity', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
@@ -143,7 +143,7 @@ describe('CalendarComponent — mergeEvents() drops stale occurrences superseded
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
@@ -205,7 +205,7 @@ describe('CalendarComponent — findEventByOccurrence()', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
@@ -266,7 +266,7 @@ describe('CalendarComponent — refreshAfterSave() loading state and race safety
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
@@ -368,7 +368,7 @@ describe('CalendarComponent — getWeekNumber() / getDayOfYear()', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
@@ -446,7 +446,7 @@ describe('CalendarComponent — attachment upload after save', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()]
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(CalendarComponent);
@@ -494,7 +494,7 @@ describe('CalendarComponent — reminders and redirect params', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
@@ -522,11 +522,12 @@ describe('CalendarComponent — reminders and redirect params', () => {
 
     // The visible range is reloaded first; the event opens once that data is in.
     expect(openEventById).not.toHaveBeenCalled();
+    const paramsCleared = firstValueFrom(router.events.pipe(filter(e => e instanceof NavigationEnd)));
     flushEvents();
 
     expect(openEventById).toHaveBeenCalledOnceWith(62, 9);
     // …and the params are cleared afterwards; that clearing emission opens nothing.
-    await Promise.resolve();
+    await paramsCleared;
     expect(router.url).toBe('/');
     expect(openEventById).toHaveBeenCalledTimes(1);
   });

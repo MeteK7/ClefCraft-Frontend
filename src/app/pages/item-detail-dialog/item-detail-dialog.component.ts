@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -18,6 +18,7 @@ import { Column, Item, Priority, Status, Tag } from '../../models/board.model';
 import { BoardService } from '../../_services/board.service';
 import { CalendarService } from '../../_services/calendar.service';
 import { Assignee } from '../../models/assignee.model';
+import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 import { UserService } from '../../_services/user.service';
 import { RelationshipHubComponent } from '../../components/relationship-hub/relationship-hub.component';
 import { HistoryTimelineComponent } from '../../components/history-timeline/history-timeline.component';
@@ -38,28 +39,28 @@ export interface ItemDetailDialogData {
 }
 
 @Component({
-  selector: 'app-item-detail-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatTabsModule,
-    MatSelectModule,
-    MatRadioModule,
-    MatTooltipModule,
-    MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatRippleModule,
-    RelationshipHubComponent,
-    HistoryTimelineComponent,
-    CommentThreadComponent
-  ],
-  templateUrl: './item-detail-dialog.component.html',
-  styleUrl: './item-detail-dialog.component.css'
+    selector: 'app-item-detail-dialog',
+    imports: [
+        CommonModule,
+        ReactiveFormsModule,
+        MatTabsModule,
+        MatSelectModule,
+        MatRadioModule,
+        MatTooltipModule,
+        MatIconModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatDatepickerModule,
+        MatNativeDateModule,
+        MatRippleModule,
+        RelationshipHubComponent,
+        HistoryTimelineComponent,
+        CommentThreadComponent
+    ],
+    templateUrl: './item-detail-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './item-detail-dialog.component.css'
 })
 export class ItemDetailDialogComponent implements OnInit {
   form!: FormGroup;
@@ -81,7 +82,7 @@ export class ItemDetailDialogComponent implements OnInit {
     return !this.data.item?.id;
   }
 
-  /** Non-null accessor for template use inside *ngIf="!isNewItem" blocks. */
+  /** Non-null accessor for template use inside @if (!isNewItem) blocks. */
   get item(): Item {
     return this.data.item!;
   }
@@ -320,7 +321,7 @@ export class ItemDetailDialogComponent implements OnInit {
 
     const formValue = this.form.value;
 
-    const calendarEvent = {
+    const calendarEvent: CalendarEventUI = {
       subject: formValue.title,
       comment: formValue.description,
       startDate: startDate,
@@ -334,12 +335,6 @@ export class ItemDetailDialogComponent implements OnInit {
       this.fetchMarkAsWorkedHistory();
       this.dialogRef.close();
     });
-  }
-
-  openRelatedItem(itemId: number): void {
-
-    console.log("Open related item", itemId);
-
   }
 
   openItemInNewTab(): void {

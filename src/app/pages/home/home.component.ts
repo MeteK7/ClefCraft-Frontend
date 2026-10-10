@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -26,13 +27,15 @@ const MAX_UPCOMING_EVENTS = 5;
 const MAX_DUE_ITEMS = 8;
 
 @Component({
-  selector: 'app-home',
-  standalone: true,
-  imports: [CommonModule, RouterModule, MatDialogModule, MatIconModule],
-  templateUrl: './home.component.html',
-  styleUrl: './home.component.css',
+    selector: 'app-home',
+    imports: [CommonModule, RouterModule, MatDialogModule, MatIconModule],
+    templateUrl: './home.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './home.component.css'
 })
 export class HomeComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+
   userFullName = '';
   isAdmin = false;
 
@@ -52,7 +55,7 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.authService.currentUser$.subscribe(user => {
+    this.authService.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(user => {
       this.userFullName = user?.fullName ?? '';
     });
 

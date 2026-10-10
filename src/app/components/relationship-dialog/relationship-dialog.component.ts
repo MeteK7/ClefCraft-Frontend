@@ -1,6 +1,7 @@
 import {
-    Component,
-    Inject
+  Component,
+  Inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 
 import {
@@ -9,7 +10,7 @@ import {
     Validators
 } from '@angular/forms';
 
-import { CommonModule } from '@angular/common';
+
 
 import {
     MAT_DIALOG_DATA,
@@ -39,18 +40,17 @@ import { BoardService } from '../../_services/board.service';
 
 @Component({
     selector: 'app-relationship-dialog',
-    standalone: true,
     imports: [
-        CommonModule,
-        ReactiveFormsModule,
-        MatDialogModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatSelectModule,
-        MatButtonModule,
-        MatIconModule
-    ],
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatIconModule
+],
     templateUrl: './relationship-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./relationship-dialog.component.css']
 })
 export class RelationshipDialogComponent {

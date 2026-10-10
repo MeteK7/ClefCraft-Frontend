@@ -4,9 +4,10 @@ import {
   Inject,
   Input,
   OnInit,
-  Output
+  Output,
+  ChangeDetectionStrategy
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import {
   ReactiveFormsModule,
   FormBuilder,
@@ -27,6 +28,9 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
 import { EventType } from '../../models/event-type.model';
+import { Attachment } from '../../models/attachment.model';
+import { CalendarEventUI } from '../../models/calendar-event.model-ui';
+import { SavePayload } from '../../models/save-payload.model';
 import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { QuillModule } from 'ngx-quill';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -45,11 +49,18 @@ import { defaultQuillModules } from '../../shared/quill-config';
 import { stageWithinLimits } from '../../shared/attachment-limits';
 import { AuthService } from '../../_services/auth.service';
 
+/** What the calendar and home pages pass when they open this dialog. */
+export interface CalendarDialogData {
+  date: Date;
+  eventData?: CalendarEventUI | null;
+  initialStart?: Date;
+  initialEnd?: Date;
+  focusCommentId?: number | null;
+}
+
 @Component({
-  selector: 'app-calendar-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
+    selector: 'app-calendar-dialog',
+    imports: [
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -68,13 +79,14 @@ import { AuthService } from '../../_services/auth.service';
     CalendarHistoryTimelineComponent,
     CommentThreadComponent,
     CalendarCollaboratorsPanelComponent
-  ],
-  templateUrl: './calendar-dialog.component.html',
-  styleUrls: ['./calendar-dialog.component.css'],
+],
+    templateUrl: './calendar-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrls: ['./calendar-dialog.component.css']
 })
 export class CalendarDialogComponent implements OnInit {
 
-  @Output() onSave = new EventEmitter<any>();
+  @Output() onSave = new EventEmitter<SavePayload>();
   @Output() onCancel = new EventEmitter<void>();
   @Output() onDelete = new EventEmitter<{
     id?: number;
@@ -104,7 +116,7 @@ export class CalendarDialogComponent implements OnInit {
     { label: '1 day before', value: 1440 }
   ];
 
-  existingAttachments: any[] = [];
+  existingAttachments: Attachment[] = [];
   stagedAttachments: File[] = [];
   /** Why some picked files weren't staged (size/count limits); null when all were accepted. */
   attachmentError: string | null = null;
@@ -181,12 +193,12 @@ export class CalendarDialogComponent implements OnInit {
     return this.hasFormChanges || this.hasAttachmentChanges;
   }
 
-  private originalFormValue!: any;
+  private originalFormValue!: Record<string, unknown>;
   private startChangesSubscription!: Subscription;
 
   constructor(private readonly router: Router,
     private fb: FormBuilder,
-    @Inject(MAT_DIALOG_DATA) public data: any,
+    @Inject(MAT_DIALOG_DATA) public data: CalendarDialogData,
     private calendarService: CalendarService,
     private dialog: MatDialog,
     private authService: AuthService
@@ -278,11 +290,11 @@ export class CalendarDialogComponent implements OnInit {
         this.generalForm.get('endTime')?.disable({ emitEvent: false });
       }
 
-      this.eventTypeName = this.data.eventData.eventTypeName;
-      this.eventColor = this.data.eventData.eventColor;
+      this.eventTypeName = this.data.eventData.eventTypeName ?? null;
+      this.eventColor = this.data.eventData.eventColor ?? null;
 
-      this.eventId = this.data.eventData.id;
-      this.baseEventId = this.data.eventData.baseEventId;
+      this.eventId = this.data.eventData.id ?? null;
+      this.baseEventId = this.data.eventData.baseEventId ?? null;
 
       // ── Capture original occurrence date ──────────────────────────────────
       // Store this now, before the user edits startDate, so we have a stable
@@ -443,8 +455,9 @@ export class CalendarDialogComponent implements OnInit {
       this.eventTypes = types;
 
       if (this.data.eventData) {
+        const eventTypeId = this.data.eventData.eventTypeId;
         const currentType = this.eventTypes.find(
-          t => t.id === this.data.eventData.eventTypeId
+          t => t.id === eventTypeId
         );
         if (currentType) {
           this.eventTypeName = currentType.name;
@@ -484,14 +497,14 @@ export class CalendarDialogComponent implements OnInit {
     });
   }
 
-  private normalizeForm(value: any) {
+  private normalizeForm(value: Record<string, unknown>): Record<string, unknown> {
     return {
       ...value,
-      startDate: value.startDate
-        ? new Date(value.startDate).toISOString()
+      startDate: value['startDate']
+        ? new Date(value['startDate'] as string | Date).toISOString()
         : null,
-      endDate: value.endDate
-        ? new Date(value.endDate).toISOString()
+      endDate: value['endDate']
+        ? new Date(value['endDate'] as string | Date).toISOString()
         : null
     };
   }
@@ -569,7 +582,7 @@ export class CalendarDialogComponent implements OnInit {
     }
   }
 
-  downloadAttachment(attachment: any): void {
+  downloadAttachment(attachment: Attachment): void {
     this.calendarService.downloadAttachment(attachment.id).subscribe(
       (blob: Blob) => {
         const url = window.URL.createObjectURL(blob);
@@ -579,7 +592,7 @@ export class CalendarDialogComponent implements OnInit {
         a.click();
         window.URL.revokeObjectURL(url);
       },
-      (error: any) => console.error('Download failed', error)
+      (error: unknown) => console.error('Download failed', error)
     );
   }
 
@@ -823,17 +836,11 @@ export class CalendarDialogComponent implements OnInit {
 
   openLinkedBoardItem(): void {
     const eventData = this.data.eventData;
+    if (!eventData) return;
 
-    const queryParams: Record<string, any> = {
+    const queryParams: Record<string, number | null | undefined> = {
       openItemId: eventData.linkedBoardItemId,
     };
-
-    // If the event carries the parent board id, pass it along so the board
-    // page opens directly on the right board instead of defaulting to the
-    // user's first board.
-    if (eventData.linkedBoardId != null) {
-      queryParams['boardId'] = eventData.linkedBoardId;
-    }
 
     const urlTree = this.router.createUrlTree(['/board'], { queryParams });
     window.open(this.router.serializeUrl(urlTree), '_blank');
@@ -847,7 +854,7 @@ export class CalendarDialogComponent implements OnInit {
 
     let text = 'Repeats every ';
 
-    const freqMap: any = {
+    const freqMap: Record<string, string> = {
       DAILY: 'day',
       WEEKLY: 'week',
       MONTHLY: 'month',

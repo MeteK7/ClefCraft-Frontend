@@ -5,6 +5,7 @@ import { ImportanceLevel } from "./calendar-event.model";
 export interface CalendarEventUI {
   id?: number;
   baseEventId?: number;
+  ownerUserId?: string;
   seriesUid?: string;
   /**
    * Unique per occurrence (e.g. "<seriesUid>_20260905060000"), unlike `id`
@@ -35,3 +36,9 @@ export interface CalendarEventUI {
   reminderMinutes?: number[];
   timeZoneId?: string;
 }
+
+/** A calendar event as the API sends it: the UI model with its dates still as ISO strings. */
+export type CalendarEventResponse = Omit<CalendarEventUI, 'startDate' | 'endDate'> & {
+  startDate: string;
+  endDate: string;
+};

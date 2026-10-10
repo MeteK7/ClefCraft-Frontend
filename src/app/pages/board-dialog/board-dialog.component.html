@@ -5,9 +5,11 @@
     <mat-form-field appearance="outline" class="title-field">
       <mat-label>Board title</mat-label>
       <input matInput formControlName="title" autocomplete="off" maxlength="200" cdkFocusInitial />
-      <mat-error *ngIf="form.get('title')?.hasError('required')">
-        Title is required.
-      </mat-error>
+      @if (form.get('title')?.hasError('required')) {
+        <mat-error>
+          Title is required.
+        </mat-error>
+      }
     </mat-form-field>
   </form>
 

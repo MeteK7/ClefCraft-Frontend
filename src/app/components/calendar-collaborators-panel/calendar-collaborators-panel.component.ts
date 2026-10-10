@@ -1,5 +1,5 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -12,11 +12,11 @@ import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
 // someone (see CommentThreadComponent's confirm-before-share flow) — this panel is read-only
 // discovery plus the owner's remove action, never a place to add someone directly.
 @Component({
-  selector: 'app-calendar-collaborators-panel',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, UserAvatarComponent],
-  templateUrl: './calendar-collaborators-panel.component.html',
-  styleUrl: './calendar-collaborators-panel.component.css'
+    selector: 'app-calendar-collaborators-panel',
+    imports: [MatIconModule, MatButtonModule, MatTooltipModule, UserAvatarComponent],
+    templateUrl: './calendar-collaborators-panel.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './calendar-collaborators-panel.component.css'
 })
 export class CalendarCollaboratorsPanelComponent implements OnChanges {
   @Input() eventId!: number;

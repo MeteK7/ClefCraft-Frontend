@@ -1,46 +1,45 @@
 <!-- pages/board/board.component.html -->
-<ng-container *ngIf="boards.length > 0; else noBoards">
+@if (boards.length > 0) {
   <div class="board-header">
     <label for="boardId">Board:</label>
     <select id="boardId" [(ngModel)]="selectedBoardId" name="boardId" (change)="onBoardSelection(selectedBoardId)">
-      <option *ngFor="let board of boards" [value]="board.id">{{ board.title }}</option>
+      @for (board of boards; track board) {
+        <option [value]="board.id">{{ board.title }}</option>
+      }
     </select>
     <button class="new-board-btn" (click)="openCreateBoardDialog()">New Board</button>
     <div class="view-toggle">
       <button [class.active]="viewMode === 'dialog'" (click)="viewMode = 'dialog'">
         Dialog
       </button>
-
       <button [class.active]="viewMode === 'sidebar'" (click)="viewMode = 'sidebar'">
         Sidebar
       </button>
     </div>
   </div>
-
   <button class="add-item-btn" [disabled]="!selectedBoardId" (click)="openAddItemDialog()">Add New Item</button>
-
   <div class="board-columns">
-    <app-board-column
-      *ngFor="let column of columns"
-      [column]="column"
-      [allColumnIds]="allColumnIds"
-      (itemClicked)="onItemClick($event)"
-      (itemMoveFailed)="onItemMoveFailed()"
-    ></app-board-column>
+    @for (column of columns; track column) {
+      <app-board-column
+        [column]="column"
+        [allColumnIds]="allColumnIds"
+        (itemClicked)="onItemClick($event)"
+        (itemMoveFailed)="onItemMoveFailed()"
+      ></app-board-column>
+    }
   </div>
-
   <!-- Sidebar View -->
-  <app-item-detail-sidebar
-    *ngIf="viewMode === 'sidebar' && selectedItem"
-    [item]="selectedItem"
-    (itemUpdated)="onItemUpdated($event)"
-    (itemDeleted)="onItemDeleted($event)"
-  ></app-item-detail-sidebar>
-</ng-container>
-
-<ng-template #noBoards>
+  @if (viewMode === 'sidebar' && selectedItem) {
+    <app-item-detail-sidebar
+      [item]="selectedItem"
+      (itemUpdated)="onItemUpdated($event)"
+      (itemDeleted)="onItemDeleted($event)"
+    ></app-item-detail-sidebar>
+  }
+} @else {
   <div class="empty-boards-state">
     <p>You don't have any boards yet.</p>
     <button class="new-board-btn primary" (click)="openCreateBoardDialog()">Create your first board</button>
   </div>
-</ng-template>
+}
+

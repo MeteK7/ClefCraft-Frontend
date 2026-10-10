@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-protected-workspace',
   standalone: true,
   templateUrl: './protected-workspace.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./protected-workspace.component.css']
 })
 export class ProtectedWorkspaceComponent {

@@ -1,347 +1,389 @@
 <div #canvasContainer class="graph-container">
 
-    <div class="graph-toolbar">
-        <button mat-icon-button matTooltip="Zoom In" (click)="zoomIn()">
-            <mat-icon>add</mat-icon>
-        </button>
+  <div class="graph-toolbar">
+    <button mat-icon-button matTooltip="Zoom In" (click)="zoomIn()">
+      <mat-icon>add</mat-icon>
+    </button>
 
-        <button mat-icon-button matTooltip="Zoom Out" (click)="zoomOut()">
-            <mat-icon>remove</mat-icon>
-        </button>
+    <button mat-icon-button matTooltip="Zoom Out" (click)="zoomOut()">
+      <mat-icon>remove</mat-icon>
+    </button>
 
-        <button mat-icon-button matTooltip="Fit Graph" (click)="fitToView()">
-            <mat-icon>fit_screen</mat-icon>
-        </button>
+    <button mat-icon-button matTooltip="Fit Graph" (click)="fitToView()">
+      <mat-icon>fit_screen</mat-icon>
+    </button>
 
-        <button mat-icon-button matTooltip="Reset View" (click)="resetView()">
-            <mat-icon>center_focus_strong</mat-icon>
-        </button>
+    <button mat-icon-button matTooltip="Reset View" (click)="resetView()">
+      <mat-icon>center_focus_strong</mat-icon>
+    </button>
 
-        <span class="toolbar-divider"></span>
+    <span class="toolbar-divider"></span>
 
-        <button mat-icon-button [color]="showCriticalHighlights() ? 'warn' : null"
-            matTooltip="Highlight Critical-Priority Relationships" (click)="toggleCriticalHighlights()">
-            <mat-icon>route</mat-icon>
-        </button>
+    <button mat-icon-button [color]="showCriticalHighlights() ? 'warn' : null"
+      matTooltip="Highlight Critical-Priority Relationships" (click)="toggleCriticalHighlights()">
+      <mat-icon>route</mat-icon>
+    </button>
 
-        <button mat-icon-button [color]="showLegend() ? 'primary' : null" matTooltip="Toggle Legend"
-            (click)="toggleLegend()">
-            <mat-icon>legend_toggle</mat-icon>
-        </button>
+    <button mat-icon-button [color]="showLegend() ? 'primary' : null" matTooltip="Toggle Legend"
+      (click)="toggleLegend()">
+      <mat-icon>legend_toggle</mat-icon>
+    </button>
 
-        <span class="toolbar-divider"></span>
+    <span class="toolbar-divider"></span>
 
-        <button mat-icon-button [color]="showFullConnections() ? 'accent' : null"
-            [matTooltip]="showFullConnections() ? 'Show Direct Relationships Only' : 'Show Full Connections'"
-            [disabled]="isExpandingFull()" (click)="toggleFullConnections()">
-            <mat-icon>{{ isExpandingFull() ? 'hourglass_empty' : 'hub' }}</mat-icon>
-        </button>
+    <button mat-icon-button [color]="showFullConnections() ? 'accent' : null"
+      [matTooltip]="showFullConnections() ? 'Show Direct Relationships Only' : 'Show Full Connections'"
+      [disabled]="isExpandingFull()" (click)="toggleFullConnections()">
+      <mat-icon>{{ isExpandingFull() ? 'hourglass_empty' : 'hub' }}</mat-icon>
+    </button>
 
-        <span class="toolbar-divider"></span>
+    <span class="toolbar-divider"></span>
 
-        <button mat-icon-button [matTooltip]="isMaximized() ? 'Restore' : 'Maximize'" (click)="toggleMaximize()">
-            <mat-icon>{{ isMaximized() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
-        </button>
-    </div>
+    <button mat-icon-button [matTooltip]="isMaximized() ? 'Restore' : 'Maximize'" (click)="toggleMaximize()">
+      <mat-icon>{{ isMaximized() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+    </button>
+  </div>
 
-    <div class="cycle-warning-banner" *ngIf="hasCycles()">
-        <div class="banner-item" *ngFor="let cycle of cycleSummary()">
-            <mat-icon color="warn">warning</mat-icon>
-            <span class="banner-text">
-                <strong>Dependency Cycle:</strong>
-                <span *ngFor="let title of cycle.nodeTitles; let last = last">
-                    {{ title }} <span *ngIf="!last">&rarr;</span>
-                </span>
+  @if (hasCycles()) {
+    <div class="cycle-warning-banner">
+      @for (cycle of cycleSummary(); track cycle) {
+        <div class="banner-item">
+          <mat-icon color="warn">warning</mat-icon>
+          <span class="banner-text">
+            <strong>Dependency Cycle:</strong>
+            @for (title of cycle.nodeTitles; track title; let last = $last) {
+              <span>
+                {{ title }} @if (!last) {
+                <span>&rarr;</span>
+              }
             </span>
-            <button mat-flat-button color="warn" (click)="focusOnNodes(cycle.nodeIds)">
-                Locate Cycle
-            </button>
-        </div>
-    </div>
-
-    <div class="full-connections-status" *ngIf="isExpandingFull()">
-        <mat-icon>hourglass_empty</mat-icon>
-        <span>Discovering connected items…</span>
-    </div>
-
-    <div class="full-connections-status truncated" *ngIf="!isExpandingFull() && fullConnectionsTruncated()">
-        <mat-icon color="warn">warning</mat-icon>
-        <span>Showing the first {{ maxFullConnectionNodes }} connected items — the graph may be larger.</span>
-    </div>
-
-    <div class="critical-path-summary" *ngIf="showCriticalHighlights() && criticalSummary() as cp">
-        <mat-icon color="accent">insights</mat-icon>
-        <span>
-            Critical Relationships: <strong>{{ cp.count }}</strong> highlighted
+          }
         </span>
-    </div>
+        <button mat-flat-button color="warn" (click)="focusOnNodes(cycle.nodeIds)">
+          Locate Cycle
+        </button>
+      </div>
+    }
+  </div>
+}
 
-    <svg #svgRoot class="graph-svg" [attr.viewBox]="'0 0 ' + viewBoxSize + ' ' + viewBoxSize"
-        preserveAspectRatio="xMidYMid meet" (wheel)="onWheel($event)" (pointerdown)="onBackgroundPointerDown($event)"
-        (pointermove)="onBackgroundPointerMove($event)" (pointerup)="onBackgroundPointerUp($event)"
-        (pointercancel)="onBackgroundPointerUp($event)">
+@if (isExpandingFull()) {
+  <div class="full-connections-status">
+    <mat-icon>hourglass_empty</mat-icon>
+    <span>Discovering connected items…</span>
+  </div>
+}
 
-        <defs>
+@if (!isExpandingFull() && fullConnectionsTruncated()) {
+  <div class="full-connections-status truncated">
+    <mat-icon color="warn">warning</mat-icon>
+    <span>Showing the first {{ maxFullConnectionNodes }} connected items — the graph may be larger.</span>
+  </div>
+}
 
-            <!--
-                Arrowheads. userSpaceOnUse, so their size never depends on the edge's stroke width:
-                viewBox 0 0 10 10 drawn at 20x20 graph units (one marker unit = 2 graph units).
-                The path ends at the arrowhead's BASE (refX); the shape extends from there to its TIP.
-                The base-to-tip distances are MARKER_TIP_OFFSET in relationship-engine/visualization/edge-router.ts
-                and must stay in step with these definitions.
-            -->
+@if (showCriticalHighlights() && criticalSummary(); as cp) {
+  <div class="critical-path-summary">
+    <mat-icon color="accent">insights</mat-icon>
+    <span>
+      Critical Relationships: <strong>{{ cp.count }}</strong> highlighted
+    </span>
+  </div>
+}
 
-            <!-- Parent: solid filled triangle. Base 0, tip 10 (20 graph units). -->
-            <marker id="arrow-parent" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20" markerHeight="20"
-                refX="0" refY="5" orient="auto-start-reverse">
-                <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"></path>
-            </marker>
-            <marker id="arrow-parent-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
-                markerHeight="20" refX="0" refY="5" orient="auto-start-reverse">
-                <path d="M0,0 L10,5 L0,10 Z" fill="var(--danger)"></path>
-            </marker>
+<svg #svgRoot class="graph-svg" [attr.viewBox]="'0 0 ' + viewBoxSize + ' ' + viewBoxSize"
+  preserveAspectRatio="xMidYMid meet" (wheel)="onWheel($event)" (pointerdown)="onBackgroundPointerDown($event)"
+  (pointermove)="onBackgroundPointerMove($event)" (pointerup)="onBackgroundPointerUp($event)"
+  (pointercancel)="onBackgroundPointerUp($event)">
 
-            <!-- Blocks: flat "stop bar". Base at the bar's back face 6, tip 10 (8 graph units). -->
-            <marker id="arrow-blocks" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20" markerHeight="20"
-                refX="6" refY="5" orient="auto-start-reverse">
-                <path d="M6,0 L10,0 L10,10 L6,10 Z" fill="var(--text-secondary)"></path>
-            </marker>
-            <marker id="arrow-blocks-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
-                markerHeight="20" refX="6" refY="5" orient="auto-start-reverse">
-                <path d="M6,0 L10,0 L10,10 L6,10 Z" fill="var(--danger)"></path>
-            </marker>
+  <defs>
 
-            <!-- Depends on: notched / concave triangle. Base at the notch 2.5, tip 10 (15 graph units). -->
-            <marker id="arrow-depends-on" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
-                markerHeight="20" refX="2.5" refY="5" orient="auto-start-reverse">
-                <path d="M0,0 L10,5 L0,10 L2.5,5 Z" fill="var(--text-secondary)"></path>
-            </marker>
-            <marker id="arrow-depends-on-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
-                markerHeight="20" refX="2.5" refY="5" orient="auto-start-reverse">
-                <path d="M0,0 L10,5 L0,10 L2.5,5 Z" fill="var(--danger)"></path>
-            </marker>
+    <!--
+    Arrowheads. userSpaceOnUse, so their size never depends on the edge's stroke width:
+    viewBox 0 0 10 10 drawn at 20x20 graph units (one marker unit = 2 graph units).
+    The path ends at the arrowhead's BASE (refX); the shape extends from there to its TIP.
+    The base-to-tip distances are MARKER_TIP_OFFSET in relationship-engine/visualization/edge-router.ts
+    and must stay in step with these definitions.
+    -->
 
-            <!-- Related: small dot (soft, undirected feel). Base at the centre 5, tip 8.5 (7 graph units). -->
-            <marker id="arrow-related" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20" markerHeight="20"
-                refX="5" refY="5" orient="auto-start-reverse">
-                <circle cx="5" cy="5" r="3.5" fill="var(--text-secondary)"></circle>
-            </marker>
-            <marker id="arrow-related-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
-                markerHeight="20" refX="5" refY="5" orient="auto-start-reverse">
-                <circle cx="5" cy="5" r="3.5" fill="var(--danger)"></circle>
-            </marker>
+    <!-- Parent: solid filled triangle. Base 0, tip 10 (20 graph units). -->
+    <marker id="arrow-parent" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20" markerHeight="20"
+      refX="0" refY="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"></path>
+    </marker>
+    <marker id="arrow-parent-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+      markerHeight="20" refX="0" refY="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--danger)"></path>
+    </marker>
 
-            <!-- Duplicate: diamond. Base 0, tip 10 (20 graph units). -->
-            <marker id="arrow-duplicate" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
-                markerHeight="20" refX="0" refY="5" orient="auto-start-reverse">
-                <path d="M0,5 L5,0 L10,5 L5,10 Z" fill="var(--text-secondary)"></path>
-            </marker>
-            <marker id="arrow-duplicate-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
-                markerHeight="20" refX="0" refY="5" orient="auto-start-reverse">
-                <path d="M0,5 L5,0 L10,5 L5,10 Z" fill="var(--danger)"></path>
-            </marker>
+    <!-- Blocks: flat "stop bar". Base at the bar's back face 6, tip 10 (8 graph units). -->
+    <marker id="arrow-blocks" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20" markerHeight="20"
+      refX="6" refY="5" orient="auto-start-reverse">
+      <path d="M6,0 L10,0 L10,10 L6,10 Z" fill="var(--text-secondary)"></path>
+    </marker>
+    <marker id="arrow-blocks-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+      markerHeight="20" refX="6" refY="5" orient="auto-start-reverse">
+      <path d="M6,0 L10,0 L10,10 L6,10 Z" fill="var(--danger)"></path>
+    </marker>
 
-            <!-- Split from: double chevron (viewBox 0 0 12 10 at 24x20). Base 8, tip 10 = outer vertex 9 plus half its stroke (4 graph units). -->
-            <marker id="arrow-split-from" markerUnits="userSpaceOnUse" viewBox="0 0 12 10" markerWidth="24"
-                markerHeight="20" refX="8" refY="5" orient="auto-start-reverse">
-                <path d="M0,0 L4,5 L0,10 M5,0 L9,5 L5,10" fill="none" stroke="var(--text-secondary)" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round"></path>
-            </marker>
-            <marker id="arrow-split-from-critical" markerUnits="userSpaceOnUse" viewBox="0 0 12 10" markerWidth="24"
-                markerHeight="20" refX="8" refY="5" orient="auto-start-reverse">
-                <path d="M0,0 L4,5 L0,10 M5,0 L9,5 L5,10" fill="none" stroke="var(--danger)" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round"></path>
-            </marker>
+    <!-- Depends on: notched / concave triangle. Base at the notch 2.5, tip 10 (15 graph units). -->
+    <marker id="arrow-depends-on" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+      markerHeight="20" refX="2.5" refY="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 L2.5,5 Z" fill="var(--text-secondary)"></path>
+    </marker>
+    <marker id="arrow-depends-on-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+      markerHeight="20" refX="2.5" refY="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 L2.5,5 Z" fill="var(--danger)"></path>
+    </marker>
 
-            <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M40 0 L0 0 0 40" fill="none" stroke="var(--graph-grid-line)" stroke-width="1"></path>
-            </pattern>
+    <!-- Related: small dot (soft, undirected feel). Base at the centre 5, tip 8.5 (7 graph units). -->
+    <marker id="arrow-related" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20" markerHeight="20"
+      refX="5" refY="5" orient="auto-start-reverse">
+      <circle cx="5" cy="5" r="3.5" fill="var(--text-secondary)"></circle>
+    </marker>
+    <marker id="arrow-related-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+      markerHeight="20" refX="5" refY="5" orient="auto-start-reverse">
+      <circle cx="5" cy="5" r="3.5" fill="var(--danger)"></circle>
+    </marker>
 
-            <radialGradient id="workspaceFade">
-                <stop offset="0%" stop-color="var(--graph-fade-start)"></stop>
-                <stop offset="100%" stop-color="var(--graph-fade-end)"></stop>
-            </radialGradient>
+    <!-- Duplicate: diamond. Base 0, tip 10 (20 graph units). -->
+    <marker id="arrow-duplicate" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+      markerHeight="20" refX="0" refY="5" orient="auto-start-reverse">
+      <path d="M0,5 L5,0 L10,5 L5,10 Z" fill="var(--text-secondary)"></path>
+    </marker>
+    <marker id="arrow-duplicate-critical" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" markerWidth="20"
+      markerHeight="20" refX="0" refY="5" orient="auto-start-reverse">
+      <path d="M0,5 L5,0 L10,5 L5,10 Z" fill="var(--danger)"></path>
+    </marker>
 
-            <filter id="nodeShadow" x="-10%" y="-10%" width="120%" height="120%">
-                <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.15"></feDropShadow>
-            </filter>
+    <!-- Split from: double chevron (viewBox 0 0 12 10 at 24x20). Base 8, tip 10 = outer vertex 9 plus half its stroke (4 graph units). -->
+    <marker id="arrow-split-from" markerUnits="userSpaceOnUse" viewBox="0 0 12 10" markerWidth="24"
+      markerHeight="20" refX="8" refY="5" orient="auto-start-reverse">
+      <path d="M0,0 L4,5 L0,10 M5,0 L9,5 L5,10" fill="none" stroke="var(--text-secondary)" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"></path>
+    </marker>
+    <marker id="arrow-split-from-critical" markerUnits="userSpaceOnUse" viewBox="0 0 12 10" markerWidth="24"
+      markerHeight="20" refX="8" refY="5" orient="auto-start-reverse">
+      <path d="M0,0 L4,5 L0,10 M5,0 L9,5 L5,10" fill="none" stroke="var(--danger)" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"></path>
+    </marker>
 
-            <filter id="selectedGlow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="var(--primary)" flood-opacity="0.6">
-                </feDropShadow>
-            </filter>
+    <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0 L0 0 0 40" fill="none" stroke="var(--graph-grid-line)" stroke-width="1"></path>
+    </pattern>
 
-            <!--
-                Explicit user-space region covering everything drawn (edgeGlowRegion): the default region is a
-                percentage of the path's geometry box, which clips the stroke, glow and arrowhead of a straight edge.
-            -->
-            <filter id="edgeGlow" filterUnits="userSpaceOnUse" [attr.x]="edgeGlowRegion().x" [attr.y]="edgeGlowRegion().y"
-                [attr.width]="edgeGlowRegion().width" [attr.height]="edgeGlowRegion().height">
-                <feGaussianBlur stdDeviation="2" result="blur"></feGaussianBlur>
-                <feMerge>
-                    <feMergeNode in="blur"></feMergeNode>
-                    <feMergeNode in="SourceGraphic"></feMergeNode>
-                </feMerge>
-            </filter>
-        </defs>
+    <radialGradient id="workspaceFade">
+      <stop offset="0%" stop-color="var(--graph-fade-start)"></stop>
+      <stop offset="100%" stop-color="var(--graph-fade-end)"></stop>
+    </radialGradient>
 
-        <rect x="-10000" y="-10000" width="20000" height="20000" fill="url(#gridPattern)"></rect>
-        <rect x="-10000" y="-10000" width="20000" height="20000" fill="url(#workspaceFade)"></rect>
+    <filter id="nodeShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.15"></feDropShadow>
+    </filter>
 
-        <g class="graph-layer" [attr.transform]="viewportTransform()" [class.animated]="viewportAnimated()">
+    <filter id="selectedGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="var(--primary)" flood-opacity="0.6">
+      </feDropShadow>
+    </filter>
 
-            <g class="graph-edges">
-                <g *ngFor="let line of renderableEdges(); trackBy: trackEdge">
-                    <path class="graph-edge-hit" [attr.d]="line.path" (mouseenter)="onEdgeEnter(line.edge, $event)"
-                        (mousemove)="onEdgeMove($event)" (mouseleave)="onEdgeLeave()">
-                    </path>
-                    <path [attr.d]="line.path" [attr.marker-end]="edgeMarkerEnd(line.edge)" class="graph-edge"
-                        [class]="edgeTypeClass(line.edge)" [class.dimmed]="isEdgeDimmed(line.edge)"
-                        [class.active]="isEdgeActive(line.edge)" [class.critical]="isEdgeCritical(line.edge)"
-                        [class.cyclic]="line.edge.cyclic">
-                    </path>
-                    <g class="cyclic-badge" *ngIf="line.edge.cyclic"
-                        [attr.transform]="'translate(' + line.mx + ',' + line.my + ')'">
-                        <circle r="7"></circle>
-                        <text y="1">&#8635;</text>
-                    </g>
-                </g>
+    <!--
+    Explicit user-space region covering everything drawn (edgeGlowRegion): the default region is a
+    percentage of the path's geometry box, which clips the stroke, glow and arrowhead of a straight edge.
+    -->
+    <filter id="edgeGlow" filterUnits="userSpaceOnUse" [attr.x]="edgeGlowRegion().x" [attr.y]="edgeGlowRegion().y"
+      [attr.width]="edgeGlowRegion().width" [attr.height]="edgeGlowRegion().height">
+      <feGaussianBlur stdDeviation="2" result="blur"></feGaussianBlur>
+      <feMerge>
+        <feMergeNode in="blur"></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect x="-10000" y="-10000" width="20000" height="20000" fill="url(#gridPattern)"></rect>
+  <rect x="-10000" y="-10000" width="20000" height="20000" fill="url(#workspaceFade)"></rect>
+
+  <g class="graph-layer" [attr.transform]="viewportTransform()" [class.animated]="viewportAnimated()">
+
+    <g class="graph-edges">
+      @for (line of renderableEdges(); track trackEdge($index, line)) {
+        <g>
+          <path class="graph-edge-hit" [attr.d]="line.path" (mouseenter)="onEdgeEnter(line.edge, $event)"
+            (mousemove)="onEdgeMove($event)" (mouseleave)="onEdgeLeave()">
+          </path>
+          <path [attr.d]="line.path" [attr.marker-end]="edgeMarkerEnd(line.edge)" class="graph-edge"
+            [class]="edgeTypeClass(line.edge)" [class.dimmed]="isEdgeDimmed(line.edge)"
+            [class.active]="isEdgeActive(line.edge)" [class.critical]="isEdgeCritical(line.edge)"
+            [class.cyclic]="line.edge.cyclic">
+          </path>
+          @if (line.edge.cyclic) {
+            <g class="cyclic-badge"
+              [attr.transform]="'translate(' + line.mx + ',' + line.my + ')'">
+              <circle r="7"></circle>
+              <text y="1">&#8635;</text>
             </g>
-
-            <g class="graph-nodes">
-                <foreignObject *ngFor="let node of nodes(); trackBy: trackNode" [attr.x]="nodeLeft(node)"
-                    [attr.y]="nodeTop(node)" [attr.width]="node.width" [attr.height]="cardHeight(node)"
-                    class="graph-node-container" [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
-                    [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node, $event)"
-                    (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
-
-                    <div xmlns="http://www.w3.org/1999/xhtml" class="node-card" appGraphCardSize
-                        (cardSizeChange)="onCardSize(node.id, $event)"
-                        [style.filter]="isSelected(node.id) ? 'url(#selectedGlow)' : 'url(#nodeShadow)'">
-
-                        <div class="status-strip" [class.center]="isCenter(node)" [class.critical]="node.critical"
-                            [class.cyclic]="node.cyclic">
-                        </div>
-
-                        <div class="node-header">
-                            <div class="header-left">
-                                <span class="node-id" style="cursor: pointer; text-decoration: underline;"
-                                    (click)="openItemInNewTab(node, $event)"
-                                    matTooltip="Open this item on the board page">
-                                    #{{node.id}}
-                                </span>
-                            </div>
-                            <div class="header-right">
-                                <span *ngIf="priorityClass(node.priority)" class="chip"
-                                    [ngClass]="priorityClass(node.priority)">{{ node.priority }}</span>
-                                <span *ngIf="node.cyclic" class="chip warning">Cycle</span>
-                            </div>
-                        </div>
-
-                        <div class="node-title" [title]="node.title">
-                            {{truncateTitle(node.title)}}
-                        </div>
-
-                        <div class="node-footer">
-                            <div class="footer-left">
-                                <span class="metric-value">{{node.inDegree || 0}}</span>
-                                <span class="footer-label">In</span>
-                                <span class="metric-spacer"></span>
-                                <span class="metric-value">{{node.outDegree || 0}}</span>
-                                <span class="footer-label">Out</span>
-                            </div>
-
-                            <button *ngIf="!isCenter(node) && !showFullConnections()" class="expand-button"
-                                [class.expanded]="isExpanded(node.id)" [disabled]="isExpanding(node.id)"
-                                [matTooltip]="isExpanded(node.id) ? 'Collapse' : 'Expand'"
-                                [attr.aria-label]="isExpanded(node.id) ? 'Collapse' : 'Expand'"
-                                [attr.aria-expanded]="isExpanded(node.id)" (click)="onExpandClick(node, $event)">
-                                <span class="expand-icon" *ngIf="!isExpanding(node.id)">{{ isExpanded(node.id) ? '−' :
-                                    '+' }}</span>
-                                <span *ngIf="isExpanding(node.id)" class="loading-dot">…</span>
-                            </button>
-                        </div>
-
-                    </div>
-                </foreignObject>
-            </g>
-
+          }
         </g>
-    </svg>
+      }
+    </g>
 
-    <div class="impact-tooltip" *ngIf="hoveredNodeId() !== null && hoverScreenPos() as pos" [style.left.px]="pos.x + 20"
-        [style.top.px]="pos.y + 20">
-        <div class="tooltip-header" *ngIf="nodeAt(hoveredNodeId()!) as node">
-            <strong>#{{ node.id }} {{ node.title }}</strong>
-            <span class="tooltip-status-badge">{{ node.status }}</span>
-        </div>
-
-        <div class="tooltip-divider"></div>
-
-        <div class="tooltip-content" *ngIf="hoverImpact() as impact; else loadingImpact">
-            <div class="tooltip-row">
-                <span class="label">Total Affected Items:</span>
-                <span class="value">{{ impact.totalAffected }} nodes</span>
+    <g class="graph-nodes">
+      @for (node of nodes(); track trackNode($index, node)) {
+        <foreignObject [attr.x]="nodeLeft(node)"
+          [attr.y]="nodeTop(node)" [attr.width]="node.width" [attr.height]="cardHeight(node)"
+          class="graph-node-container" [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
+          [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node, $event)"
+          (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
+          <div xmlns="http://www.w3.org/1999/xhtml" class="node-card" appGraphCardSize
+            (cardSizeChange)="onCardSize(node.id, $event)"
+            [style.filter]="isSelected(node.id) ? 'url(#selectedGlow)' : 'url(#nodeShadow)'">
+            <div class="status-strip" [class.center]="isCenter(node)" [class.critical]="node.critical"
+              [class.cyclic]="node.cyclic">
             </div>
-            <div class="tooltip-row">
-                <span class="label">Downstream Impact Score:</span>
-                <span class="value impact-severity"
-                    [style.color]="impact.score > 50 ? 'var(--danger)' : 'var(--success)'">
-                    {{ impact.score }}/100
+            <div class="node-header">
+              <div class="header-left">
+                <span class="node-id" style="cursor: pointer; text-decoration: underline;"
+                  (click)="openItemInNewTab(node, $event)"
+                  matTooltip="Open this item on the board page">
+                  #{{node.id}}
                 </span>
+              </div>
+              <div class="header-right">
+                @if (priorityClass(node.priority)) {
+                  <span class="chip"
+                  [ngClass]="priorityClass(node.priority)">{{ node.priority }}</span>
+                }
+                @if (node.cyclic) {
+                  <span class="chip warning">Cycle</span>
+                }
+              </div>
             </div>
-            <div class="tooltip-row" *ngIf="impact.estimatedHours">
-                <span class="label">Total Delayed Hours:</span>
-                <span class="value">{{ impact.estimatedHours }} hrs</span>
+            <div class="node-title" [title]="node.title">
+              {{truncateTitle(node.title)}}
             </div>
-            <div class="tooltip-row" *ngIf="impact.storyPoints">
-                <span class="label">Story Points At Risk:</span>
-                <span class="value">{{ impact.storyPoints }} SP</span>
+            <div class="node-footer">
+              <div class="footer-left">
+                <span class="metric-value">{{node.inDegree || 0}}</span>
+                <span class="footer-label">In</span>
+                <span class="metric-spacer"></span>
+                <span class="metric-value">{{node.outDegree || 0}}</span>
+                <span class="footer-label">Out</span>
+              </div>
+              @if (!isCenter(node) && !showFullConnections()) {
+                <button class="expand-button"
+                  [class.expanded]="isExpanded(node.id)" [disabled]="isExpanding(node.id)"
+                  [matTooltip]="isExpanded(node.id) ? 'Collapse' : 'Expand'"
+                  [attr.aria-label]="isExpanded(node.id) ? 'Collapse' : 'Expand'"
+                  [attr.aria-expanded]="isExpanded(node.id)" (click)="onExpandClick(node, $event)">
+                  @if (!isExpanding(node.id)) {
+                    <span class="expand-icon">{{ isExpanded(node.id) ? '−' :
+                    '+' }}</span>
+                  }
+                  @if (isExpanding(node.id)) {
+                    <span class="loading-dot">…</span>
+                  }
+                </button>
+              }
             </div>
-            <div class="tooltip-row" *ngIf="impact.maxDepth">
-                <span class="label">Dependency Depth Hops:</span>
-                <span class="value">{{ impact.maxDepth }}</span>
-            </div>
+          </div>
+        </foreignObject>
+      }
+    </g>
+
+  </g>
+</svg>
+
+@if (hoveredNodeId() !== null && hoverScreenPos(); as pos) {
+  <div class="impact-tooltip" [style.left.px]="pos.x + 20"
+    [style.top.px]="pos.y + 20">
+    @if (nodeAt(hoveredNodeId()!); as node) {
+      <div class="tooltip-header">
+        <strong>#{{ node.id }} {{ node.title }}</strong>
+        <span class="tooltip-status-badge">{{ node.status }}</span>
+      </div>
+    }
+    <div class="tooltip-divider"></div>
+    @if (hoverImpact(); as impact) {
+      <div class="tooltip-content">
+        <div class="tooltip-row">
+          <span class="label">Total Affected Items:</span>
+          <span class="value">{{ impact.totalAffected }} nodes</span>
         </div>
-        <ng-template #loadingImpact>
-            <div class="tooltip-loading">
-                Analyzing downstream blast-radius...
-            </div>
-        </ng-template>
+        <div class="tooltip-row">
+          <span class="label">Downstream Impact Score:</span>
+          <span class="value impact-severity"
+            [style.color]="impact.score > 50 ? 'var(--danger)' : 'var(--success)'">
+            {{ impact.score }}/100
+          </span>
+        </div>
+        @if (impact.estimatedHours) {
+          <div class="tooltip-row">
+            <span class="label">Total Delayed Hours:</span>
+            <span class="value">{{ impact.estimatedHours }} hrs</span>
+          </div>
+        }
+        @if (impact.storyPoints) {
+          <div class="tooltip-row">
+            <span class="label">Story Points At Risk:</span>
+            <span class="value">{{ impact.storyPoints }} SP</span>
+          </div>
+        }
+        @if (impact.maxDepth) {
+          <div class="tooltip-row">
+            <span class="label">Dependency Depth Hops:</span>
+            <span class="value">{{ impact.maxDepth }}</span>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="tooltip-loading">
+        Analyzing downstream blast-radius...
+      </div>
+    }
+  </div>
+}
+
+@if (hoveredEdge(); as edge) {
+  @if (hoverEdgeScreenPos(); as pos) {
+    <div class="relationship-tooltip" [style.left.px]="pos.x + 16"
+      [style.top.px]="pos.y + 16">
+      <div class="relationship-sentence">{{ relationshipSentence(edge) }}</div>
+      @if (isEdgeCritical(edge) || edge.cyclic) {
+        <div class="relationship-flags">
+          @if (isEdgeCritical(edge)) {
+            <span class="flag">Connects two Critical-priority items</span>
+          }
+          @if (edge.cyclic) {
+            <span class="flag">Part of a dependency cycle</span>
+          }
+        </div>
+      }
     </div>
+  }
+}
 
-    <ng-container *ngIf="hoveredEdge() as edge">
-        <div class="relationship-tooltip" *ngIf="hoverEdgeScreenPos() as pos" [style.left.px]="pos.x + 16"
-            [style.top.px]="pos.y + 16">
-            <div class="relationship-sentence">{{ relationshipSentence(edge) }}</div>
-            <div class="relationship-flags" *ngIf="isEdgeCritical(edge) || edge.cyclic">
-                <span class="flag" *ngIf="isEdgeCritical(edge)">Connects two Critical-priority items</span>
-                <span class="flag" *ngIf="edge.cyclic">Part of a dependency cycle</span>
-            </div>
-        </div>
-    </ng-container>
-
-    <div class="graph-legend" *ngIf="showLegend()">
-        <div class="legend-header">Relationships</div>
-        <div class="legend-row" *ngFor="let item of legend">
-            <svg class="legend-swatch" width="34" height="14" viewBox="0 0 34 14">
-                <line x1="1" y1="7" x2="24" y2="7" stroke-width="2" stroke-linecap="round"
-                    [attr.class]="'legend-line ' + item.cssClass" [attr.marker-end]="'url(#' + item.markerBase + ')'">
-                </line>
-            </svg>
-            <span class="legend-text">{{item.label}}</span>
-        </div>
-
-        <div class="legend-divider"></div>
-
-        <div class="legend-row legend-note">
-            <span class="legend-critical-dot"></span>
-            <span class="legend-text">Red arrow = connects two Critical-priority items</span>
-        </div>
-        <div class="legend-row legend-note">
-            <span class="legend-cyclic-badge">&#8635;</span>
-            <span class="legend-text">Part of a dependency cycle</span>
-        </div>
+@if (showLegend()) {
+  <div class="graph-legend">
+    <div class="legend-header">Relationships</div>
+    @for (item of legend; track item) {
+      <div class="legend-row">
+        <svg class="legend-swatch" width="34" height="14" viewBox="0 0 34 14">
+          <line x1="1" y1="7" x2="24" y2="7" stroke-width="2" stroke-linecap="round"
+            [attr.class]="'legend-line ' + item.cssClass" [attr.marker-end]="'url(#' + item.markerBase + ')'">
+          </line>
+        </svg>
+        <span class="legend-text">{{item.label}}</span>
+      </div>
+    }
+    <div class="legend-divider"></div>
+    <div class="legend-row legend-note">
+      <span class="legend-critical-dot"></span>
+      <span class="legend-text">Red arrow = connects two Critical-priority items</span>
     </div>
+    <div class="legend-row legend-note">
+      <span class="legend-cyclic-badge">&#8635;</span>
+      <span class="legend-text">Part of a dependency cycle</span>
+    </div>
+  </div>
+}
 
 </div>

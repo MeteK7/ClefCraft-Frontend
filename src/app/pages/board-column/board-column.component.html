@@ -8,13 +8,14 @@
       [cdkDropListConnectedTo]="connectedTo"
       (cdkDropListDropped)="drop($event)"
       [id]="column.dropListId"
-    >
-      <app-board-item
-        *ngFor="let item of column.boardItems"
-        [item]="item"
-        (click)="onItemClick(item)"
-        cdkDrag
-      ></app-board-item>
+      >
+      @for (item of column.boardItems; track item) {
+        <app-board-item
+          [item]="item"
+          (click)="onItemClick(item)"
+          cdkDrag
+        ></app-board-item>
+      }
     </div>
   </div>
 </div>

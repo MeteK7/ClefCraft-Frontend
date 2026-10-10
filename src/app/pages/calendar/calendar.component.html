@@ -10,28 +10,34 @@
 
   <!-- Selected date summary -->
   <div class="selected-date-summary">
-    <h3 *ngIf="viewMode === 'month'">{{ visibleMonthLabel | date: 'MMMM y' }}</h3>
-    <h3 *ngIf="viewMode !== 'month'">{{ selectedDate | date: 'EEEE, MMMM d, y' }}</h3>
+    @if (viewMode === 'month') {
+      <h3>{{ visibleMonthLabel | date: 'MMMM y' }}</h3>
+    }
+    @if (viewMode !== 'month') {
+      <h3>{{ selectedDate | date: 'EEEE, MMMM d, y' }}</h3>
+    }
     <p>Week {{ getWeekNumber(selectedDate) }}, day {{ getDayOfYear(selectedDate) }} of the year</p>
   </div>
 
-  <div class="sync-indicator" *ngIf="isSyncing$ | async">
-    <span class="sync-spinner"></span>
-    <span class="sync-label">Syncing…</span>
-  </div>
+  @if (isSyncing$ | async) {
+    <div class="sync-indicator">
+      <span class="sync-spinner"></span>
+      <span class="sync-label">Syncing…</span>
+    </div>
+  }
 
   <div class="top-bar-spacer"></div>
 
   <!-- View mode selector -->
   <div class="view-mode-selector">
     <button mat-button class="view-btn" [class.active-view]="viewMode === 'month'"
-      (click)="setViewMode('month')">Month</button>
+    (click)="setViewMode('month')">Month</button>
     <button mat-button class="view-btn" [class.active-view]="viewMode === 'week'"
-      (click)="setViewMode('week')">Week</button>
+    (click)="setViewMode('week')">Week</button>
     <button mat-button class="view-btn" [class.active-view]="viewMode === 'day'"
-      (click)="setViewMode('day')">Day</button>
+    (click)="setViewMode('day')">Day</button>
     <button mat-button class="view-btn" [class.active-view]="viewMode === 'agenda'"
-      (click)="setViewMode('agenda')">Agenda</button>
+    (click)="setViewMode('agenda')">Agenda</button>
   </div>
 
   <!-- Datepicker -->
@@ -46,201 +52,228 @@
 
 </div>
 
-<div *ngIf="isLoading" class="loading-overlay">
-  <div class="spinner-ring"></div>
-  <span class="loading-label">Loading events…</span>
-</div>
+@if (isLoading) {
+  <div class="loading-overlay">
+    <div class="spinner-ring"></div>
+    <span class="loading-label">Loading events…</span>
+  </div>
+}
 <div class="calendar-body" [class.calendar-loading]="isLoading">
 
   <!-- ==================== MONTH VIEW (infinite vertical week scroll) ==================== -->
-  <app-month-scroll-view *ngIf="viewMode === 'month' && monthScrollWindow" class="calendar-grid"
-    [window]="monthScrollWindow"
-    [events]="events"
-    [selectedDate]="selectedDate"
-    [weekdays]="weekdays"
-    [maxVisibleLanes]="MAX_VISIBLE_LANES"
-    [monthDragEvent]="monthDragEvent"
-    [scrollToDate]="scrollToDate"
-    [isFetchingMore]="!!(isFetchingMore$ | async)"
-    (windowChange)="onMonthWindowChange($event)"
-    (needMoreEvents)="onNeedMoreMonthEvents($event)"
-    (visibleMonthChange)="onVisibleMonthChange($event)"
-    (emptyDayClicked)="onEmptyDayClicked($event)"
-    (eventClicked)="onEventClicked($event.event, $event.mouseEvent)"
-    (monthDragStart)="onMonthDragStart($event)"
-    (monthDragEnd)="onMonthDragEnd()"
-    (eventDropped)="onMonthEventDropped($event)">
-  </app-month-scroll-view>
+  @if (viewMode === 'month' && monthScrollWindow) {
+    <app-month-scroll-view class="calendar-grid"
+      [window]="monthScrollWindow"
+      [events]="events"
+      [selectedDate]="selectedDate"
+      [weekdays]="weekdays"
+      [maxVisibleLanes]="MAX_VISIBLE_LANES"
+      [monthDragEvent]="monthDragEvent"
+      [scrollToDate]="scrollToDate"
+      [isFetchingMore]="!!(isFetchingMore$ | async)"
+      (windowChange)="onMonthWindowChange($event)"
+      (needMoreEvents)="onNeedMoreMonthEvents($event)"
+      (visibleMonthChange)="onVisibleMonthChange($event)"
+      (emptyDayClicked)="onEmptyDayClicked($event)"
+      (eventClicked)="onEventClicked($event.event, $event.mouseEvent)"
+      (monthDragStart)="onMonthDragStart($event)"
+      (monthDragEnd)="onMonthDragEnd()"
+      (eventDropped)="onMonthEventDropped($event)">
+    </app-month-scroll-view>
+  }
 
   <!-- ==================== WEEK VIEW ==================== -->
-  <div *ngIf="viewMode === 'week'" class="week-view-wrapper">
-    <div class="week-scroll-area">
-
-      <div class="week-header-sticky-container">
-        <div class="week-header-row">
-          <div class="time-header"></div>
-          <div *ngFor="let col of weekView.columns" class="week-day-header" [class.today]="col.isToday">
-            <div>{{ col.date | date:'EEE' }}</div>
-            <div>{{ col.date | date:'d' }}</div>
+  @if (viewMode === 'week') {
+    <div class="week-view-wrapper">
+      <div class="week-scroll-area">
+        <div class="week-header-sticky-container">
+          <div class="week-header-row">
+            <div class="time-header"></div>
+            @for (col of weekView.columns; track col) {
+              <div class="week-day-header" [class.today]="col.isToday">
+                <div>{{ col.date | date:'EEE' }}</div>
+                <div>{{ col.date | date:'d' }}</div>
+              </div>
+            }
           </div>
-        </div>
-
-        <div class="week-allday-row">
-          <div class="time-header-allday-label">all-day</div>
-          <div class="week-allday-body">
-            <!-- Background: today highlight + column separators only. -->
-            <div class="week-days-container week-allday-background">
-              <div *ngFor="let col of weekView.columns" class="week-day-column-allday" [class.today]="col.isToday"></div>
-            </div>
-            <!-- Foreground: one pill per event, spanning the columns it covers
-                 (columnStart/columnSpan), instead of a separate pill per day —
-                 so a multi-day event renders as a single continuous bar. -->
-            <div class="week-allday-overlay">
-              <div *ngFor="let item of weekView.allDayLayoutItems" class="all-day-pill"
-                [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan"
-                [style.grid-row]="item.lane + 1"
-                [ngStyle]="item.event.eventColor ? {'border-left': '4px solid ' + item.event.eventColor} : {}"
-                (click)="onEventClicked(item.event, $event)">
-                {{ item.event.subject }}
+          <div class="week-allday-row">
+            <div class="time-header-allday-label">all-day</div>
+            <div class="week-allday-body">
+              <!-- Background: today highlight + column separators only. -->
+              <div class="week-days-container week-allday-background">
+                @for (col of weekView.columns; track col) {
+                  <div class="week-day-column-allday" [class.today]="col.isToday"></div>
+                }
+              </div>
+              <!-- Foreground: one pill per event, spanning the columns it covers
+              (columnStart/columnSpan), instead of a separate pill per day —
+              so a multi-day event renders as a single continuous bar. -->
+              <div class="week-allday-overlay">
+                @for (item of weekView.allDayLayoutItems; track item) {
+                  <div class="all-day-pill"
+                    [style.grid-column]="item.columnStart + ' / span ' + item.columnSpan"
+                    [style.grid-row]="item.lane + 1"
+                    [ngStyle]="item.event.eventColor ? {'border-left': '4px solid ' + item.event.eventColor} : {}"
+                    (click)="onEventClicked(item.event, $event)">
+                    {{ item.event.subject }}
+                  </div>
+                }
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="week-body">
-        <div class="time-column">
-          <div *ngFor="let hour of hours" class="time-slot-label">{{ formatHour(hour) }}</div>
-        </div>
-
-        <div class="week-days-container">
-          <div *ngFor="let col of weekView.columns" class="week-day-column" [class.today]="col.isToday">
-            <div class="week-day-grid" (mousedown)="startCreate($event, col.date)">
-              <div *ngFor="let hour of hours" class="hour-row"></div>
-
-              <div *ngIf="col.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
-
-              <div *ngIf="isCreatingInColumn(col.date)" class="create-preview-block" [style.top.px]="createPreviewTop"
-                [style.height.px]="createPreviewHeight">
-              </div>
-
-              <div *ngFor="let item of col.layoutItems" class="time-block-event" [style.top.px]="item.top"
-                [style.height.px]="item.height" [style.left.%]="item.left" [style.width.%]="item.width"
-                [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
-                (click)="onEventClicked(item.event, $event)" (mousedown)="startDrag($event, item, col.date)">
-
-                <div class="resize-handle top" (mousedown)="startResize($event, item, 'top')"></div>
-                <div class="time-block-title">{{ item.event.subject }}</div>
-                <div class="time-block-time">
-                  {{ item.event.startDate | date:'HH:mm' }} – {{ item.event.endDate | date:'HH:mm' }}
+        <div class="week-body">
+          <div class="time-column">
+            @for (hour of hours; track hour) {
+              <div class="time-slot-label">{{ formatHour(hour) }}</div>
+            }
+          </div>
+          <div class="week-days-container">
+            @for (col of weekView.columns; track col) {
+              <div class="week-day-column" [class.today]="col.isToday">
+                <div class="week-day-grid" (mousedown)="startCreate($event, col.date)">
+                  @for (hour of hours; track hour) {
+                    <div class="hour-row"></div>
+                  }
+                  @if (col.isToday) {
+                    <div class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
+                  }
+                  @if (isCreatingInColumn(col.date)) {
+                    <div class="create-preview-block" [style.top.px]="createPreviewTop"
+                      [style.height.px]="createPreviewHeight">
+                    </div>
+                  }
+                  @for (item of col.layoutItems; track item) {
+                    <div class="time-block-event" [style.top.px]="item.top"
+                      [style.height.px]="item.height" [style.left.%]="item.left" [style.width.%]="item.width"
+                      [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
+                      (click)="onEventClicked(item.event, $event)" (mousedown)="startDrag($event, item, col.date)">
+                      <div class="resize-handle top" (mousedown)="startResize($event, item, 'top')"></div>
+                      <div class="time-block-title">{{ item.event.subject }}</div>
+                      <div class="time-block-time">
+                        {{ item.event.startDate | date:'HH:mm' }} – {{ item.event.endDate | date:'HH:mm' }}
+                      </div>
+                      <div class="resize-handle bottom" (mousedown)="startResize($event, item, 'bottom')"></div>
+                    </div>
+                  }
                 </div>
-                <div class="resize-handle bottom" (mousedown)="startResize($event, item, 'bottom')"></div>
               </div>
-
-            </div>
+            }
           </div>
         </div>
       </div>
-
     </div>
-  </div>
+  }
 
   <!-- ==================== DAY VIEW ==================== -->
-  <div *ngIf="viewMode === 'day'" class="day-view-outer">
-
-    <div class="day-allday-row-container">
-      <div class="time-header-allday-label">all-day</div>
-      <div class="day-all-day-row">
-        <div *ngFor="let event of dayView.allDayEvents" class="all-day-pill"
-          [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
-          (click)="onEventClicked(event, $event)">
-          {{ event.subject }}
-        </div>
-      </div>
-    </div>
-
-    <div class="day-time-layout">
-      <div class="time-column">
-        <div *ngFor="let hour of hours" class="time-slot-label">
-          {{ formatHour(hour) }}
-        </div>
-      </div>
-
-      <div class="day-timeline" (mousedown)="startCreate($event, selectedDate)">
-        <div *ngFor="let hour of hours" class="hour-row"></div>
-
-        <div *ngIf="dayView.isToday" class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
-
-        <div *ngIf="isCreatingInColumn(selectedDate)" class="create-preview-block" [style.top.px]="createPreviewTop"
-          [style.height.px]="createPreviewHeight">
-        </div>
-
-        <div *ngFor="let item of dayView.layoutItems" class="time-block-event" [style.top.px]="item.top"
-          [style.height.px]="item.height" [style.left.%]="item.left" [style.width.%]="item.width"
-          [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
-          (click)="onEventClicked(item.event, $event)" (mousedown)="startDrag($event, item, selectedDate)">
-
-          <div class="resize-handle top" (mousedown)="startResize($event, item, 'top')"></div>
-          <div class="time-block-title">{{ item.event.subject }}</div>
-          <div class="time-block-time">
-            {{ item.event.startDate | date:'HH:mm' }} – {{ item.event.endDate | date:'HH:mm' }}
-          </div>
-          <div class="resize-handle bottom" (mousedown)="startResize($event, item, 'bottom')"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== AGENDA VIEW ==================== -->
-  <div *ngIf="viewMode === 'agenda'" class="agenda-view">
-
-    <div *ngIf="agendaView.length === 0" class="agenda-empty">
-      <mat-icon class="agenda-empty-icon">event_available</mat-icon>
-      <p>No events in the next 30 days.</p>
-    </div>
-
-    <div *ngFor="let group of agendaView" class="agenda-day-group">
-
-      <div class="agenda-day-header" [class.agenda-today]="isToday(group.date)">
-        <span class="agenda-day-name">{{ group.date | date:'EEE' }}</span>
-        <span class="agenda-day-number">{{ group.date | date:'d' }}</span>
-        <span class="agenda-month-year">{{ group.date | date:'MMM y' }}</span>
-        <span *ngIf="isToday(group.date)" class="agenda-today-badge">Today</span>
-      </div>
-
-      <div class="agenda-events">
-        <div *ngFor="let event of group.events" class="agenda-event" [class.linked]="event.linkedBoardItemId"
-          [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
-          [matTooltip]="getTooltip(event)" matTooltipShowDelay="400" matTooltipHideDelay="100"
-          (click)="onEventClicked(event, $event)">
-
-          <div class="agenda-event-time">
-            <ng-container *ngIf="event.allDayEvent; else timedEvent">
-              <span class="agenda-allday-badge">All day</span>
-            </ng-container>
-            <ng-template #timedEvent>
-              <span class="agenda-time-start">{{ event.startDate | date:'HH:mm' }}</span>
-              <span class="agenda-time-sep">–</span>
-              <span class="agenda-time-end">{{ event.endDate | date:'HH:mm' }}</span>
-            </ng-template>
-          </div>
-
-          <div class="agenda-event-content">
-            <div class="agenda-event-title">
-              <mat-icon *ngIf="event.linkedBoardItemId" class="linked-icon">link</mat-icon>
+  @if (viewMode === 'day') {
+    <div class="day-view-outer">
+      <div class="day-allday-row-container">
+        <div class="time-header-allday-label">all-day</div>
+        <div class="day-all-day-row">
+          @for (event of dayView.allDayEvents; track event) {
+            <div class="all-day-pill"
+              [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
+              (click)="onEventClicked(event, $event)">
               {{ event.subject }}
             </div>
-            <div *ngIf="event.eventTypeName" class="agenda-event-type">{{ event.eventTypeName }}</div>
-          </div>
-
-          <div *ngIf="event.attendanceScore != null" class="agenda-attendance-dot"
-            [style.background]="attendanceColor(event.attendanceScore)">
-          </div>
-
+          }
         </div>
       </div>
-
+      <div class="day-time-layout">
+        <div class="time-column">
+          @for (hour of hours; track hour) {
+            <div class="time-slot-label">
+              {{ formatHour(hour) }}
+            </div>
+          }
+        </div>
+        <div class="day-timeline" (mousedown)="startCreate($event, selectedDate)">
+          @for (hour of hours; track hour) {
+            <div class="hour-row"></div>
+          }
+          @if (dayView.isToday) {
+            <div class="now-indicator" [style.top.px]="nowIndicatorTop"></div>
+          }
+          @if (isCreatingInColumn(selectedDate)) {
+            <div class="create-preview-block" [style.top.px]="createPreviewTop"
+              [style.height.px]="createPreviewHeight">
+            </div>
+          }
+          @for (item of dayView.layoutItems; track item) {
+            <div class="time-block-event" [style.top.px]="item.top"
+              [style.height.px]="item.height" [style.left.%]="item.left" [style.width.%]="item.width"
+              [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
+              (click)="onEventClicked(item.event, $event)" (mousedown)="startDrag($event, item, selectedDate)">
+              <div class="resize-handle top" (mousedown)="startResize($event, item, 'top')"></div>
+              <div class="time-block-title">{{ item.event.subject }}</div>
+              <div class="time-block-time">
+                {{ item.event.startDate | date:'HH:mm' }} – {{ item.event.endDate | date:'HH:mm' }}
+              </div>
+              <div class="resize-handle bottom" (mousedown)="startResize($event, item, 'bottom')"></div>
+            </div>
+          }
+        </div>
+      </div>
     </div>
-  </div>
+  }
+
+  <!-- ==================== AGENDA VIEW ==================== -->
+  @if (viewMode === 'agenda') {
+    <div class="agenda-view">
+      @if (agendaView.length === 0) {
+        <div class="agenda-empty">
+          <mat-icon class="agenda-empty-icon">event_available</mat-icon>
+          <p>No events in the next 30 days.</p>
+        </div>
+      }
+      @for (group of agendaView; track group) {
+        <div class="agenda-day-group">
+          <div class="agenda-day-header" [class.agenda-today]="isToday(group.date)">
+            <span class="agenda-day-name">{{ group.date | date:'EEE' }}</span>
+            <span class="agenda-day-number">{{ group.date | date:'d' }}</span>
+            <span class="agenda-month-year">{{ group.date | date:'MMM y' }}</span>
+            @if (isToday(group.date)) {
+              <span class="agenda-today-badge">Today</span>
+            }
+          </div>
+          <div class="agenda-events">
+            @for (event of group.events; track event) {
+              <div class="agenda-event" [class.linked]="event.linkedBoardItemId"
+                [ngStyle]="event.eventColor ? {'border-left': '4px solid ' + event.eventColor} : {}"
+                [matTooltip]="getTooltip(event)" matTooltipShowDelay="400" matTooltipHideDelay="100"
+                (click)="onEventClicked(event, $event)">
+                <div class="agenda-event-time">
+                  @if (event.allDayEvent) {
+                    <span class="agenda-allday-badge">All day</span>
+                  } @else {
+                    <span class="agenda-time-start">{{ event.startDate | date:'HH:mm' }}</span>
+                    <span class="agenda-time-sep">–</span>
+                    <span class="agenda-time-end">{{ event.endDate | date:'HH:mm' }}</span>
+                  }
+                </div>
+                <div class="agenda-event-content">
+                  <div class="agenda-event-title">
+                    @if (event.linkedBoardItemId) {
+                      <mat-icon class="linked-icon">link</mat-icon>
+                    }
+                    {{ event.subject }}
+                  </div>
+                  @if (event.eventTypeName) {
+                    <div class="agenda-event-type">{{ event.eventTypeName }}</div>
+                  }
+                </div>
+                @if (event.attendanceScore != null) {
+                  <div class="agenda-attendance-dot"
+                    [style.background]="attendanceColor(event.attendanceScore)">
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
 
 </div>

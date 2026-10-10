@@ -94,19 +94,9 @@ export class NotificationRealtimeService implements OnDestroy {
             .configureLogging(signalR.LogLevel.Information)
             .build();
 
-        this.hubConnection.onreconnecting(error => {
-            console.log('SignalR reconnecting', error);
-        });
-
-        this.hubConnection.onreconnected(connectionId => {
-            console.log('SignalR reconnected', connectionId);
-        });
-
         // Fires when an established connection ends: after automatic reconnect gave up, or after
         // our own stop() on logout. Only the former should be retried.
-        this.hubConnection.onclose(error => {
-            console.log('SignalR closed', error);
-
+        this.hubConnection.onclose(() => {
             if (this.shouldBeConnected) {
                 this.retryAttempt = 0;
                 this.scheduleRetry();
@@ -151,7 +141,6 @@ export class NotificationRealtimeService implements OnDestroy {
         try {
             await this.hubConnection.start();
             this.retryAttempt = 0;
-            console.log('Successfully synchronized with Notification Hub.');
         } catch (err) {
             console.error('Could not connect to Notification Hub:', err);
             this.scheduleRetry();
@@ -199,9 +188,6 @@ export class NotificationRealtimeService implements OnDestroy {
         this.hubConnection.on(
             'ReceiveReminder',
             (payload: { eventId: number; message: string }) => {
-
-                console.log('REMINDER RECEIVED', payload);
-
                 this.reminderSubject.next({
                     eventId: payload.eventId,
                     message: payload.message
@@ -214,7 +200,6 @@ export class NotificationRealtimeService implements OnDestroy {
         this.hubConnection.on(
             'ReceiveMention',
             (payload: MentionPayload) => {
-                console.log('MENTION RECEIVED', payload);
                 this.mentionSubject.next(payload);
             }
         );

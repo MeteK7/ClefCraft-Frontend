@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router, provideRouter } from '@angular/router';
 
@@ -25,7 +25,7 @@ describe('AuthService', () => {
 
   function createService(): void {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([])]
     });
     service = TestBed.inject(AuthService);
     http = TestBed.inject(HttpTestingController);

@@ -1,8 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { ToastrService } from 'ngx-toastr';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, throwError } from 'rxjs';
 
 import { LoginComponent } from './login.component';
@@ -16,10 +16,10 @@ describe('LoginComponent', () => {
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: ToastrService, useValue: jasmine.createSpyObj('ToastrService', ['success', 'error']) },
+        { provide: MatSnackBar, useValue: jasmine.createSpyObj('MatSnackBar', ['open']) },
       ]
     })
     .compileComponents();
@@ -67,7 +67,7 @@ describe('LoginComponent', () => {
       const auth = TestBed.inject(AuthService);
       spyOn(auth, 'login').and.returnValue(of(session));
       spyOn(auth, 'setSession');
-      spyOn(auth, 'loadCurrentUser').and.returnValue(of({ id: 'u1' }));
+      spyOn(auth, 'loadCurrentUser').and.returnValue(of({ id: 'u1', firstname: 'Test', lastname: 'User', fullName: 'Test User', email: 'a@test.com' }));
       const navigate = spyOn(TestBed.inject(Router), 'navigateByUrl');
 
       component.form.setValue({ email: 'a@test.com', password: 'secret1' });
@@ -93,7 +93,7 @@ describe('LoginComponent', () => {
   });
 
   describe('after a failed login', () => {
-    function failLoginWith(status: number): jasmine.SpyObj<ToastrService> {
+    function failLoginWith(status: number): jasmine.SpyObj<MatSnackBar> {
       const auth = TestBed.inject(AuthService);
       spyOn(auth, 'login').and.returnValue(throwError(() => new HttpErrorResponse({ status })));
 
@@ -101,17 +101,17 @@ describe('LoginComponent', () => {
       component.submit();
 
       expect(component.isLoading).toBeFalse();
-      return TestBed.inject(ToastrService) as jasmine.SpyObj<ToastrService>;
+      return TestBed.inject(MatSnackBar) as jasmine.SpyObj<MatSnackBar>;
     }
 
     it('asks the user to wait when rate limited (429)', () => {
-      expect(failLoginWith(429).error).toHaveBeenCalledWith(
-        'Too many sign-in attempts. Please wait a minute and try again.', 'Login failed');
+      expect(failLoginWith(429).open).toHaveBeenCalledWith(
+        'Too many sign-in attempts. Please wait a minute and try again.', 'Dismiss', { duration: 5000 });
     });
 
     it('shows one generic message for rejected credentials (401)', () => {
-      expect(failLoginWith(401).error).toHaveBeenCalledWith(
-        'Invalid email or password, or the account is temporarily locked.', 'Login failed');
+      expect(failLoginWith(401).open).toHaveBeenCalledWith(
+        'Invalid email or password, or the account is temporarily locked.', 'Dismiss', { duration: 5000 });
     });
   });
 });

@@ -1,5 +1,5 @@
-import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Inject, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_SNACK_BAR_DATA, MatSnackBarRef } from '@angular/material/snack-bar';
@@ -12,11 +12,11 @@ export interface ReminderToastData {
 }
 
 @Component({
-  selector: 'app-live-reminder-toast',
-  standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
-  templateUrl: './live-reminder-toast.component.html',
-  styleUrls: ['./live-reminder-toast.component.css']
+    selector: 'app-live-reminder-toast',
+    imports: [MatIconModule, MatButtonModule],
+    templateUrl: './live-reminder-toast.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrls: ['./live-reminder-toast.component.css']
 })
 export class LiveReminderToastComponent implements OnInit, OnDestroy {
   readonly defaultColor = '#4f87f5';

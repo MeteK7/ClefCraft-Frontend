@@ -1,13 +1,14 @@
 import {
-    ChangeDetectorRef,
-    Component,
-    EventEmitter,
-    Input,
-    OnInit,
-    Output
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+  ChangeDetectionStrategy
 } from '@angular/core';
 
-import { CommonModule } from '@angular/common';
+
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -32,18 +33,17 @@ import { FormsModule } from '@angular/forms';
 
 @Component({
     selector: 'app-relationship-hub',
-    standalone: true,
     imports: [
-        FormsModule,
-        CommonModule,
-        MatButtonModule,
-        MatIconModule,
-        MatExpansionModule,
-        MatButtonToggleModule,
-        RelationshipCardComponent,
-        RelationshipGraphComponent
-    ],
+    FormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatExpansionModule,
+    MatButtonToggleModule,
+    RelationshipCardComponent,
+    RelationshipGraphComponent
+],
     templateUrl: './relationship-hub.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./relationship-hub.component.css']
 })
 export class RelationshipHubComponent implements OnInit {
