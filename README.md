@@ -1,12 +1,12 @@
 # ClefCraft Frontend
 
-Angular 18 client for ClefCraft: boards, calendar, comments and notifications. It talks to the
+Angular 22 client for ClefCraft: boards, calendar, comments and notifications. It talks to the
 ASP.NET Core API in the `ClefCraft-Backend` repo.
 
 ## Prerequisites
 
-- **Node.js 24** (24.15.0 or a later 24.x, the Node 24 range Angular 22 supports, which this
-  project is being upgraded to; CI uses Node 24) with npm.
+- **Node.js 24** (24.15.0 or a later 24.x, the Node 24 range Angular 22 supports; CI uses Node 24)
+  with npm.
 - The **backend API running locally**. See the backend README for its setup, including the
   development accounts and demo data.
 
@@ -94,9 +94,9 @@ Things to know:
 - **The calendar-dialog baseline will change** when the AI attendance feature is replaced (step 6 of
   the backend's `docs/PLAN.md`). Regenerate it then, and accept the difference deliberately.
 
-> **Backend state.** The suite and its baselines were produced against backend branch
-> `fix/recurring-owner`, commit `b398911`. Update this line when that work is merged, so a later
-> baseline difference can be traced to a backend change.
+> **Backend state.** The suite and its baselines were last verified against backend branch
+> `test-n552vx`, commit `7d4d2f8`, with the frontend on Angular 22. Update this line whenever the
+> baselines are regenerated, so a later baseline difference can be traced to a backend change.
 
 ## Build
 
