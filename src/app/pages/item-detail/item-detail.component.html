@@ -1,7 +1,7 @@
-<div class="item-detail" *ngIf="item">
+@if (item) {
+  <div class="item-detail">
     <h3>{{ item.title }}</h3>
     <p>{{ item.description }}</p>
-  
     <div>
       <label>Created By: </label>{{ item.createdBy }}
     </div>
@@ -17,10 +17,8 @@
     <div>
       <label>Linked Items: </label>{{ item.linkedItems?.join(', ') }}
     </div>
-  
     <textarea [(ngModel)]="item.description" placeholder="Update description..."></textarea>
-  
     <button (click)="saveItem()">Save</button>
     <button (click)="deleteItem()">Delete</button>
   </div>
-  
+}

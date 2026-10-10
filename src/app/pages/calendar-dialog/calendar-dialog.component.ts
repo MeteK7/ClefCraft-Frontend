@@ -6,7 +6,7 @@ import {
   OnInit,
   Output
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import {
   ReactiveFormsModule,
   FormBuilder,
@@ -48,26 +48,25 @@ import { AuthService } from '../../_services/auth.service';
 @Component({
     selector: 'app-calendar-dialog',
     imports: [
-        CommonModule,
-        ReactiveFormsModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatCheckboxModule,
-        MatSelectModule,
-        MatTabsModule,
-        MatButtonModule,
-        MatIconModule,
-        MatDividerModule,
-        MatDatepickerModule,
-        MatNativeDateModule,
-        NgxMatTimepickerModule,
-        QuillModule,
-        MatAutocompleteModule,
-        MatRadioModule,
-        CalendarHistoryTimelineComponent,
-        CommentThreadComponent,
-        CalendarCollaboratorsPanelComponent
-    ],
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatCheckboxModule,
+    MatSelectModule,
+    MatTabsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatDividerModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    NgxMatTimepickerModule,
+    QuillModule,
+    MatAutocompleteModule,
+    MatRadioModule,
+    CalendarHistoryTimelineComponent,
+    CommentThreadComponent,
+    CalendarCollaboratorsPanelComponent
+],
     templateUrl: './calendar-dialog.component.html',
     styleUrls: ['./calendar-dialog.component.css']
 })

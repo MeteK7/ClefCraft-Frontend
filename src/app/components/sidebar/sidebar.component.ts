@@ -1,12 +1,12 @@
 import { Component, HostBinding } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../_services/auth.service';
 
 @Component({
     selector: 'app-sidebar',
-    imports: [CommonModule, RouterModule, MatIconModule],
+    imports: [RouterModule, MatIconModule],
     templateUrl: './sidebar.component.html',
     styleUrls: ['./sidebar.component.css']
 })

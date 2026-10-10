@@ -21,8 +21,12 @@
     </div>
 
     <div class="reminder-content">
-      <span class="reminder-eyebrow" *ngIf="data.grantedAccess">{{ data.authorFullName }} shared a calendar event with you</span>
-      <span class="reminder-eyebrow" *ngIf="!data.grantedAccess">{{ data.authorFullName }} mentioned you</span>
+      @if (data.grantedAccess) {
+        <span class="reminder-eyebrow">{{ data.authorFullName }} shared a calendar event with you</span>
+      }
+      @if (!data.grantedAccess) {
+        <span class="reminder-eyebrow">{{ data.authorFullName }} mentioned you</span>
+      }
       <p class="reminder-message">{{ data.excerpt }}</p>
       <div class="reminder-actions">
         <button mat-stroked-button class="reminder-btn-view" (click)="onActionClicked()">

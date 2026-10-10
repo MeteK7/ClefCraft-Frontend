@@ -15,36 +15,36 @@
    relationship-dialog, relationship-hub's accordion, etc). If a new
    Material component starts showing the same "dark text on dark
    background" symptom, inspect it in devtools → Styles/Computed, find
-   the --mdc-*--mat- variable driving the color, and add it below.
+   the --mat-* variable driving the color, and add it below.
    ============================================================ */
 
 body.dark-theme {
 
   /* ---------- Outlined form fields (mat-form-field appearance="outline") ---------- */
-  --mdc-outlined-text-field-label-text-color: var(--text-secondary);
-  --mdc-outlined-text-field-hover-label-text-color: var(--text);
-  --mdc-outlined-text-field-focus-label-text-color: var(--primary);
-  --mdc-outlined-text-field-input-text-color: var(--text);
-  --mdc-outlined-text-field-input-text-placeholder-color: var(--text-secondary);
-  --mdc-outlined-text-field-outline-color: var(--border);
-  --mdc-outlined-text-field-hover-outline-color: var(--border-strong);
-  --mdc-outlined-text-field-focus-outline-color: var(--primary);
-  --mdc-outlined-text-field-disabled-outline-color: var(--border);
-  --mdc-outlined-text-field-disabled-input-text-color: var(--text-secondary);
-  --mdc-outlined-text-field-disabled-label-text-color: var(--text-secondary);
-  --mdc-outlined-text-field-error-outline-color: var(--danger);
-  --mdc-outlined-text-field-error-label-text-color: var(--danger);
-  --mdc-outlined-text-field-error-hover-outline-color: var(--danger);
-  --mdc-outlined-text-field-error-focus-outline-color: var(--danger);
+  --mat-form-field-outlined-label-text-color: var(--text-secondary);
+  --mat-form-field-outlined-hover-label-text-color: var(--text);
+  --mat-form-field-outlined-focus-label-text-color: var(--primary);
+  --mat-form-field-outlined-input-text-color: var(--text);
+  --mat-form-field-outlined-input-text-placeholder-color: var(--text-secondary);
+  --mat-form-field-outlined-outline-color: var(--border);
+  --mat-form-field-outlined-hover-outline-color: var(--border-strong);
+  --mat-form-field-outlined-focus-outline-color: var(--primary);
+  --mat-form-field-outlined-disabled-outline-color: var(--border);
+  --mat-form-field-outlined-disabled-input-text-color: var(--text-secondary);
+  --mat-form-field-outlined-disabled-label-text-color: var(--text-secondary);
+  --mat-form-field-outlined-error-outline-color: var(--danger);
+  --mat-form-field-outlined-error-label-text-color: var(--danger);
+  --mat-form-field-outlined-error-hover-outline-color: var(--danger);
+  --mat-form-field-outlined-error-focus-outline-color: var(--danger);
   --mat-form-field-hint-text-color: var(--text-secondary);
   --mat-form-field-error-text-color: var(--danger);
   --mat-form-field-enabled-select-arrow-color: var(--text-secondary);
 
   /* Filled variant, in case any field uses it instead of outline */
-  --mdc-filled-text-field-label-text-color: var(--text-secondary);
-  --mdc-filled-text-field-input-text-color: var(--text);
-  --mdc-filled-text-field-container-color: var(--surface-2);
-  --mdc-filled-text-field-input-text-placeholder-color: var(--text-secondary);
+  --mat-form-field-filled-label-text-color: var(--text-secondary);
+  --mat-form-field-filled-input-text-color: var(--text);
+  --mat-form-field-filled-container-color: var(--surface-2);
+  --mat-form-field-filled-input-text-placeholder-color: var(--text-secondary);
 
   /* ---------- Select / autocomplete / option panels ---------- */
   --mat-select-enabled-trigger-text-color: var(--text);
@@ -60,17 +60,17 @@ body.dark-theme {
   --mat-autocomplete-background-color: var(--surface);
 
   /* ---------- Checkbox / radio ---------- */
-  --mdc-checkbox-unselected-icon-color: var(--text-secondary);
-  --mdc-checkbox-disabled-unselected-icon-color: var(--text-secondary);
+  --mat-checkbox-unselected-icon-color: var(--text-secondary);
+  --mat-checkbox-disabled-unselected-icon-color: var(--text-secondary);
   --mat-checkbox-label-text-color: var(--text);
-  --mdc-radio-unselected-icon-color: var(--text-secondary);
-  --mdc-radio-disabled-unselected-icon-color: var(--text-secondary);
+  --mat-radio-unselected-icon-color: var(--text-secondary);
+  --mat-radio-disabled-unselected-icon-color: var(--text-secondary);
   --mat-radio-label-text-color: var(--text);
 
   /* ---------- Dialog container ---------- */
-  --mdc-dialog-container-color: var(--surface);
-  --mdc-dialog-subhead-color: var(--text);
-  --mdc-dialog-supporting-text-color: var(--text-secondary);
+  --mat-dialog-container-color: var(--surface);
+  --mat-dialog-subhead-color: var(--text);
+  --mat-dialog-supporting-text-color: var(--text-secondary);
 
   /* ---------- Menu ---------- */
   --mat-menu-container-color: var(--surface);
@@ -78,14 +78,14 @@ body.dark-theme {
   --mat-menu-item-hover-state-layer-color: var(--surface-hover);
 
   /* ---------- Tabs (General/Attachments/Recurrence, Details/Relationships/...) ---------- */
-  --mat-tab-header-inactive-label-text-color: var(--text-secondary);
-  --mat-tab-header-active-label-text-color: var(--primary);
-  --mat-tab-header-active-ripple-color: var(--primary);
-  --mat-tab-header-inactive-ripple-color: var(--text-secondary);
-  --mat-tab-header-active-focus-label-text-color: var(--primary);
-  --mat-tab-header-active-hover-label-text-color: var(--primary);
-  --mat-tab-header-inactive-hover-label-text-color: var(--text);
-  --mat-tab-header-inactive-focus-label-text-color: var(--text);
+  --mat-tab-inactive-label-text-color: var(--text-secondary);
+  --mat-tab-active-label-text-color: var(--primary);
+  --mat-tab-active-ripple-color: var(--primary);
+  --mat-tab-inactive-ripple-color: var(--text-secondary);
+  --mat-tab-active-focus-label-text-color: var(--primary);
+  --mat-tab-active-hover-label-text-color: var(--primary);
+  --mat-tab-inactive-hover-label-text-color: var(--text);
+  --mat-tab-inactive-focus-label-text-color: var(--text);
 
   /* ---------- Datepicker calendar popup ---------- */
   --mat-datepicker-calendar-container-background-color: var(--surface);
@@ -100,8 +100,8 @@ body.dark-theme {
   --mat-datepicker-calendar-date-today-outline-color: var(--primary);
 
   /* ---------- Tooltip ---------- */
-  --mdc-plain-tooltip-container-color: var(--surface-2);
-  --mdc-plain-tooltip-supporting-text-color: var(--text);
+  --mat-tooltip-container-color: var(--surface-2);
+  --mat-tooltip-supporting-text-color: var(--text);
 
   /* ---------- Expansion panel (relationship-hub's list view accordion) ---------- */
   --mat-expansion-container-background-color: var(--surface);
@@ -110,23 +110,23 @@ body.dark-theme {
   --mat-expansion-header-description-color: var(--text-secondary);
 
   /* ---------- Button toggle (relationship-hub's Graph/List view-selector) ---------- */
-  --mat-standard-button-toggle-text-color: var(--text-secondary);
-  --mat-standard-button-toggle-selected-state-text-color: var(--text-inverse);
-  --mat-standard-button-toggle-selected-state-background-color: var(--primary);
-  --mat-standard-button-toggle-background-color: var(--surface);
-  --mat-standard-button-toggle-state-layer-color: var(--surface-hover);
-  --mat-standard-button-toggle-divider-color: var(--border);
-  --mat-standard-button-toggle-disabled-state-text-color: var(--text-secondary);
-  --mat-standard-button-toggle-disabled-state-background-color: var(--surface-2);
-  --mat-standard-button-toggle-disabled-selected-state-background-color: var(--surface-2);
+  --mat-button-toggle-text-color: var(--text-secondary);
+  --mat-button-toggle-selected-state-text-color: var(--text-inverse);
+  --mat-button-toggle-selected-state-background-color: var(--primary);
+  --mat-button-toggle-background-color: var(--surface);
+  --mat-button-toggle-state-layer-color: var(--surface-hover);
+  --mat-button-toggle-divider-color: var(--border);
+  --mat-button-toggle-disabled-state-text-color: var(--text-secondary);
+  --mat-button-toggle-disabled-state-background-color: var(--surface-2);
+  --mat-button-toggle-disabled-selected-state-background-color: var(--surface-2);
 
   /* ---------- Raised/filled buttons (relationship-hub's "Add Relationship", etc.) ---------- */
-  --mdc-protected-button-container-color: var(--primary);
-  --mdc-protected-button-label-text-color: var(--text-inverse);
-  --mdc-protected-button-disabled-container-color: var(--surface-2);
-  --mdc-protected-button-disabled-label-text-color: var(--text-secondary);
-  --mat-protected-button-state-layer-color: var(--text-inverse);
-  --mat-protected-button-ripple-color: rgba(255, 255, 255, 0.15);
+  --mat-button-protected-container-color: var(--primary);
+  --mat-button-protected-label-text-color: var(--text-inverse);
+  --mat-button-protected-disabled-container-color: var(--surface-2);
+  --mat-button-protected-disabled-label-text-color: var(--text-secondary);
+  --mat-button-protected-state-layer-color: var(--text-inverse);
+  --mat-button-protected-ripple-color: rgba(255, 255, 255, 0.15);
 }
 
 /* ------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,13 +10,12 @@ import { RecurrenceDeleteScope } from '../../models/recurrence-delete-scope.mode
 @Component({
     selector: 'app-recurrence-delete-scope-dialog',
     imports: [
-        CommonModule,
-        FormsModule,
-        MatDialogModule,
-        MatButtonModule,
-        MatRadioModule,
-        MatIconModule,
-    ],
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatRadioModule,
+    MatIconModule
+],
     templateUrl: './recurrence-delete-scope-dialog.component.html',
     styleUrls: ['./recurrence-delete-scope-dialog.component.css']
 })

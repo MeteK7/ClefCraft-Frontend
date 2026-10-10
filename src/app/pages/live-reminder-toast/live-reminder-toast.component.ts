@@ -1,5 +1,5 @@
 import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_SNACK_BAR_DATA, MatSnackBarRef } from '@angular/material/snack-bar';
@@ -13,7 +13,7 @@ export interface ReminderToastData {
 
 @Component({
     selector: 'app-live-reminder-toast',
-    imports: [CommonModule, MatIconModule, MatButtonModule],
+    imports: [MatIconModule, MatButtonModule],
     templateUrl: './live-reminder-toast.component.html',
     styleUrls: ['./live-reminder-toast.component.css']
 })

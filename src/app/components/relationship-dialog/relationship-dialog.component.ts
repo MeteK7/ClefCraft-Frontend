@@ -9,7 +9,7 @@ import {
     Validators
 } from '@angular/forms';
 
-import { CommonModule } from '@angular/common';
+
 
 import {
     MAT_DIALOG_DATA,
@@ -40,15 +40,14 @@ import { BoardService } from '../../_services/board.service';
 @Component({
     selector: 'app-relationship-dialog',
     imports: [
-        CommonModule,
-        ReactiveFormsModule,
-        MatDialogModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatSelectModule,
-        MatButtonModule,
-        MatIconModule
-    ],
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatIconModule
+],
     templateUrl: './relationship-dialog.component.html',
     styleUrls: ['./relationship-dialog.component.css']
 })

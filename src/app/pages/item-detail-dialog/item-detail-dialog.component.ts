@@ -80,7 +80,7 @@ export class ItemDetailDialogComponent implements OnInit {
     return !this.data.item?.id;
   }
 
-  /** Non-null accessor for template use inside *ngIf="!isNewItem" blocks. */
+  /** Non-null accessor for template use inside @if (!isNewItem) blocks. */
   get item(): Item {
     return this.data.item!;
   }

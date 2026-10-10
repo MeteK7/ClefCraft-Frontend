@@ -1,5 +1,5 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_SNACK_BAR_DATA, MatSnackBarRef } from '@angular/material/snack-bar';
@@ -7,7 +7,7 @@ import { MentionPayload } from '../../_services/notification-realtime.service';
 
 @Component({
     selector: 'app-mention-toast',
-    imports: [CommonModule, MatIconModule, MatButtonModule],
+    imports: [MatIconModule, MatButtonModule],
     templateUrl: './mention-toast.component.html',
     styleUrls: ['./mention-toast.component.css']
 })

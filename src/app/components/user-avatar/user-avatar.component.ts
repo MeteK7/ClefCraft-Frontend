@@ -1,10 +1,10 @@
 import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
     selector: 'app-user-avatar',
-    imports: [CommonModule, MatTooltipModule],
+    imports: [MatTooltipModule],
     templateUrl: './user-avatar.component.html',
     styleUrl: './user-avatar.component.css'
 })

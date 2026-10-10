@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -13,7 +13,7 @@ import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
 // discovery plus the owner's remove action, never a place to add someone directly.
 @Component({
     selector: 'app-calendar-collaborators-panel',
-    imports: [CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, UserAvatarComponent],
+    imports: [MatIconModule, MatButtonModule, MatTooltipModule, UserAvatarComponent],
     templateUrl: './calendar-collaborators-panel.component.html',
     styleUrl: './calendar-collaborators-panel.component.css'
 })

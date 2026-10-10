@@ -1,5 +1,5 @@
 import { Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Subscription } from 'rxjs';
 import { BoardColumnComponent } from '../board-column/board-column.component';
 import { BoardService } from '../../_services/board.service';
@@ -29,13 +29,12 @@ import { ActivatedRoute, Params, Router } from '@angular/router';
 @Component({
     selector: 'app-board',
     imports: [
-        CommonModule,
-        FormsModule,
-        BoardColumnComponent,
-        DragDropModule,
-        ItemDetailSidebarComponent,
-        MatIconModule,
-    ],
+    FormsModule,
+    BoardColumnComponent,
+    DragDropModule,
+    ItemDetailSidebarComponent,
+    MatIconModule
+],
     templateUrl: './board.component.html',
     styleUrls: ['./board.component.css']
 })

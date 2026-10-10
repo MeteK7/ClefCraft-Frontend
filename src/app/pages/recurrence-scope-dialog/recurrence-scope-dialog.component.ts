@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,14 +16,13 @@ type ConfirmationMode =
 @Component({
     selector: 'app-recurrence-scope-dialog',
     imports: [
-        CommonModule,
-        FormsModule,
-        MatDialogModule,
-        MatButtonModule,
-        MatRadioModule,
-        MatIconModule,
-        MatDividerModule,
-    ],
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatRadioModule,
+    MatIconModule,
+    MatDividerModule
+],
     templateUrl: './recurrence-scope-dialog.component.html',
     styleUrls: ['./recurrence-scope-dialog.component.css']
 })

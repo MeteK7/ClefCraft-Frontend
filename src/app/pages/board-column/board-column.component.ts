@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { BoardItemComponent } from '../board-item/board-item.component';
@@ -10,7 +10,7 @@ import { handleBoardDrop } from '../../board-engine/interactions/board-drop-engi
 
 @Component({
     selector: 'app-board-column',
-    imports: [CommonModule, DragDropModule, BoardItemComponent, MatSnackBarModule],
+    imports: [DragDropModule, BoardItemComponent, MatSnackBarModule],
     templateUrl: './board-column.component.html',
     styleUrls: ['./board-column.component.css']
 })

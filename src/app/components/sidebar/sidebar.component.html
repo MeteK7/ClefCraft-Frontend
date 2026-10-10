@@ -4,12 +4,14 @@
   </button>
 
   <ul>
-    <li *ngIf="!authService.isLoggedIn()">
-      <a routerLink="/login" routerLinkActive="active-link">
-        <span class="icon">🔐</span>
-        <span class="label">Login</span>
-      </a>
-    </li>
+    @if (!authService.isLoggedIn()) {
+      <li>
+        <a routerLink="/login" routerLinkActive="active-link">
+          <span class="icon">🔐</span>
+          <span class="label">Login</span>
+        </a>
+      </li>
+    }
 
     <li>
       <a routerLink="/home" routerLinkActive="active-link" [routerLinkActiveOptions]="{ exact: true }">
@@ -32,20 +34,26 @@
       </a>
     </li>
 
-    <li *ngIf="isAdmin">
-      <a routerLink="/management" routerLinkActive="active-link">
-        <span class="icon">⚙️</span>
-        <span class="label">Management</span>
-      </a>
-    </li>
+    @if (isAdmin) {
+      <li>
+        <a routerLink="/management" routerLinkActive="active-link">
+          <span class="icon">⚙️</span>
+          <span class="label">Management</span>
+        </a>
+      </li>
+    }
   </ul>
 
-  <div class="user-info" *ngIf="userFullName">
-    👤 {{ userFullName }}
-  </div>
+  @if (userFullName) {
+    <div class="user-info">
+      👤 {{ userFullName }}
+    </div>
+  }
 
-  <button *ngIf="authService.isLoggedIn()" class="logout-btn" (click)="logout()">
-    <span class="label">Sign Out</span>
-    <mat-icon>logout</mat-icon>
-  </button>
+  @if (authService.isLoggedIn()) {
+    <button class="logout-btn" (click)="logout()">
+      <span class="label">Sign Out</span>
+      <mat-icon>logout</mat-icon>
+    </button>
+  }
 </nav>

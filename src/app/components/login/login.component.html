@@ -4,7 +4,9 @@
     <h2>Login</h2>
     <p class="subtitle">Welcome back! Please sign in.</p>
 
-    <p class="notice" *ngIf="signOutNotice" role="status">{{ signOutNotice }}</p>
+    @if (signOutNotice) {
+      <p class="notice" role="status">{{ signOutNotice }}</p>
+    }
 
     <form [formGroup]="form" (ngSubmit)="submit()" autocomplete="on">
 
@@ -13,9 +15,11 @@
         <label>Email</label>
         <input type="email" name="email" formControlName="email" placeholder="Enter email" autocomplete="email" />
 
-        <small class="error" *ngIf="form.controls.email.touched && form.controls.email.invalid">
-          Valid email is required
-        </small>
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <small class="error">
+            Valid email is required
+          </small>
+        }
       </div>
 
       <!-- Password -->
@@ -26,26 +30,28 @@
           <input [type]="showPassword ? 'text' : 'password'" name="password" formControlName="password"
             placeholder="Enter password" autocomplete="new-password" />
 
-          <button type="button" class="toggle" (click)="togglePassword()">
-            {{ showPassword ? 'Hide' : 'Show' }}
-          </button>
+            <button type="button" class="toggle" (click)="togglePassword()">
+              {{ showPassword ? 'Hide' : 'Show' }}
+            </button>
+          </div>
+
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <small class="error">
+              Password must be at least 6 characters
+            </small>
+          }
         </div>
 
-        <small class="error" *ngIf="form.controls.password.touched && form.controls.password.invalid">
-          Password must be at least 6 characters
-        </small>
+        <!-- Submit -->
+        <button type="submit" [disabled]="form.invalid || isLoading">
+          {{ isLoading ? 'Logging in...' : 'Login' }}
+        </button>
+
+      </form>
+
+      <div class="footer">
+        <p>New user? <a routerLink="/registration">Create account</a></p>
       </div>
 
-      <!-- Submit -->
-      <button type="submit" [disabled]="form.invalid || isLoading">
-        {{ isLoading ? 'Logging in...' : 'Login' }}
-      </button>
-
-    </form>
-
-    <div class="footer">
-      <p>New user? <a routerLink="/registration">Create account</a></p>
     </div>
-
   </div>
-</div>

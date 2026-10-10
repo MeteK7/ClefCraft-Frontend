@@ -17,8 +17,8 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 }
 
 .clean-reminder-viewport-override .mat-mdc-snack-bar-container {
-  --mdc-snackbar-container-color: transparent;
-  --mdc-snackbar-supporting-text-color: inherit;
+  --mat-snackbar-container-color: transparent;
+  --mat-snackbar-supporting-text-color: inherit;
   padding: 0 !important;
   box-shadow: none !important;
 }
