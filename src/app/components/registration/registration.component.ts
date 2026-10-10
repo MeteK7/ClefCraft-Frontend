@@ -46,11 +46,9 @@ export class RegistrationComponent {
       this.userName,
       this.password
     ).subscribe({
-      next: (response) => {
+      next: () => {
 
         this.isLoading = false;
-
-        console.log('Registration successful', response);
 
         this.snackBar.open('Registration successful', 'Dismiss', { duration: 5000 });
 

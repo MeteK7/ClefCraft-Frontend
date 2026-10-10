@@ -336,12 +336,6 @@ export class ItemDetailDialogComponent implements OnInit {
     });
   }
 
-  openRelatedItem(itemId: number): void {
-
-    console.log("Open related item", itemId);
-
-  }
-
   openItemInNewTab(): void {
     const item = this.data.item;
 

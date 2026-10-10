@@ -38,7 +38,6 @@ describe('RegistrationComponent', () => {
 
     beforeEach(() => {
       snackBar = TestBed.inject(MatSnackBar) as jasmine.SpyObj<MatSnackBar>;
-      spyOn(console, 'log');
       spyOn(console, 'error');
     });
 

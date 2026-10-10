@@ -1,4 +1,5 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -33,6 +34,8 @@ const MAX_DUE_ITEMS = 8;
     styleUrl: './home.component.css'
 })
 export class HomeComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+
   userFullName = '';
   isAdmin = false;
 
@@ -52,7 +55,7 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.authService.currentUser$.subscribe(user => {
+    this.authService.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(user => {
       this.userFullName = user?.fullName ?? '';
     });
 

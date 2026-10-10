@@ -492,7 +492,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (matchedEvent) {
       this.openDialog(matchedEvent, undefined, undefined, focusCommentId);
     } else {
-      console.log(`Event #${eventId} is outside the current viewport scope.`);
       this.snackBar.open('Could not find that event on the calendar.', 'Dismiss', { duration: 5000 });
     }
   }

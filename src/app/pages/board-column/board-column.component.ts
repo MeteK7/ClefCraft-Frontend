@@ -38,16 +38,13 @@ export class BoardColumnComponent {
   updateItemColumn(itemId: number, newColumnId: number) {
     this.boardEngine
       .switchBoardItemColumn({ id: itemId, boardColumnId: newColumnId })
-      .subscribe(
-        response => {
-          console.log('Item updated successfully:', response);
-        },
-        error => {
+      .subscribe({
+        error: error => {
           console.error('Error updating item:', error);
           this.snackBar.open('Failed to move item. Reverting to last saved state.', 'Dismiss', { duration: 5000 });
           this.itemMoveFailed.emit();
         }
-      );
+      });
   }
 
   onItemClick(item: BoardItemView): void {
