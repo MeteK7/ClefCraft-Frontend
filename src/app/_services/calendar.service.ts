@@ -6,6 +6,8 @@ import { WorkHistoryEntry } from '../models/work-history.model';
 import { RecurrenceUpdateScope } from '../models/recurrence-update-scope.model';
 import { RecurrenceDeleteScope } from '../models/recurrence-delete-scope.model';
 import { CalendarEventCollaborator } from '../models/calendar-event-collaborator.model';
+import { CalendarEventResponse, CalendarEventUI } from '../models/calendar-event.model-ui';
+import { Attachment } from '../models/attachment.model';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -17,8 +19,8 @@ export class CalendarService {
   constructor(private http: HttpClient) { }
 
   // Fetch events with userId parameter
-  getEvents(rangeStart: Date, rangeEnd: Date): Observable<any[]> {
-    return this.http.get<any[]>(
+  getEvents(rangeStart: Date, rangeEnd: Date): Observable<CalendarEventResponse[]> {
+    return this.http.get<CalendarEventResponse[]>(
       `${this.apiUrl}/events`,
       {
         params: {
@@ -30,12 +32,12 @@ export class CalendarService {
   }
 
   // Save event to the backend
-  saveEvent(event: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}`, event);
+  saveEvent(event: CalendarEventUI): Observable<CalendarEventResponse> {
+    return this.http.post<CalendarEventResponse>(`${this.apiUrl}`, event);
   }
 
-  updateEvent(id: number, event: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}`, event);
+  updateEvent(id: number, event: CalendarEventUI): Observable<CalendarEventResponse> {
+    return this.http.put<CalendarEventResponse>(`${this.apiUrl}/${id}`, event);
   }
 
   deleteEvent(id: number): Observable<void> {
@@ -50,12 +52,12 @@ export class CalendarService {
     return this.http.get<WorkHistoryEntry[]>(`${this.apiUrl}/work-history/${itemId}`);
   }
 
-  getAttachments(eventId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/${eventId}/attachments`);
+  getAttachments(eventId: number): Observable<Attachment[]> {
+    return this.http.get<Attachment[]>(`${this.apiUrl}/${eventId}/attachments`);
   }
 
-  uploadAttachments(eventId: number, formData: FormData): Observable<any> {
-    return this.http.post(`${this.apiUrl}/${eventId}/attachments`, formData);
+  uploadAttachments(eventId: number, formData: FormData): Observable<Attachment[]> {
+    return this.http.post<Attachment[]>(`${this.apiUrl}/${eventId}/attachments`, formData);
   }
 
   downloadAttachment(id: number): Observable<Blob> {
@@ -145,7 +147,8 @@ export class CalendarService {
   }
 
   /** Routes a recurring-event save to the correct occurrence/series endpoint based on the chosen scope. */
-  saveOccurrence(record: any, scope: RecurrenceUpdateScope): Observable<any> {
+  saveOccurrence(record: CalendarEventUI, scope: RecurrenceUpdateScope): Observable<void> {
+    // Only occurrences of a recurring series reach this method, so their series fields are set.
     const occurrenceDate = record.originalOccurrenceDate
       ? new Date(record.originalOccurrenceDate).toISOString()
       : new Date(record.startDate).toISOString();
@@ -156,7 +159,7 @@ export class CalendarService {
     switch (scope) {
       case 'this':
         return this.updateSingleOccurrence({
-          seriesUid: record.seriesUid,
+          seriesUid: record.seriesUid!,
           occurrenceDate,
           subject: record.subject,
           comment: record.comment,
@@ -169,7 +172,7 @@ export class CalendarService {
 
       case 'thisAndFollowing':
         return this.updateFromOccurrence({
-          seriesUid: record.seriesUid,
+          seriesUid: record.seriesUid!,
           occurrenceDate,
           subject: record.subject,
           comment: record.comment,
@@ -181,22 +184,22 @@ export class CalendarService {
 
       case 'allPreserve':
         return this.updateSeriesPreserveExceptions({
-          seriesUid: record.seriesUid,
+          seriesUid: record.seriesUid!,
           subject: record.subject,
           comment: record.comment,
           location: record.location,
-          recurrenceRuleJson: record.recurrenceRuleJson,
+          recurrenceRuleJson: record.recurrenceRuleJson!,
           timeZoneId: record.timeZoneId,
         });
 
       case 'allOverride':
         return this.updateSeriesOverrideAll({
-          seriesUid: record.seriesUid,
+          seriesUid: record.seriesUid!,
           subject: record.subject,
           comment: record.comment,
           location: record.location,
-          recurrenceRuleJson: record.recurrenceRuleJson,
-          timeZoneId: record.timeZoneId,
+          recurrenceRuleJson: record.recurrenceRuleJson!,
+          timeZoneId: record.timeZoneId!,
         });
 
       default:

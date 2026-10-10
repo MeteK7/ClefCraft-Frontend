@@ -18,6 +18,7 @@ import { Column, Item, Priority, Status, Tag } from '../../models/board.model';
 import { BoardService } from '../../_services/board.service';
 import { CalendarService } from '../../_services/calendar.service';
 import { Assignee } from '../../models/assignee.model';
+import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 import { UserService } from '../../_services/user.service';
 import { RelationshipHubComponent } from '../../components/relationship-hub/relationship-hub.component';
 import { HistoryTimelineComponent } from '../../components/history-timeline/history-timeline.component';
@@ -320,7 +321,7 @@ export class ItemDetailDialogComponent implements OnInit {
 
     const formValue = this.form.value;
 
-    const calendarEvent = {
+    const calendarEvent: CalendarEventUI = {
       subject: formValue.title,
       comment: formValue.description,
       startDate: startDate,

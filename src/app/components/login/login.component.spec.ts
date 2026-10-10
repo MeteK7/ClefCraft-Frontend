@@ -67,7 +67,7 @@ describe('LoginComponent', () => {
       const auth = TestBed.inject(AuthService);
       spyOn(auth, 'login').and.returnValue(of(session));
       spyOn(auth, 'setSession');
-      spyOn(auth, 'loadCurrentUser').and.returnValue(of({ id: 'u1' }));
+      spyOn(auth, 'loadCurrentUser').and.returnValue(of({ id: 'u1', firstname: 'Test', lastname: 'User', fullName: 'Test User', email: 'a@test.com' }));
       const navigate = spyOn(TestBed.inject(Router), 'navigateByUrl');
 
       component.form.setValue({ email: 'a@test.com', password: 'secret1' });

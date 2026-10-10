@@ -42,7 +42,7 @@ describe('RegistrationComponent', () => {
     });
 
     it('confirms the registration and sends the user to sign in', () => {
-      spyOn(TestBed.inject(AuthService), 'register').and.returnValue(of({}));
+      spyOn(TestBed.inject(AuthService), 'register').and.returnValue(of({ userId: 'u1' }));
       const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
 
       component.onSubmit();

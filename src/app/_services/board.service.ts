@@ -41,15 +41,15 @@ export class BoardService {
     return this.http.put<Item>(`${this.apiUrl}/BoardItems/${item.id}`, item, { headers, withCredentials: true });
   }
 
-  switchBoardItemColumn(item: { id: number; boardColumnId: number }): Observable<any> {
+  switchBoardItemColumn(item: { id: number; boardColumnId: number }): Observable<Item> {
     const headers = new HttpHeaders({
       'Content-Type': 'application/json'
     });
-    return this.http.post<any>(`${this.apiUrl}/BoardItems/SwitchColumn`, item, { headers, withCredentials: true });
+    return this.http.post<Item>(`${this.apiUrl}/BoardItems/SwitchColumn`, item, { headers, withCredentials: true });
   }
 
-  deleteBoardItem(itemId: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/BoardItems/Delete/${itemId}`, { withCredentials: true });
+  deleteBoardItem(itemId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/BoardItems/Delete/${itemId}`, { withCredentials: true });
   }
 
   getTags(boardId: number): Observable<Tag[]> {

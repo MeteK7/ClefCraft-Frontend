@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatInputModule } from '@angular/material/input';
@@ -31,7 +31,7 @@ import { WeekViewModel } from '../../calendar-engine/models/week-view.model';
 import { DayViewModel } from '../../calendar-engine/models/day-view.model';
 import { CalendarLayoutItem } from '../../calendar-engine/models/calendar-layout-item.model';
 
-import { CalendarEventUI } from '../../models/calendar-event.model-ui';
+import { CalendarEventResponse, CalendarEventUI } from '../../models/calendar-event.model-ui';
 import { AgendaDayGroup } from '../../models/agenda-day-group.model';
 import { Item } from '../../models/board.model';
 import { SavePayload } from '../../models/save-payload.model';
@@ -390,7 +390,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
    * this fetch: if it didn't come back under the same key, it's stale
    * (moved, or deleted) and must be dropped rather than carried forward.
    */
-  private mergeEvents(fetched: any[], range: { start: Date; end: Date }): void {
+  private mergeEvents(fetched: CalendarEventResponse[], range: { start: Date; end: Date }): void {
     const normalized: CalendarEventUI[] = fetched.map(event => ({
       ...event,
       startDate: new Date(event.startDate),
@@ -445,7 +445,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     };
 
     this.calendarService.getEvents(start, end).subscribe({
-      next: (events: any[]) => {
+      next: (events: CalendarEventResponse[]) => {
         if (!this.isCurrent(seq)) return; // stale — don't touch this.events/monthScrollWindow at all
 
         this.events = events.map(event => ({
@@ -721,7 +721,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
             this.refreshAfterSave();
             dialogRef.close();
           },
-          error: (err: any) => {
+          error: (err: unknown) => {
             console.error('Failed to delete event:', err);
             dialogRef.componentInstance.saving = false;
           },
@@ -750,15 +750,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // ==========================================================================
 
   private executeSave(
-    save$: Observable<any>,
-    record: any,
+    save$: Observable<CalendarEventResponse | void>,
+    record: CalendarEventUI,
     attachments: File[],
-    dialogRef: any,
+    dialogRef: MatDialogRef<CalendarDialogComponent>,
   ): void {
     save$.subscribe({
-      next: (savedEvent: any) => {
+      next: savedEvent => {
         const isOccurrence = !!record.seriesUid && record.id !== record.baseEventId;
-        const eventId = isOccurrence ? record.baseEventId : savedEvent?.id;
+        const eventId = isOccurrence ? record.baseEventId : savedEvent ? savedEvent.id : undefined;
 
         if (attachments?.length && eventId) {
           const formData = new FormData();
@@ -778,7 +778,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
         dialogRef.close();
       },
-      error: (err: any) => {
+      error: (err: unknown) => {
         console.error('Failed to save event:', err);
         dialogRef.componentInstance.saving = false; // let the user retry instead of leaving Save disabled forever
       },
