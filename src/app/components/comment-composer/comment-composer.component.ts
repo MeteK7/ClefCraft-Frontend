@@ -1,4 +1,4 @@
-import { afterNextRender, Component, ElementRef, EventEmitter, Injector, Input, OnInit, Output, ViewChild } from '@angular/core';
+import { afterNextRender, Component, ElementRef, EventEmitter, Injector, Input, OnInit, Output, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,6 +13,7 @@ import { commentQuillModules } from '../../shared/quill-config';
     selector: 'app-comment-composer',
     imports: [ReactiveFormsModule, MatButtonModule, QuillModule],
     templateUrl: './comment-composer.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './comment-composer.component.css'
 })
 export class CommentComposerComponent implements OnInit {

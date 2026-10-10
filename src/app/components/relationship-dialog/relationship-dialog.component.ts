@@ -1,6 +1,7 @@
 import {
-    Component,
-    Inject
+  Component,
+  Inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 
 import {
@@ -49,6 +50,7 @@ import { BoardService } from '../../_services/board.service';
     MatIconModule
 ],
     templateUrl: './relationship-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./relationship-dialog.component.css']
 })
 export class RelationshipDialogComponent {

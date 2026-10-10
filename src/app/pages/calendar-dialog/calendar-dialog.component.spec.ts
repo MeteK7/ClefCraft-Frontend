@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -19,7 +19,7 @@ describe('CalendarDialogComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarDialogComponent],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
@@ -54,7 +54,7 @@ async function createDialog(data: any): Promise<{
   await TestBed.configureTestingModule({
     imports: [CalendarDialogComponent],
     providers: [
-      provideHttpClient(),
+      provideHttpClient(withXhr()),
       provideHttpClientTesting(),
       provideRouter([]),
       provideNoopAnimations(),
@@ -96,7 +96,7 @@ async function createDialogAsUser(data: any, currentUserId: string | null): Prom
   await TestBed.configureTestingModule({
     imports: [CalendarDialogComponent],
     providers: [
-      provideHttpClient(),
+      provideHttpClient(withXhr()),
       provideHttpClientTesting(),
       provideRouter([]),
       provideNoopAnimations(),
@@ -541,7 +541,7 @@ describe('CalendarDialogComponent — staging attachments', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarDialogComponent],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),

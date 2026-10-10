@@ -125,7 +125,7 @@
               <mat-form-field appearance="outline" color="primary" class="date-field">
                 <mat-label>End Date</mat-label>
                 <input matInput [matDatepicker]="picker2" formControlName="endDate"
-                  [min]="generalForm.get('startDate')?.value" />
+                  [min]="$safeNavigationMigration(generalForm.get('startDate')?.value)" />
                   <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
                   <mat-datepicker #picker2></mat-datepicker>
                 </mat-form-field>
@@ -395,7 +395,7 @@
           <div class="history-tab-content">
             <app-calendar-history-timeline
               [eventId]="baseEventId!"
-              [seriesUid]="data.eventData?.seriesUid"
+              [seriesUid]="$safeNavigationMigration(data.eventData?.seriesUid)"
               [eventTypes]="eventTypes">
             </app-calendar-history-timeline>
           </div>
@@ -419,7 +419,7 @@
               [entityType]="'CalendarEvent'"
               [entityId]="baseEventId!"
               [focusCommentId]="data.focusCommentId ?? null"
-              [calendarEventOwnerUserId]="data.eventData?.ownerUserId"
+              [calendarEventOwnerUserId]="$safeNavigationMigration(data.eventData?.ownerUserId)"
               [calendarCollaboratorUserIds]="collaboratorUserIds"
               (calendarCollaboratorsGranted)="onCollaboratorsGranted()">
             </app-comment-thread>

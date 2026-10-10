@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -17,6 +17,7 @@ import { RecurrenceDeleteScope } from '../../models/recurrence-delete-scope.mode
     MatIconModule
 ],
     templateUrl: './recurrence-delete-scope-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./recurrence-delete-scope-dialog.component.css']
 })
 export class RecurrenceDeleteScopeDialogComponent {

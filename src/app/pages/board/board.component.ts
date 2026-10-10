@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
 
 import { Subscription } from 'rxjs';
 import { BoardColumnComponent } from '../board-column/board-column.component';
@@ -36,6 +36,7 @@ import { ActivatedRoute, Params, Router } from '@angular/router';
     MatIconModule
 ],
     templateUrl: './board.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./board.component.css']
 })
 export class BoardComponent implements OnInit, OnDestroy {

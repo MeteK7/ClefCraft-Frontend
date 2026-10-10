@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -58,6 +58,7 @@ export interface ItemDetailDialogData {
         CommentThreadComponent
     ],
     templateUrl: './item-detail-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './item-detail-dialog.component.css'
 })
 export class ItemDetailDialogComponent implements OnInit {

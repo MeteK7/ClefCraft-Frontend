@@ -1,4 +1,4 @@
-import { Component, NgZone, OnInit } from '@angular/core';
+import { Component, NgZone, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HeaderComponent } from './components/header/header.component';
@@ -15,6 +15,7 @@ import { IdleSessionService } from './_services/idle-session.service';
     selector: 'app-root',
     imports: [RouterOutlet, RouterModule, HeaderComponent, SidebarComponent, FooterComponent],
     templateUrl: './app.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './app.component.css'
 })
 export class AppComponent implements OnInit {

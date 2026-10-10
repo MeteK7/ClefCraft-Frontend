@@ -2,7 +2,8 @@ import {
   Component,
   EventEmitter,
   Input,
-  Output
+  Output,
+  ChangeDetectionStrategy
 } from '@angular/core';
 
 import { CommonModule } from '@angular/common';
@@ -20,6 +21,7 @@ import { RelationshipCard, RelationshipType, relationshipLabel } from '../../mod
         MatButtonModule
     ],
     templateUrl: './relationship-card.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./relationship-card.component.css']
 })
 export class RelationshipCardComponent {

@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { BoardColumnComponent } from './board-column.component';
@@ -12,7 +12,7 @@ describe('BoardColumnComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [BoardColumnComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()]
     })
     .compileComponents();
 

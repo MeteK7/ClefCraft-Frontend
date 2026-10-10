@@ -1,18 +1,19 @@
 import {
-    Component,
-    Input,
-    Output,
-    EventEmitter,
-    ElementRef,
-    ViewChild,
-    ViewChildren,
-    QueryList,
-    AfterViewInit,
-    OnDestroy,
-    OnChanges,
-    SimpleChanges,
-    inject,
-    ChangeDetectorRef,
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  ElementRef,
+  ViewChild,
+  ViewChildren,
+  QueryList,
+  AfterViewInit,
+  OnDestroy,
+  OnChanges,
+  SimpleChanges,
+  inject,
+  ChangeDetectorRef,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -50,6 +51,7 @@ export interface VisibleMonthChangeEvent {
     selector: 'app-month-scroll-view',
     imports: [CommonModule, MatIconModule, MatMenuModule, DragDropModule],
     templateUrl: './month-scroll-view.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./month-scroll-view.component.css']
 })
 export class MonthScrollViewComponent implements AfterViewInit, OnChanges, OnDestroy {

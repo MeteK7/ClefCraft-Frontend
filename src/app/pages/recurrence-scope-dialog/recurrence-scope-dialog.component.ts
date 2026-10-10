@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -24,6 +24,7 @@ type ConfirmationMode =
     MatDividerModule
 ],
     templateUrl: './recurrence-scope-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./recurrence-scope-dialog.component.css']
 })
 export class RecurrenceScopeDialogComponent {

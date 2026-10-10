@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -12,6 +12,7 @@ import { handleBoardDrop } from '../../board-engine/interactions/board-drop-engi
     selector: 'app-board-column',
     imports: [DragDropModule, BoardItemComponent, MatSnackBarModule],
     templateUrl: './board-column.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./board-column.component.css']
 })
 export class BoardColumnComponent {

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,6 +15,7 @@ import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
     selector: 'app-calendar-collaborators-panel',
     imports: [MatIconModule, MatButtonModule, MatTooltipModule, UserAvatarComponent],
     templateUrl: './calendar-collaborators-panel.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './calendar-collaborators-panel.component.css'
 })
 export class CalendarCollaboratorsPanelComponent implements OnChanges {

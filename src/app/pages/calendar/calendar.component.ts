@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -72,6 +72,7 @@ interface RangeRequest { start: Date; end: Date; origin: RangeOrigin; }
         MonthScrollViewComponent,
     ],
     templateUrl: './calendar.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./calendar.component.css']
 })
 export class CalendarComponent implements OnInit, OnDestroy {

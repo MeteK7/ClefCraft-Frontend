@@ -4,7 +4,8 @@ import {
   Inject,
   Input,
   OnInit,
-  Output
+  Output,
+  ChangeDetectionStrategy
 } from '@angular/core';
 
 import {
@@ -68,6 +69,7 @@ import { AuthService } from '../../_services/auth.service';
     CalendarCollaboratorsPanelComponent
 ],
     templateUrl: './calendar-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./calendar-dialog.component.css']
 })
 export class CalendarDialogComponent implements OnInit {

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -10,6 +10,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
     selector: 'app-registration',
     imports: [FormsModule, RouterModule],
     templateUrl: './registration.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./registration.component.css']
 })
 export class RegistrationComponent {

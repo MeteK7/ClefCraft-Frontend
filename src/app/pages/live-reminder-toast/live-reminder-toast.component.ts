@@ -1,4 +1,4 @@
-import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,6 +15,7 @@ export interface ReminderToastData {
     selector: 'app-live-reminder-toast',
     imports: [MatIconModule, MatButtonModule],
     templateUrl: './live-reminder-toast.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./live-reminder-toast.component.css']
 })
 export class LiveReminderToastComponent implements OnInit, OnDestroy {

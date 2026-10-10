@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +9,7 @@ import { MentionPayload } from '../../_services/notification-realtime.service';
     selector: 'app-mention-toast',
     imports: [MatIconModule, MatButtonModule],
     templateUrl: './mention-toast.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./mention-toast.component.css']
 })
 export class MentionToastComponent implements OnInit {

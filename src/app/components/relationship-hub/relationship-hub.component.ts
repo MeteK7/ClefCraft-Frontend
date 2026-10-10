@@ -1,10 +1,11 @@
 import {
-    ChangeDetectorRef,
-    Component,
-    EventEmitter,
-    Input,
-    OnInit,
-    Output
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+  ChangeDetectionStrategy
 } from '@angular/core';
 
 
@@ -42,6 +43,7 @@ import { FormsModule } from '@angular/forms';
     RelationshipGraphComponent
 ],
     templateUrl: './relationship-hub.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./relationship-hub.component.css']
 })
 export class RelationshipHubComponent implements OnInit {

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,6 +16,7 @@ type ComposerPayload = { bodyHtml: string; mentionedUserIds: string[]; mentioned
     selector: 'app-comment-thread',
     imports: [CommonModule, MatIconModule, MatButtonModule, UserAvatarComponent, CommentComposerComponent],
     templateUrl: './comment-thread.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './comment-thread.component.css'
 })
 export class CommentThreadComponent implements OnInit {
