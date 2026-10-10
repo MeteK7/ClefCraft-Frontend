@@ -189,9 +189,9 @@ export class AuthService {
     }
   }
 
-  private withCrossTabLock<T>(action: () => Promise<T>): Promise<T> {
+  private async withCrossTabLock<T>(action: () => Promise<T>): Promise<T> {
     return typeof navigator !== 'undefined' && navigator.locks
-      ? navigator.locks.request('clefcraft-auth-refresh', action)
+      ? await navigator.locks.request('clefcraft-auth-refresh', action)
       : action();
   }
 
