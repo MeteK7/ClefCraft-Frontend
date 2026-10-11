@@ -842,6 +842,11 @@ export class CalendarDialogComponent implements OnInit {
       openItemId: eventData.linkedBoardItemId,
     };
 
+    // Pass the item's board so the board page opens on it, not on the user's first board.
+    if (eventData.linkedBoardId != null) {
+      queryParams['boardId'] = eventData.linkedBoardId;
+    }
+
     const urlTree = this.router.createUrlTree(['/board'], { queryParams });
     window.open(this.router.serializeUrl(urlTree), '_blank');
   }

@@ -33,6 +33,7 @@ export interface CalendarEventUI {
   attendanceScore?: number | null;
   linkedBoardItemId?: number | null;
   linkedBoardItemTitle?: string;
+  linkedBoardId?: number | null;
   reminderMinutes?: number[];
   timeZoneId?: string;
 }
