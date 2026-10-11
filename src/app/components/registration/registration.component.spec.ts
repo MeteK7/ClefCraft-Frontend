@@ -66,6 +66,23 @@ describe('RegistrationComponent', () => {
         'Password: Too short. Needs a digit. Email: Already taken.', 'Dismiss', { duration: 5000 });
     });
 
+    it('shows the rules Identity rejected, which the API sends in the problem title (400)', () => {
+      const error = new HttpErrorResponse({
+        status: 400,
+        error: {
+          title: '•Passwords must have at least one digit (\'0\'-\'9\').\n•Passwords must have at least one uppercase (\'A\'-\'Z\').\n',
+          errors: null
+        }
+      });
+      spyOn(TestBed.inject(AuthService), 'register').and.returnValue(throwError(() => error));
+
+      component.onSubmit();
+
+      expect(snackBar.open).toHaveBeenCalledWith(
+        'Passwords must have at least one digit (\'0\'-\'9\'). Passwords must have at least one uppercase (\'A\'-\'Z\').',
+        'Dismiss', { duration: 5000 });
+    });
+
     it('shows a generic message for any other failure', () => {
       spyOn(TestBed.inject(AuthService), 'register')
         .and.returnValue(throwError(() => new HttpErrorResponse({ status: 500 })));

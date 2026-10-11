@@ -585,3 +585,19 @@ describe('CalendarDialogComponent — staging attachments', () => {
     expect(component.attachmentError).toBeNull();
   });
 });
+
+describe('CalendarDialogComponent — opening the linked board item', () => {
+  const eventData = {
+    id: 1, subject: 'Practice', startDate: new Date(), endDate: new Date(),
+    linkedBoardItemId: 104, linkedBoardId: 33
+  };
+
+  it('opens the item on its own board in a new tab', async () => {
+    const { component } = await createDialog({ date: new Date(), eventData });
+    const open = spyOn(window, 'open');
+
+    component.openLinkedBoardItem();
+
+    expect(open).toHaveBeenCalledWith('/board?openItemId=104&boardId=33', '_blank');
+  });
+});
