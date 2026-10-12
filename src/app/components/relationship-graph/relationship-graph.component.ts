@@ -25,7 +25,7 @@ import { catchError } from 'rxjs/operators';
 import { RelationshipHub, RelationshipType } from '../../models/board.model';
 import { BoardService } from '../../_services/board.service';
 
-import { RelationshipGraphBuilder } from '../../relationship-engine/graph/relationship-graph-builder';
+import { RelationshipGraphBuilder, centerNodeTitle } from '../../relationship-engine/graph/relationship-graph-builder';
 import { GraphLayoutEngine } from '../../relationship-engine/graph/graph-layout-engine';
 import { GraphExpansionTracker } from '../../relationship-engine/graph/graph-expansion-tracker';
 
@@ -79,6 +79,7 @@ export class RelationshipGraphComponent implements OnChanges {
 
     @Input({ required: true }) hub!: RelationshipHub;
     @Input({ required: true }) rootItemId!: number;
+    @Input() rootTitle = '';
     @Input() rootStatus = '';
     @Input() rootPriority = '';
     @Input() rootBoardId?: number;
@@ -328,7 +329,20 @@ export class RelationshipGraphComponent implements OnChanges {
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['hub'] || changes['rootItemId'] || changes['rootStatus'] || changes['rootPriority'] || changes['rootBoardId']) {
             this.rebuild();
+        } else if (changes['rootTitle']) {
+            this.renameRoot();
         }
+    }
+
+    /** A title edit only relabels the center card, keeping the expansions, layout and viewport. */
+    private renameRoot(): void {
+        const graph = this.graph();
+        const root = graph?.nodeMap.get(this.rootItemId);
+        if (!graph || !root) return;
+
+        root.title = centerNodeTitle(this.rootTitle);
+        this.cycleSummary.set(this.cycleDetector.detectCycles(graph));
+        this.graph.set({ ...graph });
     }
 
     // =====================================================================
@@ -934,7 +948,7 @@ export class RelationshipGraphComponent implements OnChanges {
             return;
         }
 
-        const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority, this.rootBoardId);
+        const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority, this.rootBoardId, this.rootTitle);
         this.layoutEngine.layout(built);
         this.expansionTracker.reset(this.rootItemId, this.hub);
         this.applyAnalytics(built);

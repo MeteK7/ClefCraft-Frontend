@@ -50,6 +50,7 @@ export class RelationshipHubComponent implements OnInit {
 
     @Input() boardId!: number;
     @Input() itemId!: number;
+    @Input() itemTitle = '';
     @Input() itemStatus = '';
     @Input() itemPriority = '';
 

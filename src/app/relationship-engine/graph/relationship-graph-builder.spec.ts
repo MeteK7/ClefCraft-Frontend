@@ -65,6 +65,21 @@ describe('RelationshipGraphBuilder', () => {
         expect(graph.nodeMap.get(1)!.boardId).toBe(3);
         expect(graph.nodeMap.get(2)!.boardId).toBe(9);
     });
+
+    it('labels the center node with the item\'s own title', () => {
+        const graph = builder.build(1, hub([{ type: RelationshipType.Related, items: [card(2, true)] }]), '', '', 3,
+            '  Write on-call runbook for LLM provider outages ');
+
+        expect(graph.nodeMap.get(1)!.title).toBe('Write on-call runbook for LLM provider outages');
+        expect(graph.nodeMap.get(2)!.title).toBe('Item 2');
+    });
+
+    it('falls back to a placeholder, never "Current Item", when the title is missing or blank', () => {
+        for (const title of [undefined, '', '   ']) {
+            const graph = builder.build(1, hub([]), '', '', 3, title);
+            expect(graph.nodeMap.get(1)!.title).withContext(JSON.stringify(title)).toBe('Untitled item');
+        }
+    });
 });
 
 describe('relationshipLabel', () => {
