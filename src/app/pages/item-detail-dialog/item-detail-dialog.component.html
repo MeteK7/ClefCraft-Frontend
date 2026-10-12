@@ -1,10 +1,6 @@
 <div class="dialog-container" [formGroup]="form">
   <div class="dialog-header">
     <div class="header-main">
-      <h2 class="dialog-title">
-        {{ isNewItem ? 'New Item' : 'Item Details' }}
-      </h2>
-
       @if (data.item?.id) {
         <button type="button" class="item-id-badge" (click)="openItemInNewTab()"
           matTooltip="Open item #{{ data.item?.id }} in a new tab"
@@ -13,6 +9,15 @@
           <mat-icon>open_in_new</mat-icon>
         </button>
       }
+
+      <!-- matDialogTitle gives the dialog its accessible name (aria-labelledby). -->
+      <h2 matDialogTitle class="dialog-title" [class.placeholder]="!hasTitle"
+        [matTooltip]="displayTitle" tabindex="0">
+        @if (data.item?.id) {
+          <span class="visually-hidden">Item #{{ data.item?.id }}: </span>
+        }
+        {{ displayTitle }}
+      </h2>
     </div>
 
     <button mat-icon-button (click)="onCancel()" aria-label="Close dialog" type="button">
@@ -148,7 +153,8 @@
           Relationships
         </ng-template>
         <div class="dialog-content">
-          <app-relationship-hub [boardId]="item.boardId" [itemId]="item.id" [itemStatus]="item.status?.name ?? ''"
+          <app-relationship-hub [boardId]="item.boardId" [itemId]="item.id" [itemTitle]="displayTitle"
+            [itemStatus]="item.status?.name ?? ''"
             [itemPriority]="item.priority?.name ?? ''" (graphMaximizedChange)="isGraphMaximized = $event">
           </app-relationship-hub>
         </div>

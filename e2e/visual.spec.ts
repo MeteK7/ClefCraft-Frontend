@@ -158,7 +158,7 @@ test('board views', async ({ visualPage: page, api, run }) => {
   await assigned.click();
   await dialogLoaded;
   const dialog = page.getByRole('dialog');
-  await expect(dialog.locator('h2.dialog-title')).toContainText('Item Details');
+  await expect(dialog.locator('h2.dialog-title')).toContainText('Review the API');
   await expect(dialog.locator('input[formControlName="title"]')).toHaveValue('Review the API');
   // The item's own status and priority, not the first options (the dialog used to fall back to those).
   await expect(dialog.locator('mat-select[formControlName="statusId"]')).toContainText('In Progress');

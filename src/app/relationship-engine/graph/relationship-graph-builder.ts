@@ -10,14 +10,19 @@ import { GraphEdge, GraphEdgeFactory } from '../visualization/graph-edge.model';
 import { GraphNode, GraphNodeFactory } from '../visualization/graph-node.model';
 import { GraphViewModel, GraphViewModelFactory, rebuildIndex } from '../visualization/graph-view-model';
 
+/** The center node shows the item's own title; a blank one gets a placeholder rather than an empty card. */
+export function centerNodeTitle(title: string | null | undefined): string {
+    return title?.trim() || 'Untitled item';
+}
+
 @Injectable({
     providedIn: 'root'
 })
 export class RelationshipGraphBuilder {
 
-    build(centerItemId: number, hub: RelationshipHub, centerStatus: string, centerPriority: string, centerBoardId?: number): GraphViewModel {
+    build(centerItemId: number, hub: RelationshipHub, centerStatus: string, centerPriority: string, centerBoardId?: number, centerTitle?: string): GraphViewModel {
 
-        const nodes: GraphNode[] = [this.createCenterNode(centerItemId, centerStatus, centerPriority, centerBoardId)];
+        const nodes: GraphNode[] = [this.createCenterNode(centerItemId, centerStatus, centerPriority, centerBoardId, centerTitle)];
         const edges: GraphEdge[] = [];
 
         let nextEdgeId = 1;
@@ -110,9 +115,9 @@ export class RelationshipGraphBuilder {
             : [relationship.itemId, anchorId];
     }
 
-    private createCenterNode(id: number, status: string, priority: string, boardId?: number): GraphNode {
+    private createCenterNode(id: number, status: string, priority: string, boardId?: number, title?: string): GraphNode {
 
-        const node = GraphNodeFactory.create(id, 'Current Item', status, priority);
+        const node = GraphNodeFactory.create(id, centerNodeTitle(title), status, priority);
 
         node.boardId = boardId;
         node.radius = 42;

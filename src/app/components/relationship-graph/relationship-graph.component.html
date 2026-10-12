@@ -234,7 +234,7 @@
           [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node, $event)"
           (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
           <div xmlns="http://www.w3.org/1999/xhtml" class="node-card" appGraphCardSize
-            (cardSizeChange)="onCardSize(node.id, $event)"
+            (cardSizeChange)="onCardSize(node.id, $event)" [attr.aria-current]="isCenter(node) ? 'true' : null"
             [style.filter]="isSelected(node.id) ? 'url(#selectedGlow)' : 'url(#nodeShadow)'">
             <div class="status-strip" [class.center]="isCenter(node)" [class.critical]="node.critical"
               [class.cyclic]="node.cyclic">
@@ -246,6 +246,9 @@
                   matTooltip="Open this item on the board page">
                   #{{node.id}}
                 </span>
+                @if (isCenter(node)) {
+                  <span class="chip current" matTooltip="The item open in this dialog">Current</span>
+                }
               </div>
               <div class="header-right">
                 @if (priorityClass(node.priority)) {
@@ -258,7 +261,8 @@
               </div>
             </div>
             <div class="node-title" [title]="node.title">
-              {{truncateTitle(node.title)}}
+              <span aria-hidden="true">{{truncateTitle(node.title)}}</span>
+              <span class="visually-hidden">{{node.title}}</span>
             </div>
             <div class="node-footer">
               <div class="footer-left">

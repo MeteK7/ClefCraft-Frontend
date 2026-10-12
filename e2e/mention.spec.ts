@@ -25,7 +25,7 @@ test('an @mention in a board comment reaches the mentioned user as a toast', asy
   );
   await ownerPage.goto(`/board?boardId=${boardId}&openItemId=${itemId}`);
   const dialog = ownerPage.getByRole('dialog');
-  await expect(dialog.locator('h2.dialog-title')).toContainText('Item Details');
+  await expect(dialog.locator('h2.dialog-title')).toContainText('Mention target');
   const mentionableUsers: { fullName: string }[] = await (await mentionable).json();
   expect(mentionableUsers.map(u => u.fullName)).toContain(ben.fullName);
 
@@ -59,6 +59,6 @@ test('an @mention in a board comment reaches the mentioned user as a toast', asy
 
   await toast.getByRole('button', { name: /View comment/ }).click();
   const benDialog = collaboratorPage.getByRole('dialog');
-  await expect(benDialog.locator('h2.dialog-title')).toContainText('Item Details');
+  await expect(benDialog.locator('h2.dialog-title')).toContainText('Mention target');
   await expect(benDialog.locator(`#comment-${commentId}`)).toHaveClass(/comment-highlighted/);
 });

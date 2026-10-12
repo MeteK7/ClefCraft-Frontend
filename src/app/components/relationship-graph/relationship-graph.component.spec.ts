@@ -183,3 +183,64 @@ function scaleOf(card: HTMLElement): number {
     const m = layer.getScreenCTM()!;
     return Math.hypot(m.c, m.d);
 }
+
+describe('RelationshipGraphComponent current-item card', () => {
+
+    let fixture: ComponentFixture<RelationshipGraphComponent>;
+    let component: RelationshipGraphComponent;
+
+    const title = 'Write on-call runbook for LLM provider outages';
+
+    const cardFor = (id: number) => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.node-card'))
+        .find(c => c.querySelector('.node-id')!.textContent!.trim() === `#${id}`)!;
+
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [RelationshipGraphComponent],
+            providers: [
+                provideRouter([]),
+                provideNoopAnimations(),
+                { provide: BoardService, useValue: { getRelationships: () => of(hub) } }
+            ]
+        }).compileComponents();
+
+        fixture = TestBed.createComponent(RelationshipGraphComponent);
+        component = fixture.componentInstance;
+        fixture.componentRef.setInput('hub', hub);
+        fixture.componentRef.setInput('rootItemId', 1);
+        fixture.componentRef.setInput('rootTitle', title);
+        fixture.detectChanges();
+    });
+
+    it('labels the center card with the item\'s title, truncated like the other cards, and marks it as current', () => {
+        const card = cardFor(1);
+        const label = card.querySelector<HTMLElement>('.node-title')!;
+
+        expect(card.textContent).not.toContain('Current Item');
+        expect(label.querySelector('[aria-hidden="true"]')!.textContent!.trim()).toBe(component.truncateTitle(title));
+        expect(label.querySelector('.visually-hidden')!.textContent!.trim()).toBe(title);
+        expect(label.getAttribute('title')).toBe(title);
+
+        expect(card.querySelector('.chip.current')!.textContent!.trim()).toBe('Current');
+        expect(card.getAttribute('aria-current')).toBe('true');
+    });
+
+    it('does not mark related items as current', () => {
+        const card = cardFor(2);
+
+        expect(card.querySelector('.chip.current')).toBeNull();
+        expect(card.hasAttribute('aria-current')).toBeFalse();
+        expect(card.querySelector('.node-title .visually-hidden')!.textContent!.trim()).toBe('Launch');
+    });
+
+    it('relabels the center card on a title change without resetting expansions', () => {
+        component.expandedNodeIds.set(new Set([2]));
+
+        fixture.componentRef.setInput('rootTitle', 'Renamed');
+        fixture.detectChanges();
+
+        expect(component.nodeAt(1)!.title).toBe('Renamed');
+        expect(cardFor(1).querySelector('.node-title .visually-hidden')!.textContent!.trim()).toBe('Renamed');
+        expect(component.expandedNodeIds().has(2)).toBeTrue();
+    });
+});

@@ -254,3 +254,97 @@ describe('ItemDetailDialogComponent — current status and priority', () => {
     expect(component.form.value.priorityId).toBe(1);
   });
 });
+
+describe('ItemDetailDialogComponent — header', () => {
+  let component: ItemDetailDialogComponent;
+  let fixture: ComponentFixture<ItemDetailDialogComponent>;
+
+  const longTitle = 'Write on-call runbook for LLM provider outages and the escalation paths that follow them';
+
+  function setup(item: Item | null): void {
+    TestBed.configureTestingModule({
+      imports: [ItemDetailDialogComponent],
+      providers: [
+        provideHttpClient(withXhr()),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: { item, boardId: 1 } as ItemDetailDialogData },
+        { provide: MatDialogRef, useValue: { close: () => { } } }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ItemDetailDialogComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  }
+
+  const header = () => (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.dialog-header')!;
+  const heading = () => header().querySelector<HTMLElement>('h2.dialog-title')!;
+  /** Text as assistive tech reads it: runs of whitespace collapse to one space. */
+  const headingText = () => heading().textContent!.replace(/\s+/g, ' ').trim();
+
+  it('shows the id and the title side by side', () => {
+    setup({ id: 78, title: longTitle, boardId: 1, boardColumnId: 1 } as Item);
+
+    expect(header().querySelector('.item-id-badge')!.textContent).toContain('#78');
+    expect(headingText()).toBe(`Item #78: ${longTitle}`);
+    expect(heading().classList).not.toContain('placeholder');
+  });
+
+  it('follows unsaved edits to the title field live', () => {
+    setup({ id: 78, title: 'Old title', boardId: 1, boardColumnId: 1 } as Item);
+
+    component.form.controls['title'].setValue('  Renamed, not saved yet ');
+    fixture.detectChanges();
+
+    expect(heading().textContent).toContain('Renamed, not saved yet');
+    expect(heading().textContent).not.toContain('Old title');
+  });
+
+  it('shows "New item" for a new item, with no id badge and no "#undefined"', () => {
+    setup(null);
+
+    expect(headingText()).toBe('New item');
+    expect(heading().classList).toContain('placeholder');
+    expect(header().querySelector('.item-id-badge')).toBeNull();
+    expect(header().textContent).not.toContain('#');
+  });
+
+  it('shows a placeholder when an existing item\'s title is cleared or only whitespace', () => {
+    setup({ id: 78, title: 'Runbook', boardId: 1, boardColumnId: 1 } as Item);
+
+    for (const title of ['', '   ']) {
+      component.form.controls['title'].setValue(title);
+      fixture.detectChanges();
+
+      expect(headingText()).withContext(JSON.stringify(title)).toBe('Item #78: Untitled item');
+      expect(heading().classList).toContain('placeholder');
+    }
+  });
+
+  it('names the dialog after the id and the title, with the id read only by screen readers', () => {
+    setup({ id: 78, title: 'Runbook', boardId: 1, boardColumnId: 1 } as Item);
+
+    // matDialogTitle registers this id as the dialog container's aria-labelledby.
+    expect(heading().classList).toContain('mat-mdc-dialog-title');
+    expect(heading().id).toMatch(/^mat-mdc-dialog-title-/);
+
+    const prefix = heading().querySelector<HTMLElement>('.visually-hidden')!;
+    expect(prefix.textContent!.trim()).toBe('Item #78:');
+    expect(prefix.getBoundingClientRect().width).toBeLessThanOrEqual(1);
+  });
+
+  it('keeps a long title on one line with an ellipsis, the full title in a focusable tooltip', () => {
+    setup({ id: 78, title: longTitle.replace(/ /g, ''), boardId: 1, boardColumnId: 1 } as Item);
+    header().style.width = '360px';
+
+    const style = getComputedStyle(heading());
+    expect(style.whiteSpace).toBe('nowrap');
+    expect(style.overflow).toBe('hidden');
+    expect(style.textOverflow).toBe('ellipsis');
+    expect(heading().scrollWidth).toBeGreaterThan(heading().clientWidth);
+    expect(heading().getAttribute('tabindex')).toBe('0');
+    expect(component.displayTitle).toBe(longTitle.replace(/ /g, ''));
+  });
+});

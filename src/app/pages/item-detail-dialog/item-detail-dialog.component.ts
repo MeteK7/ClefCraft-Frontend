@@ -1,5 +1,5 @@
 import { Component, Inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -54,6 +54,7 @@ export interface ItemDetailDialogData {
         MatDatepickerModule,
         MatNativeDateModule,
         MatRippleModule,
+        MatDialogTitle,
         RelationshipHubComponent,
         HistoryTimelineComponent,
         CommentThreadComponent
@@ -85,6 +86,17 @@ export class ItemDetailDialogComponent implements OnInit {
   /** Non-null accessor for template use inside @if (!isNewItem) blocks. */
   get item(): Item {
     return this.data.item!;
+  }
+
+  /** True when the title field holds more than whitespace. */
+  get hasTitle(): boolean {
+    return !!this.form.value.title?.trim();
+  }
+
+  /** The title as currently typed (unsaved edits included), shown in the header on every tab. */
+  get displayTitle(): string {
+    if (this.hasTitle) return this.form.value.title.trim();
+    return this.isNewItem ? 'New item' : 'Untitled item';
   }
 
   /** Comments is a fixed tab position once past create-mode (Details/Relationships/Work
