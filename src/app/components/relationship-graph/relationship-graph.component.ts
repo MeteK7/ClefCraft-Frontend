@@ -6,10 +6,13 @@ import {
     HostBinding,
     HostListener,
     Input,
+    NgZone,
     OnChanges,
     Output,
     SimpleChanges,
     computed,
+    effect,
+    inject,
     signal,
     viewChild
 } from '@angular/core';
@@ -31,11 +34,19 @@ import { GraphExpansionTracker } from '../../relationship-engine/graph/graph-exp
 
 import { CycleDetector, RelationshipCycle } from '../../relationship-engine/analytics/cycle-detector';
 import { ImpactEngine, ImpactAnalysis } from '../../relationship-engine/analytics/impact-engine';
+import { toDueDate } from '../../relationship-engine/analytics/finish-before';
 
 import { GraphNode } from '../../relationship-engine/visualization/graph-node.model';
 import { GraphEdge } from '../../relationship-engine/visualization/graph-edge.model';
 import { GraphViewModel, rebuildIndex } from '../../relationship-engine/visualization/graph-view-model';
 import { Point, RouteCard, cardRect, routeEdge } from '../../relationship-engine/visualization/edge-router';
+import {
+    ContainerFrame,
+    TooltipPosition,
+    containerFrame,
+    graphRectToContainer,
+    placeTooltip
+} from '../../relationship-engine/visualization/tooltip-placement';
 import { GraphCardSizeDirective } from './graph-card-size.directive';
 import { Router } from '@angular/router';
 
@@ -83,6 +94,9 @@ export class RelationshipGraphComponent implements OnChanges {
     @Input() rootStatus = '';
     @Input() rootPriority = '';
     @Input() rootBoardId?: number;
+    /** The center item's own due date and estimate (hours); related items get theirs from the hub. */
+    @Input() rootDueDate?: Date | string | null;
+    @Input() rootEstimatedTime?: number | null;
 
     @Output() openItem = new EventEmitter<number>();
     @Output() maximizedChange = new EventEmitter<boolean>();
@@ -92,6 +106,7 @@ export class RelationshipGraphComponent implements OnChanges {
     // ---- template refs ----
     readonly svgRootRef = viewChild<ElementRef<SVGSVGElement>>('svgRoot');
     readonly canvasContainerRef = viewChild<ElementRef<HTMLDivElement>>('canvasContainer');
+    private readonly impactTooltipRef = viewChild<ElementRef<HTMLDivElement>>('impactTooltip');
 
     // ---- constants ----
     readonly viewBoxSize = 800;
@@ -150,8 +165,41 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly viewportAnimated = signal<boolean>(false);
 
     readonly hoveredNodeId = signal<number | null>(null);
-    readonly hoverScreenPos = signal<{ x: number; y: number } | null>(null);
     readonly hoverImpact = signal<ImpactAnalysis | null>(null);
+
+    /** viewBox -> graph-container mapping and the visible graph area, measured when a node is hovered. */
+    private readonly hoverFrame = signal<ContainerFrame | null>(null);
+
+    /** The node tooltip's layout size, tagged with the node it was measured for. */
+    private readonly tooltipSize = signal<{ nodeId: number; width: number; height: number } | null>(null);
+
+    /**
+     * Where the node tooltip goes, in graph-container px: beside the hovered card, in the nearby spot
+     * that covers the fewest other cards. Follows pan/zoom, card sizes and the tooltip's own size.
+     * Null until the tooltip has been measured for the hovered node.
+     */
+    readonly tooltipPlacement = computed<TooltipPosition | null>(() => {
+        const nodeId = this.hoveredNodeId();
+        const frame = this.hoverFrame();
+        const size = this.tooltipSize();
+        const graph = this.graph();
+        if (nodeId === null || !frame || !graph || size?.nodeId !== nodeId) return null;
+
+        const hovered = graph.nodeMap.get(nodeId);
+        if (!hovered) return null;
+
+        const heights = this.cardHeights();
+        const viewport = this.viewport();
+        const onScreen = (node: GraphNode) =>
+            graphRectToContainer(frame, viewport, cardRect(node, heights.get(node.id) ?? node.height));
+
+        return placeTooltip({
+            anchor: onScreen(hovered),
+            obstacles: graph.nodes.filter(node => node.id !== nodeId).map(onScreen),
+            size,
+            bounds: frame.bounds
+        });
+    });
 
     /** Edge-hover state, backing the relationship-sentence tooltip. */
     readonly hoveredEdgeId = signal<number | null>(null);
@@ -324,14 +372,70 @@ export class RelationshipGraphComponent implements OnChanges {
         private readonly router: Router
     ) {
         this.expansionTracker = new GraphExpansionTracker(layoutEngine);
+        this.observeTooltipSize();
+    }
+
+    private readonly zone = inject(NgZone);
+
+    /**
+     * Measures the node tooltip while it is shown, and again whenever its size changes: its content
+     * can change while it stays open (a renamed center card, a rebuild under the hover, late fonts).
+     * Re-runs for each hovered node; the observer is disconnected when the tooltip goes away and when
+     * the component is destroyed. A reading only counts for the node it was taken for.
+     */
+    private observeTooltipSize(): void {
+        effect(onCleanup => {
+            const element = this.impactTooltipRef()?.nativeElement;
+            const nodeId = this.hoveredNodeId();
+            if (!element || nodeId === null || typeof ResizeObserver === 'undefined') return;
+
+            const observer = new ResizeObserver(() => {
+                if (this.hoveredNodeId() !== nodeId) return;
+
+                // Layout size, which ignores transforms.
+                const width = element.offsetWidth;
+                const height = element.offsetHeight;
+                if (!(width > 0 && height > 0)) return;
+
+                const current = this.tooltipSize();
+                if (current?.nodeId === nodeId && current.width === width && current.height === height) return;
+
+                this.zone.run(() => this.tooltipSize.set({ nodeId, width, height }));
+            });
+
+            observer.observe(element);
+            onCleanup(() => observer.disconnect());
+        });
     }
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['hub'] || changes['rootItemId'] || changes['rootStatus'] || changes['rootPriority'] || changes['rootBoardId']) {
             this.rebuild();
-        } else if (changes['rootTitle']) {
+            return;
+        }
+
+        if (changes['rootTitle']) {
             this.renameRoot();
         }
+
+        if (changes['rootDueDate'] || changes['rootEstimatedTime']) {
+            this.refreshRootDetails();
+        }
+    }
+
+    /** A due-date or estimate edit only updates the center node, keeping the expansions, layout and viewport. */
+    private refreshRootDetails(): void {
+        const graph = this.graph();
+        const root = graph?.nodeMap.get(this.rootItemId);
+        if (!graph || !root) return;
+
+        this.applyRootDetails(root);
+        this.graph.set({ ...graph });
+    }
+
+    private applyRootDetails(root: GraphNode): void {
+        root.dueDate = toDueDate(this.rootDueDate);
+        root.estimatedHours = this.rootEstimatedTime ?? undefined;
     }
 
     /** A title edit only relabels the center card, keeping the expansions, layout and viewport. */
@@ -458,13 +562,14 @@ export class RelationshipGraphComponent implements OnChanges {
     // Interaction: node hover (drives the downstream-impact tooltip)
     // =====================================================================
 
-    onNodeEnter(node: GraphNode, event: MouseEvent): void {
+    onNodeEnter(node: GraphNode): void {
 
         this.hoveredNodeId.set(node.id);
-        this.updateHoverPosition(event);
+        this.tooltipSize.set(null);
+        this.hoverFrame.set(this.measureContainerFrame());
 
         const graph = this.graph();
-        if (!graph || this.isCenter(node)) {
+        if (!graph) {
             this.hoverImpact.set(null);
             return;
         }
@@ -472,26 +577,41 @@ export class RelationshipGraphComponent implements OnChanges {
         this.hoverImpact.set(this.impactEngine.analyze(graph, node.id));
     }
 
-    onNodeMove(event: MouseEvent): void {
-        if (this.hoveredNodeId() !== null) {
-            this.updateHoverPosition(event);
-        }
-    }
-
     onNodeLeave(): void {
         this.hoveredNodeId.set(null);
-        this.hoverScreenPos.set(null);
+        this.hoverFrame.set(null);
+        this.tooltipSize.set(null);
         this.hoverImpact.set(null);
     }
 
-    private updateHoverPosition(event: MouseEvent): void {
+    /**
+     * Maps the svg's viewBox to graph-container px through the root svg's full screen matrix (which
+     * includes the viewBox letterboxing and the toolbar above the svg), the container's borders and
+     * scroll. The CTM doesn't depend on pan/zoom, so this holds until the graph area is resized.
+     */
+    private measureContainerFrame(): ContainerFrame | null {
         const container = this.canvasContainerRef()?.nativeElement;
-        if (!container) return;
-        const rect = container.getBoundingClientRect();
-        this.hoverScreenPos.set({
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top
-        });
+        const svg = this.svgRootRef()?.nativeElement;
+        const ctm = svg?.getScreenCTM();
+        if (!container || !svg || !ctm) return null;
+
+        const containerRect = container.getBoundingClientRect();
+        const svgRect = svg.getBoundingClientRect();
+
+        return containerFrame(
+            { a: ctm.a, d: ctm.d, e: ctm.e, f: ctm.f },
+            {
+                left: containerRect.left,
+                top: containerRect.top,
+                clientLeft: container.clientLeft,
+                clientTop: container.clientTop,
+                scrollLeft: container.scrollLeft,
+                scrollTop: container.scrollTop,
+                clientWidth: container.clientWidth,
+                clientHeight: container.clientHeight
+            },
+            { left: svgRect.left, right: svgRect.right, top: svgRect.top, bottom: svgRect.bottom }
+        );
     }
 
     // =====================================================================
@@ -949,6 +1069,7 @@ export class RelationshipGraphComponent implements OnChanges {
         }
 
         const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority, this.rootBoardId, this.rootTitle);
+        this.applyRootDetails(built.nodeMap.get(this.rootItemId)!);
         this.layoutEngine.layout(built);
         this.expansionTracker.reset(this.rootItemId, this.hub);
         this.applyAnalytics(built);

@@ -340,6 +340,60 @@
 }
 
 /* ---------------------------------------------------------------------
+ * Node tooltip
+ * Shown on node hover: what waits on the item. Floats like the
+ * relationship tooltip, placed beside the hovered card (tooltipPlacement).
+ * ------------------------------------------------------------------- */
+.impact-tooltip {
+  position: absolute;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 4px 14px var(--shadow-color);
+  z-index: 10;
+}
+
+.impact-tooltip .tooltip-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.impact-tooltip .tooltip-status-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.impact-tooltip .tooltip-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--divider);
+}
+
+.impact-tooltip .tooltip-row + .tooltip-row {
+  margin-top: 2px;
+}
+
+.impact-tooltip .value {
+  font-weight: 600;
+}
+
+/* Qualifiers in the node tooltip, e.g. "(in loaded graph)". */
+.impact-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: .85;
+}
+
+/* ---------------------------------------------------------------------
  * Legend — line-style previews instead of color chips
  * ------------------------------------------------------------------- */
 .legend-swatch {
