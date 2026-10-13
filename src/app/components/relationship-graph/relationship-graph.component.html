@@ -231,8 +231,8 @@
         <foreignObject [attr.x]="nodeLeft(node)"
           [attr.y]="nodeTop(node)" [attr.width]="node.width" [attr.height]="cardHeight(node)"
           class="graph-node-container" [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
-          [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node, $event)"
-          (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
+          [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node)"
+          (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
           <div xmlns="http://www.w3.org/1999/xhtml" class="node-card" appGraphCardSize
             (cardSizeChange)="onCardSize(node.id, $event)" [attr.aria-current]="isCenter(node) ? 'true' : null"
             [style.filter]="isSelected(node.id) ? 'url(#selectedGlow)' : 'url(#nodeShadow)'">
@@ -260,7 +260,7 @@
                 }
               </div>
             </div>
-            <div class="node-title" [title]="node.title">
+            <div class="node-title">
               <span aria-hidden="true">{{truncateTitle(node.title)}}</span>
               <span class="visually-hidden">{{node.title}}</span>
             </div>
@@ -296,9 +296,12 @@
   </g>
 </svg>
 
-@if (hoveredNodeId() !== null && hoverScreenPos(); as pos) {
-  <div class="impact-tooltip" [style.left.px]="pos.x + 20"
-    [style.top.px]="pos.y + 20">
+@if (hoveredNodeId() !== null) {
+  <!-- Measured hidden at 0,0, then shown beside the card once placed. -->
+  @let placement = tooltipPlacement();
+  <div #impactTooltip class="impact-tooltip"
+    [style.left.px]="placement?.left ?? 0" [style.top.px]="placement?.top ?? 0"
+    [style.visibility]="placement ? null : 'hidden'">
     @if (nodeAt(hoveredNodeId()!); as node) {
       <div class="tooltip-header">
         <strong>#{{ node.id }} {{ node.title }}</strong>
@@ -308,34 +311,41 @@
     <div class="tooltip-divider"></div>
     @if (hoverImpact(); as impact) {
       <div class="tooltip-content">
-        <div class="tooltip-row">
-          <span class="label">Total Affected Items:</span>
-          <span class="value">{{ impact.totalAffected }} nodes</span>
-        </div>
-        <div class="tooltip-row">
-          <span class="label">Downstream Impact Score:</span>
-          <span class="value impact-severity"
-            [style.color]="impact.score > 50 ? 'var(--danger)' : 'var(--success)'">
-            {{ impact.score }}/100
-          </span>
-        </div>
-        @if (impact.estimatedHours) {
-          <div class="tooltip-row">
-            <span class="label">Total Delayed Hours:</span>
-            <span class="value">{{ impact.estimatedHours }} hrs</span>
+        @if (impact.totalAffected === 0) {
+          <div class="tooltip-row impact-none">Nothing is waiting on this item.</div>
+        } @else {
+          <div class="tooltip-row impact-waiting">
+            <span class="label">Open items waiting on this:</span>
+            &ngsp;<span class="value">{{ impact.totalAffected }}</span>
+            &ngsp;<span class="impact-hint">(in loaded graph)</span>
           </div>
-        }
-        @if (impact.storyPoints) {
-          <div class="tooltip-row">
-            <span class="label">Story Points At Risk:</span>
-            <span class="value">{{ impact.storyPoints }} SP</span>
+          @if (impact.earliestDueDate) {
+            @let dueItem = impact.earliestDueItems[0];
+            @let sameDay = impact.earliestDueItems.length - 1;
+            <div class="tooltip-row impact-due">
+              <span class="label">Earliest deadline at risk:</span>
+              &ngsp;<span class="value">{{ impact.earliestDueDate | date: 'MMM d' }}</span>
+              <!-- Whose deadline it is, named like the cards: #id and the shortened title. -->
+              &ngsp;<span class="impact-hint">(#{{ dueItem.id }} {{ truncateTitle(dueItem.title) }}@if (sameDay > 0) {&ngsp;+ {{ sameDay }} more})</span>
+            </div>
+          }
+          <div class="tooltip-row impact-estimate">
+            <span class="label">Estimated hours waiting:</span>
+            @if (impact.withoutEstimate === impact.totalAffected) {
+              &ngsp;<span class="value">No estimates recorded</span>
+            } @else {
+              &ngsp;<span class="value">{{ impact.estimatedHours | number: '1.0-1' }} hrs</span>
+              @if (impact.withoutEstimate > 0) {
+                &ngsp;<span class="impact-hint">({{ impact.withoutEstimate }} without an estimate)</span>
+              }
+            }
           </div>
-        }
-        @if (impact.maxDepth) {
-          <div class="tooltip-row">
-            <span class="label">Dependency Depth Hops:</span>
-            <span class="value">{{ impact.maxDepth }}</span>
-          </div>
+          @if (impact.maxDepth > 1) {
+            <div class="tooltip-row impact-depth">
+              <span class="label">Furthest affected item:</span>
+              &ngsp;<span class="value">{{ impact.maxDepth }} steps away</span>
+            </div>
+          }
         }
       </div>
     } @else {

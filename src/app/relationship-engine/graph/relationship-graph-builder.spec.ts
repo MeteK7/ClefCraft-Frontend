@@ -74,6 +74,16 @@ describe('RelationshipGraphBuilder', () => {
         expect(graph.nodeMap.get(2)!.title).toBe('Item 2');
     });
 
+    it('carries each related item\'s estimate and due date onto its node', () => {
+        const withDetails = { ...card(2, true), estimatedTime: 4.5, dueDate: '2026-10-16T00:00:00' as unknown as Date };
+        const graph = builder.build(1, hub([{ type: RelationshipType.Blocks, items: [withDetails, card(3, true)] }]), '', '');
+
+        expect(graph.nodeMap.get(2)!.estimatedHours).toBe(4.5);
+        expect(graph.nodeMap.get(2)!.dueDate).toEqual(new Date(2026, 9, 16));
+        expect(graph.nodeMap.get(3)!.estimatedHours).toBeUndefined();
+        expect(graph.nodeMap.get(3)!.dueDate).toBeUndefined();
+    });
+
     it('falls back to a placeholder, never "Current Item", when the title is missing or blank', () => {
         for (const title of [undefined, '', '   ']) {
             const graph = builder.build(1, hub([]), '', '', 3, title);

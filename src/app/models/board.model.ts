@@ -85,6 +85,8 @@ export interface RelationshipCard {
   priority: string;
   assigneeId?: string;
   dueDate?: Date;
+  /** Recorded estimate in hours; null when none was recorded. */
+  estimatedTime?: number | null;
 }
 
 export interface RelationshipGroup {

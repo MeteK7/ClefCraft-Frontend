@@ -6,6 +6,7 @@ import {
     RelationshipType
 } from '../../models/board.model';
 
+import { toDueDate } from '../analytics/finish-before';
 import { GraphEdge, GraphEdgeFactory } from '../visualization/graph-edge.model';
 import { GraphNode, GraphNodeFactory } from '../visualization/graph-node.model';
 import { GraphViewModel, GraphViewModelFactory, rebuildIndex } from '../visualization/graph-view-model';
@@ -139,7 +140,8 @@ export class RelationshipGraphBuilder {
         node.relationshipType = relationType;
         node.boardId = relationship.boardId;
         node.assignee = relationship.assigneeId;
-        node.dueDate = relationship.dueDate;
+        node.dueDate = toDueDate(relationship.dueDate);
+        node.estimatedHours = relationship.estimatedTime ?? undefined;
         node.radius = 28;
         node.color = this.getColor(relationType);
 

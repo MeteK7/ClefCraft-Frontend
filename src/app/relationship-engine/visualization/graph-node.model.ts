@@ -23,10 +23,8 @@ export interface GraphNode {
 
     parentId?: number;
     children: number[];
+    /** The item's recorded estimate, in hours. */
     estimatedHours?: number;
-    storyPoints?: number;
-    isMilestone?: boolean;
-    completed?: boolean;
     x: number;
     y: number;
     width: number;
@@ -86,9 +84,6 @@ export class GraphNodeFactory {
             children: [],
 
             estimatedHours: undefined,
-            storyPoints: undefined,
-            isMilestone: undefined,
-            completed: undefined,
 
             x: 0,
             y: 0,

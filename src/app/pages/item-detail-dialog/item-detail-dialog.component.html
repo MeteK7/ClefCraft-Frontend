@@ -155,7 +155,9 @@
         <div class="dialog-content">
           <app-relationship-hub [boardId]="item.boardId" [itemId]="item.id" [itemTitle]="displayTitle"
             [itemStatus]="item.status?.name ?? ''"
-            [itemPriority]="item.priority?.name ?? ''" (graphMaximizedChange)="isGraphMaximized = $event">
+            [itemPriority]="item.priority?.name ?? ''"
+            [itemDueDate]="item.dueDate" [itemEstimatedTime]="item.estimatedTime"
+            (graphMaximizedChange)="isGraphMaximized = $event">
           </app-relationship-hub>
         </div>
       </mat-tab>

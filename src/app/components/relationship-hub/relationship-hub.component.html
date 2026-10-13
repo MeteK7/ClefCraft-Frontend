@@ -47,7 +47,8 @@
   @if (!loading) {
     @if (viewMode==='graph') {
       <app-relationship-graph [hub]="hub" [rootItemId]="itemId" [rootTitle]="itemTitle" [rootStatus]="itemStatus"
-        [rootPriority]="itemPriority" [rootBoardId]="boardId" (openItem)="open($event)"
+        [rootPriority]="itemPriority" [rootBoardId]="boardId"
+        [rootDueDate]="itemDueDate" [rootEstimatedTime]="itemEstimatedTime" (openItem)="open($event)"
         (maximizedChange)="graphMaximizedChange.emit($event)">
       </app-relationship-graph>
     }

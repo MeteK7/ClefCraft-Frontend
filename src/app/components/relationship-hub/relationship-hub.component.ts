@@ -53,6 +53,9 @@ export class RelationshipHubComponent implements OnInit {
     @Input() itemTitle = '';
     @Input() itemStatus = '';
     @Input() itemPriority = '';
+    @Input() itemDueDate?: Date | string | null;
+    /** Estimate in hours. */
+    @Input() itemEstimatedTime?: number | null;
 
     @Output() openItem = new EventEmitter<number>();
     @Output() graphMaximizedChange = new EventEmitter<boolean>();
