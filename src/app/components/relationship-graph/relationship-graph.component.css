@@ -342,7 +342,7 @@
 /* ---------------------------------------------------------------------
  * Node tooltip
  * Shown on node hover: what waits on the item. Floats like the
- * relationship tooltip, positioned from the hover point.
+ * relationship tooltip, placed beside the hovered card (tooltipPlacement).
  * ------------------------------------------------------------------- */
 .impact-tooltip {
   position: absolute;
@@ -357,19 +357,6 @@
   pointer-events: none;
   box-shadow: 0 4px 14px var(--shadow-color);
   z-index: 10;
-}
-
-/* Opens toward the roomier side of the pointer (set from the hover position). */
-.impact-tooltip.open-left {
-  transform: translateX(-100%);
-}
-
-.impact-tooltip.open-up {
-  transform: translateY(-100%);
-}
-
-.impact-tooltip.open-left.open-up {
-  transform: translate(-100%, -100%);
 }
 
 .impact-tooltip .tooltip-header {

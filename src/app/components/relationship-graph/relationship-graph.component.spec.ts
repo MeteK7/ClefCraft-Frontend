@@ -219,7 +219,8 @@ describe('RelationshipGraphComponent current-item card', () => {
         expect(card.textContent).not.toContain('Current Item');
         expect(label.querySelector('[aria-hidden="true"]')!.textContent!.trim()).toBe(component.truncateTitle(title));
         expect(label.querySelector('.visually-hidden')!.textContent!.trim()).toBe(title);
-        expect(label.getAttribute('title')).toBe(title);
+        // No native title tooltip: the node tooltip already shows the full title.
+        expect(label.hasAttribute('title')).toBeFalse();
 
         expect(card.querySelector('.chip.current')!.textContent!.trim()).toBe('Current');
         expect(card.getAttribute('aria-current')).toBe('true');
@@ -273,6 +274,10 @@ describe('RelationshipGraphComponent hover impact', () => {
     function create(hubToShow: RelationshipHub, rootStatus = 'To Do'): void {
         fixture = TestBed.createComponent(RelationshipGraphComponent);
         component = fixture.componentInstance;
+        // A fixed graph area, so positions measured from the DOM are deterministic.
+        const host = fixture.nativeElement as HTMLElement;
+        host.style.width = '1000px';
+        host.style.height = '600px';
         fixture.componentRef.setInput('hub', hubToShow);
         fixture.componentRef.setInput('rootItemId', 1);
         fixture.componentRef.setInput('rootStatus', rootStatus);
@@ -280,9 +285,39 @@ describe('RelationshipGraphComponent hover impact', () => {
     }
 
     function hover(nodeId: number): void {
-        component.onNodeEnter(component.nodeAt(nodeId)!, new MouseEvent('mouseenter', { clientX: 10, clientY: 10 }));
+        component.onNodeEnter(component.nodeAt(nodeId)!);
         fixture.detectChanges();
     }
+
+    /** Lets rendering, card and tooltip measurement (ResizeObserver) and placement settle. */
+    async function settle(): Promise<void> {
+        fixture.detectChanges();
+        await fixture.whenStable();
+        await nextFrame();
+        await nextFrame();
+        fixture.detectChanges();
+    }
+
+    /**
+     * Zoom buttons animate the graph layer (a .5s CSS transition), and headless Chrome may not finish
+     * it on time. Dropping the animation, as the component does for wheel and pan, puts the cards at
+     * their final position at once, where the tooltip placement already is.
+     */
+    async function endViewportTransition(): Promise<void> {
+        component.viewportAnimated.set(false);
+        await settle();
+    }
+
+    const rectOf = (el: Element) => el.getBoundingClientRect();
+    const overlaps = (a: DOMRect, b: DOMRect) =>
+        Math.min(a.right, b.right) > Math.max(a.left, b.left) && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top);
+    /** Distance between two rects that don't overlap, along the axis that separates them. */
+    const gapBetween = (a: DOMRect, b: DOMRect) =>
+        Math.max(b.left - a.right, a.left - b.right, b.top - a.bottom, a.top - b.bottom);
+
+    const tooltipEl = () => (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.impact-tooltip')!;
+    const cardEl = (id: number) => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.node-card'))
+        .find(c => c.querySelector('.node-id')!.textContent!.trim() === `#${id}`)!;
 
     const tooltipText = () =>
         ((fixture.nativeElement as HTMLElement).querySelector('.impact-tooltip')?.textContent ?? '').replace(/\s+/g, ' ');
@@ -384,25 +419,58 @@ describe('RelationshipGraphComponent hover impact', () => {
         expect(tooltipText()).not.toContain('without an estimate');
     });
 
-    it('opens the tooltip toward the roomier side of the pointer', () => {
+    it('places the tooltip beside the hovered card, inside the graph area, without covering other cards', async () => {
+        // #2 sits in the row under the root, next to #3. The fitted view puts that row at the bottom
+        // edge; zoomed out, there is free space below it.
         create(chainHub);
-        const container = (fixture.nativeElement as HTMLElement).querySelector('.graph-container')!.getBoundingClientRect();
-        const tooltipAt = (fx: number, fy: number) => {
-            component.onNodeEnter(component.nodeAt(2)!, new MouseEvent('mouseenter', {
-                clientX: container.left + container.width * fx,
-                clientY: container.top + container.height * fy
-            }));
-            fixture.detectChanges();
-            return (fixture.nativeElement as HTMLElement).querySelector('.impact-tooltip')!.classList;
+        await settle();
+        component.zoomOut();
+        await endViewportTransition();
+
+        hover(2);
+        await settle();
+
+        const tooltip = rectOf(tooltipEl());
+        const container = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.graph-container')!;
+        const svg = rectOf((fixture.nativeElement as HTMLElement).querySelector('svg.graph-svg')!);
+        const visible = {
+            left: Math.max(svg.left, rectOf(container).left),
+            right: Math.min(svg.right, rectOf(container).right),
+            top: Math.max(svg.top, rectOf(container).top),
+            bottom: Math.min(svg.bottom, rectOf(container).bottom)
         };
 
-        const topLeft = tooltipAt(0.25, 0.25);
-        expect(topLeft.contains('open-left')).toBeFalse();
-        expect(topLeft.contains('open-up')).toBeFalse();
+        expect(getComputedStyle(tooltipEl()).visibility).toBe('visible');
+        expect(tooltip.left).toBeGreaterThanOrEqual(visible.left);
+        expect(tooltip.right).toBeLessThanOrEqual(visible.right);
+        expect(tooltip.top).toBeGreaterThanOrEqual(visible.top);
+        expect(tooltip.bottom).toBeLessThanOrEqual(visible.bottom);
 
-        const bottomRight = tooltipAt(0.75, 0.75);
-        expect(bottomRight.contains('open-left')).toBeTrue();
-        expect(bottomRight.contains('open-up')).toBeTrue();
+        for (const id of [1, 2, 3]) {
+            expect(overlaps(tooltip, rectOf(cardEl(id)))).withContext(`covers card #${id}`).toBeFalse();
+        }
+        expect(gapBetween(tooltip, rectOf(cardEl(2)))).toBeCloseTo(12, 0);
+    });
+
+    it('moves the tooltip with the card when the graph is zoomed while hovering', async () => {
+        create(chainHub);
+        await settle();
+        hover(2);
+        await settle();
+
+        const tooltipBefore = rectOf(tooltipEl());
+        const cardBefore = rectOf(cardEl(2));
+
+        component.zoomIn();
+        await endViewportTransition();
+
+        const tooltipAfter = rectOf(tooltipEl());
+        const cardAfter = rectOf(cardEl(2));
+
+        expect(cardAfter.left).not.toBeCloseTo(cardBefore.left, 0);
+        expect(tooltipAfter.left).not.toBeCloseTo(tooltipBefore.left, 0);
+        expect(overlaps(tooltipAfter, cardAfter)).toBeFalse();
+        expect(gapBetween(tooltipAfter, cardAfter)).toBeCloseTo(12, 0);
     });
 
     it('drops the old score from the tooltip', () => {

@@ -231,8 +231,8 @@
         <foreignObject [attr.x]="nodeLeft(node)"
           [attr.y]="nodeTop(node)" [attr.width]="node.width" [attr.height]="cardHeight(node)"
           class="graph-node-container" [class.selected]="isSelected(node.id)" [class.center]="isCenter(node)"
-          [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node, $event)"
-          (mousemove)="onNodeMove($event)" (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
+          [class.dimmed]="isDimmed(node.id)" (mouseenter)="onNodeEnter(node)"
+          (mouseleave)="onNodeLeave()" (click)="onNodeClick(node)">
           <div xmlns="http://www.w3.org/1999/xhtml" class="node-card" appGraphCardSize
             (cardSizeChange)="onCardSize(node.id, $event)" [attr.aria-current]="isCenter(node) ? 'true' : null"
             [style.filter]="isSelected(node.id) ? 'url(#selectedGlow)' : 'url(#nodeShadow)'">
@@ -260,7 +260,7 @@
                 }
               </div>
             </div>
-            <div class="node-title" [title]="node.title">
+            <div class="node-title">
               <span aria-hidden="true">{{truncateTitle(node.title)}}</span>
               <span class="visually-hidden">{{node.title}}</span>
             </div>
@@ -296,10 +296,12 @@
   </g>
 </svg>
 
-@if (hoveredNodeId() !== null && hoverScreenPos(); as pos) {
-  <div class="impact-tooltip" [class.open-left]="pos.openLeft" [class.open-up]="pos.openUp"
-    [style.left.px]="pos.openLeft ? pos.x - 20 : pos.x + 20"
-    [style.top.px]="pos.openUp ? pos.y - 20 : pos.y + 20">
+@if (hoveredNodeId() !== null) {
+  <!-- Measured hidden at 0,0, then shown beside the card once placed. -->
+  @let placement = tooltipPlacement();
+  <div #impactTooltip class="impact-tooltip"
+    [style.left.px]="placement?.left ?? 0" [style.top.px]="placement?.top ?? 0"
+    [style.visibility]="placement ? null : 'hidden'">
     @if (nodeAt(hoveredNodeId()!); as node) {
       <div class="tooltip-header">
         <strong>#{{ node.id }} {{ node.title }}</strong>
