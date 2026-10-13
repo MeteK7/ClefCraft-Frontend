@@ -31,6 +31,7 @@ import { GraphExpansionTracker } from '../../relationship-engine/graph/graph-exp
 
 import { CycleDetector, RelationshipCycle } from '../../relationship-engine/analytics/cycle-detector';
 import { ImpactEngine, ImpactAnalysis } from '../../relationship-engine/analytics/impact-engine';
+import { toDueDate } from '../../relationship-engine/analytics/finish-before';
 
 import { GraphNode } from '../../relationship-engine/visualization/graph-node.model';
 import { GraphEdge } from '../../relationship-engine/visualization/graph-edge.model';
@@ -83,6 +84,9 @@ export class RelationshipGraphComponent implements OnChanges {
     @Input() rootStatus = '';
     @Input() rootPriority = '';
     @Input() rootBoardId?: number;
+    /** The center item's own due date and estimate (hours); related items get theirs from the hub. */
+    @Input() rootDueDate?: Date | string | null;
+    @Input() rootEstimatedTime?: number | null;
 
     @Output() openItem = new EventEmitter<number>();
     @Output() maximizedChange = new EventEmitter<boolean>();
@@ -150,7 +154,11 @@ export class RelationshipGraphComponent implements OnChanges {
     readonly viewportAnimated = signal<boolean>(false);
 
     readonly hoveredNodeId = signal<number | null>(null);
-    readonly hoverScreenPos = signal<{ x: number; y: number } | null>(null);
+    /**
+     * Pointer position in the graph container. openLeft / openUp say which way the node tooltip
+     * opens: toward the roomier side, so it isn't clipped by the container's edge.
+     */
+    readonly hoverScreenPos = signal<{ x: number; y: number; openLeft: boolean; openUp: boolean } | null>(null);
     readonly hoverImpact = signal<ImpactAnalysis | null>(null);
 
     /** Edge-hover state, backing the relationship-sentence tooltip. */
@@ -329,9 +337,31 @@ export class RelationshipGraphComponent implements OnChanges {
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['hub'] || changes['rootItemId'] || changes['rootStatus'] || changes['rootPriority'] || changes['rootBoardId']) {
             this.rebuild();
-        } else if (changes['rootTitle']) {
+            return;
+        }
+
+        if (changes['rootTitle']) {
             this.renameRoot();
         }
+
+        if (changes['rootDueDate'] || changes['rootEstimatedTime']) {
+            this.refreshRootDetails();
+        }
+    }
+
+    /** A due-date or estimate edit only updates the center node, keeping the expansions, layout and viewport. */
+    private refreshRootDetails(): void {
+        const graph = this.graph();
+        const root = graph?.nodeMap.get(this.rootItemId);
+        if (!graph || !root) return;
+
+        this.applyRootDetails(root);
+        this.graph.set({ ...graph });
+    }
+
+    private applyRootDetails(root: GraphNode): void {
+        root.dueDate = toDueDate(this.rootDueDate);
+        root.estimatedHours = this.rootEstimatedTime ?? undefined;
     }
 
     /** A title edit only relabels the center card, keeping the expansions, layout and viewport. */
@@ -464,7 +494,7 @@ export class RelationshipGraphComponent implements OnChanges {
         this.updateHoverPosition(event);
 
         const graph = this.graph();
-        if (!graph || this.isCenter(node)) {
+        if (!graph) {
             this.hoverImpact.set(null);
             return;
         }
@@ -488,9 +518,13 @@ export class RelationshipGraphComponent implements OnChanges {
         const container = this.canvasContainerRef()?.nativeElement;
         if (!container) return;
         const rect = container.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
         this.hoverScreenPos.set({
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top
+            x,
+            y,
+            openLeft: x > rect.width / 2,
+            openUp: y > rect.height / 2
         });
     }
 
@@ -949,6 +983,7 @@ export class RelationshipGraphComponent implements OnChanges {
         }
 
         const built = this.builder.build(this.rootItemId, this.hub, this.rootStatus, this.rootPriority, this.rootBoardId, this.rootTitle);
+        this.applyRootDetails(built.nodeMap.get(this.rootItemId)!);
         this.layoutEngine.layout(built);
         this.expansionTracker.reset(this.rootItemId, this.hub);
         this.applyAnalytics(built);

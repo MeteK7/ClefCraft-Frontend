@@ -2,24 +2,26 @@ import { Injectable } from '@angular/core';
 
 import { GraphNode } from '../visualization/graph-node.model';
 import { GraphViewModel } from '../visualization/graph-view-model';
+import { buildFinishBeforeIndex, isCompletedStatus, toDueDate } from './finish-before';
 
 export interface ImpactNode {
     node: GraphNode;
-    /** Number of dependency hops from the selected item. */
+    /** Fewest finish-before steps from the analyzed item. */
     depth: number;
 }
 
+/** What waits on an item, counting only open items in the loaded graph. */
 export interface ImpactAnalysis {
     source: GraphNode;
     impactedNodes: ImpactNode[];
     totalAffected: number;
+    /** Steps to the furthest waiting item. */
     maxDepth: number;
-    /** Overall severity, 0-100. */
-    score: number;
+    /** Sum of the recorded estimates of the waiting items, in hours. */
     estimatedHours: number;
-    storyPoints: number;
-    milestones: number;
-    completed: number;
+    /** Waiting items with no recorded estimate. */
+    withoutEstimate: number;
+    earliestDueDate?: Date;
 }
 
 @Injectable({
@@ -35,65 +37,56 @@ export class ImpactEngine {
             throw new Error('Source node not found.');
         }
 
-        const visited = new Set<number>([source.id]);
-        const impacted: ImpactNode[] = [];
-        const queue: ImpactNode[] = [{ node: source, depth: 0 }];
+        const affected: ImpactNode[] = [];
 
-        while (queue.length) {
+        // Nothing waits on finished work.
+        if (!isCompletedStatus(source.status)) {
 
-            const current = queue.shift()!;
-            impacted.push(current);
+            const index = buildFinishBeforeIndex(graph);
+            const visited = new Set<number>([source.id]);
+            const queue: ImpactNode[] = [{ node: source, depth: 0 }];
 
-            for (const nextId of graph.outgoing.get(current.node.id) ?? []) {
+            // Breadth-first, so each item's depth is its shortest distance.
+            while (queue.length) {
 
-                if (visited.has(nextId)) {
-                    continue;
+                const current = queue.shift()!;
+
+                for (const { nextId } of index.get(current.node.id) ?? []) {
+
+                    if (visited.has(nextId)) {
+                        continue;
+                    }
+
+                    visited.add(nextId);
+
+                    const next = graph.nodeMap.get(nextId)!;
+
+                    // A finished item isn't waiting, and what waits on it isn't waiting through it.
+                    if (isCompletedStatus(next.status)) {
+                        continue;
+                    }
+
+                    const impacted = { node: next, depth: current.depth + 1 };
+                    affected.push(impacted);
+                    queue.push(impacted);
                 }
-
-                visited.add(nextId);
-
-                const next = graph.nodeMap.get(nextId);
-                if (!next) {
-                    continue;
-                }
-
-                queue.push({ node: next, depth: current.depth + 1 });
             }
         }
 
-        const affected = impacted.slice(1);
-
-        const estimatedHours = affected.reduce((sum, x) => sum + (x.node.estimatedHours ?? 0), 0);
-        const storyPoints = affected.reduce((sum, x) => sum + (x.node.storyPoints ?? 0), 0);
-        const milestones = affected.filter(x => x.node.isMilestone).length;
-        const completed = affected.filter(x => x.node.completed).length;
-        const maxDepth = Math.max(0, ...affected.map(x => x.depth));
-
-        const score = this.calculateImpactScore(affected.length, maxDepth, estimatedHours, storyPoints, milestones);
+        const estimated = affected.filter(x => x.node.estimatedHours != null);
+        const dueDates = affected
+            .map(x => toDueDate(x.node.dueDate)?.getTime())
+            .filter((time): time is number => time != null);
 
         return {
             source,
             impactedNodes: affected,
             totalAffected: affected.length,
-            maxDepth,
-            estimatedHours,
-            storyPoints,
-            milestones,
-            completed,
-            score
+            maxDepth: Math.max(0, ...affected.map(x => x.depth)),
+            estimatedHours: estimated.reduce((sum, x) => sum + x.node.estimatedHours!, 0),
+            withoutEstimate: affected.length - estimated.length,
+            earliestDueDate: dueDates.length ? new Date(Math.min(...dueDates)) : undefined
         };
-    }
-
-    private calculateImpactScore(affected: number, depth: number, hours: number, storyPoints: number, milestones: number): number {
-
-        let score = 0;
-        score += affected * 5;
-        score += depth * 8;
-        score += hours * 0.5;
-        score += storyPoints * 2;
-        score += milestones * 20;
-
-        return Math.min(100, Math.round(score));
     }
 
     impactedIds(graph: GraphViewModel, sourceId: number): number[] {

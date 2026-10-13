@@ -244,3 +244,175 @@ describe('RelationshipGraphComponent current-item card', () => {
         expect(component.expandedNodeIds().has(2)).toBeTrue();
     });
 });
+
+describe('RelationshipGraphComponent hover impact', () => {
+
+    let fixture: ComponentFixture<RelationshipGraphComponent>;
+    let component: RelationshipGraphComponent;
+
+    /** Root #1 depends on #2 and blocks #3, so work waits 2 -> 1 -> 3. */
+    const chainHub: RelationshipHub = {
+        groups: [
+            {
+                relationType: RelationshipType.DependsOn,
+                name: 'Depends on',
+                items: [{ relationId: 20, itemId: 2, boardId: 1, isOutgoing: true, title: 'Schema', status: 'To Do', priority: 'High' }]
+            },
+            {
+                relationType: RelationshipType.Blocks,
+                name: 'Blocks',
+                items: [{ relationId: 21, itemId: 3, boardId: 1, isOutgoing: true, title: 'Release', status: 'To Do', priority: 'High' }]
+            }
+        ],
+        parentCount: 0,
+        blockCount: 1,
+        relatedCount: 0,
+        dependencyCount: 1
+    };
+
+    function create(hubToShow: RelationshipHub, rootStatus = 'To Do'): void {
+        fixture = TestBed.createComponent(RelationshipGraphComponent);
+        component = fixture.componentInstance;
+        fixture.componentRef.setInput('hub', hubToShow);
+        fixture.componentRef.setInput('rootItemId', 1);
+        fixture.componentRef.setInput('rootStatus', rootStatus);
+        fixture.detectChanges();
+    }
+
+    function hover(nodeId: number): void {
+        component.onNodeEnter(component.nodeAt(nodeId)!, new MouseEvent('mouseenter', { clientX: 10, clientY: 10 }));
+        fixture.detectChanges();
+    }
+
+    const tooltipText = () =>
+        ((fixture.nativeElement as HTMLElement).querySelector('.impact-tooltip')?.textContent ?? '').replace(/\s+/g, ' ');
+
+    const waitingIds = () => component.hoverImpact()!.impactedNodes.map(x => x.node.id).sort((a, b) => a - b);
+
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [RelationshipGraphComponent],
+            providers: [
+                provideRouter([]),
+                provideNoopAnimations(),
+                { provide: BoardService, useValue: { getRelationships: () => of(chainHub) } }
+            ]
+        }).compileComponents();
+    });
+
+    it('analyzes the center card when it is hovered instead of waiting forever', () => {
+        create(chainHub);
+
+        hover(1);
+
+        expect(component.hoverImpact()).not.toBeNull();
+        expect(waitingIds()).toEqual([3]);
+        expect(tooltipText()).not.toContain('Analyzing');
+        expect(tooltipText()).toContain('Open items waiting on this: 1');
+    });
+
+    it('follows the dependency direction: what the center depends on has the center waiting on it', () => {
+        create(chainHub);
+
+        hover(2);
+
+        expect(waitingIds()).toEqual([1, 3]);
+        expect(component.hoverImpact()!.maxDepth).toBe(2);
+    });
+
+    it('shows no impact for a Done center item', () => {
+        create(chainHub, 'Done');
+
+        hover(1);
+
+        expect(component.hoverImpact()!.totalAffected).toBe(0);
+        expect(tooltipText()).toContain('Nothing is waiting on this item.');
+    });
+
+    it('does not count a Done center item, or what waits through it, when hovering its blocker', () => {
+        create(chainHub, 'Done');
+
+        hover(2);
+
+        expect(component.hoverImpact()!.totalAffected).toBe(0);
+    });
+
+    it('uses the center item\'s own due date and estimate', () => {
+        create(chainHub);
+        fixture.componentRef.setInput('rootDueDate', '2026-10-16T00:00:00');
+        fixture.componentRef.setInput('rootEstimatedTime', 6);
+        fixture.detectChanges();
+
+        hover(2);
+
+        expect(component.hoverImpact()!.earliestDueDate).toEqual(new Date(2026, 9, 16));
+        expect(component.hoverImpact()!.estimatedHours).toBe(6);
+        expect(component.hoverImpact()!.withoutEstimate).toBe(1);
+        expect(tooltipText()).toContain('Estimated hours waiting: 6 hrs');
+        expect(tooltipText()).toContain('(1 without an estimate)');
+        expect(tooltipText()).toContain('Earliest affected due date: Oct 16');
+    });
+
+    it('updates the center item\'s due date and estimate without resetting expansions', () => {
+        create(chainHub);
+        component.expandedNodeIds.set(new Set([2]));
+
+        fixture.componentRef.setInput('rootDueDate', new Date(2026, 9, 20));
+        fixture.componentRef.setInput('rootEstimatedTime', 2);
+        fixture.detectChanges();
+
+        expect(component.nodeAt(1)!.dueDate).toEqual(new Date(2026, 9, 20));
+        expect(component.nodeAt(1)!.estimatedHours).toBe(2);
+        expect(component.expandedNodeIds().has(2)).toBeTrue();
+    });
+
+    it('treats the empty-date value the API returns after an edit as no due date', () => {
+        create(chainHub);
+        fixture.componentRef.setInput('rootDueDate', '0001-01-01T00:00:00');
+        fixture.detectChanges();
+
+        expect(component.nodeAt(1)!.dueDate).toBeUndefined();
+    });
+
+    it('says "No estimates recorded" instead of "0 hrs" when no waiting item has an estimate', () => {
+        create(chainHub);
+
+        hover(2);
+
+        expect(tooltipText()).toContain('Estimated hours waiting: No estimates recorded');
+        expect(tooltipText()).not.toContain('0 hrs');
+        expect(tooltipText()).not.toContain('without an estimate');
+    });
+
+    it('opens the tooltip toward the roomier side of the pointer', () => {
+        create(chainHub);
+        const container = (fixture.nativeElement as HTMLElement).querySelector('.graph-container')!.getBoundingClientRect();
+        const tooltipAt = (fx: number, fy: number) => {
+            component.onNodeEnter(component.nodeAt(2)!, new MouseEvent('mouseenter', {
+                clientX: container.left + container.width * fx,
+                clientY: container.top + container.height * fy
+            }));
+            fixture.detectChanges();
+            return (fixture.nativeElement as HTMLElement).querySelector('.impact-tooltip')!.classList;
+        };
+
+        const topLeft = tooltipAt(0.25, 0.25);
+        expect(topLeft.contains('open-left')).toBeFalse();
+        expect(topLeft.contains('open-up')).toBeFalse();
+
+        const bottomRight = tooltipAt(0.75, 0.75);
+        expect(bottomRight.contains('open-left')).toBeTrue();
+        expect(bottomRight.contains('open-up')).toBeTrue();
+    });
+
+    it('drops the old score from the tooltip', () => {
+        create(chainHub);
+
+        hover(2);
+
+        expect(tooltipText()).not.toContain('/100');
+        expect(tooltipText()).not.toContain('Story Points');
+        expect(tooltipText()).toContain('(in loaded graph)');
+        expect(tooltipText()).toContain('Furthest affected item: 2 steps away');
+    });
+});
