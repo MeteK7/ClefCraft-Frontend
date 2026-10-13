@@ -138,13 +138,48 @@ describe('ImpactEngine', () => {
             edge(1, RelationshipType.Blocks, 5)
         ]);
 
-        expect(engine.analyze(g, 1).earliestDueDate).toEqual(new Date(2026, 9, 16));
+        const impact = engine.analyze(g, 1);
+
+        expect(impact.earliestDueDate).toEqual(new Date(2026, 9, 16));
+        expect(impact.earliestDueItems.map(n => n.id)).toEqual([3]);
+    });
+
+    it('names every waiting item due on the earliest day, nearest first', () => {
+        // 1 -> 2 -> 3 and 1 -> 4; 3 and 4 are due the same day, at different times.
+        const g = graph([
+            node(1),
+            node(2),
+            node(3, { dueDate: new Date(2026, 9, 16, 9) }),
+            node(4, { dueDate: new Date(2026, 9, 16, 17) }),
+            node(5, { dueDate: new Date(2026, 9, 17) })
+        ], [
+            edge(1, RelationshipType.Blocks, 2),
+            edge(2, RelationshipType.Blocks, 3),
+            edge(1, RelationshipType.Blocks, 4),
+            edge(1, RelationshipType.Blocks, 5)
+        ]);
+
+        expect(engine.analyze(g, 1).earliestDueItems.map(n => n.id)).toEqual([4, 3]);
+    });
+
+    it('does not count the hovered item\'s own due date', () => {
+        const g = graph([node(1, { dueDate: new Date(2026, 9, 1) }), node(2, { dueDate: new Date(2026, 9, 20) })], [
+            edge(1, RelationshipType.Blocks, 2)
+        ]);
+
+        const impact = engine.analyze(g, 1);
+
+        expect(impact.earliestDueDate).toEqual(new Date(2026, 9, 20));
+        expect(impact.earliestDueItems.map(n => n.id)).toEqual([2]);
     });
 
     it('has no earliest due date when no waiting item has one', () => {
         const g = graph([node(1), node(2)], [edge(1, RelationshipType.Blocks, 2)]);
 
-        expect(engine.analyze(g, 1).earliestDueDate).toBeUndefined();
+        const impact = engine.analyze(g, 1);
+
+        expect(impact.earliestDueDate).toBeUndefined();
+        expect(impact.earliestDueItems).toEqual([]);
     });
 
     it('measures depth as the shortest distance', () => {

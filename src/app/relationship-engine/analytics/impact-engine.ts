@@ -21,7 +21,10 @@ export interface ImpactAnalysis {
     estimatedHours: number;
     /** Waiting items with no recorded estimate. */
     withoutEstimate: number;
+    /** The soonest due date among the waiting items: the earliest deadline at risk. */
     earliestDueDate?: Date;
+    /** The waiting items due on that day, nearest first. Empty when no waiting item has a due date. */
+    earliestDueItems: GraphNode[];
 }
 
 @Injectable({
@@ -77,6 +80,15 @@ export class ImpactEngine {
         const dueDates = affected
             .map(x => toDueDate(x.node.dueDate)?.getTime())
             .filter((time): time is number => time != null);
+        const earliestDueDate = dueDates.length ? new Date(Math.min(...dueDates)) : undefined;
+
+        // Matched by calendar day, the way the date is shown. `affected` is in breadth-first order,
+        // so the nearest item comes first.
+        const earliestDueItems = earliestDueDate
+            ? affected
+                .map(x => x.node)
+                .filter(node => toDueDate(node.dueDate)?.toDateString() === earliestDueDate.toDateString())
+            : [];
 
         return {
             source,
@@ -85,7 +97,8 @@ export class ImpactEngine {
             maxDepth: Math.max(0, ...affected.map(x => x.depth)),
             estimatedHours: estimated.reduce((sum, x) => sum + x.node.estimatedHours!, 0),
             withoutEstimate: affected.length - estimated.length,
-            earliestDueDate: dueDates.length ? new Date(Math.min(...dueDates)) : undefined
+            earliestDueDate,
+            earliestDueItems
         };
     }
 

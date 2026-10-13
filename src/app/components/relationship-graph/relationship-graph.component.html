@@ -320,9 +320,13 @@
             &ngsp;<span class="impact-hint">(in loaded graph)</span>
           </div>
           @if (impact.earliestDueDate) {
+            @let dueItem = impact.earliestDueItems[0];
+            @let sameDay = impact.earliestDueItems.length - 1;
             <div class="tooltip-row impact-due">
-              <span class="label">Earliest affected due date:</span>
+              <span class="label">Earliest deadline at risk:</span>
               &ngsp;<span class="value">{{ impact.earliestDueDate | date: 'MMM d' }}</span>
+              <!-- Whose deadline it is, named like the cards: #id and the shortened title. -->
+              &ngsp;<span class="impact-hint">(#{{ dueItem.id }} {{ truncateTitle(dueItem.title) }}@if (sameDay > 0) {&ngsp;+ {{ sameDay }} more})</span>
             </div>
           }
           <div class="tooltip-row impact-estimate">

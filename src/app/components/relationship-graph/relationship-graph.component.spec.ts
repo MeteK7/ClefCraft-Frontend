@@ -374,6 +374,7 @@ describe('RelationshipGraphComponent hover impact', () => {
 
     it('uses the center item\'s own due date and estimate', () => {
         create(chainHub);
+        fixture.componentRef.setInput('rootTitle', 'Release v2');
         fixture.componentRef.setInput('rootDueDate', '2026-10-16T00:00:00');
         fixture.componentRef.setInput('rootEstimatedTime', 6);
         fixture.detectChanges();
@@ -385,7 +386,28 @@ describe('RelationshipGraphComponent hover impact', () => {
         expect(component.hoverImpact()!.withoutEstimate).toBe(1);
         expect(tooltipText()).toContain('Estimated hours waiting: 6 hrs');
         expect(tooltipText()).toContain('(1 without an estimate)');
-        expect(tooltipText()).toContain('Earliest affected due date: Oct 16');
+        // The date, and the item it belongs to.
+        expect(tooltipText()).toContain('Earliest deadline at risk: Oct 16 (#1 Release v2)');
+    });
+
+    it('names the nearest item due that day and counts the others due the same day', () => {
+        // #3 (waiting through the center) is due the same day as the center item.
+        const sameDayHub: RelationshipHub = {
+            ...chainHub,
+            groups: chainHub.groups.map(g => ({
+                ...g,
+                items: g.items.map(item => item.itemId === 3 ? { ...item, dueDate: '2026-10-16T15:00:00' as unknown as Date } : item)
+            }))
+        };
+        create(sameDayHub);
+        fixture.componentRef.setInput('rootTitle', 'Release v2');
+        fixture.componentRef.setInput('rootDueDate', '2026-10-16T00:00:00');
+        fixture.detectChanges();
+
+        hover(2);
+
+        expect(component.hoverImpact()!.earliestDueItems.map(n => n.id)).toEqual([1, 3]);
+        expect(tooltipText()).toContain('Earliest deadline at risk: Oct 16 (#1 Release v2 + 1 more)');
     });
 
     it('updates the center item\'s due date and estimate without resetting expansions', () => {
