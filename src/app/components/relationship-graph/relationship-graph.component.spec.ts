@@ -611,6 +611,77 @@ describe('RelationshipGraphComponent hover impact', () => {
             expect(tooltipShown()).toBeFalse();
         });
 
+        describe('after a listed item is clicked', () => {
+
+            /** Clicks the listed #3 with the mouse at (x, y), or from the keyboard (detail 0). */
+            function clickListedItem(click: MouseEventInit): void {
+                createSameDay();
+                hover(2);
+                moreButton().click();
+                fixture.detectChanges();
+                dueRow().querySelectorAll<HTMLButtonElement>('.impact-item')[1]
+                    .dispatchEvent(new MouseEvent('click', { bubbles: true, ...click }));
+                fixture.detectChanges();
+            }
+
+            const moveMouseTo = (x: number, y: number) =>
+                document.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true }));
+
+            // A card the view slid under the resting pointer gets a "mouseenter" with no mouse movement.
+            const cardSlidesUnderPointer = (id: number) => {
+                component.onNodeEnter(component.nodeAt(id)!);
+                fixture.detectChanges();
+            };
+
+            it('does not open a tooltip for a card that slides under the resting pointer', () => {
+                clickListedItem({ clientX: 300, clientY: 200, detail: 1 });
+
+                cardSlidesUnderPointer(1);
+
+                expect(component.hoveredNodeId()).toBeNull();
+                expect(tooltipShown()).toBeFalse();
+            });
+
+            it('keeps ignoring it while the pointer only reports the position it was clicked at', () => {
+                clickListedItem({ clientX: 300, clientY: 200, detail: 1 });
+
+                moveMouseTo(300, 200);
+                cardSlidesUnderPointer(1);
+
+                expect(tooltipShown()).toBeFalse();
+            });
+
+            it('opens tooltips again once the mouse has really moved and a card is entered', () => {
+                clickListedItem({ clientX: 300, clientY: 200, detail: 1 });
+
+                moveMouseTo(301, 200);
+                cardSlidesUnderPointer(1);
+
+                expect(component.hoveredNodeId()).toBe(1);
+                expect(tooltipShown()).toBeTrue();
+            });
+
+            it('waits for any mouse movement after a keyboard click, which has no pointer position', () => {
+                clickListedItem({ detail: 0 });
+
+                cardSlidesUnderPointer(1);
+                expect(tooltipShown()).toBeFalse();
+
+                moveMouseTo(10, 10);
+                cardSlidesUnderPointer(1);
+                expect(tooltipShown()).toBeTrue();
+            });
+
+            it('stops listening for mouse movement when the graph is destroyed', () => {
+                clickListedItem({ clientX: 300, clientY: 200, detail: 1 });
+                const removeListener = spyOn(document, 'removeEventListener').and.callThrough();
+
+                fixture.destroy();
+
+                expect(removeListener).toHaveBeenCalledWith('mousemove', jasmine.any(Function), true);
+            });
+        });
+
         it('closes at once when the graph closes it (for example when its card is collapsed away)', () => {
             create(chainHub);
             hover(2);

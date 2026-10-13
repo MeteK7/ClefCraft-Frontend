@@ -367,7 +367,7 @@
   @if (expandedHintRow() === row) {
     <ul class="impact-list">
       @for (item of items; track item.id) {
-        <li><button type="button" class="impact-item" (click)="focusTooltipItem(item)">{{ itemName(item) }}</button></li>
+        <li><button type="button" class="impact-item" (click)="focusTooltipItem(item, $event)">{{ itemName(item) }}</button></li>
       }
     </ul>
   }
