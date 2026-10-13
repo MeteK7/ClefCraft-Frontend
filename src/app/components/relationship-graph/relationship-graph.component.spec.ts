@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
@@ -284,6 +284,23 @@ describe('RelationshipGraphComponent hover impact', () => {
         fixture.detectChanges();
     }
 
+    /**
+     * chainHub with the center ("Release v2") and #3 due the same day, so hovering #2 names
+     * "#1 Release v2 + 1 more" for the earliest deadline at risk.
+     */
+    function createSameDay(): void {
+        create({
+            ...chainHub,
+            groups: chainHub.groups.map(g => ({
+                ...g,
+                items: g.items.map(item => item.itemId === 3 ? { ...item, dueDate: '2026-10-16T15:00:00' as unknown as Date } : item)
+            }))
+        });
+        fixture.componentRef.setInput('rootTitle', 'Release v2');
+        fixture.componentRef.setInput('rootDueDate', '2026-10-16T00:00:00');
+        fixture.detectChanges();
+    }
+
     function hover(nodeId: number): void {
         component.onNodeEnter(component.nodeAt(nodeId)!);
         fixture.detectChanges();
@@ -391,18 +408,7 @@ describe('RelationshipGraphComponent hover impact', () => {
     });
 
     it('names the nearest item due that day and counts the others due the same day', () => {
-        // #3 (waiting through the center) is due the same day as the center item.
-        const sameDayHub: RelationshipHub = {
-            ...chainHub,
-            groups: chainHub.groups.map(g => ({
-                ...g,
-                items: g.items.map(item => item.itemId === 3 ? { ...item, dueDate: '2026-10-16T15:00:00' as unknown as Date } : item)
-            }))
-        };
-        create(sameDayHub);
-        fixture.componentRef.setInput('rootTitle', 'Release v2');
-        fixture.componentRef.setInput('rootDueDate', '2026-10-16T00:00:00');
-        fixture.detectChanges();
+        createSameDay();
 
         hover(2);
 
@@ -503,6 +509,117 @@ describe('RelationshipGraphComponent hover impact', () => {
         expect(tooltipText()).not.toContain('/100');
         expect(tooltipText()).not.toContain('Story Points');
         expect(tooltipText()).toContain('(in loaded graph)');
-        expect(tooltipText()).toContain('Furthest affected item: 2 steps away');
+        // #3 waits on #2 through the center: the distance, and which item is that far away.
+        expect(tooltipText()).toContain('Furthest affected item: 2 steps away (#3 Release)');
+    });
+
+    describe('clicking in the tooltip', () => {
+
+        const tooltipShown = () => !!(fixture.nativeElement as HTMLElement).querySelector('.impact-tooltip');
+        const dueRow = () => (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.impact-due')!;
+        const moreButton = () => dueRow().querySelector<HTMLButtonElement>('.impact-more')!;
+        const listedNames = () => Array.from(dueRow().querySelectorAll<HTMLButtonElement>('.impact-list .impact-item'))
+            .map(b => b.textContent!.trim());
+
+        it('stays open while the pointer crosses from the card onto the tooltip', fakeAsync(() => {
+            create(chainHub);
+            hover(2);
+
+            component.onNodeLeave();
+            tick(100);
+            component.onTooltipEnter();
+            tick(1000);
+            fixture.detectChanges();
+
+            expect(component.hoveredNodeId()).toBe(2);
+            expect(tooltipShown()).toBeTrue();
+        }));
+
+        it('closes a moment after the pointer leaves the card, or the tooltip, for good', fakeAsync(() => {
+            create(chainHub);
+            hover(2);
+
+            component.onNodeLeave();
+            tick(150);
+            expect(component.hoveredNodeId()).toBe(2);
+            tick(100);
+            fixture.detectChanges();
+            expect(tooltipShown()).toBeFalse();
+
+            hover(2);
+            component.onTooltipLeave();
+            tick(250);
+            fixture.detectChanges();
+            expect(tooltipShown()).toBeFalse();
+        }));
+
+        it('keeps an open list when the pointer goes back from the tooltip to the card', fakeAsync(() => {
+            createSameDay();
+            hover(2);
+            moreButton().click();
+            fixture.detectChanges();
+
+            component.onTooltipLeave();
+            tick(50);
+            hover(2);
+            tick(500);
+            fixture.detectChanges();
+
+            expect(listedNames().length).toBe(2);
+        }));
+
+        it('lists every item behind "+ N more", and folds the list away again', () => {
+            createSameDay();
+            hover(2);
+
+            expect(moreButton().textContent!.trim()).toBe('+ 1 more');
+            expect(moreButton().getAttribute('aria-expanded')).toBe('false');
+
+            moreButton().click();
+            fixture.detectChanges();
+
+            expect(moreButton().getAttribute('aria-expanded')).toBe('true');
+            expect(moreButton().textContent!.trim()).toBe('less');
+            expect(listedNames()).toEqual(['#1 Release v2', '#3 Release']);
+
+            moreButton().click();
+            fixture.detectChanges();
+
+            expect(listedNames()).toEqual([]);
+        });
+
+        it('has no "+ N more" button when a row names a single item', () => {
+            create(chainHub);
+            hover(2);
+
+            const furthestRow = (fixture.nativeElement as HTMLElement).querySelector('.impact-depth')!;
+            expect(furthestRow.querySelector('.impact-more')).toBeNull();
+        });
+
+        it('selects a listed item, brings it into view and closes the tooltip', () => {
+            createSameDay();
+            hover(2);
+            moreButton().click();
+            fixture.detectChanges();
+            const viewportBefore = component.viewport();
+
+            dueRow().querySelectorAll<HTMLButtonElement>('.impact-item')[1].click(); // #3 Release
+            fixture.detectChanges();
+
+            expect(component.selectedNodeId()).toBe(3);
+            expect(component.viewport()).not.toEqual(viewportBefore);
+            expect(tooltipShown()).toBeFalse();
+        });
+
+        it('closes at once when the graph closes it (for example when its card is collapsed away)', () => {
+            create(chainHub);
+            hover(2);
+
+            component.closeTooltip();
+            fixture.detectChanges();
+
+            expect(component.hoveredNodeId()).toBeNull();
+            expect(tooltipShown()).toBeFalse();
+        });
     });
 });

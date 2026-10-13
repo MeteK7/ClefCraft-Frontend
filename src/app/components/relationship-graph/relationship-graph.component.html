@@ -301,7 +301,8 @@
   @let placement = tooltipPlacement();
   <div #impactTooltip class="impact-tooltip"
     [style.left.px]="placement?.left ?? 0" [style.top.px]="placement?.top ?? 0"
-    [style.visibility]="placement ? null : 'hidden'">
+    [style.visibility]="placement ? null : 'hidden'"
+    (mouseenter)="onTooltipEnter()" (mouseleave)="onTooltipLeave()">
     @if (nodeAt(hoveredNodeId()!); as node) {
       <div class="tooltip-header">
         <strong>#{{ node.id }} {{ node.title }}</strong>
@@ -320,13 +321,11 @@
             &ngsp;<span class="impact-hint">(in loaded graph)</span>
           </div>
           @if (impact.earliestDueDate) {
-            @let dueItem = impact.earliestDueItems[0];
-            @let sameDay = impact.earliestDueItems.length - 1;
             <div class="tooltip-row impact-due">
               <span class="label">Earliest deadline at risk:</span>
               &ngsp;<span class="value">{{ impact.earliestDueDate | date: 'MMM d' }}</span>
-              <!-- Whose deadline it is, named like the cards: #id and the shortened title. -->
-              &ngsp;<span class="impact-hint">(#{{ dueItem.id }} {{ truncateTitle(dueItem.title) }}@if (sameDay > 0) {&ngsp;+ {{ sameDay }} more})</span>
+              <!-- Whose deadline it is. -->
+              &ngsp;<ng-container *ngTemplateOutlet="itemsHint; context: { $implicit: impact.earliestDueItems, row: 'due' }" />
             </div>
           }
           <div class="tooltip-row impact-estimate">
@@ -344,6 +343,8 @@
             <div class="tooltip-row impact-depth">
               <span class="label">Furthest affected item:</span>
               &ngsp;<span class="value">{{ impact.maxDepth }} steps away</span>
+              <!-- Which item(s) are that far away. -->
+              &ngsp;<ng-container *ngTemplateOutlet="itemsHint; context: { $implicit: impact.furthestItems, row: 'furthest' }" />
             </div>
           }
         }
@@ -355,6 +356,22 @@
     }
   </div>
 }
+
+<!--
+  Names the items behind a tooltip row: "(#226 Release v2 + 2 more)". "+ N more" opens the full list
+  below the row; clicking a listed item selects its card and brings it into view.
+-->
+<ng-template #itemsHint let-items let-row="row">
+  <span class="impact-hint">({{ itemName(items[0]) }}@if (items.length > 1) {&ngsp;<button type="button" class="impact-more"
+      [attr.aria-expanded]="expandedHintRow() === row" (click)="toggleHintRow(row)">{{ expandedHintRow() === row ? 'less' : '+ ' + (items.length - 1) + ' more' }}</button>})</span>
+  @if (expandedHintRow() === row) {
+    <ul class="impact-list">
+      @for (item of items; track item.id) {
+        <li><button type="button" class="impact-item" (click)="focusTooltipItem(item)">{{ itemName(item) }}</button></li>
+      }
+    </ul>
+  }
+</ng-template>
 
 @if (hoveredEdge(); as edge) {
   @if (hoverEdgeScreenPos(); as pos) {
