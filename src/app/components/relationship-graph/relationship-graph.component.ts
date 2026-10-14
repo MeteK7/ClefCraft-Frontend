@@ -1,6 +1,7 @@
 import {
     ChangeDetectionStrategy,
     Component,
+    DestroyRef,
     ElementRef,
     EventEmitter,
     HostBinding,
@@ -72,6 +73,9 @@ interface RenderableEdge {
     mx: number;
     my: number;
 }
+
+/** Node tooltip rows that name items and can list them all. */
+type TooltipHintRow = 'due' | 'furthest';
 
 type RelationshipStyle = {
     cssClass: string;
@@ -166,6 +170,16 @@ export class RelationshipGraphComponent implements OnChanges {
 
     readonly hoveredNodeId = signal<number | null>(null);
     readonly hoverImpact = signal<ImpactAnalysis | null>(null);
+
+    /** The tooltip row whose "+ N more" list is open, if any. */
+    readonly expandedHintRow = signal<TooltipHintRow | null>(null);
+
+    /** How long the node tooltip stays after the pointer leaves the card or the tooltip. */
+    private readonly tooltipCloseDelayMs = 200;
+    private tooltipCloseTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /** Set while card entries are ignored after a listed item was clicked; calling it ends that. */
+    private stopIgnoringCardEntries: (() => void) | null = null;
 
     /** viewBox -> graph-container mapping and the visible graph area, measured when a node is hovered. */
     private readonly hoverFrame = signal<ContainerFrame | null>(null);
@@ -373,6 +387,10 @@ export class RelationshipGraphComponent implements OnChanges {
     ) {
         this.expansionTracker = new GraphExpansionTracker(layoutEngine);
         this.observeTooltipSize();
+        inject(DestroyRef).onDestroy(() => {
+            this.cancelTooltipClose();
+            this.stopIgnoringCardEntries?.();
+        });
     }
 
     private readonly zone = inject(NgZone);
@@ -550,6 +568,11 @@ export class RelationshipGraphComponent implements OnChanges {
         return title.length > 24 ? `${title.slice(0, 22)}…` : title;
     }
 
+    /** Names an item in the node tooltip the way the cards show it: "#226 Release v2". */
+    itemName(node: GraphNode): string {
+        return `#${node.id} ${this.truncateTitle(node.title)}`;
+    }
+
     trackNode(_: number, node: GraphNode): number {
         return node.id;
     }
@@ -564,8 +587,18 @@ export class RelationshipGraphComponent implements OnChanges {
 
     onNodeEnter(node: GraphNode): void {
 
+        // The view moved after a listed item was clicked, and a card slid under the resting pointer:
+        // that isn't the user hovering it. They leave the card and come back for its tooltip.
+        if (this.stopIgnoringCardEntries) return;
+
+        this.cancelTooltipClose();
+
+        // Back on the same card from its tooltip: keep the tooltip as it is (an expanded list stays open).
+        if (this.hoveredNodeId() === node.id) return;
+
         this.hoveredNodeId.set(node.id);
         this.tooltipSize.set(null);
+        this.expandedHintRow.set(null);
         this.hoverFrame.set(this.measureContainerFrame());
 
         const graph = this.graph();
@@ -577,11 +610,80 @@ export class RelationshipGraphComponent implements OnChanges {
         this.hoverImpact.set(this.impactEngine.analyze(graph, node.id));
     }
 
+    /**
+     * Leaving a card doesn't close its tooltip straight away: the pointer gets a moment to cross the
+     * gap onto the tooltip, which can be clicked ("+ N more", the listed items).
+     */
     onNodeLeave(): void {
+        this.scheduleTooltipClose();
+    }
+
+    onTooltipEnter(): void {
+        this.cancelTooltipClose();
+    }
+
+    onTooltipLeave(): void {
+        this.scheduleTooltipClose();
+    }
+
+    /** Closes the node tooltip now. */
+    closeTooltip(): void {
+        this.cancelTooltipClose();
         this.hoveredNodeId.set(null);
         this.hoverFrame.set(null);
         this.tooltipSize.set(null);
         this.hoverImpact.set(null);
+        this.expandedHintRow.set(null);
+    }
+
+    toggleHintRow(row: TooltipHintRow): void {
+        this.expandedHintRow.update(current => current === row ? null : row);
+    }
+
+    /** A listed item was clicked: select its card, show it next to the hovered one, and close the tooltip. */
+    focusTooltipItem(node: GraphNode, click?: MouseEvent): void {
+        const hoveredId = this.hoveredNodeId();
+        this.selectedNodeId.set(node.id);
+        this.focusOnNodes(hoveredId !== null && hoveredId !== node.id ? [hoveredId, node.id] : [node.id]);
+        this.closeTooltip();
+        this.ignoreCardEntriesUntilPointerMoves(click);
+    }
+
+    /**
+     * Focusing an item pans and zooms the graph under a pointer that isn't moving, and a card that
+     * slides under it would get "entered" and open its tooltip by itself. So card entries are ignored
+     * until the pointer really moves: a mousemove away from where it was clicked (a card moving under
+     * it doesn't change the pointer's position). Moving within that card sends no new entry, so its
+     * tooltip only opens once the pointer leaves it and comes back.
+     */
+    private ignoreCardEntriesUntilPointerMoves(click?: MouseEvent): void {
+        this.stopIgnoringCardEntries?.();
+
+        // A mouse click says where the pointer is; one from the keyboard (detail 0) doesn't.
+        const from = click && click.detail > 0 ? { x: click.clientX, y: click.clientY } : null;
+
+        const onMove = (move: MouseEvent) => {
+            if (from && move.clientX === from.x && move.clientY === from.y) return;
+            this.stopIgnoringCardEntries?.();
+        };
+
+        this.zone.runOutsideAngular(() => document.addEventListener('mousemove', onMove, true));
+        this.stopIgnoringCardEntries = () => {
+            document.removeEventListener('mousemove', onMove, true);
+            this.stopIgnoringCardEntries = null;
+        };
+    }
+
+    private scheduleTooltipClose(): void {
+        this.cancelTooltipClose();
+        this.tooltipCloseTimer = setTimeout(() => this.closeTooltip(), this.tooltipCloseDelayMs);
+    }
+
+    private cancelTooltipClose(): void {
+        if (this.tooltipCloseTimer !== null) {
+            clearTimeout(this.tooltipCloseTimer);
+            this.tooltipCloseTimer = null;
+        }
     }
 
     /**
@@ -714,7 +816,7 @@ export class RelationshipGraphComponent implements OnChanges {
             this.selectedNodeId.set(null);
         }
         if (this.hoveredNodeId() !== null && toRemove.has(this.hoveredNodeId()!)) {
-            this.onNodeLeave();
+            this.closeTooltip();
         }
         if (this.hoveredEdgeId() !== null && !graph.edges.some(e => e.id === this.hoveredEdgeId())) {
             this.onEdgeLeave();

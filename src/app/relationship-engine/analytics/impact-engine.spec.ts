@@ -198,6 +198,25 @@ describe('ImpactEngine', () => {
         expect(depthOf(3)).toBe(1);
         expect(depthOf(4)).toBe(2);
         expect(impact.maxDepth).toBe(2);
+        expect(impact.furthestItems.map(n => n.id)).toEqual([4]);
+    });
+
+    it('names every item at the furthest distance, in the order the walk found them', () => {
+        // 1 -> 2 -> 4 and 1 -> 3 -> 5: 4 and 5 are both 2 steps away
+        const g = graph([node(1), node(2), node(3), node(4), node(5)], [
+            edge(1, RelationshipType.Blocks, 2),
+            edge(1, RelationshipType.Blocks, 3),
+            edge(2, RelationshipType.Blocks, 4),
+            edge(3, RelationshipType.Blocks, 5)
+        ]);
+
+        expect(engine.analyze(g, 1).furthestItems.map(n => n.id)).toEqual([4, 5]);
+    });
+
+    it('names no furthest item when nothing waits', () => {
+        const g = graph([node(1), node(2)], [edge(1, RelationshipType.Related, 2)]);
+
+        expect(engine.analyze(g, 1).furthestItems).toEqual([]);
     });
 
     it('follows mixed relation types along one chain', () => {
