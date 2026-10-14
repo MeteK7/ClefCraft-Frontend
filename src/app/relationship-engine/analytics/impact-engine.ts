@@ -17,6 +17,8 @@ export interface ImpactAnalysis {
     totalAffected: number;
     /** Steps to the furthest waiting item. */
     maxDepth: number;
+    /** The waiting items that far away, in the order they were found. Empty when nothing waits. */
+    furthestItems: GraphNode[];
     /** Sum of the recorded estimates of the waiting items, in hours. */
     estimatedHours: number;
     /** Waiting items with no recorded estimate. */
@@ -76,6 +78,9 @@ export class ImpactEngine {
             }
         }
 
+        const maxDepth = Math.max(0, ...affected.map(x => x.depth));
+        const furthestItems = affected.filter(x => x.depth === maxDepth).map(x => x.node);
+
         const estimated = affected.filter(x => x.node.estimatedHours != null);
         const dueDates = affected
             .map(x => toDueDate(x.node.dueDate)?.getTime())
@@ -94,7 +99,8 @@ export class ImpactEngine {
             source,
             impactedNodes: affected,
             totalAffected: affected.length,
-            maxDepth: Math.max(0, ...affected.map(x => x.depth)),
+            maxDepth,
+            furthestItems,
             estimatedHours: estimated.reduce((sum, x) => sum + x.node.estimatedHours!, 0),
             withoutEstimate: affected.length - estimated.length,
             earliestDueDate,
