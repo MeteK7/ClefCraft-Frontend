@@ -19,7 +19,16 @@ export class ItemDetailSidebarComponent {
   constructor(private boardService: BoardService) {}
 
   onSave(): void {
-    this.boardService.updateBoardItem(this.item).subscribe((updatedItem) => {
+    // Only what the sidebar edits. Sending the whole item would resend its status as the board
+    // last loaded it: a stale status could move the item (even to Done, past its asks).
+    const changes = {
+      id: this.item.id,
+      boardColumnId: this.item.boardColumnId,
+      title: this.item.title,
+      description: this.item.description
+    };
+
+    this.boardService.updateBoardItem(changes).subscribe((updatedItem) => {
       // Ensure boardColumnId is present in updatedItem
       updatedItem.boardColumnId = this.item.boardColumnId || updatedItem.boardColumnId;
       this.itemUpdated.emit(updatedItem);  // Emit the updated item back to the parent
