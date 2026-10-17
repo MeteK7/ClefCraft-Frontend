@@ -1,0 +1,125 @@
+<section class="asks" aria-labelledby="asks-heading">
+  <div class="asks-header">
+    <h4 id="asks-heading" class="asks-title"><mat-icon>group_add</mat-icon> Asked to help</h4>
+    @if (!formMode) {
+      <button mat-stroked-button type="button" class="ask-someone" (click)="openCreate()" [disabled]="isBusy">
+        <mat-icon>person_add</mat-icon> Ask someone
+      </button>
+    }
+  </div>
+
+  @if (errorMessage) {
+    <p class="asks-error" role="alert">{{ errorMessage }}</p>
+  }
+
+  @if (formMode) {
+    <form class="ask-form" [formGroup]="form" (ngSubmit)="submitForm()">
+      <h5 class="ask-form-title">{{ formTitle }}</h5>
+
+      @if (showsRecipient) {
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>Who</mat-label>
+          <mat-select formControlName="recipientUserId">
+            @for (member of recipientOptions; track member.id) {
+              <mat-option [value]="member.id">{{ member.fullName }}</mat-option>
+            }
+          </mat-select>
+          @if (recipientOptions.length === 0) {
+            <mat-hint>No one else on this board can be asked.</mat-hint>
+          }
+        </mat-form-field>
+      }
+
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>What do you need?</mat-label>
+        <input matInput formControlName="note" [maxlength]="noteMaxLength" placeholder="Review the migration script" />
+        <mat-hint align="end">{{ form.value.note?.length ?? 0 }} / {{ noteMaxLength }}</mat-hint>
+      </mat-form-field>
+
+      <div class="ask-form-row">
+        <mat-form-field appearance="outline" class="ask-due">
+          <mat-label>By when (optional)</mat-label>
+          <input matInput [matDatepicker]="askDuePicker" formControlName="dueDate">
+          <mat-datepicker-toggle matIconSuffix [for]="askDuePicker"></mat-datepicker-toggle>
+          <mat-datepicker #askDuePicker></mat-datepicker>
+        </mat-form-field>
+
+        <mat-checkbox formControlName="isRequired">Required to complete the item</mat-checkbox>
+      </div>
+
+      @if (isDueAfterItem(form.value.dueDate)) {
+        <p class="ask-warning" role="status">
+          <mat-icon>schedule</mat-icon>
+          Due after the item itself ({{ itemDueDateValue | date: 'd MMM' }}).
+        </p>
+      }
+
+      <div class="ask-form-actions">
+        <button mat-stroked-button type="button" (click)="cancelForm()">Cancel</button>
+        <button mat-flat-button color="primary" type="submit" [disabled]="isBusy">
+          {{ formMode.kind === 'edit' ? 'Save' : 'Ask' }}
+        </button>
+      </div>
+    </form>
+  }
+
+  @if (isLoading && asks.length === 0) {
+    <p class="asks-empty">Loading…</p>
+  } @else if (asks.length === 0 && !formMode) {
+    <p class="asks-empty">No one has been asked to help with this item.</p>
+  }
+
+  <ul class="ask-list">
+    @for (ask of asks; track ask.id) {
+      <li class="ask-row" [class.closed]="!ask.isOpen && !ask.isUnmetRequirement" [attr.data-ask-id]="ask.id">
+        <div class="ask-main">
+          <div class="ask-line">
+            <span class="ask-recipient">{{ ask.recipientFullName }}</span>
+            @if (!ask.recipientIsBoardMember) {
+              <span class="ask-muted">(not a board member)</span>
+            }
+            <span class="ask-state" [attr.data-state]="ask.state">{{ stateLabel(ask) }}</span>
+            @if (ask.isRequired) {
+              <span class="ask-required">Required</span>
+            }
+            @if (markedBy(ask); as by) {
+              <span class="ask-marked-by">Marked done by {{ by }}</span>
+            }
+          </div>
+
+          <p class="ask-note">{{ ask.note }}</p>
+
+          <div class="ask-meta">
+            @if (ask.state === AskState.Pending) {
+              <span class="ask-age">Asked {{ askedAgo(ask) }}</span>
+              @if (ask.lastNudgedAt) {
+                <span class="ask-age">· Nudged {{ nudgedAgo(ask) }}</span>
+              }
+            }
+            @if (ask.dueDate) {
+              <span>· Due {{ ask.dueDate | date: 'd MMM' }}</span>
+              @if (isDueAfterItem(ask.dueDate)) {
+                <mat-icon class="ask-warning-icon" matTooltip="Due after the item itself">schedule</mat-icon>
+              }
+            }
+            @if (ask.state === AskState.Declined && ask.responseNote) {
+              <span>· “{{ ask.responseNote }}”</span>
+            }
+          </div>
+
+          @if (unmetCause(ask); as cause) {
+            <p class="ask-unmet">{{ cause }}</p>
+          }
+        </div>
+
+        @if (actionsFor(ask).length > 0) {
+          <div class="ask-actions">
+            @for (button of actionsFor(ask); track button.action) {
+              <button mat-button type="button" [disabled]="isBusy" (click)="act(ask, button.action)">{{ button.label }}</button>
+            }
+          </div>
+        }
+      </li>
+    }
+  </ul>
+</section>
