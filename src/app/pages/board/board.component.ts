@@ -6,6 +6,7 @@ import { BoardService } from '../../_services/board.service';
 import { BoardView, toBoardView } from '../../board-engine/models/board-view.model';
 import { BoardItemView, toBoardItemView } from '../../board-engine/models/board-item-view.model';
 import { Board, Item } from '../../models/board.model';
+import { AskSummary } from '../../models/board-item-ask.model';
 import {
   applyItemCreated,
   applyItemDeleted,
@@ -300,6 +301,14 @@ export class BoardComponent implements OnInit, OnDestroy {
 
     dialogRef.backdropClick().subscribe(() => attemptClose());
 
+    // Ask actions apply at once, without closing the dialog: keep the card's ask summary current
+    // the same way a saved edit updates it.
+    if (item) {
+      const askSummarySub = dialogRef.componentInstance.askSummaryChange
+        .subscribe((summary: AskSummary) => this.applyAskSummary(item.id, summary));
+      dialogRef.afterClosed().subscribe(() => askSummarySub.unsubscribe());
+    }
+
     dialogRef.afterClosed().subscribe((result: ItemDetailDialogResult | undefined) => {
       if (!result) return;
 
@@ -332,10 +341,29 @@ export class BoardComponent implements OnInit, OnDestroy {
         ...view,
         boardId: view.boardId ?? existing.boardId,
         boardColumnId: view.boardColumnId ?? existing.boardColumnId,
+        // A save response carries no ask summary (only the board load does); keep the card's.
+        askSummary: view.askSummary ?? existing.askSummary,
       }
       : view;
 
     this.boardView = applyItemUpdate(this.boardView, merged);
+  }
+
+  /** Puts an item's fresh ask summary on its card. */
+  applyAskSummary(itemId: number, askSummary: AskSummary): void {
+    const existing = this.boardView?.columns
+      .flatMap(c => c.boardItems)
+      .find(i => i.id === itemId);
+
+    if (!this.boardView || !existing) {
+      return;
+    }
+
+    this.boardView = applyItemUpdate(this.boardView, {
+      ...existing,
+      askSummary,
+      raw: { ...existing.raw, askSummary },
+    });
   }
 
   onItemDeleted(itemId: number): void {

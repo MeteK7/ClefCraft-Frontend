@@ -1,0 +1,185 @@
+.asks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.asks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.asks-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.asks-title mat-icon {
+  color: var(--text-secondary);
+}
+
+.asks-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.asks-empty {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.ask-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.ask-form-title {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.ask-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.ask-due {
+  flex: 0 1 220px;
+}
+
+.ask-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ask-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--warning-text);
+}
+
+.ask-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.ask-row.closed {
+  opacity: 0.75;
+}
+
+.ask-main {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.ask-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+}
+
+.ask-recipient {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.ask-muted,
+.ask-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.ask-state,
+.ask-required,
+.ask-marked-by {
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+.ask-required {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.ask-marked-by {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.ask-note {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+
+.ask-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.ask-warning-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--warning-text);
+}
+
+.ask-unmet {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--warning-text);
+}
+
+.ask-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.w-100 {
+  width: 100%;
+}

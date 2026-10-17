@@ -1,4 +1,5 @@
 import { Item } from '../../models/board.model';
+import { AskSummary } from '../../models/board-item-ask.model';
 
 /**
  * UI-ready representation of an Item.
@@ -32,6 +33,9 @@ export interface BoardItemView {
 
   createdByFullName: string;
   modifiedByFullName: string;
+
+  /** Left undefined when the source item carries none (a save response), so a merge keeps the card's. */
+  askSummary?: AskSummary;
 }
 
 /**
@@ -63,5 +67,6 @@ export function toBoardItemView(item: Item): BoardItemView {
     timeSpent: item.timeSpent,
     createdByFullName: item.createdByFullName,
     modifiedByFullName: item.modifiedByFullName,
+    askSummary: item.askSummary,
   };
 }

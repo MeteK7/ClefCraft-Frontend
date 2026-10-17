@@ -134,6 +134,10 @@
   outline-offset: 2px;
 }
 
+.no-assignee-hint {
+  color: var(--warning-text);
+}
+
 /* Unsaved Changes Banner Styling */
 .unsaved-banner {
   display: flex;

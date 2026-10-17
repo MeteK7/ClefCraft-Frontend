@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, flush } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -8,6 +8,11 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ItemDetailDialogComponent, ItemDetailDialogData } from './item-detail-dialog.component';
 import { Item } from '../../models/board.model';
 import { environment } from '../../../environments/environment';
+import { of } from 'rxjs';
+import { AskCompletionService } from '../../_services/ask-completion.service';
+import { BoardItemAskService } from '../../_services/board-item-ask.service';
+import { AskClosure, AskState, BoardItemAsk } from '../../models/board-item-ask.model';
+import { makeAsk } from '../../models/board-item-ask.testing';
 
 describe('ItemDetailDialogComponent', () => {
   let component: ItemDetailDialogComponent;
@@ -347,4 +352,108 @@ describe('ItemDetailDialogComponent — header', () => {
     expect(heading().getAttribute('tabindex')).toBe('0');
     expect(component.displayTitle).toBe(longTitle.replace(/ /g, ''));
   });
+});
+
+describe('ItemDetailDialogComponent — completing an item with asks', () => {
+  let component: ItemDetailDialogComponent;
+  let httpMock: HttpTestingController;
+  let dialogRef: { close: jasmine.Spy };
+  let askCompletion: { completeItem: jasmine.Spy };
+  let asksAfterLoad: BoardItemAsk[];
+
+  const statuses = [{ id: 3, name: 'In Progress' }, { id: 5, name: 'Done' }];
+  const closure: AskClosure = { acknowledgedAsks: [{ askId: 1, revision: 2 }], completeAskIds: [1], overrideAskIds: [] };
+
+  function setup(statusId: number): void {
+    dialogRef = { close: jasmine.createSpy('close') };
+    askCompletion = { completeItem: jasmine.createSpy('completeItem').and.callFake((_id: number, _title: string, save: (c: AskClosure) => unknown) => save(closure)) };
+    asksAfterLoad = [makeAsk({ id: 1, state: AskState.Accepted })];
+
+    TestBed.configureTestingModule({
+      imports: [ItemDetailDialogComponent],
+      providers: [
+        provideHttpClient(withXhr()),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: { item: { id: 9, title: 'Release notes', boardId: 7, boardColumnId: 3, status: { id: statusId, name: '' } }, boardId: 7 } as ItemDetailDialogData },
+        { provide: MatDialogRef, useValue: dialogRef },
+        { provide: AskCompletionService, useValue: askCompletion },
+        { provide: BoardItemAskService, useValue: { getForItem: () => of(asksAfterLoad) } }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ItemDetailDialogComponent);
+    component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiUrl}/BoardItems/GetStatuses?boardId=7`).flush(statuses);
+    flush(); // the panel emits its summary asynchronously
+  }
+
+  it('moving the item to Done goes through the completion prompt and sends its closure', fakeAsync(() => {
+    setup(3);
+    component.form.patchValue({ statusId: 5 });
+
+    component.onSave();
+
+    expect(askCompletion.completeItem).toHaveBeenCalledOnceWith(9, 'Release notes', jasmine.any(Function));
+    const req = httpMock.expectOne(`${environment.apiUrl}/BoardItems/9`);
+    expect(req.request.body.askClosure).toEqual(closure);
+    expect(req.request.body.statusId).toBe(5);
+
+    asksAfterLoad = [makeAsk({ id: 1, state: AskState.Completed })];
+    req.flush({ id: 9, title: 'Release notes' });
+
+    // The completion changed the asks: the card gets the reloaded summary.
+    const result = dialogRef.close.calls.mostRecent().args[0];
+    expect(result.type).toBe('saved');
+    expect(result.item.askSummary).toEqual(jasmine.objectContaining({ openCount: 0, completedCount: 1 }));
+  }));
+
+  it('saves nothing and stays open when the prompt is cancelled', fakeAsync(() => {
+    setup(3);
+    askCompletion.completeItem.and.returnValue(of(null));
+    component.form.patchValue({ statusId: 5 });
+
+    component.onSave();
+
+    httpMock.expectNone(`${environment.apiUrl}/BoardItems/9`);
+    expect(dialogRef.close).not.toHaveBeenCalled();
+  }));
+
+  it('other saves skip the prompt and send no closure', fakeAsync(() => {
+    setup(3);
+    component.form.patchValue({ title: 'Release notes v2' });
+
+    component.onSave();
+
+    expect(askCompletion.completeItem).not.toHaveBeenCalled();
+    const req = httpMock.expectOne(`${environment.apiUrl}/BoardItems/9`);
+    expect(req.request.body.askClosure).toBeUndefined();
+    req.flush({ id: 9, title: 'Release notes v2' });
+
+    // The card keeps the summary the panel last loaded.
+    expect(dialogRef.close.calls.mostRecent().args[0].item.askSummary).toEqual(jasmine.objectContaining({ openCount: 1 }));
+  }));
+
+  it('saving an item that is already Done skips the prompt', fakeAsync(() => {
+    setup(5);
+    component.form.patchValue({ title: 'Renamed' });
+
+    component.onSave();
+
+    expect(askCompletion.completeItem).not.toHaveBeenCalled();
+    httpMock.expectOne(`${environment.apiUrl}/BoardItems/9`).flush({ id: 9 });
+  }));
+
+  it('passes every loaded ask summary on, so the board card stays current while the dialog is open', fakeAsync(() => {
+    setup(3);
+    const emitted: unknown[] = [];
+    component.askSummaryChange.subscribe(s => emitted.push(s));
+
+    component.onAskSummaryChange({ openCount: 4, unmetRequiredCount: 1, completedCount: 0, openAsks: [] });
+
+    expect(emitted).toEqual([jasmine.objectContaining({ openCount: 4 })]);
+  }));
 });

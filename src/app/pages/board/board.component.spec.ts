@@ -120,3 +120,55 @@ describe('BoardComponent — board creation and empty state', () => {
     expect(dialog.open).not.toHaveBeenCalled();
   });
 });
+
+describe('BoardComponent — card ask summary', () => {
+  let component: BoardComponent;
+  let httpMock: HttpTestingController;
+
+  const summary = (openCount: number) => ({ openCount, unmetRequiredCount: 0, completedCount: 0, openAsks: [] });
+
+  async function createWithOneItem(): Promise<void> {
+    await TestBed.configureTestingModule({
+      imports: [BoardComponent],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(BoardComponent);
+    component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+
+    httpMock.expectOne(`${environment.apiUrl}/Boards`).flush([{ id: 1, title: 'Release', boardColumns: [] }]);
+    httpMock.expectOne(`${environment.apiUrl}/BoardItems/GetBoardItemsByBoardId/1`).flush([
+      { id: 3, title: 'In Progress', boardItems: [{ id: 9, title: 'Release notes', boardId: 1, boardColumnId: 3, askSummary: summary(2) }] }
+    ]);
+  }
+
+  const card = () => component.columns.flatMap(c => c.boardItems).find(i => i.id === 9)!;
+
+  it('puts a fresh ask summary on the card, and on the item the dialog opens with next time', async () => {
+    await createWithOneItem();
+
+    component.applyAskSummary(9, summary(3));
+
+    expect(card().askSummary!.openCount).toBe(3);
+    expect(card().raw.askSummary!.openCount).toBe(3);
+  });
+
+  it('keeps the card\'s ask summary when a saved item comes back without one', async () => {
+    await createWithOneItem();
+
+    component.onItemUpdated({ id: 9, title: 'Renamed', boardColumnId: 3 } as any);
+
+    expect(card().title).toBe('Renamed');
+    expect(card().askSummary!.openCount).toBe(2);
+  });
+
+  it('takes the ask summary a completion save brings back', async () => {
+    await createWithOneItem();
+
+    component.onItemUpdated({ id: 9, title: 'Release notes', boardColumnId: 3, askSummary: summary(0) } as any);
+
+    expect(card().askSummary!.openCount).toBe(0);
+  });
+});
