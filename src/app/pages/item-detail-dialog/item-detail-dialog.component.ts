@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, Inject, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -13,8 +13,15 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, MatRippleModule } from '@angular/material/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Observable, map, of, switchMap } from 'rxjs';
 
-import { Column, Item, Priority, Status, Tag } from '../../models/board.model';
+import { Column, Item, ItemUpdate, Priority, Status, Tag } from '../../models/board.model';
+import { AskClosure, AskSummary, askErrorMessage, toAskSummary } from '../../models/board-item-ask.model';
+import { AskCompletionService } from '../../_services/ask-completion.service';
+import { BoardItemAskService } from '../../_services/board-item-ask.service';
+import { BoardItemAsksComponent } from '../../components/board-item-asks/board-item-asks.component';
+import { isCompletedStatus } from '../../relationship-engine/analytics/finish-before';
 import { BoardService } from '../../_services/board.service';
 import { CalendarService } from '../../_services/calendar.service';
 import { Assignee } from '../../models/assignee.model';
@@ -57,7 +64,8 @@ export interface ItemDetailDialogData {
         MatDialogTitle,
         RelationshipHubComponent,
         HistoryTimelineComponent,
-        CommentThreadComponent
+        CommentThreadComponent,
+        BoardItemAsksComponent
     ],
     templateUrl: './item-detail-dialog.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
@@ -77,6 +85,15 @@ export class ItemDetailDialogComponent implements OnInit {
   hasUnsavedChanges = false;
   originalItemData!: Item;
   isGraphMaximized = false;
+
+  /** The item's ask counts as the "Asked to help" panel last loaded them; null until it has. */
+  askSummary: AskSummary | null = null;
+
+  /**
+   * Emits whenever the item's asks were (re)loaded, so the board can update the card while the
+   * dialog is still open. The board subscribes through the dialog ref.
+   */
+  @Output() askSummaryChange = new EventEmitter<AskSummary>();
 
   /** True while creating a brand new item rather than editing an existing one. */
   get isNewItem(): boolean {
@@ -112,8 +129,27 @@ export class ItemDetailDialogComponent implements OnInit {
     private boardService: BoardService,
     private userService: UserService,
     private calendarService: CalendarService,
-    private router: Router
+    private router: Router,
+    private askCompletion: AskCompletionService,
+    private askService: BoardItemAskService,
+    private snackBar: MatSnackBar
   ) { }
+
+  onAskSummaryChange(summary: AskSummary): void {
+    this.askSummary = summary;
+    this.askSummaryChange.emit(summary);
+  }
+
+  /** Open asks or unmet requirements, but nobody responsible for the item. */
+  get showsNoAssigneeHint(): boolean {
+    return !this.form.value.assigneeId
+      && !!this.askSummary
+      && (this.askSummary.openCount > 0 || this.askSummary.unmetRequiredCount > 0);
+  }
+
+  private isCompletedStatusId(statusId: number | null | undefined): boolean {
+    return isCompletedStatus(this.statuses.find(s => s.id === statusId)?.name);
+  }
 
   ngOnInit(): void {
     this.buildForm();
@@ -211,7 +247,7 @@ export class ItemDetailDialogComponent implements OnInit {
       return;
     }
 
-    const updateData = {
+    const updateData: ItemUpdate = {
       ...this.data.item,
       ...formValue,
       priority: selectedPriority ?? undefined,
@@ -219,15 +255,35 @@ export class ItemDetailDialogComponent implements OnInit {
       tagIds: formValue.tags
     };
 
-    this.boardService.updateBoardItem(updateData).subscribe(updatedItemFromApi => {
-      this.hasUnsavedChanges = false;
-      this.dialogRef.close({
-        type: 'saved',
-        item: {
-          ...updatedItemFromApi,
-          boardColumnId: this.data.item!.boardColumnId
-        }
-      });
+    // Moving the item to Done settles its asks first: the prompt (when any are open or
+    // required) decides what happens to them, and the save carries that decision.
+    const completes = this.isCompletedStatusId(formValue.statusId) && !this.isCompletedStatusId(this.currentStatusId);
+    const save = (askClosure: AskClosure | null) =>
+      this.boardService.updateBoardItem(askClosure ? { ...updateData, askClosure } : updateData);
+
+    const saved$: Observable<{ item: Item; askSummary: AskSummary | null } | null> = completes
+      ? this.askCompletion.completeItem(this.item.id, this.displayTitle, save).pipe(
+        // Completing changed the asks: reload them so the card shows what happened.
+        switchMap(item => item === null
+          ? of(null)
+          : this.askService.getForItem(this.item.id).pipe(map(asks => ({ item, askSummary: toAskSummary(asks) })))))
+      : save(null).pipe(map(item => ({ item, askSummary: this.askSummary })));
+
+    saved$.subscribe({
+      next: result => {
+        if (!result) return; // the user cancelled the completion prompt; nothing was saved
+
+        this.hasUnsavedChanges = false;
+        this.dialogRef.close({
+          type: 'saved',
+          item: {
+            ...result.item,
+            boardColumnId: this.data.item!.boardColumnId,
+            ...(result.askSummary ? { askSummary: result.askSummary } : {})
+          }
+        });
+      },
+      error: error => this.snackBar.open(askErrorMessage(error, 'The item could not be saved.'), 'Dismiss', { duration: 8000 })
     });
   }
 
