@@ -1,0 +1,63 @@
+<h2 mat-dialog-title>Complete “{{ data.itemTitle }}”?</h2>
+
+<mat-dialog-content class="closure-content">
+  @if (data.notice) {
+    <p class="closure-notice" role="status">
+      <mat-icon>sync_problem</mat-icon>
+      <span>{{ data.notice }}</span>
+    </p>
+  }
+
+  <p class="closure-intro">These asks are still open or required. Choose what happens to each one.</p>
+
+  <ul class="closure-list">
+    @for (ask of data.asks; track ask.id) {
+      <li class="closure-row" [class.required]="ask.isRequired" [attr.data-ask-id]="ask.id">
+        <div class="closure-row-head">
+          <span class="closure-recipient">{{ ask.recipientFullName }}</span>
+          @if (ask.isRequired) {
+            <span class="closure-required">Required</span>
+          }
+          <span class="closure-note">{{ ask.note }}</span>
+        </div>
+
+        @if (ask.state === AskState.Accepted) {
+          <mat-radio-group class="closure-choice"
+            [value]="isMarkedDone(ask)"
+            (change)="setMarkDone(ask, $event.value)"
+            [attr.aria-label]="'What happens to ' + ask.recipientFullName + '\'s ask'">
+            <mat-radio-button [value]="false">Close it</mat-radio-button>
+            <mat-radio-button [value]="true" [disabled]="!canMarkDone(ask)">
+              Mark it done for {{ firstName(ask) }}
+            </mat-radio-button>
+          </mat-radio-group>
+        } @else if (ask.state === AskState.Pending) {
+          <p class="closure-outcome">Not accepted yet: it will be closed.</p>
+        } @else {
+          <p class="closure-outcome">Required, but {{ unmetCause(ask) }}.</p>
+        }
+      </li>
+    }
+  </ul>
+
+  @if (overriddenAsks.length > 0) {
+    <div class="closure-override">
+      <mat-checkbox class="closure-override-confirm"
+        [checked]="overrideConfirmed"
+        (change)="setOverrideConfirmed($event.checked)">
+        Complete without {{ overriddenAsks.length === 1 ? 'this required ask' : 'these ' + overriddenAsks.length + ' required asks' }}:
+        @for (ask of overriddenAsks; track ask.id; let last = $last) {
+          {{ ask.recipientFullName }}{{ last ? '' : ', ' }}
+        }
+      </mat-checkbox>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
+  <button mat-flat-button color="primary" type="button" class="closure-complete"
+    [disabled]="!overrideConfirmed" (click)="complete()">
+    Complete item
+  </button>
+</mat-dialog-actions>
