@@ -96,6 +96,11 @@
                   </mat-option>
                 }
               </mat-select>
+              @if (showsNoAssigneeHint) {
+                <mat-hint class="no-assignee-hint">No one is responsible for this item.</mat-hint>
+              } @else {
+                <mat-hint>Responsible for getting this item done</mat-hint>
+              }
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="w-100">
@@ -141,6 +146,17 @@
             </mat-form-field>
           </div>
         </div>
+
+        @if (!isNewItem) {
+          <!-- Ask actions apply at once; they aren't part of the form or its unsaved changes. -->
+          <app-board-item-asks
+            [itemId]="item.id"
+            [assigneeId]="item.assigneeId"
+            [itemDueDate]="form.value.dueDate"
+            [members]="assignees"
+            (summaryChange)="onAskSummaryChange($event)">
+          </app-board-item-asks>
+        }
       </div>
     </mat-tab>
 

@@ -1,4 +1,6 @@
 // models/board.model.ts
+import { AskClosure, AskSummary } from './board-item-ask.model';
+
 export interface Board {
   id: number;
   title: string;
@@ -64,7 +66,22 @@ export interface Item {
   dateModified?: Date;
   createdBy?: string;
   modifiedBy?: string;
+
+  /** The card's ask counts; only the board load (GetBoardItemsByBoardId) fills it. */
+  askSummary?: AskSummary;
 }
+
+/**
+ * The body of PUT api/BoardItems/{id}: the item's id and column, plus whichever fields change
+ * (the API leaves a missing field as it is). askClosure is required when the change completes an
+ * item that has open asks or unmet requirements.
+ */
+export type ItemUpdate = Partial<Item> & {
+  id: number;
+  boardColumnId: number;
+  askClosure?: AskClosure | null;
+  tagIds?: number[];
+};
 
 export interface BoardItemSearchResult {
   id: number;
