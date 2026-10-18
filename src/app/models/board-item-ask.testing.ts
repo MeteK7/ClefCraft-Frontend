@@ -25,6 +25,7 @@ export function makeAsk(overrides: Partial<BoardItemAsk> = {}): BoardItemAsk {
     cancelReason: null,
     dateCreated: '2026-10-10T09:00:00Z',
     lastNudgedAt: null,
+    nextNudgeAt: null,
     revision: 1,
     isOpen: state === AskState.Pending || state === AskState.Accepted,
     isUnmetRequirement: !!overrides.isRequired && state !== AskState.Completed,

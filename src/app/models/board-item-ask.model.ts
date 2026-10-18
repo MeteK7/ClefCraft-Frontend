@@ -54,6 +54,11 @@ export interface BoardItemAsk {
   /** When the ask was made: its age. Never reset by edits or nudges. */
   dateCreated: string;
   lastNudgedAt: string | null;
+  /**
+   * Set only when the current user could nudge this ask but the 24-hour cooldown isn't over:
+   * when it is. Null when they can nudge now (Nudge is in allowedActions) or not at all.
+   */
+  nextNudgeAt: string | null;
   /** Sent back as expectedRevision with every change, and in the completion snapshot. */
   revision: number;
   isOpen: boolean;
@@ -191,13 +196,42 @@ export function askErrorMessage(error: unknown, fallback = 'Something went wrong
   return fallback;
 }
 
-/** "today", "1 day ago", "6 days ago": how long ago an API timestamp was, in whole days. */
-export function daysAgo(iso: string | null | undefined, now: Date = new Date()): string | null {
+/** How often an ask can be nudged, as the server enforces it (BoardItemAskLimits.NudgeInterval). */
+export const NUDGE_RULE_TEXT = 'You can nudge once every 24 hours.';
+
+/** The server's 400 title for a nudge inside the cooldown (NudgeAskCommandHandler.AlreadyNudgedMessage). */
+export const NUDGE_TOO_SOON_MESSAGE = 'This ask was already nudged in the last 24 hours.';
+
+/** True for the 400 the server returns when an ask is nudged again within 24 hours. */
+export function isNudgeTooSoonError(error: unknown): boolean {
+  const title = (error as { status?: number; error?: { title?: unknown } } | null)?.error?.title;
+  return (error as { status?: number })?.status === 400 && title === NUDGE_TOO_SOON_MESSAGE;
+}
+
+/**
+ * How long ago an API timestamp was: "just now", "5 minutes ago", "3 hours ago", "6 days ago".
+ * Null when there's no timestamp.
+ */
+export function timeAgo(iso: string | null | undefined, now: Date = new Date()): string | null {
   if (!iso) return null;
   const then = new Date(iso);
   if (isNaN(then.getTime())) return null;
 
-  const days = Math.floor((now.getTime() - then.getTime()) / (24 * 60 * 60 * 1000));
-  if (days <= 0) return 'today';
+  const minutes = Math.floor((now.getTime() - then.getTime()) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+
+  const days = Math.floor(hours / 24);
   return days === 1 ? '1 day ago' : `${days} days ago`;
+}
+
+/**
+ * The DatePipe format for an exact ask time: the year is left out for times in the current
+ * (local) year. Both are compared in the viewer's own timezone, as the time is shown.
+ */
+export function askDateFormat(iso: string, now: Date = new Date()): string {
+  return new Date(iso).getFullYear() === now.getFullYear() ? 'd MMM, HH:mm' : 'd MMM y, HH:mm';
 }

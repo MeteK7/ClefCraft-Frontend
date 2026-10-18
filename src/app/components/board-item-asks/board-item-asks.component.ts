@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,14 +21,28 @@ import {
   AskState,
   AskSummary,
   BoardItemAsk,
+  NUDGE_RULE_TEXT,
+  askDateFormat,
   askErrorMessage,
-  daysAgo,
+  isNudgeTooSoonError,
+  timeAgo,
   toAskSummary
 } from '../../models/board-item-ask.model';
 import { toDueDate } from '../../relationship-engine/analytics/finish-before';
 
 /** The note's limit, as the API enforces it (BoardItemAskLimits.NoteMaxLength). */
 export const ASK_NOTE_MAX_LENGTH = 200;
+
+/** Shown when the server refuses a nudge inside the 24-hour cooldown. */
+export const NUDGE_TOO_SOON_TEXT = 'Too soon to nudge again';
+
+/**
+ * The reload that re-enables Nudge after a cooldown runs a second after the cooldown ends by the
+ * client clock, but never sooner than this: if the clocks disagree and the server still says
+ * "not yet", the next try comes after this delay instead of in a tight loop.
+ */
+export const NUDGE_RELOAD_MIN_DELAY_MS = 5_000;
+const NUDGE_RELOAD_MARGIN_MS = 1_000;
 
 type AskFormMode =
   | { kind: 'create' }
@@ -39,6 +53,11 @@ type AskFormMode =
 interface ActionButton {
   action: AskAction;
   label: string;
+}
+
+/** A button as shown for one ask: Nudge can appear disabled while its cooldown runs. */
+interface AskButton extends ActionButton {
+  disabled: boolean;
 }
 
 // The buttons each allowed action gets, in display order. CompleteOnBehalf isn't a button: it is
@@ -89,7 +108,7 @@ const STATE_LABELS: Record<AskState, string> = {
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './board-item-asks.component.css'
 })
-export class BoardItemAsksComponent implements OnInit, OnChanges {
+export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   @Input() itemId!: number;
   /** The item's saved assignee: already responsible, so not someone to ask. */
   @Input() assigneeId: string | null | undefined;
@@ -105,7 +124,12 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
   @Output() summaryChange = new EventEmitter<AskSummary>(true);
 
   readonly AskState = AskState;
+  readonly AskAction = AskAction;
   readonly noteMaxLength = ASK_NOTE_MAX_LENGTH;
+  readonly nudgeRule = NUDGE_RULE_TEXT;
+
+  /** The one pending reload that re-enables Nudge when a cooldown ends; null when none is due. */
+  private nudgeReloadTimer: ReturnType<typeof setTimeout> | null = null;
 
   asks: BoardItemAsk[] = [];
   isLoading = false;
@@ -141,6 +165,10 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
     }
   }
 
+  ngOnDestroy(): void {
+    this.clearNudgeReload();
+  }
+
   // ---- Loading ----------------------------------------------------------------------------
 
   load(): void {
@@ -152,6 +180,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
         this.asks = asks;
         this.isLoading = false;
         this.summaryChange.emit(toAskSummary(asks));
+        this.scheduleNudgeReload();
       },
       error: error => {
         this.isLoading = false;
@@ -160,22 +189,68 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
     });
   }
 
+  /**
+   * While any ask is in a nudge cooldown, keeps exactly one reload pending: shortly after the
+   * earliest cooldown ends, so the server's fresh allowedActions re-enable Nudge without the user
+   * reloading. The client clock only decides when to ask; the server decides the answer. Each
+   * reload reschedules from its own data, so a cooldown the server still reports (clock skew)
+   * is tried again after the minimum delay, never in a tight loop.
+   */
+  private scheduleNudgeReload(): void {
+    this.clearNudgeReload();
+
+    const ends = this.asks
+      .map(a => a.nextNudgeAt ? new Date(a.nextNudgeAt).getTime() : NaN)
+      .filter(t => !isNaN(t));
+    if (ends.length === 0) return;
+
+    const delay = Math.max(Math.min(...ends) - Date.now() + NUDGE_RELOAD_MARGIN_MS, NUDGE_RELOAD_MIN_DELAY_MS);
+    this.nudgeReloadTimer = setTimeout(() => {
+      this.nudgeReloadTimer = null;
+      this.load();
+    }, delay);
+  }
+
+  private clearNudgeReload(): void {
+    if (this.nudgeReloadTimer !== null) {
+      clearTimeout(this.nudgeReloadTimer);
+      this.nudgeReloadTimer = null;
+    }
+  }
+
   // ---- Display helpers ----------------------------------------------------------------------
 
-  actionsFor(ask: BoardItemAsk): ActionButton[] {
-    return ACTION_BUTTONS.filter(b => ask.allowedActions.includes(b.action));
+  /**
+   * The buttons for an ask: exactly its allowedActions, plus a disabled Nudge while the server
+   * reports a cooldown for this viewer (nextNudgeAt is only sent to someone who may nudge).
+   */
+  buttonsFor(ask: BoardItemAsk): AskButton[] {
+    return ACTION_BUTTONS
+      .filter(b => ask.allowedActions.includes(b.action) || (b.action === AskAction.Nudge && this.isNudgeWaiting(ask)))
+      .map(b => ({ ...b, disabled: !ask.allowedActions.includes(b.action) }));
+  }
+
+  /** Nudge is the viewer's to use, but not yet: the 24-hour cooldown is running. */
+  isNudgeWaiting(ask: BoardItemAsk): boolean {
+    return !!ask.nextNudgeAt && !ask.allowedActions.includes(AskAction.Nudge);
+  }
+
+  /** The id of the hidden "you can nudge again on …" text that describes the disabled button. */
+  nudgeWaitId(ask: BoardItemAsk): string {
+    return `nudge-wait-${ask.id}`;
   }
 
   stateLabel(ask: BoardItemAsk): string {
     return STATE_LABELS[ask.state];
   }
 
-  askedAgo(ask: BoardItemAsk): string | null {
-    return daysAgo(ask.dateCreated);
+  timeAgo(iso: string | null | undefined): string | null {
+    return timeAgo(iso);
   }
 
-  nudgedAgo(ask: BoardItemAsk): string | null {
-    return daysAgo(ask.lastNudgedAt);
+  /** The DatePipe format for an exact time: without the year in the current year. */
+  timeFormat(iso: string): string {
+    return askDateFormat(iso);
   }
 
   /** Done by someone other than the recipient (while completing the item). */
@@ -353,7 +428,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
       },
       error: error => {
         this.isBusy = false;
-        this.errorMessage = askErrorMessage(error);
+        this.errorMessage = isNudgeTooSoonError(error) ? NUDGE_TOO_SOON_TEXT : askErrorMessage(error);
         this.load();
       }
     });

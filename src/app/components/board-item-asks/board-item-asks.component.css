@@ -160,6 +160,40 @@
   gap: 4px;
 }
 
+.ask-times,
+.ask-nudged {
+  margin: 0 0 2px;
+}
+
+.nudge-wrap {
+  display: inline-block;
+  border-radius: 4px;
+  cursor: not-allowed;
+}
+
+.nudge-wrap:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Material's disabled label colour is a light-theme tint that vanishes on a dark surface; the
+   app's muted text colour reads as disabled in both themes. */
+.nudge-waiting {
+  --mat-button-text-disabled-label-text-color: var(--text-secondary);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .ask-warning-icon {
   font-size: 16px;
   width: 16px;

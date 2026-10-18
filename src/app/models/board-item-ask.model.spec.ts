@@ -4,11 +4,14 @@ import {
   AskAction,
   AskCancelReason,
   AskState,
+  NUDGE_TOO_SOON_MESSAGE,
+  askDateFormat,
   askErrorMessage,
   asksToReview,
   buildAskClosure,
-  daysAgo,
+  isNudgeTooSoonError,
   isStaleAskClosureError,
+  timeAgo,
   toAskSummary
 } from './board-item-ask.model';
 import { makeAsk } from './board-item-ask.testing';
@@ -101,13 +104,34 @@ describe('board-item-ask model', () => {
     });
   });
 
-  it('daysAgo reads whole days', () => {
+  it('timeAgo reads minutes, hours and days', () => {
     const now = new Date('2026-10-16T12:00:00Z');
 
-    expect(daysAgo('2026-10-16T08:00:00Z', now)).toBe('today');
-    expect(daysAgo('2026-10-15T08:00:00Z', now)).toBe('1 day ago');
-    expect(daysAgo('2026-10-10T08:00:00Z', now)).toBe('6 days ago');
-    expect(daysAgo(null, now)).toBeNull();
+    expect(timeAgo('2026-10-16T11:59:30Z', now)).toBe('just now');
+    expect(timeAgo('2026-10-16T11:59:00Z', now)).toBe('1 minute ago');
+    expect(timeAgo('2026-10-16T11:15:00Z', now)).toBe('45 minutes ago');
+    expect(timeAgo('2026-10-16T11:00:00Z', now)).toBe('1 hour ago');
+    expect(timeAgo('2026-10-16T09:00:00Z', now)).toBe('3 hours ago');
+    expect(timeAgo('2026-10-15T11:00:00Z', now)).toBe('1 day ago');
+    expect(timeAgo('2026-10-10T08:00:00Z', now)).toBe('6 days ago');
+    expect(timeAgo(null, now)).toBeNull();
+  });
+
+  // Dates built with local constructors, so the year boundary is the viewer's own whatever the
+  // machine's timezone.
+  it('askDateFormat leaves the year out only within the current local year', () => {
+    const now = new Date(2026, 0, 1, 0, 30);
+
+    expect(askDateFormat(new Date(2026, 0, 1, 0, 10).toISOString(), now)).toBe('d MMM, HH:mm');
+    expect(askDateFormat(new Date(2025, 11, 31, 23, 50).toISOString(), now)).toBe('d MMM y, HH:mm');
+    expect(askDateFormat(new Date(2027, 0, 1, 0, 0).toISOString(), now)).toBe('d MMM y, HH:mm');
+  });
+
+  it('isNudgeTooSoonError recognises only the server\'s cooldown rejection', () => {
+    expect(isNudgeTooSoonError({ status: 400, error: { title: NUDGE_TOO_SOON_MESSAGE } })).toBeTrue();
+    expect(NUDGE_TOO_SOON_MESSAGE).toBe('This ask was already nudged in the last 24 hours.');
+    expect(isNudgeTooSoonError({ status: 400, error: { title: 'Someone nudged or changed this ask at the same moment; reload it.' } })).toBeFalse();
+    expect(isNudgeTooSoonError({ status: 403, error: { title: NUDGE_TOO_SOON_MESSAGE } })).toBeFalse();
   });
 
   it('keeps the action numbers the API uses', () => {
