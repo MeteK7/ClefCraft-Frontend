@@ -72,7 +72,7 @@
   <ul class="ask-list">
     @for (ask of asks; track ask.id) {
       <li class="ask-row" [class.closed]="!ask.isOpen && !ask.isUnmetRequirement" [attr.data-ask-id]="ask.id">
-        <div class="ask-main">
+        <div class="ask-head">
           <div class="ask-line">
             <span class="ask-recipient">{{ ask.recipientFullName }}</span>
             @if (!ask.recipientIsBoardMember) {
@@ -82,44 +82,106 @@
             @if (ask.isRequired) {
               <span class="ask-required">Required</span>
             }
-            @if (markedBy(ask); as by) {
-              <span class="ask-marked-by">Marked done by {{ by }}</span>
-            }
           </div>
 
-          <p class="ask-note">{{ ask.note }}</p>
-
-          <div class="ask-meta">
-            @if (ask.state === AskState.Pending) {
-              <span class="ask-age">Asked {{ askedAgo(ask) }}</span>
-              @if (ask.lastNudgedAt) {
-                <span class="ask-age">· Nudged {{ nudgedAgo(ask) }}</span>
-              }
-            }
-            @if (ask.dueDate) {
-              <span>· Due {{ ask.dueDate | date: 'd MMM' }}</span>
-              @if (isDueAfterItem(ask.dueDate)) {
-                <mat-icon class="ask-warning-icon" matTooltip="Due after the item itself">schedule</mat-icon>
-              }
-            }
-            @if (ask.state === AskState.Declined && ask.responseNote) {
-              <span>· “{{ ask.responseNote }}”</span>
-            }
-          </div>
-
-          @if (unmetCause(ask); as cause) {
-            <p class="ask-unmet">{{ cause }}</p>
+          @if (menuButtonsFor(ask).length > 0) {
+            <button mat-icon-button type="button" class="ask-more" [disabled]="isBusy"
+              [matMenuTriggerFor]="askMenu" [matMenuTriggerData]="{ ask: ask }"
+              matTooltip="More actions" [attr.aria-label]="'More actions for the ask to ' + ask.recipientFullName">
+              <mat-icon>more_horiz</mat-icon>
+            </button>
           }
         </div>
 
-        @if (actionsFor(ask).length > 0) {
+        <p class="ask-note">{{ ask.note }}</p>
+
+        <!-- Times in the viewer's own timezone; the API sends instants in UTC. -->
+        <p class="ask-meta">
+          <span class="ask-asked">Asked <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: ask.dateCreated }" /></span>
+          @if (ask.respondedAt && (ask.state === AskState.Accepted || ask.state === AskState.Completed)) {
+            <span class="ask-responded">Accepted <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: ask.respondedAt }" /></span>
+          }
+          @if (ask.respondedAt && ask.state === AskState.Declined) {
+            <span class="ask-responded">
+              Declined <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: ask.respondedAt }" />
+              @if (ask.responseNote) {
+                · “{{ ask.responseNote }}”
+              }
+            </span>
+          }
+          @if (ask.completedAt && ask.state === AskState.Completed) {
+            <span class="ask-completed">
+              Done <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: ask.completedAt }" />
+              @if (markedBy(ask); as by) {
+                · marked by {{ by }}
+              }
+            </span>
+          }
+          @if (ask.lastNudgedAt) {
+            <span class="ask-nudged">Nudged <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: ask.lastNudgedAt }" /></span>
+          }
+          @if (ask.dueDate) {
+            <span class="ask-due-on">
+              Due {{ ask.dueDate | date: 'd MMM' }}
+              @if (isDueAfterItem(ask.dueDate)) {
+                <mat-icon class="ask-warning-icon" matTooltip="Due after the item itself">schedule</mat-icon>
+              }
+            </span>
+          }
+        </p>
+
+        @if (unmetCause(ask); as cause) {
+          <p class="ask-unmet">{{ cause }}</p>
+        }
+
+        @if (inlineButtonsFor(ask).length > 0) {
           <div class="ask-actions">
-            @for (button of actionsFor(ask); track button.action) {
-              <button mat-button type="button" [disabled]="isBusy" (click)="act(ask, button.action)">{{ button.label }}</button>
+            @for (button of inlineButtonsFor(ask); track button.action) {
+              @if (button.disabled) {
+                <!-- Tooltips don't fire on a disabled button, so the focusable wrapper carries it;
+                     screen readers get the same text from the hidden description. -->
+                <span class="nudge-wrap" tabindex="0"
+                  matTooltip="{{ nudgeRule }} Next nudge on {{ ask.nextNudgeAt | date: 'EEE d MMM, HH:mm' }}.">
+                  <button mat-button type="button" class="nudge-waiting" disabled
+                    [attr.aria-describedby]="nudgeWaitId(ask)"><mat-icon>schedule</mat-icon>{{ button.label }}</button>
+                  <span class="visually-hidden" [id]="nudgeWaitId(ask)">
+                    {{ nudgeRule }} Next nudge on {{ ask.nextNudgeAt | date: 'EEE d MMM, HH:mm' }}.
+                  </span>
+                </span>
+              } @else if (button.action === AskAction.Nudge) {
+                <button mat-button type="button" [disabled]="isBusy" (click)="act(ask, button.action)"
+                  matTooltip="Remind {{ ask.recipientFullName }}. {{ nudgeRule }}"><mat-icon>{{ button.icon }}</mat-icon>{{ button.label }}</button>
+              } @else {
+                <button mat-button type="button" [disabled]="isBusy" (click)="act(ask, button.action)"><mat-icon>{{ button.icon }}</mat-icon>{{ button.label }}</button>
+              }
             }
           </div>
         }
       </li>
     }
   </ul>
+
+  <!-- One menu for every card; the trigger hands it the ask. -->
+  <mat-menu #askMenu="matMenu" xPosition="before">
+    <ng-template matMenuContent let-ask="ask">
+      @for (button of menuButtonsFor(ask); track button.action) {
+        @if (hasMenuDivider(ask, button)) {
+          <mat-divider />
+        }
+        <button mat-menu-item type="button" class="ask-menu-item" [class.danger]="button.danger" (click)="act(ask, button.action)">
+          <mat-icon>{{ button.icon }}</mat-icon>
+          <span>{{ button.label }}</span>
+        </button>
+      }
+    </ng-template>
+  </mat-menu>
+
+  <!-- A time within the last day reads as "2 hours ago" with the exact time on hover; older ones show it outright. -->
+  <ng-template #when let-iso>
+    @if (isRecent(iso)) {
+      <time class="ask-when recent" [attr.datetime]="iso" [matTooltip]="iso | date: exactTimeFormat">{{ timeAgo(iso) }}</time>
+    } @else {
+      <time class="ask-when" [attr.datetime]="iso">{{ iso | date: exactTimeFormat }}</time>
+    }
+  </ng-template>
 </section>
