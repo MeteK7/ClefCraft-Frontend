@@ -5,9 +5,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Observable } from 'rxjs';
@@ -15,16 +18,18 @@ import { Observable } from 'rxjs';
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
 import { AuthService } from '../../_services/auth.service';
 import { Assignee } from '../../models/assignee.model';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
 import {
+  ASK_EXACT_TIME_FORMAT,
   AskAction,
   AskCancelReason,
   AskState,
   AskSummary,
   BoardItemAsk,
   NUDGE_RULE_TEXT,
-  askDateFormat,
   askErrorMessage,
   isNudgeTooSoonError,
+  isWithinDay,
   timeAgo,
   toAskSummary
 } from '../../models/board-item-ask.model';
@@ -53,6 +58,11 @@ type AskFormMode =
 interface ActionButton {
   action: AskAction;
   label: string;
+  icon: string;
+  /** Inline actions are the card's next steps; the rest wait in its "More actions" menu. */
+  placement: 'inline' | 'menu';
+  /** Shown apart and in the danger colour. */
+  danger?: boolean;
 }
 
 /** A button as shown for one ask: Nudge can appear disabled while its cooldown runs. */
@@ -63,17 +73,17 @@ interface AskButton extends ActionButton {
 // The buttons each allowed action gets, in display order. CompleteOnBehalf isn't a button: it is
 // offered by the completion prompt only.
 const ACTION_BUTTONS: ActionButton[] = [
-  { action: AskAction.Accept, label: 'Accept' },
-  { action: AskAction.Decline, label: 'Decline' },
-  { action: AskAction.Complete, label: 'Mark done' },
-  { action: AskAction.Reopen, label: 'Reopen' },
-  { action: AskAction.Nudge, label: 'Nudge' },
-  { action: AskAction.Edit, label: 'Edit' },
-  { action: AskAction.SetRequired, label: 'Make required' },
-  { action: AskAction.WaiveRequirement, label: 'Waive requirement' },
-  { action: AskAction.Reassign, label: 'Ask someone else' },
-  { action: AskAction.AskAgain, label: 'Ask again' },
-  { action: AskAction.Cancel, label: 'Withdraw' }
+  { action: AskAction.Accept, label: 'Accept', icon: 'check', placement: 'inline' },
+  { action: AskAction.Decline, label: 'Decline', icon: 'close', placement: 'inline' },
+  { action: AskAction.Complete, label: 'Mark done', icon: 'task_alt', placement: 'inline' },
+  { action: AskAction.Reopen, label: 'Reopen', icon: 'replay', placement: 'inline' },
+  { action: AskAction.Nudge, label: 'Nudge', icon: 'notifications', placement: 'inline' },
+  { action: AskAction.AskAgain, label: 'Ask again', icon: 'forward_to_inbox', placement: 'inline' },
+  { action: AskAction.Edit, label: 'Edit', icon: 'edit', placement: 'menu' },
+  { action: AskAction.SetRequired, label: 'Make required', icon: 'flag', placement: 'menu' },
+  { action: AskAction.WaiveRequirement, label: 'Waive requirement', icon: 'outlined_flag', placement: 'menu' },
+  { action: AskAction.Reassign, label: 'Ask someone else', icon: 'swap_horiz', placement: 'menu' },
+  { action: AskAction.Cancel, label: 'Withdraw', icon: 'undo', placement: 'menu', danger: true }
 ];
 
 const STATE_LABELS: Record<AskState, string> = {
@@ -99,7 +109,9 @@ const STATE_LABELS: Record<AskState, string> = {
     MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
+    MatDividerModule,
     MatInputModule,
+    MatMenuModule,
     MatNativeDateModule,
     MatSelectModule,
     MatTooltipModule
@@ -127,6 +139,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   readonly AskAction = AskAction;
   readonly noteMaxLength = ASK_NOTE_MAX_LENGTH;
   readonly nudgeRule = NUDGE_RULE_TEXT;
+  readonly exactTimeFormat = ASK_EXACT_TIME_FORMAT;
 
   /** The one pending reload that re-enables Nudge when a cooldown ends; null when none is due. */
   private nudgeReloadTimer: ReturnType<typeof setTimeout> | null = null;
@@ -143,6 +156,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
 
   constructor(
     private askService: BoardItemAskService,
+    private dialog: MatDialog,
     authService: AuthService,
     fb: FormBuilder
   ) {
@@ -221,13 +235,25 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   // ---- Display helpers ----------------------------------------------------------------------
 
   /**
-   * The buttons for an ask: exactly its allowedActions, plus a disabled Nudge while the server
-   * reports a cooldown for this viewer (nextNudgeAt is only sent to someone who may nudge).
+   * The buttons shown on the card: the inline ones among its allowedActions, plus a disabled Nudge
+   * while the server reports a cooldown for this viewer (nextNudgeAt is only sent to someone who
+   * may nudge).
    */
-  buttonsFor(ask: BoardItemAsk): AskButton[] {
+  inlineButtonsFor(ask: BoardItemAsk): AskButton[] {
     return ACTION_BUTTONS
+      .filter(b => b.placement === 'inline')
       .filter(b => ask.allowedActions.includes(b.action) || (b.action === AskAction.Nudge && this.isNudgeWaiting(ask)))
       .map(b => ({ ...b, disabled: !ask.allowedActions.includes(b.action) }));
+  }
+
+  /** The allowed actions in the card's "More actions" menu, with Withdraw last. */
+  menuButtonsFor(ask: BoardItemAsk): ActionButton[] {
+    return ACTION_BUTTONS.filter(b => b.placement === 'menu' && ask.allowedActions.includes(b.action));
+  }
+
+  /** True when the menu has items before the danger section, so a divider separates them. */
+  hasMenuDivider(ask: BoardItemAsk, button: ActionButton): boolean {
+    return !!button.danger && this.menuButtonsFor(ask).some(b => !b.danger);
   }
 
   /** Nudge is the viewer's to use, but not yet: the 24-hour cooldown is running. */
@@ -248,9 +274,9 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     return timeAgo(iso);
   }
 
-  /** The DatePipe format for an exact time: without the year in the current year. */
-  timeFormat(iso: string): string {
-    return askDateFormat(iso);
+  /** At most a day old: shown as "2 hours ago", with the exact time on hover. */
+  isRecent(iso: string | null | undefined): boolean {
+    return isWithinDay(iso);
   }
 
   /** Done by someone other than the recipient (while completing the item). */
@@ -384,8 +410,19 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
         this.run(this.askService.changeState(ask.id, 'reopen', ask.revision));
         break;
       case AskAction.Cancel:
-        if (!window.confirm(`Withdraw the ask to ${ask.recipientFullName}?`)) return;
-        this.run(this.askService.changeState(ask.id, 'cancel', ask.revision));
+        this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+          data: {
+            title: 'Withdraw this ask?',
+            message: `${ask.recipientFullName} won't be asked to help with “${ask.note}” any more.`,
+            confirmLabel: 'Withdraw',
+            destructive: true
+          },
+          maxWidth: '95vw'
+        }).afterClosed().subscribe(confirmed => {
+          if (confirmed === true) {
+            this.run(this.askService.changeState(ask.id, 'cancel', ask.revision));
+          }
+        });
         break;
       case AskAction.Nudge:
         this.run(this.askService.nudge(ask.id));

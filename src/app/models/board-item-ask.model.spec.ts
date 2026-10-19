@@ -1,16 +1,17 @@
 import {
   ASKS_CHANGED_MESSAGE,
   ASK_CLOSURE_MISSING_MESSAGE,
+  ASK_EXACT_TIME_FORMAT,
   AskAction,
   AskCancelReason,
   AskState,
   NUDGE_TOO_SOON_MESSAGE,
-  askDateFormat,
   askErrorMessage,
   asksToReview,
   buildAskClosure,
   isNudgeTooSoonError,
   isStaleAskClosureError,
+  isWithinDay,
   timeAgo,
   toAskSummary
 } from './board-item-ask.model';
@@ -117,14 +118,19 @@ describe('board-item-ask model', () => {
     expect(timeAgo(null, now)).toBeNull();
   });
 
-  // Dates built with local constructors, so the year boundary is the viewer's own whatever the
-  // machine's timezone.
-  it('askDateFormat leaves the year out only within the current local year', () => {
-    const now = new Date(2026, 0, 1, 0, 30);
+  it('isWithinDay is true up to 24 hours ago, including a time slightly ahead of the clock', () => {
+    const now = new Date('2026-10-18T16:48:00Z');
 
-    expect(askDateFormat(new Date(2026, 0, 1, 0, 10).toISOString(), now)).toBe('d MMM, HH:mm');
-    expect(askDateFormat(new Date(2025, 11, 31, 23, 50).toISOString(), now)).toBe('d MMM y, HH:mm');
-    expect(askDateFormat(new Date(2027, 0, 1, 0, 0).toISOString(), now)).toBe('d MMM y, HH:mm');
+    expect(isWithinDay('2026-10-17T16:49:00Z', now)).toBeTrue();
+    expect(isWithinDay('2026-10-17T16:48:00Z', now)).toBeTrue();
+    expect(isWithinDay('2026-10-17T16:47:00Z', now)).toBeFalse();
+    expect(isWithinDay('2026-10-18T16:48:30Z', now)).toBeTrue();
+    expect(isWithinDay(null, now)).toBeFalse();
+    expect(isWithinDay('not a date', now)).toBeFalse();
+  });
+
+  it('shows exact times with the year', () => {
+    expect(ASK_EXACT_TIME_FORMAT).toBe('d MMM y, HH:mm');
   });
 
   it('isNudgeTooSoonError recognises only the server\'s cooldown rejection', () => {

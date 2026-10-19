@@ -228,10 +228,17 @@ export function timeAgo(iso: string | null | undefined, now: Date = new Date()):
   return days === 1 ? '1 day ago' : `${days} days ago`;
 }
 
+/** The DatePipe format for an exact ask time, shown in the viewer's own timezone: "18 Oct 2026, 16:48". */
+export const ASK_EXACT_TIME_FORMAT = 'd MMM y, HH:mm';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /**
- * The DatePipe format for an exact ask time: the year is left out for times in the current
- * (local) year. Both are compared in the viewer's own timezone, as the time is shown.
+ * True for a timestamp at most 24 hours old, which the panel shows as relative time ("2 hours
+ * ago") with the exact time on hover. A time slightly in the future (clock skew) counts as recent.
  */
-export function askDateFormat(iso: string, now: Date = new Date()): string {
-  return new Date(iso).getFullYear() === now.getFullYear() ? 'd MMM, HH:mm' : 'd MMM y, HH:mm';
+export function isWithinDay(iso: string | null | undefined, now: Date = new Date()): boolean {
+  if (!iso) return false;
+  const then = new Date(iso).getTime();
+  return !isNaN(then) && now.getTime() - then <= DAY_MS;
 }
