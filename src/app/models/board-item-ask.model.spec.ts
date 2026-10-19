@@ -1,14 +1,18 @@
 import {
   ASKS_CHANGED_MESSAGE,
   ASK_CLOSURE_MISSING_MESSAGE,
+  ASK_EXACT_TIME_FORMAT,
   AskAction,
   AskCancelReason,
   AskState,
+  NUDGE_TOO_SOON_MESSAGE,
   askErrorMessage,
   asksToReview,
   buildAskClosure,
-  daysAgo,
+  isNudgeTooSoonError,
   isStaleAskClosureError,
+  isWithinDay,
+  timeAgo,
   toAskSummary
 } from './board-item-ask.model';
 import { makeAsk } from './board-item-ask.testing';
@@ -101,13 +105,39 @@ describe('board-item-ask model', () => {
     });
   });
 
-  it('daysAgo reads whole days', () => {
+  it('timeAgo reads minutes, hours and days', () => {
     const now = new Date('2026-10-16T12:00:00Z');
 
-    expect(daysAgo('2026-10-16T08:00:00Z', now)).toBe('today');
-    expect(daysAgo('2026-10-15T08:00:00Z', now)).toBe('1 day ago');
-    expect(daysAgo('2026-10-10T08:00:00Z', now)).toBe('6 days ago');
-    expect(daysAgo(null, now)).toBeNull();
+    expect(timeAgo('2026-10-16T11:59:30Z', now)).toBe('just now');
+    expect(timeAgo('2026-10-16T11:59:00Z', now)).toBe('1 minute ago');
+    expect(timeAgo('2026-10-16T11:15:00Z', now)).toBe('45 minutes ago');
+    expect(timeAgo('2026-10-16T11:00:00Z', now)).toBe('1 hour ago');
+    expect(timeAgo('2026-10-16T09:00:00Z', now)).toBe('3 hours ago');
+    expect(timeAgo('2026-10-15T11:00:00Z', now)).toBe('1 day ago');
+    expect(timeAgo('2026-10-10T08:00:00Z', now)).toBe('6 days ago');
+    expect(timeAgo(null, now)).toBeNull();
+  });
+
+  it('isWithinDay is true up to 24 hours ago, including a time slightly ahead of the clock', () => {
+    const now = new Date('2026-10-18T16:48:00Z');
+
+    expect(isWithinDay('2026-10-17T16:49:00Z', now)).toBeTrue();
+    expect(isWithinDay('2026-10-17T16:48:00Z', now)).toBeTrue();
+    expect(isWithinDay('2026-10-17T16:47:00Z', now)).toBeFalse();
+    expect(isWithinDay('2026-10-18T16:48:30Z', now)).toBeTrue();
+    expect(isWithinDay(null, now)).toBeFalse();
+    expect(isWithinDay('not a date', now)).toBeFalse();
+  });
+
+  it('shows exact times with the year', () => {
+    expect(ASK_EXACT_TIME_FORMAT).toBe('d MMM y, HH:mm');
+  });
+
+  it('isNudgeTooSoonError recognises only the server\'s cooldown rejection', () => {
+    expect(isNudgeTooSoonError({ status: 400, error: { title: NUDGE_TOO_SOON_MESSAGE } })).toBeTrue();
+    expect(NUDGE_TOO_SOON_MESSAGE).toBe('This ask was already nudged in the last 24 hours.');
+    expect(isNudgeTooSoonError({ status: 400, error: { title: 'Someone nudged or changed this ask at the same moment; reload it.' } })).toBeFalse();
+    expect(isNudgeTooSoonError({ status: 403, error: { title: NUDGE_TOO_SOON_MESSAGE } })).toBeFalse();
   });
 
   it('keeps the action numbers the API uses', () => {

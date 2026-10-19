@@ -1,11 +1,25 @@
-import { ComponentFixture, TestBed, fakeAsync, flush } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
+import { formatDate } from '@angular/common';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { MatDialog } from '@angular/material/dialog';
+import { MatTooltip } from '@angular/material/tooltip';
+import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { Subject, of } from 'rxjs';
 
-import { BoardItemAsksComponent } from './board-item-asks.component';
+import { BoardItemAsksComponent, NUDGE_RELOAD_MIN_DELAY_MS, NUDGE_TOO_SOON_TEXT } from './board-item-asks.component';
 import { AuthService } from '../../_services/auth.service';
-import { AskAction, AskCancelReason, AskState, AskSummary, BoardItemAsk } from '../../models/board-item-ask.model';
+import {
+  AskAction,
+  AskCancelReason,
+  AskState,
+  AskSummary,
+  BoardItemAsk,
+  ASK_EXACT_TIME_FORMAT,
+  NUDGE_TOO_SOON_MESSAGE
+} from '../../models/board-item-ask.model';
+import { ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
 import { makeAsk } from '../../models/board-item-ask.testing';
 import { environment } from '../../../environments/environment';
 
@@ -47,8 +61,32 @@ describe('BoardItemAsksComponent', () => {
     return summaries;
   }
 
-  const buttons = () => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.ask-actions button'))
-    .map(b => b.textContent!.trim());
+  const element = () => fixture.nativeElement as HTMLElement;
+  const squash = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
+  const label = (b: Element) => squash(b.querySelector('.mdc-button__label')!.textContent);
+  const rowText = (askId: number) => squash(element().querySelector(`[data-ask-id="${askId}"]`)!.textContent);
+  const metaText = (askId: number, part: string) => squash(element().querySelector(`[data-ask-id="${askId}"] .${part}`)?.textContent);
+
+  /** The buttons shown on the cards, by label. */
+  const buttons = () => Array.from(element().querySelectorAll<HTMLButtonElement>('.ask-actions button')).map(label);
+  const nudgeButton = () => Array.from(element().querySelectorAll<HTMLButtonElement>('.ask-actions button'))
+    .find(b => label(b) === 'Nudge')!;
+  const moreButton = (askId: number) => element().querySelector<HTMLButtonElement>(`[data-ask-id="${askId}"] .ask-more`);
+  const tooltipOn = (native: Element) =>
+    fixture.debugElement.queryAll(By.directive(MatTooltip)).find(d => d.nativeElement === native)?.injector.get(MatTooltip).message;
+
+  /** Opens a card's "More actions" menu and returns its items; the menu renders in the overlay. */
+  function openMenu(askId: number): HTMLButtonElement[] {
+    moreButton(askId)!.click();
+    fixture.detectChanges();
+    return Array.from(document.querySelectorAll<HTMLButtonElement>('.ask-menu-item'));
+  }
+  const menuLabels = (items: HTMLButtonElement[]) => items.map(i => squash(i.querySelector('span')!.textContent));
+
+  // The exact time as the viewer's own timezone shows it, computed the way the template does.
+  const exact = (iso: string) => formatDate(iso, ASK_EXACT_TIME_FORMAT, 'en-US');
+  const nudgeDate = (iso: string) => formatDate(iso, 'EEE d MMM, HH:mm', 'en-US');
+  const hoursFromNow = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString();
 
   it('loads the item\'s asks and emits their summary for the card', fakeAsync(() => {
     const summaries = setup([makeAsk({ id: 1, state: AskState.Pending }), makeAsk({ id: 2, state: AskState.Declined, isRequired: true })]);
@@ -62,27 +100,248 @@ describe('BoardItemAsksComponent', () => {
     setup([makeAsk({ allowedActions: [AskAction.Accept, AskAction.Decline, AskAction.CompleteOnBehalf] })]);
 
     expect(buttons()).toEqual(['Accept', 'Decline']);
+    expect(moreButton(1)).toBeNull();
   });
 
-  it('shows no buttons when nothing is allowed', () => {
+  it('shows no buttons and no menu when nothing is allowed', () => {
     setup([makeAsk({ allowedActions: [] })]);
 
     expect(buttons()).toEqual([]);
+    expect(moreButton(1)).toBeNull();
   });
 
-  it('shows a Pending ask\'s age, the "marked by" chip, and why a requirement is unmet', () => {
+  it('keeps Nudge on the card and the requester\'s other actions in the menu, Withdraw last and apart', () => {
+    setup([makeAsk({
+      id: 1,
+      allowedActions: [AskAction.Cancel, AskAction.Nudge, AskAction.Edit, AskAction.SetRequired, AskAction.Reassign]
+    })]);
+
+    expect(buttons()).toEqual(['Nudge']);
+    expect(moreButton(1)!.getAttribute('aria-label')).toBe('More actions for the ask to Ayse Recipient');
+
+    const items = openMenu(1);
+    expect(menuLabels(items)).toEqual(['Edit', 'Make required', 'Ask someone else', 'Withdraw']);
+    expect(items[3].classList).toContain('danger');
+    expect(items[3].previousElementSibling!.tagName.toLowerCase()).toBe('mat-divider');
+    expect(items[0].previousElementSibling?.tagName.toLowerCase()).not.toBe('mat-divider');
+  });
+
+  it('offers "Waive requirement" in the menu of a required ask', () => {
+    setup([makeAsk({ id: 1, isRequired: true, allowedActions: [AskAction.Nudge, AskAction.WaiveRequirement, AskAction.Cancel] })]);
+
+    expect(menuLabels(openMenu(1))).toEqual(['Waive requirement', 'Withdraw']);
+  });
+
+  it('withdraws only after the confirmation dialog is confirmed', () => {
+    setup([makeAsk({ id: 7, revision: 3, allowedActions: [AskAction.Cancel] })]);
+    const answer = new Subject<boolean | undefined>();
+    const open = spyOn(TestBed.inject(MatDialog), 'open').and.returnValue({ afterClosed: () => answer } as never);
+
+    openMenu(7)[0].click();
+
+    expect(open).toHaveBeenCalledTimes(1);
+    const config = open.calls.mostRecent().args[1] as { data: ConfirmDialogData };
+    expect(config.data).toEqual(jasmine.objectContaining({ title: 'Withdraw this ask?', confirmLabel: 'Withdraw', destructive: true }));
+    expect(config.data.message).toBe('Ayse Recipient won\'t be asked to help with “Review the migration” any more.');
+    httpMock.expectNone(`${environment.apiUrl}/BoardItemAsks/7/cancel`);
+
+    answer.next(true);
+    const req = httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/7/cancel`);
+    expect(req.request.body).toEqual({ expectedRevision: 3, reason: null });
+  });
+
+  it('does nothing when the withdraw dialog is cancelled or dismissed', () => {
+    setup([makeAsk({ id: 7, allowedActions: [AskAction.Cancel] })]);
+    const answers: (boolean | undefined)[] = [false, undefined];
+    spyOn(TestBed.inject(MatDialog), 'open').and.callFake(() => ({ afterClosed: () => of(answers.shift()) }) as never);
+
+    component.act(component.asks[0], AskAction.Cancel);
+    component.act(component.asks[0], AskAction.Cancel);
+
+    expect(answers).toEqual([]);
+    httpMock.expectNone(() => true);
+  });
+
+  it('shows when each ask was asked, who marked it done, and why a requirement is unmet', () => {
+    const asked = new Date(Date.now() - 6 * 86_400_000).toISOString();
+    const completedAt = '2026-10-12T15:45:00Z';
     setup([
-      makeAsk({ id: 1, state: AskState.Pending, dateCreated: new Date(Date.now() - 6 * 86_400_000).toISOString() }),
-      makeAsk({ id: 2, state: AskState.Completed, completedByUserId: 'closer', completedByFullName: 'Kemal Closer' }),
+      makeAsk({ id: 1, state: AskState.Pending, dateCreated: asked }),
+      makeAsk({ id: 2, state: AskState.Completed, completedAt, completedByUserId: 'closer', completedByFullName: 'Kemal Closer' }),
       makeAsk({ id: 3, state: AskState.Cancelled, isRequired: true, cancelReason: AskCancelReason.RecipientRemoved, recipientIsBoardMember: false })
     ]);
-    const text = (fixture.nativeElement as HTMLElement).textContent!;
 
-    expect(text).toContain('Asked 6 days ago');
-    expect(text).toContain('Marked done by Kemal Closer');
-    expect(text).toContain('Required: the recipient left the board');
-    expect(text).toContain('(not a board member)');
+    expect(metaText(1, 'ask-asked')).toBe(`Asked ${exact(asked)}`);
+    expect(metaText(2, 'ask-completed')).toBe(`Done ${exact(completedAt)} · marked by Kemal Closer`);
+    expect(rowText(3)).toContain('Required: the recipient left the board');
+    expect(rowText(3)).toContain('(not a board member)');
   });
+
+  it('shows a time from the last day as relative, with the exact time on hover', () => {
+    const dateCreated = hoursFromNow(-2);
+    const lastNudgedAt = new Date(Date.now() - 30 * 60_000).toISOString();
+    setup([makeAsk({ id: 1, dateCreated, lastNudgedAt })]);
+
+    const asked = element().querySelector('[data-ask-id="1"] .ask-asked time')!;
+    expect(metaText(1, 'ask-asked')).toBe('Asked 2 hours ago');
+    expect(asked.getAttribute('datetime')).toBe(dateCreated);
+    expect(tooltipOn(asked)).toBe(exact(dateCreated));
+
+    const nudged = element().querySelector('[data-ask-id="1"] .ask-nudged time')!;
+    expect(metaText(1, 'ask-nudged')).toBe('Nudged 30 minutes ago');
+    expect(tooltipOn(nudged)).toBe(exact(lastNudgedAt));
+  });
+
+  it('shows an older time exactly, with nothing to hover', () => {
+    const dateCreated = '2026-10-10T09:05:00Z';
+    const lastNudgedAt = hoursFromNow(-25);
+    setup([makeAsk({ id: 1, dateCreated, lastNudgedAt })]);
+
+    const asked = element().querySelector('[data-ask-id="1"] .ask-asked time')!;
+    expect(asked.getAttribute('datetime')).toBe(dateCreated);
+    expect(metaText(1, 'ask-asked')).toBe(`Asked ${exact(dateCreated)}`);
+    expect(tooltipOn(asked)).toBeUndefined();
+    expect(metaText(1, 'ask-nudged')).toBe(`Nudged ${exact(lastNudgedAt)}`);
+  });
+
+  it('shows the response and completion times it has, and leaves out the ones it doesn\'t', () => {
+    const respondedAt = '2026-10-11T08:30:00Z';
+    const completedAt = hoursFromNow(-1);
+    setup([
+      makeAsk({ id: 1, state: AskState.Pending }),
+      makeAsk({ id: 2, state: AskState.Accepted, respondedAt }),
+      makeAsk({ id: 3, state: AskState.Declined, respondedAt, responseNote: 'Out this week' }),
+      makeAsk({ id: 4, state: AskState.Completed, respondedAt, completedAt, completedByUserId: 'recipient' }),
+      makeAsk({ id: 5, state: AskState.Completed })
+    ]);
+
+    expect(rowText(1)).not.toContain('Accepted');
+    expect(rowText(1)).not.toContain('Nudged');
+    expect(metaText(2, 'ask-responded')).toBe(`Accepted ${exact(respondedAt)}`);
+    expect(metaText(3, 'ask-responded')).toBe(`Declined ${exact(respondedAt)} · “Out this week”`);
+    expect(metaText(4, 'ask-responded')).toBe(`Accepted ${exact(respondedAt)}`);
+    expect(metaText(4, 'ask-completed')).toBe('Done 1 hour ago');
+    expect(element().querySelector('[data-ask-id="5"] .ask-completed')).toBeNull();
+    expect(element().querySelector('[data-ask-id="5"] .ask-responded')).toBeNull();
+  });
+
+  it('offers Nudge with the 24-hour rule when the API allows it', () => {
+    setup([makeAsk({ id: 1, allowedActions: [AskAction.Nudge] })]);
+
+    const nudge = nudgeButton();
+    expect(nudge.disabled).toBeFalse();
+    expect(tooltipOn(nudge)).toBe('Remind Ayse Recipient. You can nudge once every 24 hours.');
+  });
+
+  it('shows Nudge disabled during the cooldown, with the rule and the next time', fakeAsync(() => {
+    const lastNudgedAt = hoursFromNow(-3);
+    const nextNudgeAt = hoursFromNow(21);
+    setup([makeAsk({ id: 5, lastNudgedAt, nextNudgeAt, allowedActions: [AskAction.Edit] })]);
+
+    expect(buttons()).toEqual(['Nudge']);
+    const nudge = nudgeButton();
+    expect(nudge.disabled).toBeTrue();
+    expect(nudge.classList).toContain('nudge-waiting');
+    expect(metaText(5, 'ask-nudged')).toBe('Nudged 3 hours ago');
+
+    const expected = `You can nudge once every 24 hours. Next nudge on ${nudgeDate(nextNudgeAt)}.`;
+    expect(squash(tooltipOn(element().querySelector('.nudge-wrap')!))).toBe(expected);
+    const description = element().querySelector(`#${nudge.getAttribute('aria-describedby')}`)!;
+    expect(description.classList).toContain('visually-hidden');
+    expect(squash(description.textContent)).toBe(expected);
+
+    fixture.destroy();
+    flush();
+  }));
+
+  it('shows no Nudge to a viewer the API gives no cooldown to', () => {
+    setup([makeAsk({ id: 5, lastNudgedAt: hoursFromNow(-3), nextNudgeAt: null, allowedActions: [AskAction.Accept] })]);
+
+    expect(buttons()).toEqual(['Accept']);
+    expect(element().querySelector('#nudge-wait-5')).toBeNull();
+  });
+
+  it('reloads a second after the cooldown ends, and the API\'s answer enables Nudge', fakeAsync(() => {
+    const waiting = makeAsk({ id: 5, lastNudgedAt: hoursFromNow(-23), nextNudgeAt: new Date(Date.now() + 60_000).toISOString() });
+    setup([waiting]);
+    expect(nudgeButton().disabled).toBeTrue();
+
+    tick(60_999);
+    httpMock.expectNone(asksUrl);
+
+    tick(1);
+    httpMock.expectOne(asksUrl).flush([{ ...waiting, nextNudgeAt: null, allowedActions: [AskAction.Nudge] }]);
+    fixture.detectChanges();
+    expect(nudgeButton().disabled).toBeFalse();
+
+    tick(24 * 3_600_000);
+    httpMock.expectNone(asksUrl);
+    flush();
+  }));
+
+  it('tries again after the minimum delay when the API still reports a cooldown the client thinks is over', fakeAsync(() => {
+    const skewed = makeAsk({ id: 5, lastNudgedAt: hoursFromNow(-24), nextNudgeAt: new Date(Date.now() - 10_000).toISOString() });
+    setup([skewed]);
+
+    tick(NUDGE_RELOAD_MIN_DELAY_MS - 1);
+    httpMock.expectNone(asksUrl);
+    tick(1);
+    httpMock.expectOne(asksUrl).flush([skewed]);
+
+    tick(NUDGE_RELOAD_MIN_DELAY_MS - 1);
+    httpMock.expectNone(asksUrl);
+    tick(1);
+    httpMock.expectOne(asksUrl).flush([{ ...skewed, nextNudgeAt: null, allowedActions: [AskAction.Nudge] }]);
+
+    tick(60_000);
+    httpMock.expectNone(asksUrl);
+    flush();
+  }));
+
+  it('leaves no reload pending once destroyed', fakeAsync(() => {
+    setup([makeAsk({ id: 5, lastNudgedAt: hoursFromNow(-1), nextNudgeAt: hoursFromNow(23) })]);
+
+    fixture.destroy();
+    tick(24 * 3_600_000);
+
+    httpMock.expectNone(asksUrl);
+  }));
+
+  it('keeps an open form and what was typed in it through a cooldown reload', fakeAsync(() => {
+    const waiting = makeAsk({
+      id: 5, lastNudgedAt: hoursFromNow(-23), nextNudgeAt: new Date(Date.now() + 60_000).toISOString(), allowedActions: [AskAction.Edit]
+    });
+    setup([waiting]);
+
+    component.act(component.asks[0], AskAction.Edit);
+    component.form.patchValue({ note: 'Review the migration and the seed' });
+    fixture.detectChanges();
+
+    tick(61_000);
+    httpMock.expectOne(asksUrl).flush([{ ...waiting, nextNudgeAt: null, allowedActions: [AskAction.Nudge, AskAction.Edit] }]);
+    fixture.detectChanges();
+
+    expect(component.formMode?.kind).toBe('edit');
+    expect(element().querySelector<HTMLInputElement>('input[formcontrolname="note"]')!.value).toBe('Review the migration and the seed');
+    flush();
+  }));
+
+  it('says it is too soon when the server refuses an early nudge, and reloads', fakeAsync(() => {
+    setup([makeAsk({ id: 7, allowedActions: [AskAction.Nudge] })]);
+
+    component.act(component.asks[0], AskAction.Nudge);
+    httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/7/nudge`).flush(
+      { title: NUDGE_TOO_SOON_MESSAGE, status: 400 },
+      { status: 400, statusText: 'Bad Request' });
+
+    expect(component.errorMessage).toBe(NUDGE_TOO_SOON_TEXT);
+    httpMock.expectOne(asksUrl).flush([makeAsk({ id: 7, lastNudgedAt: hoursFromNow(-1), nextNudgeAt: hoursFromNow(23) })]);
+    fixture.detectChanges();
+    expect(element().querySelector('.asks-error')!.textContent!.trim()).toBe('Too soon to nudge again');
+
+    fixture.destroy();
+    flush();
+  }));
 
   it('warns, without blocking, when an ask is due after the item', () => {
     setup([]);

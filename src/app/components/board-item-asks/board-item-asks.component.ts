@@ -1,13 +1,16 @@
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Observable } from 'rxjs';
@@ -15,20 +18,36 @@ import { Observable } from 'rxjs';
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
 import { AuthService } from '../../_services/auth.service';
 import { Assignee } from '../../models/assignee.model';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
 import {
+  ASK_EXACT_TIME_FORMAT,
   AskAction,
   AskCancelReason,
   AskState,
   AskSummary,
   BoardItemAsk,
+  NUDGE_RULE_TEXT,
   askErrorMessage,
-  daysAgo,
+  isNudgeTooSoonError,
+  isWithinDay,
+  timeAgo,
   toAskSummary
 } from '../../models/board-item-ask.model';
 import { toDueDate } from '../../relationship-engine/analytics/finish-before';
 
 /** The note's limit, as the API enforces it (BoardItemAskLimits.NoteMaxLength). */
 export const ASK_NOTE_MAX_LENGTH = 200;
+
+/** Shown when the server refuses a nudge inside the 24-hour cooldown. */
+export const NUDGE_TOO_SOON_TEXT = 'Too soon to nudge again';
+
+/**
+ * The reload that re-enables Nudge after a cooldown runs a second after the cooldown ends by the
+ * client clock, but never sooner than this: if the clocks disagree and the server still says
+ * "not yet", the next try comes after this delay instead of in a tight loop.
+ */
+export const NUDGE_RELOAD_MIN_DELAY_MS = 5_000;
+const NUDGE_RELOAD_MARGIN_MS = 1_000;
 
 type AskFormMode =
   | { kind: 'create' }
@@ -39,22 +58,32 @@ type AskFormMode =
 interface ActionButton {
   action: AskAction;
   label: string;
+  icon: string;
+  /** Inline actions are the card's next steps; the rest wait in its "More actions" menu. */
+  placement: 'inline' | 'menu';
+  /** Shown apart and in the danger colour. */
+  danger?: boolean;
+}
+
+/** A button as shown for one ask: Nudge can appear disabled while its cooldown runs. */
+interface AskButton extends ActionButton {
+  disabled: boolean;
 }
 
 // The buttons each allowed action gets, in display order. CompleteOnBehalf isn't a button: it is
 // offered by the completion prompt only.
 const ACTION_BUTTONS: ActionButton[] = [
-  { action: AskAction.Accept, label: 'Accept' },
-  { action: AskAction.Decline, label: 'Decline' },
-  { action: AskAction.Complete, label: 'Mark done' },
-  { action: AskAction.Reopen, label: 'Reopen' },
-  { action: AskAction.Nudge, label: 'Nudge' },
-  { action: AskAction.Edit, label: 'Edit' },
-  { action: AskAction.SetRequired, label: 'Make required' },
-  { action: AskAction.WaiveRequirement, label: 'Waive requirement' },
-  { action: AskAction.Reassign, label: 'Ask someone else' },
-  { action: AskAction.AskAgain, label: 'Ask again' },
-  { action: AskAction.Cancel, label: 'Withdraw' }
+  { action: AskAction.Accept, label: 'Accept', icon: 'check', placement: 'inline' },
+  { action: AskAction.Decline, label: 'Decline', icon: 'close', placement: 'inline' },
+  { action: AskAction.Complete, label: 'Mark done', icon: 'task_alt', placement: 'inline' },
+  { action: AskAction.Reopen, label: 'Reopen', icon: 'replay', placement: 'inline' },
+  { action: AskAction.Nudge, label: 'Nudge', icon: 'notifications', placement: 'inline' },
+  { action: AskAction.AskAgain, label: 'Ask again', icon: 'forward_to_inbox', placement: 'inline' },
+  { action: AskAction.Edit, label: 'Edit', icon: 'edit', placement: 'menu' },
+  { action: AskAction.SetRequired, label: 'Make required', icon: 'flag', placement: 'menu' },
+  { action: AskAction.WaiveRequirement, label: 'Waive requirement', icon: 'outlined_flag', placement: 'menu' },
+  { action: AskAction.Reassign, label: 'Ask someone else', icon: 'swap_horiz', placement: 'menu' },
+  { action: AskAction.Cancel, label: 'Withdraw', icon: 'undo', placement: 'menu', danger: true }
 ];
 
 const STATE_LABELS: Record<AskState, string> = {
@@ -80,7 +109,9 @@ const STATE_LABELS: Record<AskState, string> = {
     MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
+    MatDividerModule,
     MatInputModule,
+    MatMenuModule,
     MatNativeDateModule,
     MatSelectModule,
     MatTooltipModule
@@ -89,7 +120,7 @@ const STATE_LABELS: Record<AskState, string> = {
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './board-item-asks.component.css'
 })
-export class BoardItemAsksComponent implements OnInit, OnChanges {
+export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   @Input() itemId!: number;
   /** The item's saved assignee: already responsible, so not someone to ask. */
   @Input() assigneeId: string | null | undefined;
@@ -105,7 +136,13 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
   @Output() summaryChange = new EventEmitter<AskSummary>(true);
 
   readonly AskState = AskState;
+  readonly AskAction = AskAction;
   readonly noteMaxLength = ASK_NOTE_MAX_LENGTH;
+  readonly nudgeRule = NUDGE_RULE_TEXT;
+  readonly exactTimeFormat = ASK_EXACT_TIME_FORMAT;
+
+  /** The one pending reload that re-enables Nudge when a cooldown ends; null when none is due. */
+  private nudgeReloadTimer: ReturnType<typeof setTimeout> | null = null;
 
   asks: BoardItemAsk[] = [];
   isLoading = false;
@@ -119,6 +156,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
 
   constructor(
     private askService: BoardItemAskService,
+    private dialog: MatDialog,
     authService: AuthService,
     fb: FormBuilder
   ) {
@@ -141,6 +179,10 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
     }
   }
 
+  ngOnDestroy(): void {
+    this.clearNudgeReload();
+  }
+
   // ---- Loading ----------------------------------------------------------------------------
 
   load(): void {
@@ -152,6 +194,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
         this.asks = asks;
         this.isLoading = false;
         this.summaryChange.emit(toAskSummary(asks));
+        this.scheduleNudgeReload();
       },
       error: error => {
         this.isLoading = false;
@@ -160,22 +203,80 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
     });
   }
 
+  /**
+   * While any ask is in a nudge cooldown, keeps exactly one reload pending: shortly after the
+   * earliest cooldown ends, so the server's fresh allowedActions re-enable Nudge without the user
+   * reloading. The client clock only decides when to ask; the server decides the answer. Each
+   * reload reschedules from its own data, so a cooldown the server still reports (clock skew)
+   * is tried again after the minimum delay, never in a tight loop.
+   */
+  private scheduleNudgeReload(): void {
+    this.clearNudgeReload();
+
+    const ends = this.asks
+      .map(a => a.nextNudgeAt ? new Date(a.nextNudgeAt).getTime() : NaN)
+      .filter(t => !isNaN(t));
+    if (ends.length === 0) return;
+
+    const delay = Math.max(Math.min(...ends) - Date.now() + NUDGE_RELOAD_MARGIN_MS, NUDGE_RELOAD_MIN_DELAY_MS);
+    this.nudgeReloadTimer = setTimeout(() => {
+      this.nudgeReloadTimer = null;
+      this.load();
+    }, delay);
+  }
+
+  private clearNudgeReload(): void {
+    if (this.nudgeReloadTimer !== null) {
+      clearTimeout(this.nudgeReloadTimer);
+      this.nudgeReloadTimer = null;
+    }
+  }
+
   // ---- Display helpers ----------------------------------------------------------------------
 
-  actionsFor(ask: BoardItemAsk): ActionButton[] {
-    return ACTION_BUTTONS.filter(b => ask.allowedActions.includes(b.action));
+  /**
+   * The buttons shown on the card: the inline ones among its allowedActions, plus a disabled Nudge
+   * while the server reports a cooldown for this viewer (nextNudgeAt is only sent to someone who
+   * may nudge).
+   */
+  inlineButtonsFor(ask: BoardItemAsk): AskButton[] {
+    return ACTION_BUTTONS
+      .filter(b => b.placement === 'inline')
+      .filter(b => ask.allowedActions.includes(b.action) || (b.action === AskAction.Nudge && this.isNudgeWaiting(ask)))
+      .map(b => ({ ...b, disabled: !ask.allowedActions.includes(b.action) }));
+  }
+
+  /** The allowed actions in the card's "More actions" menu, with Withdraw last. */
+  menuButtonsFor(ask: BoardItemAsk): ActionButton[] {
+    return ACTION_BUTTONS.filter(b => b.placement === 'menu' && ask.allowedActions.includes(b.action));
+  }
+
+  /** True when the menu has items before the danger section, so a divider separates them. */
+  hasMenuDivider(ask: BoardItemAsk, button: ActionButton): boolean {
+    return !!button.danger && this.menuButtonsFor(ask).some(b => !b.danger);
+  }
+
+  /** Nudge is the viewer's to use, but not yet: the 24-hour cooldown is running. */
+  isNudgeWaiting(ask: BoardItemAsk): boolean {
+    return !!ask.nextNudgeAt && !ask.allowedActions.includes(AskAction.Nudge);
+  }
+
+  /** The id of the hidden "you can nudge again on …" text that describes the disabled button. */
+  nudgeWaitId(ask: BoardItemAsk): string {
+    return `nudge-wait-${ask.id}`;
   }
 
   stateLabel(ask: BoardItemAsk): string {
     return STATE_LABELS[ask.state];
   }
 
-  askedAgo(ask: BoardItemAsk): string | null {
-    return daysAgo(ask.dateCreated);
+  timeAgo(iso: string | null | undefined): string | null {
+    return timeAgo(iso);
   }
 
-  nudgedAgo(ask: BoardItemAsk): string | null {
-    return daysAgo(ask.lastNudgedAt);
+  /** At most a day old: shown as "2 hours ago", with the exact time on hover. */
+  isRecent(iso: string | null | undefined): boolean {
+    return isWithinDay(iso);
   }
 
   /** Done by someone other than the recipient (while completing the item). */
@@ -309,8 +410,19 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
         this.run(this.askService.changeState(ask.id, 'reopen', ask.revision));
         break;
       case AskAction.Cancel:
-        if (!window.confirm(`Withdraw the ask to ${ask.recipientFullName}?`)) return;
-        this.run(this.askService.changeState(ask.id, 'cancel', ask.revision));
+        this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+          data: {
+            title: 'Withdraw this ask?',
+            message: `${ask.recipientFullName} won't be asked to help with “${ask.note}” any more.`,
+            confirmLabel: 'Withdraw',
+            destructive: true
+          },
+          maxWidth: '95vw'
+        }).afterClosed().subscribe(confirmed => {
+          if (confirmed === true) {
+            this.run(this.askService.changeState(ask.id, 'cancel', ask.revision));
+          }
+        });
         break;
       case AskAction.Nudge:
         this.run(this.askService.nudge(ask.id));
@@ -353,7 +465,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges {
       },
       error: error => {
         this.isBusy = false;
-        this.errorMessage = askErrorMessage(error);
+        this.errorMessage = isNudgeTooSoonError(error) ? NUDGE_TOO_SOON_TEXT : askErrorMessage(error);
         this.load();
       }
     });

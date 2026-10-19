@@ -1,0 +1,12 @@
+.confirm-message {
+  margin: 0;
+  max-width: 420px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* The prebuilt Material 3 theme ignores color="warn", so the app's danger token colours it. */
+.confirm-ok.destructive {
+  --mat-button-filled-container-color: var(--danger);
+  --mat-button-filled-label-text-color: var(--text-inverse);
+}
