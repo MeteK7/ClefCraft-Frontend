@@ -6,9 +6,11 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject } from 'rxjs';
 import { AppComponent } from './app.component';
-import { MentionPayload, NotificationRealtimeService, ReminderPayload } from './_services/notification-realtime.service';
+import { AskEventPayload, MentionPayload, NotificationRealtimeService, ReminderPayload } from './_services/notification-realtime.service';
+import { OpenAskItemsService } from './_services/open-ask-items.service';
 import { LiveReminderToastComponent } from './pages/live-reminder-toast/live-reminder-toast.component';
 import { MentionToastComponent } from './pages/mention-toast/mention-toast.component';
+import { AskToastComponent } from './pages/ask-toast/ask-toast.component';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
@@ -49,6 +51,7 @@ describe('AppComponent', () => {
 describe('AppComponent — realtime toasts on every page', () => {
   let reminders$: Subject<ReminderPayload>;
   let mentions$: Subject<MentionPayload>;
+  let askEvents$: Subject<AskEventPayload>;
   let snackBar: jasmine.SpyObj<MatSnackBar>;
   let action$: Subject<void>;
   let router: Router;
@@ -56,6 +59,7 @@ describe('AppComponent — realtime toasts on every page', () => {
   beforeEach(async () => {
     reminders$ = new Subject<ReminderPayload>();
     mentions$ = new Subject<MentionPayload>();
+    askEvents$ = new Subject<AskEventPayload>();
     action$ = new Subject<void>();
     snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['openFromComponent', 'open']);
     snackBar.openFromComponent.and.returnValue({ onAction: () => action$.asObservable() } as any);
@@ -67,7 +71,7 @@ describe('AppComponent — realtime toasts on every page', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
-        { provide: NotificationRealtimeService, useValue: { reminders$, mentions$ } },
+        { provide: NotificationRealtimeService, useValue: { reminders$, mentions$, askEvents$ } },
         { provide: MatSnackBar, useValue: snackBar },
       ],
     }).compileComponents();
@@ -75,6 +79,34 @@ describe('AppComponent — realtime toasts on every page', () => {
     router = TestBed.inject(Router);
     spyOn(router, 'navigate').and.resolveTo(true);
     TestBed.createComponent(AppComponent).detectChanges();
+  });
+
+  const askEvent = (overrides: Partial<AskEventPayload> = {}): AskEventPayload => ({
+    askId: 7, boardItemId: 1, boardId: 3, itemTitle: 'Implement RAG pipeline', event: 'Replied',
+    actorFullName: 'Ayse Recipient', note: 'Share the SQL', reason: null, actedOnBehalf: false,
+    replyId: 40, replyExcerpt: 'INSERT INTO items', ...overrides
+  });
+
+  it('shows an ask event as a toast that opens the item on its board', () => {
+    askEvents$.next(askEvent());
+
+    expect(snackBar.openFromComponent).toHaveBeenCalledOnceWith(
+      AskToastComponent, jasmine.objectContaining({ data: askEvent() }));
+
+    action$.next();
+    expect(router.navigate).toHaveBeenCalledWith(['/board'], { queryParams: { openItemId: 1, boardId: 3 } });
+  });
+
+  it('leaves an ask event for an item whose asks are on screen to that panel, without a toast', () => {
+    const openItems = TestBed.inject(OpenAskItemsService);
+    openItems.register(1);
+
+    askEvents$.next(askEvent());
+    expect(snackBar.openFromComponent).not.toHaveBeenCalled();
+
+    openItems.unregister(1);
+    askEvents$.next(askEvent());
+    expect(snackBar.openFromComponent).toHaveBeenCalledTimes(1);
   });
 
   it('shows a reminder whatever page is open', () => {
