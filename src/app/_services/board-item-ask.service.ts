@@ -39,10 +39,34 @@ export class BoardItemAskService {
     return this.http.put<BoardItemAsk>(`${this.apiUrl}/BoardItemAsks/${askId}`, request, { withCredentials: true });
   }
 
-  changeState(askId: number, change: AskStateChange, expectedRevision: number, reason?: string | null): Observable<BoardItemAsk> {
+  /** A reply body goes only with 'complete': "Send & mark done", one request. */
+  changeState(
+    askId: number,
+    change: AskStateChange,
+    expectedRevision: number,
+    reason?: string | null,
+    replyBody?: string | null
+  ): Observable<BoardItemAsk> {
+    const body = replyBody != null
+      ? { expectedRevision, reason: reason ?? null, replyBody }
+      : { expectedRevision, reason: reason ?? null };
+    return this.http.post<BoardItemAsk>(`${this.apiUrl}/BoardItemAsks/${askId}/${change}`, body, { withCredentials: true });
+  }
+
+  /** Posts a reply; returns the ask with its replies. */
+  addReply(askId: number, body: string): Observable<BoardItemAsk> {
+    return this.http.post<BoardItemAsk>(`${this.apiUrl}/BoardItemAsks/${askId}/replies`, { body }, { withCredentials: true });
+  }
+
+  /** Changes the caller's own reply; returns the ask with its replies. */
+  editReply(replyId: number, body: string): Observable<BoardItemAsk> {
+    return this.http.put<BoardItemAsk>(`${this.apiUrl}/BoardItemAskReplies/${replyId}`, { body }, { withCredentials: true });
+  }
+
+  setExpectsAnswer(askId: number, expectedRevision: number, expectsAnswer: boolean): Observable<BoardItemAsk> {
     return this.http.post<BoardItemAsk>(
-      `${this.apiUrl}/BoardItemAsks/${askId}/${change}`,
-      { expectedRevision, reason: reason ?? null },
+      `${this.apiUrl}/BoardItemAsks/${askId}/expects-answer`,
+      { expectedRevision, expectsAnswer },
       { withCredentials: true });
   }
 

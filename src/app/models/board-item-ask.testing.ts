@@ -16,6 +16,8 @@ export function makeAsk(overrides: Partial<BoardItemAsk> = {}): BoardItemAsk {
     note: 'Review the migration',
     dueDate: null,
     isRequired: false,
+    expectsAnswer: false,
+    isAnswered: false,
     state,
     responseNote: null,
     respondedAt: null,
@@ -30,6 +32,8 @@ export function makeAsk(overrides: Partial<BoardItemAsk> = {}): BoardItemAsk {
     isOpen: state === AskState.Pending || state === AskState.Accepted,
     isUnmetRequirement: !!overrides.isRequired && state !== AskState.Completed,
     allowedActions: [],
+    canReply: false,
+    replies: [],
     ...overrides
   };
 }
