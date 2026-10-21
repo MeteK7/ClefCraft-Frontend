@@ -13,10 +13,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
 import { AuthService } from '../../_services/auth.service';
+import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
+import { OpenAskItemsService } from '../../_services/open-ask-items.service';
+import { AskThreadComponent, ReplyEdit } from '../ask-thread/ask-thread.component';
 import { Assignee } from '../../models/assignee.model';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
 import {
@@ -28,6 +31,7 @@ import {
   BoardItemAsk,
   NUDGE_RULE_TEXT,
   askErrorMessage,
+  isAnswerRequiredError,
   isNudgeTooSoonError,
   isWithinDay,
   timeAgo,
@@ -65,10 +69,16 @@ interface ActionButton {
   danger?: boolean;
 }
 
-/** A button as shown for one ask: Nudge can appear disabled while its cooldown runs. */
+/**
+ * A button as shown for one ask. Two can show disabled, with the reason on hover: Nudge while its
+ * cooldown runs, and Mark done while the ask expects an answer that hasn't been given.
+ */
 interface AskButton extends ActionButton {
   disabled: boolean;
 }
+
+/** The tooltip on Mark done while the ask expects an answer the recipient hasn't given. */
+export const ANSWER_FIRST_TEXT = 'Reply with the answer first.';
 
 // The buttons each allowed action gets, in display order. CompleteOnBehalf isn't a button: it is
 // offered by the completion prompt only.
@@ -82,6 +92,8 @@ const ACTION_BUTTONS: ActionButton[] = [
   { action: AskAction.Edit, label: 'Edit', icon: 'edit', placement: 'menu' },
   { action: AskAction.SetRequired, label: 'Make required', icon: 'flag', placement: 'menu' },
   { action: AskAction.WaiveRequirement, label: 'Waive requirement', icon: 'outlined_flag', placement: 'menu' },
+  { action: AskAction.SetExpectsAnswer, label: 'Expect an answer', icon: 'quiz', placement: 'menu' },
+  { action: AskAction.ClearExpectsAnswer, label: 'No answer needed', icon: 'speaker_notes_off', placement: 'menu' },
   { action: AskAction.Reassign, label: 'Ask someone else', icon: 'swap_horiz', placement: 'menu' },
   { action: AskAction.Cancel, label: 'Withdraw', icon: 'undo', placement: 'menu', danger: true }
 ];
@@ -114,7 +126,8 @@ const STATE_LABELS: Record<AskState, string> = {
     MatMenuModule,
     MatNativeDateModule,
     MatSelectModule,
-    MatTooltipModule
+    MatTooltipModule,
+    AskThreadComponent
   ],
   templateUrl: './board-item-asks.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -140,6 +153,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   readonly noteMaxLength = ASK_NOTE_MAX_LENGTH;
   readonly nudgeRule = NUDGE_RULE_TEXT;
   readonly exactTimeFormat = ASK_EXACT_TIME_FORMAT;
+  readonly answerFirst = ANSWER_FIRST_TEXT;
 
   /** The one pending reload that re-enables Nudge when a cooldown ends; null when none is due. */
   private nudgeReloadTimer: ReturnType<typeof setTimeout> | null = null;
@@ -152,11 +166,18 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   formMode: AskFormMode | null = null;
   form: FormGroup;
 
+  /** The ask whose Mark done is waiting on "Send & mark done" or "Mark done without reply". */
+  completePromptAskId: number | null = null;
+
   private readonly currentUserId: string | null;
+  private registeredItemId: number | null = null;
+  private askEvents?: Subscription;
 
   constructor(
     private askService: BoardItemAskService,
     private dialog: MatDialog,
+    private realtime: NotificationRealtimeService,
+    private openAskItems: OpenAskItemsService,
     authService: AuthService,
     fb: FormBuilder
   ) {
@@ -165,22 +186,37 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
       recipientUserId: [null as string | null, Validators.required],
       note: ['', [Validators.required, Validators.maxLength(ASK_NOTE_MAX_LENGTH)]],
       dueDate: [null as Date | null],
-      isRequired: [false]
+      isRequired: [false],
+      expectsAnswer: [false]
     });
   }
 
   ngOnInit(): void {
+    this.registerItem();
+    // Someone else changed or replied to an ask on this item: show it now, instead of a toast.
+    this.askEvents = this.realtime.askEvents$.subscribe(event => {
+      if (event.boardItemId === this.itemId) this.load();
+    });
     this.load();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['itemId'] && !changes['itemId'].firstChange) {
+      this.registerItem();
       this.load();
     }
   }
 
   ngOnDestroy(): void {
     this.clearNudgeReload();
+    this.askEvents?.unsubscribe();
+    if (this.registeredItemId !== null) this.openAskItems.unregister(this.registeredItemId);
+  }
+
+  private registerItem(): void {
+    if (this.registeredItemId !== null) this.openAskItems.unregister(this.registeredItemId);
+    this.registeredItemId = this.itemId || null;
+    if (this.registeredItemId !== null) this.openAskItems.register(this.registeredItemId);
   }
 
   // ---- Loading ----------------------------------------------------------------------------
@@ -243,7 +279,30 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     return ACTION_BUTTONS
       .filter(b => b.placement === 'inline')
       .filter(b => ask.allowedActions.includes(b.action) || (b.action === AskAction.Nudge && this.isNudgeWaiting(ask)))
-      .map(b => ({ ...b, disabled: !ask.allowedActions.includes(b.action) }));
+      .map(b => ({
+        ...b,
+        disabled: !ask.allowedActions.includes(b.action) || (b.action === AskAction.Complete && this.isAnswerMissing(ask))
+      }));
+  }
+
+  /** The ask expects an answer and the recipient hasn't given it (since the last reopen). */
+  isAnswerMissing(ask: BoardItemAsk): boolean {
+    return ask.expectsAnswer && !ask.isAnswered;
+  }
+
+  /** The id of the hidden "reply with the answer first" text that describes the disabled Mark done. */
+  answerFirstId(ask: BoardItemAsk): string {
+    return `answer-first-${ask.id}`;
+  }
+
+  /** The recipient may send a reply and mark the ask done in one go (accepting it first if Pending). */
+  canSendAndComplete(ask: BoardItemAsk): boolean {
+    return ask.allowedActions.includes(AskAction.Complete) || ask.allowedActions.includes(AskAction.Accept);
+  }
+
+  /** Whom the viewer's reply goes to: the other side of the ask. */
+  replyToName(ask: BoardItemAsk): string {
+    return this.currentUserId === ask.recipientUserId ? ask.requestedByFullName : ask.recipientFullName;
   }
 
   /** The allowed actions in the card's "More actions" menu, with Withdraw last. */
@@ -332,7 +391,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   // ---- The form -----------------------------------------------------------------------------
 
   openCreate(): void {
-    this.openForm({ kind: 'create' }, { recipientUserId: null, note: '', dueDate: null, isRequired: false });
+    this.openForm({ kind: 'create' }, { recipientUserId: null, note: '', dueDate: null, isRequired: false, expectsAnswer: false });
   }
 
   cancelForm(): void {
@@ -355,12 +414,13 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     switch (mode.kind) {
       case 'create':
         this.run(this.askService.create(this.itemId, {
-          recipientUserId: value.recipientUserId, note, dueDate, isRequired: !!value.isRequired
+          recipientUserId: value.recipientUserId, note, dueDate, isRequired: !!value.isRequired, expectsAnswer: !!value.expectsAnswer
         }));
         break;
       case 'askAgain':
         this.run(this.askService.create(this.itemId, {
-          recipientUserId: value.recipientUserId, note, dueDate, isRequired: !!value.isRequired, replacesAskId: mode.ask.id
+          recipientUserId: value.recipientUserId, note, dueDate, isRequired: !!value.isRequired,
+          expectsAnswer: !!value.expectsAnswer, replacesAskId: mode.ask.id
         }));
         break;
       case 'reassign':
@@ -376,17 +436,20 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
-  private openForm(mode: AskFormMode, value: { recipientUserId: string | null; note: string; dueDate: Date | null; isRequired: boolean }): void {
+  private openForm(mode: AskFormMode, value: AskFormValue): void {
     this.formMode = mode;
     this.errorMessage = null;
     this.form.reset(value);
 
-    const isRequired = this.form.controls['isRequired'];
-    // Reassigning moves the requirement as it is; editing changes it through its own actions.
-    if (mode.kind === 'reassign' || mode.kind === 'edit') {
-      isRequired.disable();
-    } else {
-      isRequired.enable();
+    // Reassigning moves the requirement and the expected answer as they are; editing changes
+    // them through their own actions.
+    for (const name of ['isRequired', 'expectsAnswer']) {
+      const control = this.form.controls[name];
+      if (mode.kind === 'reassign' || mode.kind === 'edit') {
+        control.disable();
+      } else {
+        control.enable();
+      }
     }
   }
 
@@ -404,7 +467,13 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
         break;
       }
       case AskAction.Complete:
-        this.run(this.askService.changeState(ask.id, 'complete', ask.revision));
+        // Nothing from the recipient yet: offer to send the result with it first.
+        if (!ask.isAnswered) {
+          this.errorMessage = null;
+          this.completePromptAskId = ask.id;
+          return;
+        }
+        this.complete(ask);
         break;
       case AskAction.Reopen:
         this.run(this.askService.changeState(ask.id, 'reopen', ask.revision));
@@ -432,6 +501,10 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
           expectedRevision: ask.revision, note: ask.note, dueDate: ask.dueDate, isRequired: true
         }));
         break;
+      case AskAction.SetExpectsAnswer:
+      case AskAction.ClearExpectsAnswer:
+        this.run(this.askService.setExpectsAnswer(ask.id, ask.revision, action === AskAction.SetExpectsAnswer));
+        break;
       case AskAction.WaiveRequirement: {
         const reason = window.prompt('Why is this ask no longer required? (optional)', '');
         if (reason === null) return;
@@ -441,19 +514,48 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
         break;
       }
       case AskAction.Edit:
-        this.openForm({ kind: 'edit', ask }, { recipientUserId: ask.recipientUserId, note: ask.note, dueDate: toDueDate(ask.dueDate ?? undefined) ?? null, isRequired: ask.isRequired });
+        this.openForm({ kind: 'edit', ask }, termsOf(ask, ask.recipientUserId));
         break;
       case AskAction.Reassign:
-        this.openForm({ kind: 'reassign', ask }, { recipientUserId: null, note: ask.note, dueDate: toDueDate(ask.dueDate ?? undefined) ?? null, isRequired: ask.isRequired });
+        this.openForm({ kind: 'reassign', ask }, termsOf(ask, null));
         break;
       case AskAction.AskAgain:
-        this.openForm({ kind: 'askAgain', ask }, { recipientUserId: null, note: ask.note, dueDate: toDueDate(ask.dueDate ?? undefined) ?? null, isRequired: ask.isRequired });
+        this.openForm({ kind: 'askAgain', ask }, termsOf(ask, null));
         break;
     }
   }
 
-  /** Sends a change, then reloads the list; on an error shows why and reloads, so a stale view refreshes. */
-  private run(request: Observable<BoardItemAsk>): void {
+  // ---- Replies ------------------------------------------------------------------------------
+
+  sendReply(ask: BoardItemAsk, body: string, thread: AskThreadComponent): void {
+    this.run(this.askService.addReply(ask.id, body), { onSaved: () => thread.clearDraft() });
+  }
+
+  /** "Send & mark done": one request that posts the reply and completes the ask. */
+  sendAndComplete(ask: BoardItemAsk, body: string, thread: AskThreadComponent): void {
+    this.run(this.askService.changeState(ask.id, 'complete', ask.revision, null, body), {
+      onSaved: () => thread.clearDraft(),
+      completing: ask
+    });
+  }
+
+  completeWithoutReply(ask: BoardItemAsk): void {
+    this.complete(ask);
+  }
+
+  editReply(edit: ReplyEdit, thread: AskThreadComponent): void {
+    this.run(this.askService.editReply(edit.reply.id, edit.body), { onSaved: () => thread.finishEdit() });
+  }
+
+  private complete(ask: BoardItemAsk): void {
+    this.run(this.askService.changeState(ask.id, 'complete', ask.revision), { completing: ask });
+  }
+
+  /**
+   * Sends a change, then reloads the list; on an error shows why and reloads, so a stale view
+   * refreshes. When marking done is refused for want of an answer, the reply box opens for it.
+   */
+  private run(request: Observable<BoardItemAsk>, options: { onSaved?: () => void; completing?: BoardItemAsk } = {}): void {
     this.isBusy = true;
     this.errorMessage = null;
 
@@ -461,15 +563,39 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
       next: () => {
         this.isBusy = false;
         this.formMode = null;
+        this.completePromptAskId = null;
+        options.onSaved?.();
         this.load();
       },
       error: error => {
         this.isBusy = false;
         this.errorMessage = isNudgeTooSoonError(error) ? NUDGE_TOO_SOON_TEXT : askErrorMessage(error);
+        if (options.completing && isAnswerRequiredError(error)) {
+          this.completePromptAskId = options.completing.id;
+        }
         this.load();
       }
     });
   }
+}
+
+interface AskFormValue {
+  recipientUserId: string | null;
+  note: string;
+  dueDate: Date | null;
+  isRequired: boolean;
+  expectsAnswer: boolean;
+}
+
+/** An existing ask's terms, to start the edit, reassign or ask-again form from. */
+function termsOf(ask: BoardItemAsk, recipientUserId: string | null): AskFormValue {
+  return {
+    recipientUserId,
+    note: ask.note,
+    dueDate: toDueDate(ask.dueDate ?? undefined) ?? null,
+    isRequired: ask.isRequired,
+    expectsAnswer: ask.expectsAnswer
+  };
 }
 
 function startOfDay(date: Date): number {

@@ -133,7 +133,8 @@
 }
 
 .ask-state,
-.ask-required {
+.ask-required,
+.ask-expects-answer {
   padding: 1px 8px;
   border-radius: 10px;
   font-size: 0.75rem;
@@ -145,6 +146,11 @@
 .ask-required {
   background: var(--warning-bg);
   color: var(--warning-text);
+}
+
+.ask-expects-answer {
+  background: var(--primary-light);
+  color: var(--primary);
 }
 
 /* The overflow trigger stays a quiet, compact control in the corner of the card. */
