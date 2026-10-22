@@ -2,7 +2,7 @@ import { TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 import * as signalR from '@microsoft/signalr';
 
-import { NotificationRealtimeService, RETRY_INITIAL_DELAY_MS, RETRY_MAX_DELAY_MS } from './notification-realtime.service';
+import { AskEventPayload, NotificationRealtimeService, RETRY_INITIAL_DELAY_MS, RETRY_MAX_DELAY_MS } from './notification-realtime.service';
 import { AuthService } from './auth.service';
 
 describe('NotificationRealtimeService', () => {
@@ -105,6 +105,22 @@ describe('NotificationRealtimeService', () => {
     isAuthenticated$.next(false);
     await settle();
     expect(connection.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes ask events on as they arrive', () => {
+    const service = createService(false);
+    const received: AskEventPayload[] = [];
+    service.askEvents$.subscribe(event => received.push(event));
+
+    const handler = connection.on.calls.allArgs().find(args => args[0] === 'ReceiveAsk')![1];
+    const event: AskEventPayload = {
+      askId: 7, boardItemId: 1, boardId: 3, itemTitle: 'Implement RAG pipeline', event: 'Replied',
+      actorFullName: 'Ayse Recipient', note: 'Share the SQL', reason: null, actedOnBehalf: false,
+      replyId: 40, replyExcerpt: 'INSERT INTO items'
+    };
+    handler(event);
+
+    expect(received).toEqual([event]);
   });
 
   it('connects at startup when a session is already stored', async () => {
@@ -234,8 +250,8 @@ describe('NotificationRealtimeService', () => {
       expect(connection.start).toHaveBeenCalledTimes(2);
       expect(connection.state).toBe(signalR.HubConnectionState.Connected);
       expect(buildSpy).toHaveBeenCalledTimes(1);
-      expect(connection.on).toHaveBeenCalledTimes(2);
-      expect(connection.on.calls.allArgs().map(args => args[0])).toEqual(['ReceiveReminder', 'ReceiveMention']);
+      expect(connection.on).toHaveBeenCalledTimes(3);
+      expect(connection.on.calls.allArgs().map(args => args[0])).toEqual(['ReceiveReminder', 'ReceiveMention', 'ReceiveAsk']);
 
       finish();
     }));

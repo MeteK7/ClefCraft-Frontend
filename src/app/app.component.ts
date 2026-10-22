@@ -6,8 +6,10 @@ import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { AuthService } from './_services/auth.service';
 import { ThemeService } from './services/theme.service';
-import { NotificationRealtimeService, MentionPayload, ReminderPayload } from './_services/notification-realtime.service';
+import { NotificationRealtimeService, MentionPayload, ReminderPayload, AskEventPayload } from './_services/notification-realtime.service';
 import { MentionToastComponent } from './pages/mention-toast/mention-toast.component';
+import { AskToastComponent } from './pages/ask-toast/ask-toast.component';
+import { OpenAskItemsService } from './_services/open-ask-items.service';
 import { LiveReminderToastComponent } from './pages/live-reminder-toast/live-reminder-toast.component';
 import { IdleSessionService } from './_services/idle-session.service';
 
@@ -29,6 +31,7 @@ export class AppComponent implements OnInit {
     // a page component that may not be showing.
     private notificationRealtimeService: NotificationRealtimeService,
     private idleSessionService: IdleSessionService,
+    private openAskItems: OpenAskItemsService,
     private snackBar: MatSnackBar,
     private router: Router,
     private zone: NgZone
@@ -39,6 +42,7 @@ export class AppComponent implements OnInit {
     this.idleSessionService.start();
     this.listenForReminders();
     this.listenForMentions();
+    this.listenForAskEvents();
   }
 
   private listenForReminders(): void {
@@ -90,5 +94,29 @@ export class AppComponent implements OnInit {
     } else if (mention.entityType === 'CalendarEvent') {
       this.router.navigate(['/calendar'], { queryParams: { eventId: mention.entityId, commentId: mention.commentId } });
     }
+  }
+
+  private listenForAskEvents(): void {
+    this.notificationRealtimeService.askEvents$.subscribe({
+      next: event => this.zone.run(() => this.displayAskToast(event)),
+      error: err => console.error('Ask channel broadcast error:', err),
+    });
+  }
+
+  // An item whose asks are on screen refreshes itself (its panel listens too), so a toast there
+  // would only repeat what the user is looking at.
+  private displayAskToast(event: AskEventPayload): void {
+    if (this.openAskItems.isOpen(event.boardItemId)) return;
+
+    const ref = this.snackBar.openFromComponent(AskToastComponent, {
+      duration: 12_000,
+      horizontalPosition: 'right',
+      verticalPosition: 'top',
+      panelClass: ['clean-reminder-viewport-override'],
+      data: event,
+    });
+
+    ref.onAction().subscribe(() =>
+      this.router.navigate(['/board'], { queryParams: { openItemId: event.boardItemId, boardId: event.boardId } }));
   }
 }

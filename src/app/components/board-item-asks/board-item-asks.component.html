@@ -45,6 +45,7 @@
         </mat-form-field>
 
         <mat-checkbox formControlName="isRequired">Required to complete the item</mat-checkbox>
+        <mat-checkbox formControlName="expectsAnswer">Expect an answer before it's done</mat-checkbox>
       </div>
 
       @if (isDueAfterItem(form.value.dueDate)) {
@@ -81,6 +82,9 @@
             <span class="ask-state" [attr.data-state]="ask.state">{{ stateLabel(ask) }}</span>
             @if (ask.isRequired) {
               <span class="ask-required">Required</span>
+            }
+            @if (ask.expectsAnswer) {
+              <span class="ask-expects-answer">Answer expected</span>
             }
           </div>
 
@@ -134,10 +138,28 @@
           <p class="ask-unmet">{{ cause }}</p>
         }
 
+        @if (ask.replies.length > 0 || ask.canReply) {
+          <app-ask-thread #thread [ask]="ask" [when]="when" [busy]="isBusy"
+            [canSendAndComplete]="canSendAndComplete(ask)" [completePrompt]="completePromptAskId === ask.id"
+            [replyToName]="replyToName(ask)"
+            (send)="sendReply(ask, $event, thread)"
+            (sendAndComplete)="sendAndComplete(ask, $event, thread)"
+            (completeWithoutReply)="completeWithoutReply(ask)"
+            (promptClosed)="completePromptAskId = null"
+            (editReply)="editReply($event, thread)" />
+        }
+
         @if (inlineButtonsFor(ask).length > 0) {
           <div class="ask-actions">
             @for (button of inlineButtonsFor(ask); track button.action) {
-              @if (button.disabled) {
+              @if (button.disabled && button.action === AskAction.Complete) {
+                <!-- Same pattern as the Nudge cooldown: the focusable wrapper carries the tooltip. -->
+                <span class="nudge-wrap" tabindex="0" [matTooltip]="answerFirst">
+                  <button mat-button type="button" class="nudge-waiting complete-waiting" disabled
+                    [attr.aria-describedby]="answerFirstId(ask)"><mat-icon>{{ button.icon }}</mat-icon>{{ button.label }}</button>
+                  <span class="visually-hidden" [id]="answerFirstId(ask)">{{ answerFirst }}</span>
+                </span>
+              } @else if (button.disabled) {
                 <!-- Tooltips don't fire on a disabled button, so the focusable wrapper carries it;
                      screen readers get the same text from the hidden description. -->
                 <span class="nudge-wrap" tabindex="0"

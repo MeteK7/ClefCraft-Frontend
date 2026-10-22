@@ -1,0 +1,254 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 0 10px;
+  list-style: none;
+  border-left: 2px solid var(--border);
+}
+
+.reply {
+  min-width: 0;
+}
+
+.reply-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.reply-author {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.reply-edited {
+  font-style: italic;
+}
+
+.reply-edit {
+  --mat-icon-button-state-layer-size: 24px;
+  --mat-icon-button-icon-size: 16px;
+  --mat-icon-button-icon-color: var(--text-secondary);
+  padding: 4px;
+}
+
+.reply-edit mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.reply-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.reply-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A long line scrolls inside the block; it never widens the card or the dialog. */
+.reply-code {
+  position: relative;
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+
+.reply-code pre {
+  margin: 0;
+  padding: 8px 10px;
+  padding-right: 84px;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.reply-copy {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  --mat-button-text-container-height: 28px;
+  --mat-button-text-horizontal-padding: 8px;
+  font-size: 0.75rem;
+  background: var(--surface-2);
+}
+
+.reply-copy mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.thread-link {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--link);
+  cursor: pointer;
+}
+
+.thread-link:hover {
+  text-decoration: underline;
+}
+
+/* A Done ask's replies, folded to one line: the answer at a glance. */
+.thread-fold {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.thread-fold:hover {
+  border-color: var(--border-strong);
+}
+
+.thread-fold-icon {
+  flex: 0 0 auto;
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.thread-fold-label {
+  flex: 0 0 auto;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.thread-fold-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-link:focus-visible,
+.thread-fold:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.reply-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.reply-box.prompting {
+  padding: 8px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--primary-light);
+}
+
+.reply-prompt {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+/* content-box: cdkTextareaAutosize sizes the content area, so padding mustn't eat into it. The
+   flex column stretches the width, padding included. */
+.reply-input {
+  box-sizing: content-box;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--input-border, var(--border));
+  border-radius: 6px;
+  background: var(--input-bg, var(--surface));
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--text);
+  resize: none;
+}
+
+.reply-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.reply-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.reply-count {
+  align-self: flex-end;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.reply-count.at-limit {
+  color: var(--danger);
+}
+
+.reply-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.reply-actions .mat-mdc-button,
+.reply-actions .mat-mdc-unelevated-button {
+  --mat-button-text-container-height: 32px;
+  --mat-button-filled-container-height: 32px;
+}
+
+/* Material's disabled filled button uses light-theme tints that vanish on a dark surface; the
+   app's tokens keep "Send & mark done" visible (and visibly unavailable) in both themes. */
+.reply-actions .mat-mdc-unelevated-button {
+  --mat-button-filled-disabled-container-color: var(--surface-2);
+  --mat-button-filled-disabled-label-text-color: color-mix(in srgb, var(--text-secondary) 70%, transparent);
+}
+
+.reply-actions .mat-mdc-unelevated-button:disabled {
+  outline: 1px solid var(--border);
+}
