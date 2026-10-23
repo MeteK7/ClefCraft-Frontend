@@ -360,6 +360,8 @@ describe('ItemDetailDialogComponent — completing an item with asks', () => {
   let dialogRef: { close: jasmine.Spy };
   let askCompletion: { completeItem: jasmine.Spy };
   let asksAfterLoad: BoardItemAsk[];
+  let element: HTMLElement;
+  let detectChanges: () => void;
 
   const statuses = [{ id: 3, name: 'In Progress' }, { id: 5, name: 'Done' }];
   const closure: AskClosure = { acknowledgedAsks: [{ askId: 1, revision: 2 }], completeAskIds: [1], overrideAskIds: [] };
@@ -385,11 +387,40 @@ describe('ItemDetailDialogComponent — completing an item with asks', () => {
 
     const fixture = TestBed.createComponent(ItemDetailDialogComponent);
     component = fixture.componentInstance;
+    element = fixture.nativeElement as HTMLElement;
+    detectChanges = () => fixture.detectChanges();
     httpMock = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
     httpMock.expectOne(`${environment.apiUrl}/BoardItems/GetStatuses?boardId=7`).flush(statuses);
     flush(); // the panel emits its summary asynchronously
   }
+
+  it('opens the History tab from an ask\'s "Full history"', fakeAsync(() => {
+    setup(3);
+    expect(component.selectedTabIndex ?? component.initialTabIndex).toBe(0);
+
+    const toggle = element.querySelector<HTMLButtonElement>('.details-chime .ask-details-toggle')!;
+    toggle.click();
+    detectChanges();
+    element.querySelector<HTMLButtonElement>('.details-chime .ask-full-history')!.click();
+
+    expect(component.selectedTabIndex).toBe(component.historyTabIndex);
+    expect(component.historyTabIndex).toBe(3);
+    flush();
+  }));
+
+  it('places Chime In in its own column, after the fields in reading order', fakeAsync(() => {
+    setup(3);
+
+    const main = element.querySelector('.details-layout .details-grid > .details-main')!;
+    const chime = element.querySelector('.details-layout .details-grid > .details-chime')!;
+    expect(main.querySelector('input[formcontrolname="title"]')).not.toBeNull();
+    expect(chime.querySelector('app-board-item-asks')).not.toBeNull();
+    expect(main.querySelector('app-board-item-asks')).toBeNull();
+    // Fields first, then Chime In: keyboard and screen-reader order match what users see.
+    expect(main.compareDocumentPosition(chime) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chime.querySelector('#asks-heading')!.textContent!.trim()).toBe('group_add Chime In');
+  }));
 
   it('moving the item to Done goes through the completion prompt and sends its closure', fakeAsync(() => {
     setup(3);
