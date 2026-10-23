@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
 /**
- * Which items' asks are on screen right now. An "Asked to help" panel registers its item while it
+ * Which items' asks are on screen right now. A Chime In panel registers its item while it
  * shows it, so a realtime ask event for that item refreshes the panel instead of raising a toast
  * about something the user is already looking at.
  */
