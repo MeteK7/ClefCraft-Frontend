@@ -7,7 +7,11 @@ import {
   AskCancelReason,
   AskState,
   NUDGE_TOO_SOON_MESSAGE,
+  askDayFormat,
   askErrorMessage,
+  askKeyDates,
+  askStatusLine,
+  askViewpoint,
   asksToReview,
   buildAskClosure,
   isAnswerRequiredError,
@@ -180,6 +184,55 @@ describe('board-item-ask model', () => {
     expect(isAnswerRequiredError({ status: 400, error: { code: ASK_ANSWER_REQUIRED_CODE, title: 'Anything' } })).toBeTrue();
     expect(isAnswerRequiredError({ status: 400, error: { title: 'This ask expects an answer.' } })).toBeFalse();
     expect(isAnswerRequiredError({ status: 403, error: { code: ASK_ANSWER_REQUIRED_CODE } })).toBeFalse();
+  });
+
+  describe('the status line and key dates', () => {
+    it('gives each state one fact, and the latest nudge only while it waits', () => {
+      const asked = '2026-10-18T13:48:00Z';
+      const nudged = '2026-10-18T13:49:00Z';
+
+      expect(askStatusLine(makeAsk({ state: AskState.Pending, dateCreated: asked, lastNudgedAt: nudged })))
+        .toEqual([{ label: 'Asked', iso: asked }, { label: 'nudged', iso: nudged }]);
+      expect(askStatusLine(makeAsk({ state: AskState.Accepted, respondedAt: '2026-10-19T17:29:00Z', lastNudgedAt: nudged })))
+        .toEqual([{ label: 'Accepted', iso: '2026-10-19T17:29:00Z' }]);
+      expect(askStatusLine(makeAsk({ state: AskState.Completed, completedAt: '2026-10-21T15:39:00Z' })))
+        .toEqual([{ label: 'Done', iso: '2026-10-21T15:39:00Z' }]);
+      expect(askStatusLine(makeAsk({ state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn })))
+        .toEqual([{ label: 'Withdrawn', iso: null }]);
+    });
+
+    it('lists the key dates in the order they happened: a nudge before the accept comes before it', () => {
+      const dates = askKeyDates(makeAsk({
+        state: AskState.Completed,
+        dateCreated: '2026-10-18T13:48:00Z',
+        respondedAt: '2026-10-19T17:29:00Z',
+        completedAt: '2026-10-21T15:39:00Z',
+        lastNudgedAt: '2026-10-18T13:49:00Z'
+      }));
+
+      expect(dates.map(d => d.label)).toEqual(['Asked', 'Last nudged', 'Accepted', 'Done']);
+    });
+
+    it('shows the decline with its reason, and only what the ask records', () => {
+      const dates = askKeyDates(makeAsk({ state: AskState.Declined, respondedAt: '2026-10-19T09:29:00Z', responseNote: 'Out this week' }));
+
+      expect(dates.map(d => [d.label, d.note])).toEqual([['Asked', null], ['Declined', 'Out this week']]);
+    });
+
+    it('knows whose side the viewer is on', () => {
+      const ask = makeAsk({ requestedByUserId: 'rae', recipientUserId: 'ayse' });
+
+      expect(askViewpoint(ask, 'rae')).toBe('requester');
+      expect(askViewpoint(ask, 'ayse')).toBe('recipient');
+      expect(askViewpoint(ask, 'someone-else')).toBe('other');
+    });
+  });
+
+  it('shows an older day without the year only within the current year', () => {
+    const now = new Date(2026, 9, 23);
+
+    expect(askDayFormat(new Date(2026, 0, 2).toISOString(), now)).toBe('d MMM');
+    expect(askDayFormat(new Date(2025, 11, 30).toISOString(), now)).toBe('d MMM y');
   });
 
   it('keeps the action numbers the API uses', () => {

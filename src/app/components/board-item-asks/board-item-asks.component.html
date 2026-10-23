@@ -1,6 +1,6 @@
 <section class="asks" aria-labelledby="asks-heading">
   <div class="asks-header">
-    <h4 id="asks-heading" class="asks-title"><mat-icon>group_add</mat-icon> Asked to help</h4>
+    <h4 id="asks-heading" class="asks-title"><mat-icon>group_add</mat-icon> Chime In</h4>
     @if (!formMode) {
       <button mat-stroked-button type="button" class="ask-someone" (click)="openCreate()" [disabled]="isBusy">
         <mat-icon>person_add</mat-icon> Ask someone
@@ -67,7 +67,7 @@
   @if (isLoading && asks.length === 0) {
     <p class="asks-empty">Loading…</p>
   } @else if (asks.length === 0 && !formMode) {
-    <p class="asks-empty">No one has been asked to help with this item.</p>
+    <p class="asks-empty">Need a quick opinion or a hand? Ask someone on this board.</p>
   }
 
   <ul class="ask-list">
@@ -75,15 +75,28 @@
       <li class="ask-row" [class.closed]="!ask.isOpen && !ask.isUnmetRequirement" [attr.data-ask-id]="ask.id">
         <div class="ask-head">
           <div class="ask-line">
-            <span class="ask-recipient">{{ ask.recipientFullName }}</span>
-            @if (!ask.recipientIsBoardMember) {
+            <!-- Who it's between, from the viewer's side: "Asked Ayse", "From Rae", or "Rae → Ayse". -->
+            @switch (viewpoint(ask)) {
+              @case ('requester') {
+                <span class="ask-who"><span class="ask-verb">Asked </span><span class="ask-person">{{ ask.recipientFullName }}</span></span>
+              }
+              @case ('recipient') {
+                <span class="ask-who"><span class="ask-verb">From </span><span class="ask-person">{{ ask.requestedByFullName }}</span></span>
+              }
+              @default {
+                <span class="ask-who">
+                  <span class="ask-person">{{ ask.requestedByFullName }}</span><span class="ask-arrow" aria-hidden="true"> → </span><span class="visually-hidden"> asked </span><span class="ask-person">{{ ask.recipientFullName }}</span>
+                </span>
+              }
+            }
+            @if (!ask.recipientIsBoardMember && viewpoint(ask) !== 'recipient') {
               <span class="ask-muted">(not a board member)</span>
             }
             <span class="ask-state" [attr.data-state]="ask.state">{{ stateLabel(ask) }}</span>
             @if (ask.isRequired) {
               <span class="ask-required">Required</span>
             }
-            @if (ask.expectsAnswer) {
+            @if (showsAnswerExpected(ask)) {
               <span class="ask-expects-answer">Answer expected</span>
             }
           </div>
@@ -99,40 +112,59 @@
 
         <p class="ask-note">{{ ask.note }}</p>
 
-        <!-- Times in the viewer's own timezone; the API sends instants in UTC. -->
-        <p class="ask-meta">
-          <span class="ask-asked">Asked <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: ask.dateCreated }" /></span>
-          @if (ask.respondedAt && (ask.state === AskState.Accepted || ask.state === AskState.Completed)) {
-            <span class="ask-responded">Accepted <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: ask.respondedAt }" /></span>
+        <!-- Where the ask stands, in one line; its key dates are a click away. Times are in the
+             viewer's own timezone (the API sends UTC instants). -->
+        <p class="ask-meta ask-status">
+          @for (part of statusLine(ask); track $index) {
+            <span class="ask-status-part">{{ part.label }}@if (part.iso) {&nbsp;<ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: part.iso }" />}</span>
           }
-          @if (ask.respondedAt && ask.state === AskState.Declined) {
-            <span class="ask-responded">
-              Declined <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: ask.respondedAt }" />
-              @if (ask.responseNote) {
-                · “{{ ask.responseNote }}”
-              }
-            </span>
+          @if (ask.state === AskState.Declined && ask.responseNote) {
+            <span class="ask-reason" [matTooltip]="ask.responseNote">“{{ ask.responseNote }}”</span>
           }
-          @if (ask.completedAt && ask.state === AskState.Completed) {
-            <span class="ask-completed">
-              Done <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: ask.completedAt }" />
-              @if (markedBy(ask); as by) {
-                · marked by {{ by }}
-              }
-            </span>
+          @if (markedBy(ask); as by) {
+            <span class="ask-marked">marked by {{ by }}</span>
           }
-          @if (ask.lastNudgedAt) {
-            <span class="ask-nudged">Nudged <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: ask.lastNudgedAt }" /></span>
-          }
-          @if (ask.dueDate) {
+          @if (ask.dueDate && ask.isOpen) {
             <span class="ask-due-on">
-              Due {{ ask.dueDate | date: 'd MMM' }}
+              Due {{ ask.dueDate | date: dayFormat(ask.dueDate) }}
               @if (isDueAfterItem(ask.dueDate)) {
                 <mat-icon class="ask-warning-icon" matTooltip="Due after the item itself">schedule</mat-icon>
               }
             </span>
           }
+          <button type="button" class="ask-details-toggle" [attr.aria-expanded]="isDetailsOpen(ask)"
+            [attr.aria-controls]="'ask-dates-' + ask.id" (click)="toggleDetails(ask)">
+            Details<mat-icon aria-hidden="true">{{ isDetailsOpen(ask) ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
         </p>
+
+        @if (isDetailsOpen(ask)) {
+          <div class="ask-key-dates" [id]="'ask-dates-' + ask.id">
+            <dl>
+              @for (date of keyDates(ask); track date.label) {
+                <div class="ask-key-date">
+                  <dt>{{ date.label }}</dt>
+                  <dd>
+                    <time [attr.datetime]="date.iso">{{ date.iso | date: exactTimeFormat }}</time>
+                    @if (date.by) {
+                      <span> · {{ date.by }}</span>
+                    }
+                    @if (date.note) {
+                      <span> · “{{ date.note }}”</span>
+                    }
+                  </dd>
+                </div>
+              }
+              @if (ask.dueDate) {
+                <div class="ask-key-date">
+                  <dt>Due</dt>
+                  <dd>{{ ask.dueDate | date: dayFormat(ask.dueDate) }}</dd>
+                </div>
+              }
+            </dl>
+            <button type="button" class="ask-full-history" (click)="openHistory.emit()">Full history</button>
+          </div>
+        }
 
         @if (unmetCause(ask); as cause) {
           <p class="ask-unmet">{{ cause }}</p>
@@ -141,7 +173,7 @@
         @if (ask.replies.length > 0 || ask.canReply) {
           <app-ask-thread #thread [ask]="ask" [when]="when" [busy]="isBusy"
             [canSendAndComplete]="canSendAndComplete(ask)" [completePrompt]="completePromptAskId === ask.id"
-            [replyToName]="replyToName(ask)"
+            [replyToName]="replyToName(ask)" [boxByDefault]="replyBoxByDefault(ask)"
             (send)="sendReply(ask, $event, thread)"
             (sendAndComplete)="sendAndComplete(ask, $event, thread)"
             (completeWithoutReply)="completeWithoutReply(ask)"
@@ -149,7 +181,7 @@
             (editReply)="editReply($event, thread)" />
         }
 
-        @if (inlineButtonsFor(ask).length > 0) {
+        @if (inlineButtonsFor(ask).length > 0 || offersReply(ask)) {
           <div class="ask-actions">
             @for (button of inlineButtonsFor(ask); track button.action) {
               @if (button.disabled && button.action === AskAction.Complete) {
@@ -177,6 +209,9 @@
                 <button mat-button type="button" [disabled]="isBusy" (click)="act(ask, button.action)"><mat-icon>{{ button.icon }}</mat-icon>{{ button.label }}</button>
               }
             }
+            @if (offersReply(ask)) {
+              <button mat-button type="button" class="ask-reply" (click)="openReply(ask)"><mat-icon>reply</mat-icon>Reply</button>
+            }
           </div>
         }
       </li>
@@ -198,12 +233,13 @@
     </ng-template>
   </mat-menu>
 
-  <!-- A time within the last day reads as "2 hours ago" with the exact time on hover; older ones show it outright. -->
+  <!-- A time within the last day reads as "2 hours ago", an older one as its day ("18 Oct");
+       both give the exact time on hover. -->
   <ng-template #when let-iso>
     @if (isRecent(iso)) {
-      <time class="ask-when recent" [attr.datetime]="iso" [matTooltip]="iso | date: exactTimeFormat">{{ timeAgo(iso) }}</time>
+      <time class="ask-when" [attr.datetime]="iso" [matTooltip]="iso | date: exactTimeFormat">{{ timeAgo(iso) }}</time>
     } @else {
-      <time class="ask-when" [attr.datetime]="iso">{{ iso | date: exactTimeFormat }}</time>
+      <time class="ask-when" [attr.datetime]="iso" [matTooltip]="iso | date: exactTimeFormat">{{ iso | date: dayFormat(iso) }}</time>
     }
   </ng-template>
 </section>

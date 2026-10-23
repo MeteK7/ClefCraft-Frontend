@@ -120,16 +120,54 @@
   text-decoration: underline;
 }
 
-/* A Done ask's replies, folded to one line: the answer at a glance. */
-.thread-fold {
+/* The answer a Done ask produced: set apart by a primary rule, not a card. */
+.answer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--primary);
+}
+
+.answer-label,
+.answer-tag {
+  font-weight: 500;
+  color: var(--primary);
+}
+
+.answer-tag {
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  background: var(--primary-light);
+}
+
+.reply.is-answer {
+  margin-left: -12px;
+  padding-left: 10px;
+  border-left: 2px solid var(--primary);
+}
+
+/* A long answer shows its first lines until "Show more". */
+.answer-body.clamped {
+  max-height: 4.4em;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  mask-image: linear-gradient(to bottom, #000 60%, transparent);
+}
+
+/* The one control for the conversation: a chevron, the reply count and the latest activity. */
+.thread-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface-2);
+  max-width: 100%;
+  padding: 2px 4px 2px 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
   font: inherit;
   font-size: 0.85rem;
   color: var(--text-secondary);
@@ -137,32 +175,40 @@
   cursor: pointer;
 }
 
-.thread-fold:hover {
-  border-color: var(--border-strong);
+.thread-toggle:hover .thread-toggle-label {
+  text-decoration: underline;
 }
 
-.thread-fold-icon {
+.thread-toggle-icon {
   flex: 0 0 auto;
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--link);
 }
 
-.thread-fold-label {
+.thread-toggle-label {
   flex: 0 0 auto;
   font-weight: 500;
-  color: var(--text);
+  color: var(--link);
 }
 
-.thread-fold-text {
+.thread-toggle-latest {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
 .thread-link:focus-visible,
-.thread-fold:focus-visible {
+.thread-toggle:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }

@@ -1,4 +1,16 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  OnDestroy,
+  OnInit,
+  Output,
+  QueryList,
+  SimpleChanges,
+  ViewChildren,
+  ChangeDetectionStrategy
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,10 +39,17 @@ import {
   AskAction,
   AskCancelReason,
   AskState,
+  AskKeyDate,
+  AskStatusPart,
   AskSummary,
+  AskViewpoint,
   BoardItemAsk,
   NUDGE_RULE_TEXT,
+  askDayFormat,
   askErrorMessage,
+  askKeyDates,
+  askStatusLine,
+  askViewpoint,
   isAnswerRequiredError,
   isNudgeTooSoonError,
   isWithinDay,
@@ -107,7 +126,7 @@ const STATE_LABELS: Record<AskState, string> = {
 };
 
 /**
- * "Asked to help": the item's asks, the actions the current user may take on each (exactly the
+ * "Chime In": the item's asks, the actions the current user may take on each (exactly the
  * API's allowedActions) and the form to ask someone. Every change reloads the list, and every load
  * emits the card summary so the board stays current.
  */
@@ -148,6 +167,11 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
    */
   @Output() summaryChange = new EventEmitter<AskSummary>(true);
 
+  /** "Full history" under an ask's Details: the item's History tab has every ask event. */
+  @Output() openHistory = new EventEmitter<void>();
+
+  @ViewChildren(AskThreadComponent) private threads?: QueryList<AskThreadComponent>;
+
   readonly AskState = AskState;
   readonly AskAction = AskAction;
   readonly noteMaxLength = ASK_NOTE_MAX_LENGTH;
@@ -168,6 +192,9 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
 
   /** The ask whose Mark done is waiting on "Send & mark done" or "Mark done without reply". */
   completePromptAskId: number | null = null;
+
+  /** The asks whose Details (key dates) are open; kept across reloads by id. */
+  private readonly detailsOpen = new Set<number>();
 
   private readonly currentUserId: string | null;
   private registeredItemId: number | null = null;
@@ -336,6 +363,50 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   /** At most a day old: shown as "2 hours ago", with the exact time on hover. */
   isRecent(iso: string | null | undefined): boolean {
     return isWithinDay(iso);
+  }
+
+  /** The DatePipe format for an older time shown as its day: "18 Oct" (with the year when it isn't this one). */
+  dayFormat(iso: string): string {
+    return askDayFormat(iso);
+  }
+
+  viewpoint(ask: BoardItemAsk): AskViewpoint {
+    return askViewpoint(ask, this.currentUserId);
+  }
+
+  statusLine(ask: BoardItemAsk): AskStatusPart[] {
+    return askStatusLine(ask);
+  }
+
+  keyDates(ask: BoardItemAsk): AskKeyDate[] {
+    return askKeyDates(ask);
+  }
+
+  isDetailsOpen(ask: BoardItemAsk): boolean {
+    return this.detailsOpen.has(ask.id);
+  }
+
+  toggleDetails(ask: BoardItemAsk): void {
+    if (!this.detailsOpen.delete(ask.id)) this.detailsOpen.add(ask.id);
+  }
+
+  /** "Answer expected" matters only while it's still owed: an open ask without the answer yet. */
+  showsAnswerExpected(ask: BoardItemAsk): boolean {
+    return ask.expectsAnswer && ask.isOpen && !ask.isAnswered;
+  }
+
+  /** The recipient of an open ask always has the reply box: replying is their part. */
+  replyBoxByDefault(ask: BoardItemAsk): boolean {
+    return ask.isOpen && ask.canReply && this.viewpoint(ask) === 'recipient';
+  }
+
+  /** "Reply" is offered to the two participants when the box isn't already showing by default. */
+  offersReply(ask: BoardItemAsk): boolean {
+    return ask.canReply && !this.replyBoxByDefault(ask);
+  }
+
+  openReply(ask: BoardItemAsk): void {
+    this.threads?.find(thread => thread.ask.id === ask.id)?.openReply();
   }
 
   /** Done by someone other than the recipient (while completing the item). */

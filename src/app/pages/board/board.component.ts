@@ -268,7 +268,7 @@ export class BoardComponent implements OnInit, OnDestroy {
 
   openItemDetailDialog(item: BoardItemView | null, focusCommentId: number | null = null): void {
     const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
-      width: '900px',
+      width: '1180px',
       height: '100vh',
       maxHeight: '90vh',
       maxWidth: '95vw',

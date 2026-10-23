@@ -88,6 +88,11 @@ export interface BoardItemAsk {
   canReply: boolean;
   /** Oldest first. */
   replies: AskReply[];
+  /**
+   * The reply that answered the ask, fixed when it was marked done (one of replies). Null while
+   * it isn't done, or when it was done without a reply.
+   */
+  answerReplyId: number | null;
 }
 
 export interface AskSummaryItem {
@@ -265,6 +270,90 @@ export function isWithinDay(iso: string | null | undefined, now: Date = new Date
   if (!iso) return false;
   const then = new Date(iso).getTime();
   return !isNaN(then) && now.getTime() - then <= DAY_MS;
+}
+
+/** The DatePipe format for an older ask time shown as a day: "18 Oct", with the year when it isn't this one. */
+export function askDayFormat(iso: string, now: Date = new Date()): string {
+  return new Date(iso).getFullYear() === now.getFullYear() ? 'd MMM' : 'd MMM y';
+}
+
+/** One fact on an ask's status line, such as "Asked" + when. */
+export interface AskStatusPart {
+  label: string;
+  /** When it happened; null when the ask doesn't record it (a withdrawal). */
+  iso: string | null;
+}
+
+/**
+ * The one line that says where an ask stands: its current state and when it got there, plus the
+ * latest nudge while it waits for an answer. History beyond that is in keyDates.
+ */
+export function askStatusLine(ask: BoardItemAsk): AskStatusPart[] {
+  switch (ask.state) {
+    case AskState.Pending:
+      return ask.lastNudgedAt
+        ? [{ label: 'Asked', iso: ask.dateCreated }, { label: 'nudged', iso: ask.lastNudgedAt }]
+        : [{ label: 'Asked', iso: ask.dateCreated }];
+    case AskState.Accepted:
+      return [{ label: 'Accepted', iso: ask.respondedAt ?? ask.dateCreated }];
+    case AskState.Declined:
+      return [{ label: 'Declined', iso: ask.respondedAt }];
+    case AskState.Completed:
+      return [{ label: 'Done', iso: ask.completedAt }];
+    case AskState.Cancelled:
+      return [{
+        label: ask.cancelReason === AskCancelReason.ItemCompleted
+          ? 'Closed when the item was completed'
+          : ask.cancelReason === AskCancelReason.RecipientRemoved
+            ? 'Closed: the recipient left the board'
+            : 'Withdrawn',
+        iso: null
+      }];
+  }
+}
+
+export interface AskKeyDate {
+  label: string;
+  iso: string;
+  /** Who did it, where the ask records it. */
+  by: string | null;
+  /** The decline reason, shown with the decline. */
+  note: string | null;
+}
+
+/**
+ * The dates the ask records, oldest first: asked, the latest nudge, the latest accept or decline,
+ * and done. Earlier nudges and reopen cycles aren't kept on the ask; the item's History has them.
+ */
+export function askKeyDates(ask: BoardItemAsk): AskKeyDate[] {
+  const dates: AskKeyDate[] = [{ label: 'Asked', iso: ask.dateCreated, by: ask.requestedByFullName, note: null }];
+
+  if (ask.lastNudgedAt) {
+    dates.push({ label: 'Last nudged', iso: ask.lastNudgedAt, by: null, note: null });
+  }
+  if (ask.respondedAt) {
+    const declined = ask.state === AskState.Declined;
+    dates.push({
+      label: declined ? 'Declined' : 'Accepted',
+      iso: ask.respondedAt,
+      by: ask.recipientFullName,
+      note: declined ? ask.responseNote : null
+    });
+  }
+  if (ask.completedAt && ask.state === AskState.Completed) {
+    dates.push({ label: 'Done', iso: ask.completedAt, by: ask.completedByFullName, note: null });
+  }
+
+  return dates.sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime());
+}
+
+/** How the viewer relates to an ask, for its header: "Asked Ayse", "From Rae" or "Rae → Ayse". */
+export type AskViewpoint = 'requester' | 'recipient' | 'other';
+
+export function askViewpoint(ask: BoardItemAsk, viewerId: string | null): AskViewpoint {
+  if (viewerId === ask.requestedByUserId) return 'requester';
+  if (viewerId === ask.recipientUserId) return 'recipient';
+  return 'other';
 }
 
 /** A reply's limit, as the API enforces it (BoardItemAskLimits.ReplyMaxLength). */

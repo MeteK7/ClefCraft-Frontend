@@ -35,10 +35,22 @@ export interface ReplyEdit {
 /** How long "Copied" shows after copying a code block. */
 export const COPIED_FEEDBACK_MS = 1_500;
 
+/** A thread longer than this opens on its latest replies, with the earlier ones a click away. */
+export const THREAD_VISIBLE_LIMIT = 10;
+
+/** An answer longer than this (or with more lines) is clamped until "Show more". */
+const ANSWER_CLAMP_CHARS = 240;
+const ANSWER_CLAMP_LINES = 3;
+
+let nextThreadId = 0;
+
 /**
- * The replies on one ask and the box to reply, chat-like and plain text: text inside ``` fences
- * shows as a code block with a Copy button. The panel sends the requests; this keeps the draft,
- * which survives the panel's reloads, and clears it only when told the reply was saved.
+ * One ask's answer and conversation. Closed, a Done ask shows its answer and a single toggle row
+ * with the reply count and latest activity; one click opens the whole thread, where the answer is
+ * tagged in place. Plain text only: ``` fences show as code blocks with a Copy button. The reply
+ * box shows with the open conversation, on Reply, in the mark-done prompt, or always for the
+ * recipient of an open ask. The panel sends the requests; this keeps the draft and what's open,
+ * which survive the panel's reloads.
  */
 @Component({
   selector: 'app-ask-thread',
@@ -58,6 +70,8 @@ export class AskThreadComponent implements OnChanges {
   @Input() completePrompt = false;
   /** The other side of the ask, whom a reply goes to: the box's accessible name. */
   @Input() replyToName = '';
+  /** The box shows even with the conversation closed: the recipient of an open ask, whose job is to reply. */
+  @Input() boxByDefault = false;
 
   @Output() send = new EventEmitter<string>();
   @Output() sendAndComplete = new EventEmitter<string>();
@@ -72,11 +86,17 @@ export class AskThreadComponent implements OnChanges {
   readonly maxLength = ASK_REPLY_MAX_LENGTH;
   readonly counterFrom = ASK_REPLY_COUNTER_FROM;
 
+  readonly threadId = `ask-thread-${nextThreadId++}`;
+
   draft = '';
-  /** Every reply shown, not only the latest. */
-  showEarlier = false;
-  /** A Done ask's replies opened from their one-line summary. */
-  unfolded = false;
+  /** The conversation is open. */
+  expanded = false;
+  /** In a long open thread, the earlier replies are shown too. */
+  showAll = false;
+  /** Reply was pressed: the box shows although the conversation is closed. */
+  boxRequested = false;
+  /** A long answer shown in full. */
+  answerExpanded = false;
 
   editingId: number | null = null;
   editDraft = '';
@@ -96,33 +116,68 @@ export class AskThreadComponent implements OnChanges {
 
   // ---- What shows ---------------------------------------------------------------------------
 
-  get isFolded(): boolean {
-    return this.ask.state === AskState.Completed && !this.unfolded && this.ask.replies.length > 0;
+  /** The reply that answered the ask, once it's done with one. */
+  get answer(): AskReply | null {
+    const id = this.ask.answerReplyId;
+    return id == null ? null : this.ask.replies.find(r => r.id === id) ?? null;
+  }
+
+  /** The answer block shows on a Done ask with an answer, while the conversation is closed. */
+  get showsAnswerBlock(): boolean {
+    return this.ask.state === AskState.Completed && !!this.answer && !this.expanded;
+  }
+
+  get answerIsLong(): boolean {
+    const body = this.answer?.body ?? '';
+    return body.length > ANSWER_CLAMP_CHARS || body.split('\n').length > ANSWER_CLAMP_LINES;
+  }
+
+  get latest(): AskReply {
+    return this.ask.replies[this.ask.replies.length - 1];
+  }
+
+  /** Every reply, the answer included: exactly what opening the conversation shows. */
+  get countLabel(): string {
+    const count = this.ask.replies.length;
+    return count === 1 ? '1 reply' : `${count} replies`;
+  }
+
+  /** The latest reply previewed on the closed row, unless it's the answer already shown above. */
+  get showsLatestPreview(): boolean {
+    return !(this.showsAnswerBlock && this.latest.id === this.answer?.id);
+  }
+
+  get latestExcerpt(): string {
+    return replyExcerpt(this.latest.body, 80);
   }
 
   get visibleReplies(): AskReply[] {
     const replies = this.ask.replies;
-    return this.showEarlier ? replies : replies.slice(-1);
+    return this.showAll || replies.length <= THREAD_VISIBLE_LIMIT ? replies : replies.slice(-THREAD_VISIBLE_LIMIT);
   }
 
   get hiddenCount(): number {
     return this.ask.replies.length - this.visibleReplies.length;
   }
 
-  /** The answer a Done ask folds to: the recipient's latest reply, or else the latest one. */
-  get foldReply(): AskReply {
-    const replies = this.ask.replies;
-    return [...replies].reverse().find(r => r.authorUserId === this.ask.recipientUserId) ?? replies[replies.length - 1];
+  get boxVisible(): boolean {
+    return this.ask.canReply && (this.expanded || this.boxRequested || this.boxByDefault || this.completePrompt);
   }
 
-  get foldLabel(): string {
-    if (this.foldReply.authorUserId === this.ask.recipientUserId) return 'Answered:';
-    const count = this.ask.replies.length;
-    return count === 1 ? '1 reply:' : `${count} replies:`;
+  toggle(): void {
+    this.expanded = !this.expanded;
+    // Closing the conversation closes a box opened with Reply too (its draft is kept).
+    if (!this.expanded) {
+      this.showAll = false;
+      this.boxRequested = false;
+    }
   }
 
-  get foldExcerpt(): string {
-    return replyExcerpt(this.foldReply.body);
+  /** The Reply action: open the conversation (if there is one) and the box, ready to type. */
+  openReply(): void {
+    if (this.ask.replies.length > 0) this.expanded = true;
+    this.boxRequested = true;
+    setTimeout(() => this.focusBox());
   }
 
   get hasText(): boolean {
@@ -157,6 +212,11 @@ export class AskThreadComponent implements OnChanges {
       event.preventDefault();
       event.stopPropagation();
       this.promptClosed.emit();
+    } else if (event.key === 'Escape' && this.boxRequested && !this.expanded && !this.boxByDefault) {
+      // A box opened with Reply closes again on Esc (its draft is kept); not the dialog.
+      event.preventDefault();
+      event.stopPropagation();
+      this.boxRequested = false;
     }
   }
 
@@ -171,7 +231,6 @@ export class AskThreadComponent implements OnChanges {
   /** Called by the panel once the reply is saved. */
   clearDraft(): void {
     this.draft = '';
-    this.showEarlier = false;
   }
 
   focusBox(): void {
@@ -195,6 +254,7 @@ export class AskThreadComponent implements OnChanges {
   cancelEdit(): void {
     this.editingId = null;
   }
+
   saveEdit(reply: AskReply): void {
     const body = this.editDraft.trim();
     if (!body || this.busy) return;

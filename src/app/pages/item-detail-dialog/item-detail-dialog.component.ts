@@ -86,7 +86,7 @@ export class ItemDetailDialogComponent implements OnInit {
   originalItemData!: Item;
   isGraphMaximized = false;
 
-  /** The item's ask counts as the "Asked to help" panel last loaded them; null until it has. */
+  /** The item's ask counts as the Chime In panel last loaded them; null until it has. */
   askSummary: AskSummary | null = null;
 
   /**
@@ -121,6 +121,12 @@ export class ItemDetailDialogComponent implements OnInit {
   get initialTabIndex(): number {
     return this.data.focusCommentId != null ? 4 : 0;
   }
+
+  /** The History tab's position (fixed past create mode): Chime In's "Full history" opens it. */
+  readonly historyTabIndex = 3;
+
+  /** The tab chosen since the dialog opened; until then, initialTabIndex. */
+  selectedTabIndex: number | null = null;
 
   constructor(
     public dialogRef: MatDialogRef<ItemDetailDialogComponent, ItemDetailDialogResult>,

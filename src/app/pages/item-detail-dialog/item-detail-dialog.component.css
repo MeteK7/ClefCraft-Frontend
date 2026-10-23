@@ -189,6 +189,48 @@
   color: var(--text);
 }
 
+/* Details tab: the fields, with Chime In beside them in a 360px rail once the main column can
+   keep at least 640px (640 + 24 gap + 360 = 1024px of content), and under them otherwise. The
+   query reads the dialog's real width, not the window's. */
+.details-content {
+  /* The scrollbar's space is always reserved, so a layout switch that changes whether the tab
+     scrolls can't change the width and flip the layout back. */
+  scrollbar-gutter: stable;
+}
+
+.details-layout {
+  container: details / inline-size;
+}
+
+/* Stacked: under the fields, no wider than the panel has room to read well. */
+.details-chime {
+  max-width: 760px;
+  margin-top: 16px;
+}
+
+@container details (min-width: 1024px) {
+  .details-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    column-gap: 24px;
+  }
+
+  /* The rail: one divider, no card. It stretches to the fields' height, so the divider does too. */
+  .details-chime {
+    min-width: 0;
+    max-width: none;
+    margin-top: 0;
+    padding-left: 24px;
+    border-left: 1px solid var(--divider);
+  }
+}
+
+/* Comments keep a readable line length in the wide dialog. */
+app-comment-thread {
+  display: block;
+  max-width: 760px;
+}
+
 /* Utility layout rules */
 .w-100 {
   width: 100%;
