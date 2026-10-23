@@ -34,6 +34,7 @@ export function makeAsk(overrides: Partial<BoardItemAsk> = {}): BoardItemAsk {
     allowedActions: [],
     canReply: false,
     replies: [],
+    answerReplyId: null,
     ...overrides
   };
 }
