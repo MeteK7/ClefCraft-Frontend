@@ -8,15 +8,20 @@ import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Subject, of } from 'rxjs';
 
-import { BoardItemAsksComponent, NUDGE_RELOAD_MIN_DELAY_MS, NUDGE_TOO_SOON_TEXT } from './board-item-asks.component';
+import { ANSWER_FIRST_TEXT, BoardItemAsksComponent, NUDGE_RELOAD_MIN_DELAY_MS, NUDGE_TOO_SOON_TEXT } from './board-item-asks.component';
 import { AuthService } from '../../_services/auth.service';
+import { AskEventPayload, NotificationRealtimeService } from '../../_services/notification-realtime.service';
+import { OpenAskItemsService } from '../../_services/open-ask-items.service';
 import {
+  ASK_ANSWER_REQUIRED_CODE,
   AskAction,
   AskCancelReason,
+  AskReply,
   AskState,
   AskSummary,
   BoardItemAsk,
   ASK_EXACT_TIME_FORMAT,
+  askDayFormat,
   NUDGE_TOO_SOON_MESSAGE
 } from '../../models/board-item-ask.model';
 import { ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
@@ -29,14 +34,18 @@ describe('BoardItemAsksComponent', () => {
   let httpMock: HttpTestingController;
   const asksUrl = `${environment.apiUrl}/BoardItems/10/asks`;
 
+  let askEvents$: Subject<AskEventPayload>;
+
   function setup(asks: BoardItemAsk[], callerId = 'caller'): AskSummary[] {
+    askEvents$ = new Subject<AskEventPayload>();
     TestBed.configureTestingModule({
       imports: [BoardItemAsksComponent],
       providers: [
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideNoopAnimations(),
-        { provide: AuthService, useValue: { getUserId: () => callerId } }
+        { provide: AuthService, useValue: { getUserId: () => callerId } },
+        { provide: NotificationRealtimeService, useValue: { askEvents$ } }
       ]
     });
 
@@ -65,12 +74,12 @@ describe('BoardItemAsksComponent', () => {
   const squash = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
   const label = (b: Element) => squash(b.querySelector('.mdc-button__label')!.textContent);
   const rowText = (askId: number) => squash(element().querySelector(`[data-ask-id="${askId}"]`)!.textContent);
-  const metaText = (askId: number, part: string) => squash(element().querySelector(`[data-ask-id="${askId}"] .${part}`)?.textContent);
 
   /** The buttons shown on the cards, by label. */
   const buttons = () => Array.from(element().querySelectorAll<HTMLButtonElement>('.ask-actions button')).map(label);
-  const nudgeButton = () => Array.from(element().querySelectorAll<HTMLButtonElement>('.ask-actions button'))
-    .find(b => label(b) === 'Nudge')!;
+  const inlineButton = (text: string) => Array.from(element().querySelectorAll<HTMLButtonElement>('.ask-actions button'))
+    .find(b => label(b) === text)!;
+  const nudgeButton = () => inlineButton('Nudge');
   const moreButton = (askId: number) => element().querySelector<HTMLButtonElement>(`[data-ask-id="${askId}"] .ask-more`);
   const tooltipOn = (native: Element) =>
     fixture.debugElement.queryAll(By.directive(MatTooltip)).find(d => d.nativeElement === native)?.injector.get(MatTooltip).message;
@@ -87,6 +96,11 @@ describe('BoardItemAsksComponent', () => {
   const exact = (iso: string) => formatDate(iso, ASK_EXACT_TIME_FORMAT, 'en-US');
   const nudgeDate = (iso: string) => formatDate(iso, 'EEE d MMM, HH:mm', 'en-US');
   const hoursFromNow = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString();
+  // An older time as the template shows it: its day ("18 Oct"), with the year when it isn't this one.
+  const day = (iso: string) => formatDate(iso, askDayFormat(iso), 'en-US');
+  /** The facts on an ask's status line, as read. */
+  const statusParts = (askId: number) =>
+    Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status > span`)).map(s => squash(s.textContent));
 
   it('loads the item\'s asks and emits their summary for the card', fakeAsync(() => {
     const summaries = setup([makeAsk({ id: 1, state: AskState.Pending }), makeAsk({ id: 2, state: AskState.Declined, isRequired: true })]);
@@ -95,6 +109,15 @@ describe('BoardItemAsksComponent', () => {
     expect(component.asks.length).toBe(2);
     expect(summaries).toEqual([jasmine.objectContaining({ openCount: 1, unmetRequiredCount: 1 })]);
   }));
+
+  it('is headed "Chime In", and invites a first ask when nobody has been asked', () => {
+    setup([]);
+
+    expect(squash(element().querySelector('#asks-heading')!.textContent)).toBe('group_add Chime In');
+    expect(squash(element().querySelector('.asks-empty')!.textContent))
+      .toBe('Need a quick opinion or a hand? Ask someone on this board.');
+    expect(label(element().querySelector('.ask-someone')!)).toBe('Ask someone');
+  });
 
   it('shows exactly the actions the API allows, and never "complete on behalf"', () => {
     setup([makeAsk({ allowedActions: [AskAction.Accept, AskAction.Decline, AskAction.CompleteOnBehalf] })]);
@@ -162,67 +185,109 @@ describe('BoardItemAsksComponent', () => {
     httpMock.expectNone(() => true);
   });
 
-  it('shows when each ask was asked, who marked it done, and why a requirement is unmet', () => {
-    const asked = new Date(Date.now() - 6 * 86_400_000).toISOString();
+  it('says where each ask stands in one line: its state and when, nothing more', () => {
+    const asked = '2026-10-10T09:05:00Z';
+    const respondedAt = '2026-10-11T08:30:00Z';
     const completedAt = '2026-10-12T15:45:00Z';
     setup([
       makeAsk({ id: 1, state: AskState.Pending, dateCreated: asked }),
-      makeAsk({ id: 2, state: AskState.Completed, completedAt, completedByUserId: 'closer', completedByFullName: 'Kemal Closer' }),
-      makeAsk({ id: 3, state: AskState.Cancelled, isRequired: true, cancelReason: AskCancelReason.RecipientRemoved, recipientIsBoardMember: false })
+      makeAsk({ id: 2, state: AskState.Accepted, respondedAt }),
+      makeAsk({ id: 3, state: AskState.Declined, respondedAt, responseNote: 'Out this week' }),
+      makeAsk({ id: 4, state: AskState.Completed, respondedAt, completedAt, completedByUserId: 'closer', completedByFullName: 'Kemal Closer' }),
+      makeAsk({ id: 5, state: AskState.Cancelled, isRequired: true, cancelReason: AskCancelReason.RecipientRemoved, recipientIsBoardMember: false })
     ]);
 
-    expect(metaText(1, 'ask-asked')).toBe(`Asked ${exact(asked)}`);
-    expect(metaText(2, 'ask-completed')).toBe(`Done ${exact(completedAt)} · marked by Kemal Closer`);
-    expect(rowText(3)).toContain('Required: the recipient left the board');
-    expect(rowText(3)).toContain('(not a board member)');
+    expect(statusParts(1)).toEqual([`Asked ${day(asked)}`]);
+    expect(statusParts(2)).toEqual([`Accepted ${day(respondedAt)}`]);
+    expect(statusParts(3)).toEqual([`Declined ${day(respondedAt)}`, '“Out this week”']);
+    expect(statusParts(4)).toEqual([`Done ${day(completedAt)}`, 'marked by Kemal Closer']);
+    expect(statusParts(5)).toEqual(['Closed: the recipient left the board']);
+    expect(rowText(5)).toContain('Required: the recipient left the board');
+    expect(rowText(5)).toContain('(not a board member)');
   });
 
-  it('shows a time from the last day as relative, with the exact time on hover', () => {
-    const dateCreated = hoursFromNow(-2);
+  it('shows a time from the last day as relative, an older one as its day, both exact on hover', () => {
+    const dateCreated = '2026-10-10T09:05:00Z';
     const lastNudgedAt = new Date(Date.now() - 30 * 60_000).toISOString();
     setup([makeAsk({ id: 1, dateCreated, lastNudgedAt })]);
 
-    const asked = element().querySelector('[data-ask-id="1"] .ask-asked time')!;
-    expect(metaText(1, 'ask-asked')).toBe('Asked 2 hours ago');
+    expect(statusParts(1)).toEqual([`Asked ${day(dateCreated)}`, 'nudged 30 minutes ago']);
+    const [asked, nudged] = Array.from(element().querySelectorAll('[data-ask-id="1"] .ask-status time'));
     expect(asked.getAttribute('datetime')).toBe(dateCreated);
     expect(tooltipOn(asked)).toBe(exact(dateCreated));
-
-    const nudged = element().querySelector('[data-ask-id="1"] .ask-nudged time')!;
-    expect(metaText(1, 'ask-nudged')).toBe('Nudged 30 minutes ago');
     expect(tooltipOn(nudged)).toBe(exact(lastNudgedAt));
   });
 
-  it('shows an older time exactly, with nothing to hover', () => {
-    const dateCreated = '2026-10-10T09:05:00Z';
-    const lastNudgedAt = hoursFromNow(-25);
-    setup([makeAsk({ id: 1, dateCreated, lastNudgedAt })]);
-
-    const asked = element().querySelector('[data-ask-id="1"] .ask-asked time')!;
-    expect(asked.getAttribute('datetime')).toBe(dateCreated);
-    expect(metaText(1, 'ask-asked')).toBe(`Asked ${exact(dateCreated)}`);
-    expect(tooltipOn(asked)).toBeUndefined();
-    expect(metaText(1, 'ask-nudged')).toBe(`Nudged ${exact(lastNudgedAt)}`);
-  });
-
-  it('shows the response and completion times it has, and leaves out the ones it doesn\'t', () => {
-    const respondedAt = '2026-10-11T08:30:00Z';
-    const completedAt = hoursFromNow(-1);
+  it('shows the due date only while the ask is open', () => {
     setup([
-      makeAsk({ id: 1, state: AskState.Pending }),
-      makeAsk({ id: 2, state: AskState.Accepted, respondedAt }),
-      makeAsk({ id: 3, state: AskState.Declined, respondedAt, responseNote: 'Out this week' }),
-      makeAsk({ id: 4, state: AskState.Completed, respondedAt, completedAt, completedByUserId: 'recipient' }),
-      makeAsk({ id: 5, state: AskState.Completed })
+      makeAsk({ id: 1, state: AskState.Accepted, respondedAt: '2026-10-11T08:30:00Z', dueDate: '2026-11-02T00:00:00Z' }),
+      makeAsk({ id: 2, state: AskState.Completed, completedAt: '2026-10-12T15:45:00Z', dueDate: '2026-11-02T00:00:00Z' })
     ]);
 
-    expect(rowText(1)).not.toContain('Accepted');
-    expect(rowText(1)).not.toContain('Nudged');
-    expect(metaText(2, 'ask-responded')).toBe(`Accepted ${exact(respondedAt)}`);
-    expect(metaText(3, 'ask-responded')).toBe(`Declined ${exact(respondedAt)} · “Out this week”`);
-    expect(metaText(4, 'ask-responded')).toBe(`Accepted ${exact(respondedAt)}`);
-    expect(metaText(4, 'ask-completed')).toBe('Done 1 hour ago');
-    expect(element().querySelector('[data-ask-id="5"] .ask-completed')).toBeNull();
-    expect(element().querySelector('[data-ask-id="5"] .ask-responded')).toBeNull();
+    expect(element().querySelector('[data-ask-id="1"] .ask-due-on')).not.toBeNull();
+    expect(element().querySelector('[data-ask-id="2"] .ask-due-on')).toBeNull();
+  });
+
+  it('opens the key dates in the order they happened, and links to the full history', () => {
+    const history = jasmine.createSpy('openHistory');
+    setup([makeAsk({
+      id: 1, state: AskState.Completed, dateCreated: '2026-10-18T13:48:00Z', lastNudgedAt: '2026-10-18T13:49:00Z',
+      respondedAt: '2026-10-19T17:29:00Z', completedAt: '2026-10-21T15:39:00Z', completedByFullName: 'Ayse Recipient'
+    })]);
+    component.openHistory.subscribe(history);
+
+    const toggle = element().querySelector<HTMLButtonElement>('[data-ask-id="1"] .ask-details-toggle')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(element().querySelector('#ask-dates-1')).toBeNull();
+
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    const labels = Array.from(element().querySelectorAll('#ask-dates-1 dt')).map(dt => dt.textContent!.trim());
+    expect(labels).toEqual(['Asked', 'Last nudged', 'Accepted', 'Done']);
+
+    element().querySelector<HTMLButtonElement>('#ask-dates-1 .ask-full-history')!.click();
+    expect(history).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a decline reason to one line, with the full text on hover', () => {
+    const reason = 'Out this week, and the week after, for a conference; ask someone in the platform team instead.';
+    setup([makeAsk({ id: 3, state: AskState.Declined, respondedAt: '2026-10-11T08:30:00Z', responseNote: reason })]);
+
+    const shown = element().querySelector('[data-ask-id="3"] .ask-reason')!;
+    expect(tooltipOn(shown)).toBe(reason);
+  });
+
+  it('names the other person from the viewer\'s side', () => {
+    const ask = makeAsk({ id: 1, requestedByFullName: 'Rae Requester', recipientFullName: 'Ayse Recipient' });
+
+    setup([ask], 'requester');
+    expect(squash(element().querySelector('.ask-who')!.textContent)).toBe('Asked Ayse Recipient');
+    TestBed.resetTestingModule();
+
+    setup([ask], 'recipient');
+    expect(squash(element().querySelector('.ask-who')!.textContent)).toBe('From Rae Requester');
+    TestBed.resetTestingModule();
+
+    // Anyone else on the board: neutral, read as "Rae asked Ayse"; the arrow isn't read.
+    setup([ask], 'caller');
+    const who = element().querySelector('.ask-who')!;
+    expect(squash(who.textContent)).toBe('Rae Requester → asked Ayse Recipient');
+    expect(who.querySelector('.ask-arrow')!.getAttribute('aria-hidden')).toBe('true');
+    expect(who.querySelector('.visually-hidden')!.textContent!.trim()).toBe('asked');
+  });
+
+  it('shows "Answer expected" only while the answer is still owed', () => {
+    setup([
+      makeAsk({ id: 1, state: AskState.Accepted, expectsAnswer: true, isAnswered: false }),
+      makeAsk({ id: 2, state: AskState.Accepted, expectsAnswer: true, isAnswered: true }),
+      makeAsk({ id: 3, state: AskState.Completed, expectsAnswer: true, isAnswered: true })
+    ]);
+
+    expect(element().querySelector('[data-ask-id="1"] .ask-expects-answer')).not.toBeNull();
+    expect(element().querySelector('[data-ask-id="2"] .ask-expects-answer')).toBeNull();
+    expect(element().querySelector('[data-ask-id="3"] .ask-expects-answer')).toBeNull();
   });
 
   it('offers Nudge with the 24-hour rule when the API allows it', () => {
@@ -242,7 +307,7 @@ describe('BoardItemAsksComponent', () => {
     const nudge = nudgeButton();
     expect(nudge.disabled).toBeTrue();
     expect(nudge.classList).toContain('nudge-waiting');
-    expect(metaText(5, 'ask-nudged')).toBe('Nudged 3 hours ago');
+    expect(statusParts(5)[1]).toBe('nudged 3 hours ago');
 
     const expected = `You can nudge once every 24 hours. Next nudge on ${nudgeDate(nextNudgeAt)}.`;
     expect(squash(tooltipOn(element().querySelector('.nudge-wrap')!))).toBe(expected);
@@ -385,16 +450,510 @@ describe('BoardItemAsksComponent', () => {
     httpMock.expectOne(asksUrl).flush([]);
   });
 
-  it('asks someone with a UTC due date', () => {
+  it('asks someone with a UTC due date, and whether an answer is expected', () => {
     setup([]);
 
     component.openCreate();
-    component.form.setValue({ recipientUserId: 'helper', note: '  Review the API  ', dueDate: new Date(Date.UTC(2026, 10, 2)), isRequired: true });
+    component.form.setValue({
+      recipientUserId: 'helper', note: '  Review the API  ', dueDate: new Date(Date.UTC(2026, 10, 2)), isRequired: true, expectsAnswer: true
+    });
     component.submitForm();
 
     const req = httpMock.expectOne(r => r.url === asksUrl && r.method === 'POST');
     expect(req.request.body).toEqual({
-      recipientUserId: 'helper', note: 'Review the API', dueDate: '2026-11-02T00:00:00.000Z', isRequired: true
+      recipientUserId: 'helper', note: 'Review the API', dueDate: '2026-11-02T00:00:00.000Z', isRequired: true, expectsAnswer: true
     });
+  });
+
+  // ---- Replies ----------------------------------------------------------------------------------
+
+  const replyUrl = (askId: number) => `${environment.apiUrl}/BoardItemAsks/${askId}/replies`;
+  const completeUrl = (askId: number) => `${environment.apiUrl}/BoardItemAsks/${askId}/complete`;
+
+  const reply = (overrides: Partial<AskReply> = {}): AskReply => ({
+    id: 40, authorUserId: 'recipient', authorFullName: 'Ayse Recipient', body: 'Here it is.',
+    dateCreated: hoursFromNow(-1), dateEdited: null, isMine: false, ...overrides
+  });
+
+  const row = (askId: number) => element().querySelector<HTMLElement>(`[data-ask-id="${askId}"]`)!;
+  const replyBox = (askId: number) => row(askId).querySelector<HTMLTextAreaElement>('.reply-box textarea')!;
+  const rowButton = (askId: number, selector: string) => row(askId).querySelector<HTMLButtonElement>(selector)!;
+
+  function type(box: HTMLTextAreaElement, text: string): void {
+    box.value = text;
+    box.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  }
+
+  function ctrlEnter(box: HTMLTextAreaElement): void {
+    box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    fixture.detectChanges();
+  }
+
+  /** Clicks a card's conversation toggle (opening or closing it). */
+  function toggleConversation(askId: number): void {
+    rowButton(askId, '.thread-toggle').click();
+    fixture.detectChanges();
+  }
+
+  /** The Reply action: opens the conversation and the box. */
+  function pressReply(askId: number): void {
+    rowButton(askId, '.ask-reply').click();
+    fixture.detectChanges();
+  }
+
+  const shownReplies = (askId: number) =>
+    Array.from(row(askId).querySelectorAll('.thread .reply .reply-text')).map(p => p.textContent);
+
+  it('shows each reply with its author and time, and code fences as a block', () => {
+    const at = hoursFromNow(-2);
+    setup([makeAsk({ id: 1, replies: [reply({ dateCreated: at, body: 'Here:\n```sql\nSELECT *\n  FROM items;\n```\nThanks' })] })]);
+    toggleConversation(1);
+
+    const shown = row(1).querySelector('.reply')!;
+    expect(shown.querySelector('.reply-author')!.textContent).toBe('Ayse Recipient');
+    expect(shown.querySelector('.reply-head time')!.textContent!.trim()).toBe('2 hours ago');
+    expect(Array.from(shown.querySelectorAll('.reply-text')).map(p => p.textContent)).toEqual(['Here:', 'Thanks']);
+    expect(shown.querySelector('pre code')!.textContent).toBe('SELECT *\n  FROM items;');
+  });
+
+  it('opens the whole conversation with one click, and says how many replies and the latest first', () => {
+    setup([makeAsk({ id: 1, replies: [
+      reply({ id: 1, body: 'one' }), reply({ id: 2, body: 'two' }),
+      reply({ id: 3, authorFullName: 'Rae Requester', authorUserId: 'requester', body: 'three' })
+    ] })]);
+
+    const toggle = rowButton(1, '.thread-toggle');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('3 replies');
+    expect(squash(toggle.querySelector('.thread-toggle-latest')!.textContent)).toContain('latest from Rae Requester');
+    expect(squash(toggle.querySelector('.thread-toggle-latest')!.textContent)).toContain('“three”');
+    expect(row(1).querySelector('.reply')).toBeNull();
+
+    toggleConversation(1);
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.getAttribute('aria-controls')).toBe(row(1).querySelector('.thread')!.id);
+    expect(toggle.querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('Hide conversation');
+    expect(shownReplies(1)).toEqual(['one', 'two', 'three']);
+
+    toggleConversation(1);
+    expect(row(1).querySelector('.reply')).toBeNull();
+  });
+
+  it('shows a done ask\'s answer, with its follow-ups behind the toggle, and never twice', () => {
+    setup([makeAsk({
+      id: 1, state: AskState.Completed, answerReplyId: 1,
+      replies: [
+        reply({ id: 1, body: 'INSERT INTO items (title) VALUES (\'a\');' }),
+        reply({ id: 2, authorUserId: 'requester', authorFullName: 'Rae Requester', body: 'Test message' })
+      ]
+    })]);
+
+    const answer = row(1).querySelector('.answer')!;
+    expect(answer.getAttribute('data-reply-id')).toBe('1');
+    expect(answer.querySelector('.answer-label')!.textContent).toBe('Answer');
+    expect(answer.querySelector('.reply-author')!.textContent).toBe('Ayse Recipient');
+    expect(squash(answer.querySelector('.reply-body')!.textContent)).toBe('INSERT INTO items (title) VALUES (\'a\');');
+
+    // The count includes the answer: exactly what opening shows.
+    const toggle = rowButton(1, '.thread-toggle');
+    expect(toggle.querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('2 replies');
+    expect(squash(toggle.querySelector('.thread-toggle-latest')!.textContent)).toContain('“Test message”');
+
+    toggleConversation(1);
+    expect(row(1).querySelector('.answer')).toBeNull();
+    expect(shownReplies(1)).toEqual(['INSERT INTO items (title) VALUES (\'a\');', 'Test message']);
+    const tagged = row(1).querySelector('.reply.is-answer')!;
+    expect(tagged.getAttribute('data-reply-id')).toBe('1');
+    expect(tagged.querySelector('.answer-tag')!.textContent).toBe('Answer');
+
+    toggleConversation(1);
+    expect(row(1).querySelector('.answer')).not.toBeNull();
+  });
+
+  it('doesn\'t preview the latest reply when it\'s the answer already shown', () => {
+    setup([makeAsk({ id: 1, state: AskState.Completed, answerReplyId: 40, replies: [reply({ id: 40 })] })]);
+
+    expect(rowButton(1, '.thread-toggle').querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('1 reply');
+    expect(row(1).querySelector('.thread-toggle-latest')).toBeNull();
+  });
+
+  it('shows no answer block on a done ask without an answer', () => {
+    setup([makeAsk({ id: 1, state: AskState.Completed, answerReplyId: null, replies: [reply({ authorUserId: 'requester' })] })]);
+
+    expect(row(1).querySelector('.answer')).toBeNull();
+    expect(row(1).querySelector('.thread-toggle')).not.toBeNull();
+  });
+
+  it('has no conversation row while there are no replies', () => {
+    setup([makeAsk({ id: 1, canReply: true })], 'requester');
+
+    expect(row(1).querySelector('.thread-toggle')).toBeNull();
+  });
+
+  it('clamps a long answer until "Show more"', () => {
+    const long = Array.from({ length: 6 }, (_, i) => `line ${i + 1}`).join('\n');
+    setup([makeAsk({ id: 1, state: AskState.Completed, answerReplyId: 40, replies: [reply({ id: 40, body: long })] })]);
+
+    const body = row(1).querySelector('.answer-body')!;
+    const more = rowButton(1, '.answer-more');
+    expect(body.classList).toContain('clamped');
+    expect(more.textContent!.trim()).toBe('Show more');
+
+    more.click();
+    fixture.detectChanges();
+    expect(body.classList).not.toContain('clamped');
+    expect(more.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('opens a long thread on its latest ten replies', () => {
+    const replies = Array.from({ length: 12 }, (_, i) => reply({ id: i + 1, body: `r${i + 1}` }));
+    setup([makeAsk({ id: 1, replies })]);
+
+    expect(rowButton(1, '.thread-toggle').querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('12 replies');
+    toggleConversation(1);
+    expect(shownReplies(1).length).toBe(10);
+    expect(shownReplies(1)[0]).toBe('r3');
+
+    const earlier = row(1).querySelector<HTMLButtonElement>('.thread > .thread-link')!;
+    expect(squash(earlier.textContent)).toBe('Show 2 earlier replies');
+    earlier.click();
+    fixture.detectChanges();
+    expect(shownReplies(1).length).toBe(12);
+  });
+
+  it('copies a code block from the answer and says so briefly', fakeAsync(() => {
+    const writeText = spyOn(navigator.clipboard, 'writeText').and.resolveTo();
+    setup([makeAsk({ id: 1, state: AskState.Completed, answerReplyId: 40, replies: [reply({ id: 40, body: '```\nSELECT 1;\n```' })] })]);
+
+    rowButton(1, '.answer .reply-copy').click();
+    tick();
+    fixture.detectChanges();
+
+    expect(writeText).toHaveBeenCalledOnceWith('SELECT 1;');
+    expect(label(rowButton(1, '.reply-copy'))).toBe('Copied');
+
+    tick(1_500);
+    fixture.detectChanges();
+    expect(label(rowButton(1, '.reply-copy'))).toBe('Copy');
+    flush();
+  }));
+
+  // ---- The reply box ----------------------------------------------------------------------------
+
+  it('shows the reply box by default only to the recipient of an open ask', () => {
+    setup([
+      makeAsk({ id: 1, state: AskState.Pending, canReply: true }),
+      makeAsk({ id: 2, state: AskState.Completed, canReply: true })
+    ], 'recipient');
+
+    expect(row(1).querySelector('.reply-box')).not.toBeNull();
+    expect(row(1).querySelector('.ask-reply')).toBeNull();
+    expect(row(2).querySelector('.reply-box')).toBeNull();
+    expect(row(2).querySelector('.ask-reply')).not.toBeNull();
+  });
+
+  it('opens the box with Reply, focused, and closes it on Esc without closing the dialog', fakeAsync(() => {
+    setup([makeAsk({ id: 7, canReply: true })], 'requester');
+    expect(row(7).querySelector('.reply-box')).toBeNull();
+
+    pressReply(7);
+    tick();
+    expect(document.activeElement).toBe(replyBox(7));
+
+    type(replyBox(7), 'Draft');
+    expect(escapeReachesDialog(replyBox(7))).toBeFalse();
+    expect(row(7).querySelector('.reply-box')).toBeNull();
+
+    pressReply(7);
+    tick();
+    expect(replyBox(7).value).toBe('Draft');
+    flush();
+  }));
+
+  it('opens the conversation too when Reply is pressed on an ask with replies', () => {
+    setup([makeAsk({ id: 7, canReply: true, replies: [reply()] })], 'requester');
+
+    pressReply(7);
+
+    expect(rowButton(7, '.thread-toggle').getAttribute('aria-expanded')).toBe('true');
+    expect(row(7).querySelector('.reply-box')).not.toBeNull();
+
+    // Closing the conversation closes the box with it.
+    toggleConversation(7);
+    expect(row(7).querySelector('.reply-box')).toBeNull();
+  });
+
+  it('posts a reply with Ctrl+Enter, then clears the box and reloads', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'requester');
+    pressReply(7);
+
+    const box = replyBox(7);
+    expect(box.getAttribute('aria-label')).toBe('Reply to Ayse Recipient');
+    type(box, '  Which table?  ');
+    ctrlEnter(box);
+
+    const req = httpMock.expectOne(replyUrl(7));
+    expect(req.request.body).toEqual({ body: 'Which table?' });
+    req.flush(makeAsk({ id: 7 }));
+    httpMock.expectOne(asksUrl).flush([makeAsk({ id: 7, canReply: true, replies: [reply({ body: 'Which table?', isMine: true })] })]);
+    fixture.detectChanges();
+
+    expect(replyBox(7).value).toBe('');
+  });
+
+  it('keeps an unsent reply when the request fails, and through a reload', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'requester');
+    pressReply(7);
+    type(replyBox(7), 'Which table?');
+    rowButton(7, '.reply-send').click();
+
+    httpMock.expectOne(replyUrl(7)).flush({ title: 'Nope', status: 400 }, { status: 400, statusText: 'Bad Request' });
+    httpMock.expectOne(asksUrl).flush([makeAsk({ id: 7, canReply: true })]);
+    fixture.detectChanges();
+
+    expect(replyBox(7).value).toBe('Which table?');
+    expect(component.errorMessage).toBe('Nope');
+  });
+
+  it('offers no reply box or Reply to anyone but the requester and recipient', () => {
+    setup([makeAsk({ id: 7, canReply: false, replies: [reply()] })]);
+    toggleConversation(7);
+
+    expect(row(7).querySelector('.reply-box')).toBeNull();
+    expect(row(7).querySelector('.ask-reply')).toBeNull();
+    expect(row(7).querySelector('.reply')).not.toBeNull();
+  });
+
+  it('shows the counter only near the limit', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'recipient');
+
+    type(replyBox(7), 'x'.repeat(1_799));
+    expect(row(7).querySelector('.reply-count')).toBeNull();
+
+    type(replyBox(7), 'x'.repeat(1_800));
+    expect(squash(row(7).querySelector('.reply-count')!.textContent)).toBe('1800 / 2000');
+  });
+
+  /** Presses Esc where it bubbles, and says whether it got past the panel (to the item dialog). */
+  function escapeReachesDialog(target: HTMLElement): boolean {
+    let reached = false;
+    const listener = () => reached = true;
+    document.body.addEventListener('keydown', listener);
+    target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    document.body.removeEventListener('keydown', listener);
+    fixture.detectChanges();
+    return reached;
+  }
+
+  it('focuses the editor at the end of the text when editing starts', fakeAsync(() => {
+    setup([makeAsk({ id: 7, canReply: true, replies: [reply({ id: 40, isMine: true, body: 'SELECT 1;' })] })], 'recipient');
+    toggleConversation(7);
+
+    rowButton(7, '.reply-edit').click();
+    fixture.detectChanges();
+    tick();
+
+    const editor = row(7).querySelector<HTMLTextAreaElement>('.reply-editor textarea')!;
+    expect(document.activeElement).toBe(editor);
+    expect(editor.selectionStart).toBe('SELECT 1;'.length);
+    flush();
+  }));
+
+  it('edits one\'s own reply inline: Esc cancels (and only that), Ctrl+Enter saves', () => {
+    setup([makeAsk({ id: 7, canReply: true, replies: [reply({ id: 40, isMine: true, body: 'SELECT 1;' })] })], 'recipient');
+    toggleConversation(7);
+
+    rowButton(7, '.reply-edit').click();
+    fixture.detectChanges();
+    let editor = row(7).querySelector<HTMLTextAreaElement>('.reply-editor textarea')!;
+    expect(escapeReachesDialog(editor)).toBeFalse();
+    expect(row(7).querySelector('.reply-editor')).toBeNull();
+
+    rowButton(7, '.reply-edit').click();
+    fixture.detectChanges();
+    editor = row(7).querySelector<HTMLTextAreaElement>('.reply-editor textarea')!;
+    type(editor, 'SELECT 2;');
+    ctrlEnter(editor);
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/BoardItemAskReplies/40`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ body: 'SELECT 2;' });
+    req.flush(makeAsk({ id: 7 }));
+    httpMock.expectOne(asksUrl).flush([makeAsk({
+      id: 7, canReply: true, replies: [reply({ id: 40, isMine: true, body: 'SELECT 2;', dateEdited: hoursFromNow(0) })]
+    })]);
+    fixture.detectChanges();
+
+    // The conversation stays open through the reload.
+    expect(row(7).querySelector('.reply-editor')).toBeNull();
+    expect(squash(row(7).querySelector('.thread .reply-head')!.textContent)).toContain('edited');
+  });
+
+  it('lets only the author edit a reply', () => {
+    setup([makeAsk({ id: 7, canReply: true, replies: [reply({ isMine: false })] })], 'requester');
+    toggleConversation(7);
+
+    expect(row(7).querySelector('.reply-edit')).toBeNull();
+  });
+
+  // ---- Marking done -----------------------------------------------------------------------------
+
+  it('disables Mark done until the expected answer is given, saying why', () => {
+    setup([makeAsk({ id: 7, state: AskState.Accepted, expectsAnswer: true, isAnswered: false, canReply: true,
+      allowedActions: [AskAction.Decline, AskAction.Complete] })], 'recipient');
+
+    expect(squash(row(7).querySelector('.ask-expects-answer')!.textContent)).toBe('Answer expected');
+    const markDone = row(7).querySelector<HTMLButtonElement>('.complete-waiting')!;
+    expect(markDone.disabled).toBeTrue();
+    expect(tooltipOn(markDone.parentElement!)).toBe(ANSWER_FIRST_TEXT);
+    const description = element().querySelector(`#${markDone.getAttribute('aria-describedby')}`)!;
+    expect(squash(description.textContent)).toBe('Reply with the answer first.');
+  });
+
+  it('marks done straight away once the recipient has replied', () => {
+    setup([makeAsk({ id: 7, state: AskState.Accepted, expectsAnswer: true, isAnswered: true, canReply: true,
+      allowedActions: [AskAction.Complete] })], 'recipient');
+
+    inlineButton('Mark done').click();
+
+    expect(httpMock.expectOne(completeUrl(7)).request.body).toEqual({ expectedRevision: 1, reason: null });
+  });
+
+  it('asks for the result first when marking done without having replied', () => {
+    setup([makeAsk({ id: 7, state: AskState.Accepted, canReply: true, allowedActions: [AskAction.Complete] })], 'recipient');
+
+    inlineButton('Mark done').click();
+    fixture.detectChanges();
+
+    httpMock.expectNone(completeUrl(7));
+    expect(row(7).querySelector('.reply-box.prompting')).not.toBeNull();
+    expect(squash(row(7).querySelector('.reply-prompt')!.textContent))
+      .toBe('Share the result with Rae Requester, or mark it done without a reply.');
+
+    rowButton(7, '.reply-done-without').click();
+    expect(httpMock.expectOne(completeUrl(7)).request.body).toEqual({ expectedRevision: 1, reason: null });
+  });
+
+  it('sends the result and marks done in one request from the prompt', () => {
+    setup([makeAsk({ id: 7, state: AskState.Accepted, canReply: true, allowedActions: [AskAction.Complete] })], 'recipient');
+    inlineButton('Mark done').click();
+    fixture.detectChanges();
+
+    const sendAndDone = rowButton(7, '.reply-send-done');
+    expect(sendAndDone.disabled).toBeTrue();
+    type(replyBox(7), 'Ran it on staging.');
+    rowButton(7, '.reply-send-done').click();
+
+    const req = httpMock.expectOne(completeUrl(7));
+    expect(req.request.body).toEqual({ expectedRevision: 1, reason: null, replyBody: 'Ran it on staging.' });
+    httpMock.expectNone(replyUrl(7));
+    req.flush(makeAsk({ id: 7, state: AskState.Completed }));
+    httpMock.expectOne(asksUrl).flush([makeAsk({ id: 7, state: AskState.Completed })]);
+    expect(component.completePromptAskId).toBeNull();
+  });
+
+  it('closes the prompt with Esc without marking done, or closing the item dialog', () => {
+    setup([makeAsk({ id: 7, state: AskState.Accepted, canReply: true, allowedActions: [AskAction.Complete] })], 'recipient');
+    inlineButton('Mark done').click();
+    fixture.detectChanges();
+
+    expect(escapeReachesDialog(replyBox(7))).toBeFalse();
+
+    expect(row(7).querySelector('.reply-box.prompting')).toBeNull();
+    httpMock.expectNone(completeUrl(7));
+  });
+
+  it('offers "Send & mark done" from a Pending ask\'s reply box, as one request', () => {
+    setup([makeAsk({ id: 7, state: AskState.Pending, canReply: true, allowedActions: [AskAction.Accept, AskAction.Decline] })], 'recipient');
+
+    type(replyBox(7), 'Here is the SQL.');
+    rowButton(7, '.reply-send-done').click();
+
+    expect(httpMock.expectOne(completeUrl(7)).request.body)
+      .toEqual({ expectedRevision: 1, reason: null, replyBody: 'Here is the SQL.' });
+  });
+
+  it('offers no "Send & mark done" to the requester', () => {
+    setup([makeAsk({ id: 7, canReply: true, allowedActions: [AskAction.Nudge] })], 'requester');
+    pressReply(7);
+
+    type(replyBox(7), 'Any news?');
+
+    expect(row(7).querySelector('.reply-send-done')).toBeNull();
+    expect(row(7).querySelector('.reply-send')).not.toBeNull();
+  });
+
+  it('opens the reply box when the server refuses to mark done without the answer', () => {
+    setup([makeAsk({ id: 7, state: AskState.Accepted, isAnswered: true, canReply: true, allowedActions: [AskAction.Complete] })], 'recipient');
+
+    inlineButton('Mark done').click();
+    httpMock.expectOne(completeUrl(7)).flush(
+      { title: 'This ask expects an answer. Reply with the answer before marking it done.', status: 400, code: ASK_ANSWER_REQUIRED_CODE },
+      { status: 400, statusText: 'Bad Request' });
+    httpMock.expectOne(asksUrl).flush([makeAsk({ id: 7, state: AskState.Accepted, expectsAnswer: true, canReply: true, allowedActions: [AskAction.Complete] })]);
+    fixture.detectChanges();
+
+    expect(component.errorMessage).toBe('This ask expects an answer. Reply with the answer before marking it done.');
+    expect(component.completePromptAskId).toBe(7);
+  });
+
+  // ---- Expects an answer --------------------------------------------------------------------------
+
+  it('toggles "Expect an answer" from the menu', () => {
+    setup([makeAsk({ id: 7, revision: 2, allowedActions: [AskAction.SetExpectsAnswer, AskAction.Cancel] })], 'requester');
+
+    const items = openMenu(7);
+    expect(menuLabels(items)).toEqual(['Expect an answer', 'Withdraw']);
+    items[0].click();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/7/expects-answer`);
+    expect(req.request.body).toEqual({ expectedRevision: 2, expectsAnswer: true });
+  });
+
+  it('offers "No answer needed" while an answer is expected', () => {
+    setup([makeAsk({ id: 7, expectsAnswer: true, allowedActions: [AskAction.ClearExpectsAnswer] })], 'requester');
+
+    expect(menuLabels(openMenu(7))).toEqual(['No answer needed']);
+  });
+
+  it('starts "Ask again" from the old ask\'s terms, expected answer included', () => {
+    setup([makeAsk({ id: 7, state: AskState.Declined, expectsAnswer: true, allowedActions: [AskAction.AskAgain] })], 'requester');
+
+    component.act(component.asks[0], AskAction.AskAgain);
+
+    expect(component.form.value.expectsAnswer).toBeTrue();
+  });
+
+  // ---- Realtime -----------------------------------------------------------------------------------
+
+  const askEvent = (boardItemId: number): AskEventPayload => ({
+    askId: 7, boardItemId, boardId: 3, itemTitle: 'Release notes', event: 'Replied', actorFullName: 'Ayse Recipient',
+    note: 'Review the migration', reason: null, actedOnBehalf: false, replyId: 40, replyExcerpt: 'Done'
+  });
+
+  it('reloads when someone acts on an ask of this item, and only this item', () => {
+    setup([makeAsk({ id: 7 })]);
+
+    askEvents$.next(askEvent(99));
+    httpMock.expectNone(asksUrl);
+
+    askEvents$.next(askEvent(10));
+    httpMock.expectOne(asksUrl).flush([makeAsk({ id: 7, replies: [reply()] })]);
+    fixture.detectChanges();
+    // Shown as the conversation row; it doesn't open by itself.
+    expect(rowButton(7, '.thread-toggle').querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('1 reply');
+    expect(rowButton(7, '.thread-toggle').getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('tells the app shell its item is on screen while it shows it', () => {
+    setup([]);
+    const openItems = TestBed.inject(OpenAskItemsService);
+
+    expect(openItems.isOpen(10)).toBeTrue();
+
+    fixture.destroy();
+    expect(openItems.isOpen(10)).toBeFalse();
   });
 });

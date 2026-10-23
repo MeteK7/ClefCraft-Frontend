@@ -1,8 +1,8 @@
+/* Spacing around the panel belongs to where it's placed (beside or under the item's fields). */
 .asks {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 16px;
 }
 
 .asks-header {
@@ -121,10 +121,18 @@
   min-height: 28px;
 }
 
-.ask-recipient {
-  font-weight: 500;
+.ask-who {
   color: var(--text);
   overflow-wrap: anywhere;
+}
+
+.ask-verb,
+.ask-arrow {
+  color: var(--text-secondary);
+}
+
+.ask-person {
+  font-weight: 500;
 }
 
 .ask-muted {
@@ -133,7 +141,8 @@
 }
 
 .ask-state,
-.ask-required {
+.ask-required,
+.ask-expects-answer {
   padding: 1px 8px;
   border-radius: 10px;
   font-size: 0.75rem;
@@ -145,6 +154,11 @@
 .ask-required {
   background: var(--warning-bg);
   color: var(--warning-text);
+}
+
+.ask-expects-answer {
+  background: var(--primary-light);
+  color: var(--primary);
 }
 
 /* The overflow trigger stays a quiet, compact control in the corner of the card. */
@@ -186,8 +200,93 @@
   margin: 0 6px;
 }
 
-/* A relative time: the dotted underline hints that hovering shows the exact time. */
-.ask-when.recent {
+/* Each fact keeps its words together, so a wrapped line never starts mid-fact. */
+.ask-status > span {
+  white-space: nowrap;
+}
+
+/* A decline reason stays on one line; the full text is on hover and under Details. */
+.ask-status > .ask-reason {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ask-details-toggle {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 0 0 0 8px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ask-details-toggle:hover {
+  color: var(--text);
+}
+
+.ask-details-toggle mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.ask-key-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.ask-key-dates dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 0;
+}
+
+.ask-key-date {
+  display: contents;
+}
+
+.ask-key-dates dt {
+  color: var(--text);
+}
+
+.ask-key-dates dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ask-full-history {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--link);
+  cursor: pointer;
+}
+
+.ask-full-history:hover {
+  text-decoration: underline;
+}
+
+.ask-details-toggle:focus-visible,
+.ask-full-history:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Hover shows the exact time; the dotted underline says so. */
+.ask-when {
   text-decoration: underline dotted;
   text-underline-offset: 3px;
   cursor: help;

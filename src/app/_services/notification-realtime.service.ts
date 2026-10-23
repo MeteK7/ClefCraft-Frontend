@@ -22,6 +22,24 @@ export interface MentionPayload {
     grantedAccess: boolean;
 }
 
+/** Something happened to an ask the current user is part of ("ReceiveAsk", AskNotification). */
+export interface AskEventPayload {
+    askId: number;
+    boardItemId: number;
+    boardId: number;
+    itemTitle: string;
+    /** Requested, Changed, Nudged, Accepted, Declined, Completed, Reopened, Cancelled or Replied. */
+    event: string;
+    actorFullName: string;
+    note: string;
+    /** The decline reason, or the cancel reason (Withdrawn, ItemCompleted, RecipientRemoved). */
+    reason: string | null;
+    actedOnBehalf: boolean;
+    /** A Replied event, or a Completed one sent with its answer. */
+    replyId: number | null;
+    replyExcerpt: string | null;
+}
+
 // Retry delays for (re)connecting after the first start() failed or after SignalR's own automatic
 // reconnect gave up: 2 s, 4 s, 8 s, 16 s, then every 30 s for as long as the user is signed in.
 // The cap keeps an idle outage cheap (one negotiate request per 30 s per tab) while bringing the
@@ -36,9 +54,11 @@ export class NotificationRealtimeService implements OnDestroy {
     private hubConnection!: signalR.HubConnection;
     private reminderSubject = new Subject<ReminderPayload>();
     private mentionSubject = new Subject<MentionPayload>();
+    private askEventSubject = new Subject<AskEventPayload>();
 
     public reminders$: Observable<ReminderPayload> = this.reminderSubject.asObservable();
     public mentions$: Observable<MentionPayload> = this.mentionSubject.asObservable();
+    public askEvents$: Observable<AskEventPayload> = this.askEventSubject.asObservable();
 
     // start()/stop() are async and SignalR rejects start() unless fully Disconnected, so a quick
     // logout -> login must wait for the stop to finish. Chaining transitions guarantees that.
@@ -54,6 +74,7 @@ export class NotificationRealtimeService implements OnDestroy {
         this.buildConnection();
         this.registerReminderListener();
         this.registerMentionListener();
+        this.registerAskListener();
 
         // Connect only while logged in. Connecting at app boot before login produced an
         // anonymous connection that never received user-addressed notifications, even after
@@ -201,6 +222,15 @@ export class NotificationRealtimeService implements OnDestroy {
             'ReceiveMention',
             (payload: MentionPayload) => {
                 this.mentionSubject.next(payload);
+            }
+        );
+    }
+
+    private registerAskListener(): void {
+        this.hubConnection.on(
+            'ReceiveAsk',
+            (payload: AskEventPayload) => {
+                this.askEventSubject.next(payload);
             }
         );
     }

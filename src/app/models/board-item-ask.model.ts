@@ -28,7 +28,22 @@ export enum AskAction {
   Nudge = 8,
   Reassign = 9,
   AskAgain = 10,
-  CompleteOnBehalf = 11
+  CompleteOnBehalf = 11,
+  SetExpectsAnswer = 12,
+  ClearExpectsAnswer = 13
+}
+
+/** A plain-text message on an ask from its requester or recipient (AskReplyDto). */
+export interface AskReply {
+  id: number;
+  authorUserId: string;
+  authorFullName: string;
+  body: string;
+  dateCreated: string;
+  /** When the author last edited it; null when never edited. */
+  dateEdited: string | null;
+  /** Written by the current user, who may edit it. */
+  isMine: boolean;
 }
 
 export interface BoardItemAsk {
@@ -44,6 +59,10 @@ export interface BoardItemAsk {
   note: string;
   dueDate: string | null;
   isRequired: boolean;
+  /** The ask can't be marked done until the recipient replies (see isAnswered). */
+  expectsAnswer: boolean;
+  /** The recipient has replied since the ask was last reopened. */
+  isAnswered: boolean;
   state: AskState;
   responseNote: string | null;
   respondedAt: string | null;
@@ -65,6 +84,15 @@ export interface BoardItemAsk {
   /** Required and not Completed: blocks completing the item until it's resolved. */
   isUnmetRequirement: boolean;
   allowedActions: AskAction[];
+  /** The current user may post a reply: they are the requester or recipient, and it isn't cancelled. */
+  canReply: boolean;
+  /** Oldest first. */
+  replies: AskReply[];
+  /**
+   * The reply that answered the ask, fixed when it was marked done (one of replies). Null while
+   * it isn't done, or when it was done without a reply.
+   */
+  answerReplyId: number | null;
 }
 
 export interface AskSummaryItem {
@@ -102,6 +130,7 @@ export interface CreateAskRequest {
   note: string;
   dueDate?: string | null;
   isRequired: boolean;
+  expectsAnswer?: boolean;
   /** "Ask again": the Declined or Cancelled ask this follows up. */
   replacesAskId?: number | null;
 }
@@ -241,4 +270,154 @@ export function isWithinDay(iso: string | null | undefined, now: Date = new Date
   if (!iso) return false;
   const then = new Date(iso).getTime();
   return !isNaN(then) && now.getTime() - then <= DAY_MS;
+}
+
+/** The DatePipe format for an older ask time shown as a day: "18 Oct", with the year when it isn't this one. */
+export function askDayFormat(iso: string, now: Date = new Date()): string {
+  return new Date(iso).getFullYear() === now.getFullYear() ? 'd MMM' : 'd MMM y';
+}
+
+/** One fact on an ask's status line, such as "Asked" + when. */
+export interface AskStatusPart {
+  label: string;
+  /** When it happened; null when the ask doesn't record it (a withdrawal). */
+  iso: string | null;
+}
+
+/**
+ * The one line that says where an ask stands: its current state and when it got there, plus the
+ * latest nudge while it waits for an answer. History beyond that is in keyDates.
+ */
+export function askStatusLine(ask: BoardItemAsk): AskStatusPart[] {
+  switch (ask.state) {
+    case AskState.Pending:
+      return ask.lastNudgedAt
+        ? [{ label: 'Asked', iso: ask.dateCreated }, { label: 'nudged', iso: ask.lastNudgedAt }]
+        : [{ label: 'Asked', iso: ask.dateCreated }];
+    case AskState.Accepted:
+      return [{ label: 'Accepted', iso: ask.respondedAt ?? ask.dateCreated }];
+    case AskState.Declined:
+      return [{ label: 'Declined', iso: ask.respondedAt }];
+    case AskState.Completed:
+      return [{ label: 'Done', iso: ask.completedAt }];
+    case AskState.Cancelled:
+      return [{
+        label: ask.cancelReason === AskCancelReason.ItemCompleted
+          ? 'Closed when the item was completed'
+          : ask.cancelReason === AskCancelReason.RecipientRemoved
+            ? 'Closed: the recipient left the board'
+            : 'Withdrawn',
+        iso: null
+      }];
+  }
+}
+
+export interface AskKeyDate {
+  label: string;
+  iso: string;
+  /** Who did it, where the ask records it. */
+  by: string | null;
+  /** The decline reason, shown with the decline. */
+  note: string | null;
+}
+
+/**
+ * The dates the ask records, oldest first: asked, the latest nudge, the latest accept or decline,
+ * and done. Earlier nudges and reopen cycles aren't kept on the ask; the item's History has them.
+ */
+export function askKeyDates(ask: BoardItemAsk): AskKeyDate[] {
+  const dates: AskKeyDate[] = [{ label: 'Asked', iso: ask.dateCreated, by: ask.requestedByFullName, note: null }];
+
+  if (ask.lastNudgedAt) {
+    dates.push({ label: 'Last nudged', iso: ask.lastNudgedAt, by: null, note: null });
+  }
+  if (ask.respondedAt) {
+    const declined = ask.state === AskState.Declined;
+    dates.push({
+      label: declined ? 'Declined' : 'Accepted',
+      iso: ask.respondedAt,
+      by: ask.recipientFullName,
+      note: declined ? ask.responseNote : null
+    });
+  }
+  if (ask.completedAt && ask.state === AskState.Completed) {
+    dates.push({ label: 'Done', iso: ask.completedAt, by: ask.completedByFullName, note: null });
+  }
+
+  return dates.sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime());
+}
+
+/** How the viewer relates to an ask, for its header: "Asked Ayse", "From Rae" or "Rae → Ayse". */
+export type AskViewpoint = 'requester' | 'recipient' | 'other';
+
+export function askViewpoint(ask: BoardItemAsk, viewerId: string | null): AskViewpoint {
+  if (viewerId === ask.requestedByUserId) return 'requester';
+  if (viewerId === ask.recipientUserId) return 'recipient';
+  return 'other';
+}
+
+/** A reply's limit, as the API enforces it (BoardItemAskLimits.ReplyMaxLength). */
+export const ASK_REPLY_MAX_LENGTH = 2000;
+
+/** The reply box shows its character count from this length on. */
+export const ASK_REPLY_COUNTER_FROM = 1800;
+
+/** The code of the 400 that refuses to mark an ask done before the recipient has answered. */
+export const ASK_ANSWER_REQUIRED_CODE = 'ASK_ANSWER_REQUIRED';
+
+/** True for the 400 the server returns when an ask that expects an answer is marked done without one. */
+export function isAnswerRequiredError(error: unknown): boolean {
+  const code = (error as { status?: number; error?: { code?: unknown } } | null)?.error?.code;
+  return (error as { status?: number })?.status === 400 && code === ASK_ANSWER_REQUIRED_CODE;
+}
+
+export interface ReplySegment {
+  kind: 'text' | 'code';
+  text: string;
+}
+
+const FENCE = '```';
+
+/**
+ * A reply body split into plain text and the code between triple-backtick fences, for rendering
+ * code as a block. An optional language word on the opening fence's line ("```sql") is dropped,
+ * as is one line break on each side of a fence. An unclosed fence is left as text.
+ */
+export function parseReplyBody(body: string): ReplySegment[] {
+  const segments: ReplySegment[] = [];
+  let rest = body;
+
+  for (;;) {
+    const open = rest.indexOf(FENCE);
+    const close = open < 0 ? -1 : rest.indexOf(FENCE, open + FENCE.length);
+    if (open < 0 || close < 0) break;
+
+    pushText(segments, rest.slice(0, open));
+
+    let code = rest.slice(open + FENCE.length, close);
+    const firstLineEnd = code.indexOf('\n');
+    // Only an empty line or a lowercase word ("sql", "ts") counts as the language, so a first line
+    // of code on the fence's line ("```BEGIN") isn't taken for one.
+    if (firstLineEnd >= 0 && /^([a-z][\w+#.-]{0,19})?$/.test(code.slice(0, firstLineEnd).trim())) {
+      code = code.slice(firstLineEnd + 1);
+    }
+    code = code.replace(/\r?\n$/, '');
+    if (code.trim()) segments.push({ kind: 'code', text: code });
+
+    rest = rest.slice(close + FENCE.length).replace(/^\r?\n/, '');
+  }
+
+  pushText(segments, rest);
+  return segments;
+}
+
+function pushText(segments: ReplySegment[], text: string): void {
+  const trimmed = text.replace(/\r?\n$/, '');
+  if (trimmed.trim()) segments.push({ kind: 'text', text: trimmed });
+}
+
+/** A reply on one line, for a folded list: whitespace collapsed, fences dropped, cut at the length. */
+export function replyExcerpt(body: string, max = 120): string {
+  const text = body.replace(/```[\w+#.-]*/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.length > max ? text.slice(0, max).trimEnd() + '…' : text;
 }

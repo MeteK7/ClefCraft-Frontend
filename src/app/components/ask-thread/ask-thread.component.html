@@ -1,0 +1,144 @@
+<!-- The answer: what the ask produced, shown while the conversation is closed. Opening the
+     conversation shows the same reply in place, tagged "Answer", so it never appears twice. -->
+@if (showsAnswerBlock && answer; as answer) {
+  <div class="answer" [attr.data-reply-id]="answer.id">
+    <div class="reply-head">
+      <span class="answer-label">Answer</span>
+      <span aria-hidden="true">·</span>
+      <span class="reply-author">{{ answer.authorFullName }}</span>
+      <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: answer.dateCreated }" />
+    </div>
+    <div class="answer-body" [class.clamped]="answerIsLong && !answerExpanded">
+      <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{ $implicit: answer }" />
+    </div>
+    @if (answerIsLong) {
+      <button type="button" class="thread-link answer-more" [attr.aria-expanded]="answerExpanded"
+        (click)="answerExpanded = !answerExpanded">{{ answerExpanded ? 'Show less' : 'Show more' }}</button>
+    }
+  </div>
+}
+
+@if (ask.replies.length > 0) {
+  <button type="button" class="thread-toggle" [attr.aria-expanded]="expanded" [attr.aria-controls]="threadId"
+    (click)="toggle()">
+    <mat-icon class="thread-toggle-icon" aria-hidden="true">{{ expanded ? 'expand_more' : 'chevron_right' }}</mat-icon>
+    @if (expanded) {
+      <span class="thread-toggle-label">Hide conversation</span>
+    } @else {
+      <span class="thread-toggle-label">{{ countLabel }}</span>
+      @if (showsLatestPreview) {
+        <span class="thread-toggle-latest">
+          · latest from {{ latest.authorFullName }},
+          <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: latest.dateCreated }" />
+          — “{{ latestExcerpt }}”
+        </span>
+      }
+    }
+  </button>
+}
+
+@if (expanded) {
+  <div class="thread" [id]="threadId">
+    @if (hiddenCount > 0) {
+      <button type="button" class="thread-link" (click)="showAll = true">
+        Show {{ hiddenCount }} earlier {{ hiddenCount === 1 ? 'reply' : 'replies' }}
+      </button>
+    }
+
+    <ol class="thread-list" aria-label="Replies">
+      @for (reply of visibleReplies; track reply.id) {
+        <li class="reply" [class.is-answer]="reply.id === ask.answerReplyId" [attr.data-reply-id]="reply.id">
+          <div class="reply-head">
+            <span class="reply-author">{{ reply.authorFullName }}</span>
+            <span aria-hidden="true">·</span>
+            <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: reply.dateCreated }" />
+            @if (reply.id === ask.answerReplyId) {
+              <span class="answer-tag">Answer</span>
+            }
+            @if (reply.dateEdited) {
+              <span class="reply-edited">edited</span>
+            }
+            @if (reply.isMine && ask.canReply && editingId !== reply.id) {
+              <button mat-icon-button type="button" class="reply-edit" matTooltip="Edit"
+                aria-label="Edit your reply" [disabled]="busy" (click)="startEdit(reply)">
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+          </div>
+
+          @if (editingId === reply.id) {
+            <div class="reply-editor">
+              <textarea #editBox class="reply-input" cdkTextareaAutosize cdkAutosizeMinRows="2" cdkAutosizeMaxRows="12"
+                aria-label="Edit your reply" [attr.maxlength]="maxLength" [value]="editDraft"
+                (input)="editDraft = editBox.value" (keydown)="onEditKeydown($event, reply)"></textarea>
+              <div class="reply-actions">
+                <button mat-button type="button" class="reply-cancel-edit" (click)="cancelEdit()">Cancel</button>
+                <button mat-flat-button type="button" class="reply-save-edit"
+                  [disabled]="busy || !editDraft.trim()" (click)="saveEdit(reply)">Save</button>
+              </div>
+            </div>
+          } @else {
+            <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{ $implicit: reply }" />
+          }
+        </li>
+      }
+    </ol>
+  </div>
+}
+
+@if (boxVisible) {
+  <div class="reply-box" [class.prompting]="completePrompt">
+    @if (completePrompt) {
+      <p class="reply-prompt" [id]="'complete-prompt-' + ask.id">
+        Share the result with {{ replyToName }}, or mark it done without a reply.
+      </p>
+    }
+    <textarea #box class="reply-input" cdkTextareaAutosize cdkAutosizeMinRows="1" cdkAutosizeMaxRows="10"
+      placeholder="Reply…" [attr.aria-label]="'Reply to ' + replyToName"
+      [attr.aria-describedby]="completePrompt ? 'complete-prompt-' + ask.id : null"
+      [attr.maxlength]="maxLength" [value]="draft"
+      (input)="onDraftInput(box.value)" (keydown)="onBoxKeydown($event)"></textarea>
+
+    @if (draft.length >= counterFrom) {
+      <span class="reply-count" [class.at-limit]="draft.length >= maxLength" aria-live="polite">
+        {{ draft.length }} / {{ maxLength }}
+      </span>
+    }
+
+    @if (completePrompt) {
+      <div class="reply-actions">
+        <button mat-button type="button" class="reply-done-without" [disabled]="busy"
+          (click)="completeWithoutReply.emit()">Mark done without reply</button>
+        <button mat-flat-button type="button" class="reply-send-done" [disabled]="busy || !hasText"
+          (click)="emitSendAndComplete()">Send &amp; mark done</button>
+      </div>
+    } @else if (hasText) {
+      <div class="reply-actions">
+        @if (canSendAndComplete) {
+          <button mat-button type="button" class="reply-send-done" [disabled]="busy"
+            (click)="emitSendAndComplete()">Send &amp; mark done</button>
+        }
+        <button mat-flat-button type="button" class="reply-send" [disabled]="busy" (click)="emitSend()">Send</button>
+      </div>
+    }
+  </div>
+}
+
+<!-- A reply's text, with ``` fences as code blocks that can be copied. -->
+<ng-template #body let-reply>
+  <div class="reply-body">
+    @for (segment of segmentsOf(reply); track $index) {
+      @let key = reply.id + ':' + $index;
+      @if (segment.kind === 'code') {
+        <div class="reply-code">
+          <pre><code>{{ segment.text }}</code></pre>
+          <button mat-button type="button" class="reply-copy" (click)="copy(segment.text, key)">
+            <mat-icon>{{ copiedKey === key ? 'check' : 'content_copy' }}</mat-icon>{{ copiedKey === key ? 'Copied' : 'Copy' }}
+          </button>
+        </div>
+      } @else {
+        <p class="reply-text">{{ segment.text }}</p>
+      }
+    }
+  </div>
+</ng-template>

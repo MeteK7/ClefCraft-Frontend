@@ -32,131 +32,143 @@
     </div>
   }
 
-  <mat-tab-group class="dialog-tabs" [selectedIndex]="initialTabIndex">
+  <mat-tab-group class="dialog-tabs" [selectedIndex]="selectedTabIndex ?? initialTabIndex"
+    (selectedIndexChange)="selectedTabIndex = $event">
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon class="tab-icon">edit</mat-icon> Details
       </ng-template>
 
-      <div class="dialog-content">
-        <mat-form-field appearance="outline" class="w-100">
-          <mat-label>Title</mat-label>
-          <input matInput formControlName="title" placeholder="Enter item title..." />
-        </mat-form-field>
+      <div class="dialog-content details-content">
+        <!-- Chime In sits beside the fields when the dialog is wide enough, and under them
+             otherwise (container query on .details-layout). It stays after the fields in the DOM. -->
+        <div class="details-layout">
+          <div class="details-grid">
+            <div class="details-main">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>Title</mat-label>
+                <input matInput formControlName="title" placeholder="Enter item title..." />
+              </mat-form-field>
 
-        <mat-form-field appearance="outline" class="w-100 textarea-field">
-          <mat-label>Description</mat-label>
-          <textarea matInput id="itemDescription" formControlName="description" rows="4"
-          placeholder="Add a detailed description..."></textarea>
-        </mat-form-field>
+              <mat-form-field appearance="outline" class="w-100 textarea-field">
+                <mat-label>Description</mat-label>
+                <textarea matInput id="itemDescription" formControlName="description" rows="4"
+                placeholder="Add a detailed description..."></textarea>
+              </mat-form-field>
 
-        @if (isNewItem) {
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Column</mat-label>
-            <mat-select formControlName="boardColumnId">
-              @for (column of columns; track column) {
-                <mat-option [value]="column.id">
-                  {{ column.title }}
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-        }
-
-        <div class="form-grid">
-          <div class="form-column">
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Status</mat-label>
-              <mat-select formControlName="statusId">
-                @for (s of statuses; track s) {
-                  <mat-option [value]="s.id">
-                    {{ s.name }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Priority</mat-label>
-              <mat-select formControlName="priorityId">
-                @for (p of priorities; track p) {
-                  <mat-option [value]="p.id">
-                    {{ p.name }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Assignee</mat-label>
-              <mat-select formControlName="assigneeId">
-                @for (a of assignees; track a) {
-                  <mat-option [value]="a.id">
-                    {{ a.fullName }}
-                  </mat-option>
-                }
-              </mat-select>
-              @if (showsNoAssigneeHint) {
-                <mat-hint class="no-assignee-hint">No one is responsible for this item.</mat-hint>
-              } @else {
-                <mat-hint>Responsible for getting this item done</mat-hint>
-              }
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Tags</mat-label>
-              <mat-select formControlName="tags" multiple>
-                <mat-select-trigger>
-                  <div class="tag-chips-wrapper">
-                    @for (tag of visibleTags; track tag) {
-                      <span class="tag-chip">{{ tag.name }}</span>
+              @if (isNewItem) {
+                <mat-form-field appearance="outline" class="w-100">
+                  <mat-label>Column</mat-label>
+                  <mat-select formControlName="boardColumnId">
+                    @for (column of columns; track column) {
+                      <mat-option [value]="column.id">
+                        {{ column.title }}
+                      </mat-option>
                     }
-                    @if (hiddenTagCount > 0) {
-                      <span class="more-tags" [matTooltip]="hiddenTagsTooltip">
-                        +{{ hiddenTagCount }} more
-                      </span>
+                  </mat-select>
+                </mat-form-field>
+              }
+
+              <div class="form-grid">
+                <div class="form-column">
+                  <mat-form-field appearance="outline" class="w-100">
+                    <mat-label>Status</mat-label>
+                    <mat-select formControlName="statusId">
+                      @for (s of statuses; track s) {
+                        <mat-option [value]="s.id">
+                          {{ s.name }}
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="w-100">
+                    <mat-label>Priority</mat-label>
+                    <mat-select formControlName="priorityId">
+                      @for (p of priorities; track p) {
+                        <mat-option [value]="p.id">
+                          {{ p.name }}
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="w-100">
+                    <mat-label>Assignee</mat-label>
+                    <mat-select formControlName="assigneeId">
+                      @for (a of assignees; track a) {
+                        <mat-option [value]="a.id">
+                          {{ a.fullName }}
+                        </mat-option>
+                      }
+                    </mat-select>
+                    @if (showsNoAssigneeHint) {
+                      <mat-hint class="no-assignee-hint">No one is responsible for this item.</mat-hint>
+                    } @else {
+                      <mat-hint>Responsible for getting this item done</mat-hint>
                     }
-                  </div>
-                </mat-select-trigger>
-                @for (tag of tags; track tag) {
-                  <mat-option [value]="tag.id">
-                    {{ tag.name }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          </div>
+                  </mat-form-field>
 
-          <div class="form-column">
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Due Date</mat-label>
-              <input matInput [matDatepicker]="picker" formControlName="dueDate">
-              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-              <mat-datepicker #picker></mat-datepicker>
-            </mat-form-field>
+                  <mat-form-field appearance="outline" class="w-100">
+                    <mat-label>Tags</mat-label>
+                    <mat-select formControlName="tags" multiple>
+                      <mat-select-trigger>
+                        <div class="tag-chips-wrapper">
+                          @for (tag of visibleTags; track tag) {
+                            <span class="tag-chip">{{ tag.name }}</span>
+                          }
+                          @if (hiddenTagCount > 0) {
+                            <span class="more-tags" [matTooltip]="hiddenTagsTooltip">
+                              +{{ hiddenTagCount }} more
+                            </span>
+                          }
+                        </div>
+                      </mat-select-trigger>
+                      @for (tag of tags; track tag) {
+                        <mat-option [value]="tag.id">
+                          {{ tag.name }}
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                </div>
 
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Estimated Time (hrs)</mat-label>
-              <input matInput type="number" formControlName="estimatedTime" min="0" />
-            </mat-form-field>
+                <div class="form-column">
+                  <mat-form-field appearance="outline" class="w-100">
+                    <mat-label>Due Date</mat-label>
+                    <input matInput [matDatepicker]="picker" formControlName="dueDate">
+                    <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                    <mat-datepicker #picker></mat-datepicker>
+                  </mat-form-field>
 
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Time Spent (hrs)</mat-label>
-              <input matInput type="number" formControlName="timeSpent" min="0" />
-            </mat-form-field>
+                  <mat-form-field appearance="outline" class="w-100">
+                    <mat-label>Estimated Time (hrs)</mat-label>
+                    <input matInput type="number" formControlName="estimatedTime" min="0" />
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="w-100">
+                    <mat-label>Time Spent (hrs)</mat-label>
+                    <input matInput type="number" formControlName="timeSpent" min="0" />
+                  </mat-form-field>
+                </div>
+              </div>
+            </div>
+
+            @if (!isNewItem) {
+              <div class="details-chime">
+                <!-- Ask actions apply at once; they aren't part of the form or its unsaved changes. -->
+                <app-board-item-asks
+                  [itemId]="item.id"
+                  [assigneeId]="item.assigneeId"
+                  [itemDueDate]="form.value.dueDate"
+                  [members]="assignees"
+                  (summaryChange)="onAskSummaryChange($event)"
+                  (openHistory)="selectedTabIndex = historyTabIndex">
+                </app-board-item-asks>
+              </div>
+            }
           </div>
         </div>
-
-        @if (!isNewItem) {
-          <!-- Ask actions apply at once; they aren't part of the form or its unsaved changes. -->
-          <app-board-item-asks
-            [itemId]="item.id"
-            [assigneeId]="item.assigneeId"
-            [itemDueDate]="form.value.dueDate"
-            [members]="assignees"
-            (summaryChange)="onAskSummaryChange($event)">
-          </app-board-item-asks>
-        }
       </div>
     </mat-tab>
 
