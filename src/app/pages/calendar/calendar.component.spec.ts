@@ -8,6 +8,7 @@ import { CalendarComponent } from './calendar.component';
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 import { filter, firstValueFrom, of, Subject } from 'rxjs';
 import { NotificationRealtimeService, ReminderPayload } from '../../_services/notification-realtime.service';
+import { provideAppDateFormat } from '../../date-format';
 
 describe('CalendarComponent', () => {
   let component: CalendarComponent;
@@ -17,6 +18,7 @@ describe('CalendarComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -65,6 +67,7 @@ describe('CalendarComponent — mergeEvents() occurrence identity', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -143,6 +146,7 @@ describe('CalendarComponent — mergeEvents() drops stale occurrences superseded
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -205,6 +209,7 @@ describe('CalendarComponent — findEventByOccurrence()', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -266,6 +271,7 @@ describe('CalendarComponent — refreshAfterSave() loading state and race safety
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -368,6 +374,7 @@ describe('CalendarComponent — getWeekNumber() / getDayOfYear()', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -446,7 +453,7 @@ describe('CalendarComponent — attachment upload after save', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
-      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()]
+      providers: [provideAppDateFormat(), provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(CalendarComponent);
@@ -494,6 +501,7 @@ describe('CalendarComponent — reminders and redirect params', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
