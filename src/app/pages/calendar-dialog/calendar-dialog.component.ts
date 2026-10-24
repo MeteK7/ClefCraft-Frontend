@@ -85,7 +85,7 @@ export interface CalendarDialogData {
 })
 export class CalendarDialogComponent implements OnInit {
 
-  /** The format the date fields read, shown as their placeholder and hint. */
+  /** The format the date fields read, shown as their placeholder. */
   readonly dateFormat = DATE_INPUT_PLACEHOLDER;
 
   @Output() onSave = new EventEmitter<SavePayload>();

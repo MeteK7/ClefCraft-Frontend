@@ -51,7 +51,6 @@
           <input matInput [matDatepicker]="askDuePicker" formControlName="dueDate" [placeholder]="dateFormat">
           <mat-datepicker-toggle matIconSuffix [for]="askDuePicker"></mat-datepicker-toggle>
           <mat-datepicker #askDuePicker></mat-datepicker>
-          <mat-hint>{{ dateFormat }}</mat-hint>
         </mat-form-field>
 
         <mat-checkbox formControlName="isRequired">Required to complete the item</mat-checkbox>

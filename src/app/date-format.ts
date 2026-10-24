@@ -17,7 +17,7 @@ import {
 export const APP_DATE_LOCALE = 'en-US';
 
 /**
- * The format the date fields show as their placeholder and hint. It must match display.dateInput in
+ * The format the date fields show as their placeholder. It must match display.dateInput in
  * APP_DATE_FORMATS and what AppDateAdapter.parse reads: change the three together.
  */
 export const DATE_INPUT_PLACEHOLDER = 'MM/DD/YYYY';

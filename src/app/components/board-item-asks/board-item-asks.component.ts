@@ -184,7 +184,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   readonly AskState = AskState;
   readonly AskAction = AskAction;
   readonly noteMaxLength = ASK_NOTE_MAX_LENGTH;
-  /** The format "By when" reads, shown as its placeholder and hint. */
+  /** The format "By when" reads, shown as its placeholder. */
   readonly dateFormat = DATE_INPUT_PLACEHOLDER;
   readonly nudgeRule = NUDGE_RULE_TEXT;
   readonly exactTimeFormat = ASK_EXACT_TIME_FORMAT;

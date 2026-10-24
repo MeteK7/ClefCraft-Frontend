@@ -114,7 +114,7 @@
 .datetime-row {
   display: grid;
   grid-template-columns: minmax(156px, 1.1fr) minmax(140px, 1fr);
-  /* The row gap keeps a field's floating label clear of the hint above it. */
+  /* The row gap keeps a field's floating label clear of an error message above it. */
   gap: 8px 12px;
   align-items: start;
 }

@@ -168,7 +168,7 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
   /** The History tab's position (fixed past create mode): Chime In's "Full history" opens it. */
   readonly historyTabIndex = 3;
 
-  /** The format the Due Date field reads, shown as its placeholder and hint. */
+  /** The format the Due Date field reads, shown as its placeholder. */
   readonly dateFormat = DATE_INPUT_PLACEHOLDER;
 
   /** The tab chosen since the dialog opened; until then, initialTabIndex. */

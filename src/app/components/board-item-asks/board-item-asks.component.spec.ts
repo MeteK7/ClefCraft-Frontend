@@ -467,14 +467,14 @@ describe('BoardItemAsksComponent', () => {
     });
   });
 
-  it('shows the date format on "By when", and its calendar opens', fakeAsync(() => {
+  it('shows the date format as the placeholder on "By when", and its calendar opens', fakeAsync(() => {
     setup([]);
     component.openCreate();
     fixture.detectChanges();
 
     const field = element().querySelector('.ask-due')!;
     expect(field.querySelector('input')!.getAttribute('placeholder')).toBe('MM/DD/YYYY');
-    expect(squash(field.querySelector('mat-hint')!.textContent)).toBe('MM/DD/YYYY');
+    expect(field.querySelector('mat-hint')).toBeNull();
 
     field.querySelector<HTMLButtonElement>('mat-datepicker-toggle button')!.click();
     fixture.detectChanges();
