@@ -48,7 +48,7 @@
       <div class="ask-form-row">
         <mat-form-field appearance="outline" class="ask-due">
           <mat-label>By when (optional)</mat-label>
-          <input matInput [matDatepicker]="askDuePicker" formControlName="dueDate">
+          <input matInput [matDatepicker]="askDuePicker" formControlName="dueDate" [placeholder]="dateFormat">
           <mat-datepicker-toggle matIconSuffix [for]="askDuePicker"></mat-datepicker-toggle>
           <mat-datepicker #askDuePicker></mat-datepicker>
         </mat-form-field>
@@ -180,7 +180,7 @@
         }
 
         @if (ask.replies.length > 0 || ask.canReply) {
-          <app-ask-thread #thread [ask]="ask" [when]="when" [busy]="isBusy"
+          <app-ask-thread #thread [ask]="ask" [viewpoint]="viewpoint(ask)" [when]="when" [busy]="isBusy"
             [canSendAndComplete]="canSendAndComplete(ask)" [completePrompt]="completePromptAskId === ask.id"
             [replyToName]="replyToName(ask)" [boxByDefault]="replyBoxByDefault(ask)"
             (send)="sendReply(ask, $event, thread)"

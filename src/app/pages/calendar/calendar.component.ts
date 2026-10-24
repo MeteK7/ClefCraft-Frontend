@@ -4,7 +4,6 @@ import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dial
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatInputModule } from '@angular/material/input';
-import { MatNativeDateModule } from '@angular/material/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -50,6 +49,7 @@ import { DragPositionUtil } from '../../calendar-engine/interactions/drag/drag-p
 import { EventCreateEngine } from '../../calendar-engine/interactions/create/event-create-engine';
 
 import { MonthScrollViewComponent, VisibleMonthChangeEvent } from './month-scroll-view/month-scroll-view.component';
+import { DATE_INPUT_PLACEHOLDER } from '../../date-format';
 
 type RangeOrigin = 'scroll' | 'mutation';
 interface RangeRequest { start: Date; end: Date; origin: RangeOrigin; }
@@ -59,7 +59,6 @@ interface RangeRequest { start: Date; end: Date; origin: RangeOrigin; }
     imports: [
         CommonModule,
         MatDatepickerModule,
-        MatNativeDateModule,
         MatDialogModule,
         MatTooltipModule,
         MatButtonModule,
@@ -76,6 +75,9 @@ interface RangeRequest { start: Date; end: Date; origin: RangeOrigin; }
     styleUrls: ['./calendar.component.css']
 })
 export class CalendarComponent implements OnInit, OnDestroy {
+
+  /** The format the date picker reads, shown as its placeholder. */
+  readonly dateFormat = DATE_INPUT_PLACEHOLDER;
 
   // ── State ──────────────────────────────────────────────────────────────────
   alwaysAllowDrop = (): boolean => true;

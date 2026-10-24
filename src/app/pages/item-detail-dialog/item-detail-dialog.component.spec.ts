@@ -22,6 +22,7 @@ import { AskCompletionService } from '../../_services/ask-completion.service';
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
 import { AskClosure, AskState, BoardItemAsk } from '../../models/board-item-ask.model';
 import { makeAsk } from '../../models/board-item-ask.testing';
+import { provideAppDateFormat } from '../../date-format';
 
 describe('ItemDetailDialogComponent', () => {
   let component: ItemDetailDialogComponent;
@@ -36,6 +37,7 @@ describe('ItemDetailDialogComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -80,6 +82,7 @@ describe('ItemDetailDialogComponent — markAsWorked()', () => {
     TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -154,6 +157,7 @@ describe('ItemDetailDialogComponent — assignee options', () => {
     TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -224,6 +228,7 @@ describe('ItemDetailDialogComponent — current status and priority', () => {
     TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -279,6 +284,7 @@ describe('ItemDetailDialogComponent — header', () => {
     TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -383,6 +389,7 @@ describe('ItemDetailDialogComponent — completing an item with asks', () => {
     TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -527,6 +534,7 @@ describe('ItemDetailDialogComponent — Chime In beside the fields', () => {
     TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -790,6 +798,7 @@ describe('ItemDetailDialogComponent — its width follows Chime In', () => {
     TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),

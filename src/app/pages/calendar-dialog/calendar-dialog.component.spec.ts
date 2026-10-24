@@ -10,6 +10,7 @@ import { CalendarDialogComponent } from './calendar-dialog.component';
 import { RecurrenceScopeDialogComponent } from '../recurrence-scope-dialog/recurrence-scope-dialog.component';
 import { RecurrenceDeleteScopeDialogComponent } from '../recurrence-delete-scope-dialog/recurrence-delete-scope-dialog.component';
 import { AuthService } from '../../_services/auth.service';
+import { provideAppDateFormat } from '../../date-format';
 
 describe('CalendarDialogComponent', () => {
   let component: CalendarDialogComponent;
@@ -19,6 +20,7 @@ describe('CalendarDialogComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarDialogComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -54,6 +56,7 @@ async function createDialog(data: any): Promise<{
   await TestBed.configureTestingModule({
     imports: [CalendarDialogComponent],
     providers: [
+      provideAppDateFormat(),
       provideHttpClient(withXhr()),
       provideHttpClientTesting(),
       provideRouter([]),
@@ -96,6 +99,7 @@ async function createDialogAsUser(data: any, currentUserId: string | null): Prom
   await TestBed.configureTestingModule({
     imports: [CalendarDialogComponent],
     providers: [
+      provideAppDateFormat(),
       provideHttpClient(withXhr()),
       provideHttpClientTesting(),
       provideRouter([]),
@@ -541,6 +545,7 @@ describe('CalendarDialogComponent — staging attachments', () => {
     await TestBed.configureTestingModule({
       imports: [CalendarDialogComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),

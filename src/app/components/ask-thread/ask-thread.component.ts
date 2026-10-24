@@ -21,6 +21,7 @@ import {
   ASK_REPLY_MAX_LENGTH,
   AskReply,
   AskState,
+  AskViewpoint,
   BoardItemAsk,
   ReplySegment,
   parseReplyBody,
@@ -45,9 +46,9 @@ const ANSWER_CLAMP_LINES = 3;
 let nextThreadId = 0;
 
 /**
- * One ask's answer and conversation. Closed, a Done ask shows its answer and a single toggle row
- * with the reply count and latest activity; one click opens the whole thread, where the answer is
- * tagged in place. Plain text only: ``` fences show as code blocks with a Copy button. The reply
+ * One ask's answer and conversation. Closed, the conversation shows its reply count and latest
+ * reply, the ones before it counted; a Done ask's shows the answer in its place among them. One
+ * click opens the whole thread, where the answer is tagged in place. Plain text only: ``` fences show as code blocks with a Copy button. The reply
  * box shows with the open conversation, on Reply, in the mark-done prompt, or always for the
  * recipient of an open ask. The panel sends the requests; this keeps the draft and what's open,
  * which survive the panel's reloads.
@@ -61,6 +62,8 @@ let nextThreadId = 0;
 })
 export class AskThreadComponent implements OnChanges {
   @Input({ required: true }) ask!: BoardItemAsk;
+  /** The viewer's side of the ask: which replies sit offset, and whose names show. */
+  @Input() viewpoint: AskViewpoint = 'other';
   /** The panel's time template: relative within a day, with the exact time on hover. */
   @Input({ required: true }) when!: TemplateRef<unknown>;
   @Input() busy = false;
@@ -81,6 +84,7 @@ export class AskThreadComponent implements OnChanges {
 
   @ViewChild('box') private box?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('editBox') private editBox?: ElementRef<HTMLTextAreaElement>;
+  @ViewChild('toggleButton') private toggleButton?: ElementRef<HTMLButtonElement>;
 
   readonly AskState = AskState;
   readonly maxLength = ASK_REPLY_MAX_LENGTH;
@@ -142,9 +146,33 @@ export class AskThreadComponent implements OnChanges {
     return count === 1 ? '1 reply' : `${count} replies`;
   }
 
-  /** The latest reply previewed on the closed row, unless it's the answer already shown above. */
-  get showsLatestPreview(): boolean {
-    return !(this.showsAnswerBlock && this.latest.id === this.answer?.id);
+  // The closed conversation: [N earlier] · latest, or on a done ask
+  // [N earlier] · answer · [M more] · latest.
+
+  /** The answer shown among the closed conversation's replies. */
+  get digestAnswer(): AskReply | null {
+    return this.showsAnswerBlock ? this.answer : null;
+  }
+
+  /** Before the answer, or before the latest reply when no answer shows. */
+  get earlierCount(): number {
+    const answer = this.digestAnswer;
+    return answer ? this.ask.replies.indexOf(answer) : this.ask.replies.length - 1;
+  }
+
+  /** Between the answer and the latest reply, neither counted. */
+  get moreCount(): number {
+    const answer = this.digestAnswer;
+    return answer ? Math.max(this.ask.replies.length - this.ask.replies.indexOf(answer) - 2, 0) : 0;
+  }
+
+  /** The latest reply has its own line, unless it's the answer shown already. */
+  get showsLatest(): boolean {
+    return this.latest.id !== this.digestAnswer?.id;
+  }
+
+  gapLabel(count: number, side: 'earlier' | 'more'): string {
+    return `${count} ${side} ${count === 1 ? 'reply' : 'replies'}`;
   }
 
   get latestExcerpt(): string {
@@ -160,6 +188,34 @@ export class AskThreadComponent implements OnChanges {
     return this.ask.replies.length - this.visibleReplies.length;
   }
 
+  /** How an author is named in text: "You" for the viewer's own replies. */
+  authorLabel(reply: AskReply): string {
+    return reply.isMine ? 'You' : reply.authorFullName;
+  }
+
+  /**
+   * The reply sits offset, on the conversation's right: the viewer's own when they're one of the
+   * two sides; for anyone else, the requester's (a fixed rule, since they have no side of their own).
+   */
+  isOffset(reply: AskReply): boolean {
+    return this.viewpoint === 'other' ? reply.authorUserId === this.ask.requestedByUserId : reply.isMine;
+  }
+
+  /**
+   * The first of the visible replies, or by someone other than the reply before it. A run names
+   * its author once, here ("You" for the viewer); the rest name them to screen readers only.
+   */
+  startsRun(index: number): boolean {
+    const replies = this.visibleReplies;
+    return index === 0 || replies[index - 1].authorUserId !== replies[index].authorUserId;
+  }
+
+  /** The last of the visible replies, or followed by someone else's. */
+  endsRun(index: number): boolean {
+    const replies = this.visibleReplies;
+    return index === replies.length - 1 || replies[index + 1].authorUserId !== replies[index].authorUserId;
+  }
+
   get boxVisible(): boolean {
     return this.ask.canReply && (this.expanded || this.boxRequested || this.boxByDefault || this.completePrompt);
   }
@@ -171,6 +227,16 @@ export class AskThreadComponent implements OnChanges {
       this.showAll = false;
       this.boxRequested = false;
     }
+  }
+
+  /**
+   * A count in the closed conversation was clicked: open it all. The count goes with the closed
+   * view, so focus moves to the toggle, which now reads "Hide conversation".
+   */
+  openConversation(): void {
+    this.expanded = true;
+    this.showAll = true;
+    setTimeout(() => this.toggleButton?.nativeElement.focus());
   }
 
   /** The Reply action: open the conversation (if there is one) and the box, ready to type. */

@@ -16,6 +16,9 @@
   --primary: #1976d2;
   --primary-hover: #1565c0;
   --primary-light: #e3f2fd;
+  /* The viewer's own replies in a Chime In conversation. Declared in both themes: a var() inside
+     a custom property resolves where it's declared, so dark mode needs its own. */
+  --reply-own-bg: color-mix(in srgb, var(--primary) 12%, var(--surface));
 
   --accent: #673ab7;
   --accent-light: #ede7f6;
