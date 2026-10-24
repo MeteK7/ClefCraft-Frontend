@@ -1,11 +1,20 @@
 <section class="asks" aria-labelledby="asks-heading">
   <div class="asks-header">
-    <h4 id="asks-heading" class="asks-title"><mat-icon>group_add</mat-icon> Chime In</h4>
-    @if (!formMode) {
-      <button mat-stroked-button type="button" class="ask-someone" (click)="openCreate()" [disabled]="isBusy">
-        <mat-icon>person_add</mat-icon> Ask someone
-      </button>
-    }
+    <!-- Focusable so revealing the panel can move focus here and announce it. -->
+    <h4 id="asks-heading" class="asks-title" tabindex="-1"><mat-icon>group_add</mat-icon> Chime In</h4>
+    <div class="asks-header-actions">
+      @if (!formMode) {
+        <button mat-stroked-button type="button" class="ask-someone" (click)="openCreate()" [disabled]="isBusy">
+          <mat-icon>person_add</mat-icon> Ask someone
+        </button>
+      }
+      @if (hideable) {
+        <button mat-icon-button type="button" class="asks-hide" matTooltip="Hide Chime In" aria-label="Hide Chime In"
+          aria-controls="chime-in-panel" aria-expanded="true" (click)="hide.emit()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </div>
   </div>
 
   @if (errorMessage) {
