@@ -578,7 +578,7 @@ describe('BoardItemAsksComponent', () => {
     expect(row(1).querySelector('.reply')).toBeNull();
   });
 
-  it('shows a done ask\'s answer, with its follow-ups behind the toggle, and never twice', () => {
+  it('shows a done ask\'s answer in its place in the closed conversation, and never twice', () => {
     setup([makeAsk({
       id: 1, state: AskState.Completed, answerReplyId: 1,
       replies: [
@@ -587,16 +587,22 @@ describe('BoardItemAsksComponent', () => {
       ]
     })]);
 
-    const answer = row(1).querySelector('.answer')!;
+    const answer = row(1).querySelector('.thread-digest .answer')!;
     expect(answer.getAttribute('data-reply-id')).toBe('1');
     expect(answer.querySelector('.answer-label')!.textContent).toBe('Answer');
     expect(answer.querySelector('.reply-author')!.textContent).toBe('Ayse Recipient');
     expect(squash(answer.querySelector('.reply-body')!.textContent)).toBe('INSERT INTO items (title) VALUES (\'a\');');
 
-    // The count includes the answer: exactly what opening shows.
+    // The count includes the answer: exactly what opening shows. The latest reply follows the
+    // answer, with its own author and time, rather than sitting on the toggle.
     const toggle = rowButton(1, '.thread-toggle');
     expect(toggle.querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('2 replies');
-    expect(toggle.querySelector('.thread-toggle-excerpt')!.textContent).toBe('“Test message”');
+    expect(toggle.querySelector('.thread-toggle-excerpt')).toBeNull();
+    expect(toggle.querySelector('.thread-toggle-author')).toBeNull();
+    const latest = row(1).querySelector('.thread-digest .digest-latest')!;
+    expect(latest.querySelector('.reply-author')!.textContent).toBe('Rae Requester');
+    expect(latest.querySelector('.reply-head time')).not.toBeNull();
+    expect(latest.querySelector('.reply-text')!.textContent).toBe('Test message');
 
     toggleConversation(1);
     expect(row(1).querySelector('.answer')).toBeNull();
@@ -802,6 +808,91 @@ describe('BoardItemAsksComponent', () => {
     expect(rowButton(1, '.thread-toggle').querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('1 reply');
     expect(row(1).querySelector('.thread-toggle-author')).toBeNull();
     expect(row(1).querySelector('.thread-toggle-excerpt')).toBeNull();
+    expect(row(1).querySelector('.digest-latest')).toBeNull();
+    expect(row(1).querySelector('.thread-gap')).toBeNull();
+  });
+
+  // ---- The closed conversation of a done ask ---------------------------------------------------
+
+  /** A done ask whose replies are by `authors` (as `viewer` receives them), answered by reply `answerAt` (1-based). */
+  function doneAsk(authors: string[], answerAt: number, viewer = 'requester'): void {
+    setup([makeAsk({ id: 1, state: AskState.Completed, answerReplyId: answerAt, replies: conversation(viewer, authors) })], viewer);
+  }
+
+  /** The closed conversation, top to bottom, as short labels. */
+  const digest = () => Array.from(row(1).querySelectorAll<HTMLElement>('.thread-toggle, .thread-digest > *')).map(el =>
+    el.classList.contains('thread-toggle') ? `toggle: ${squash(el.querySelector('.thread-toggle-label')!.textContent)}`
+      : el.classList.contains('thread-gap') ? `gap: ${squash(el.textContent).replace('more_horiz', '').trim()}`
+      : el.classList.contains('answer') ? `answer: ${el.getAttribute('data-reply-id')}`
+      : `latest: ${el.getAttribute('data-reply-id')}`);
+
+  it('places the answer between the replies before and after it, counted, with the latest last', () => {
+    doneAsk(['recipient', 'recipient', 'requester', 'recipient', 'requester'], 2);
+
+    expect(digest()).toEqual(['toggle: 5 replies', 'gap: 1 earlier reply', 'answer: 2', 'gap: 2 more replies', 'latest: 5']);
+  });
+
+  for (const [name, authors, answerAt, expected] of [
+    ['the only reply', ['recipient'], 1, ['toggle: 1 reply', 'answer: 1']],
+    ['the first, with one after it', ['recipient', 'requester'], 1, ['toggle: 2 replies', 'answer: 1', 'latest: 2']],
+    ['the last', ['requester', 'requester', 'recipient'], 3, ['toggle: 3 replies', 'gap: 2 earlier replies', 'answer: 3']],
+    ['followed by one more and the latest', ['recipient', 'requester', 'recipient'], 1,
+      ['toggle: 3 replies', 'answer: 1', 'gap: 1 more reply', 'latest: 3']]
+  ] as const) {
+    it(`shows only what surrounds an answer that is ${name}`, () => {
+      doneAsk([...authors], answerAt);
+      expect(digest()).toEqual([...expected]);
+    });
+  }
+
+  it('opens the whole conversation from a count, with focus on the toggle', fakeAsync(() => {
+    doneAsk(['recipient', 'recipient', 'requester'], 2);
+
+    rowButton(1, '.thread-gap').click();
+    fixture.detectChanges();
+    flush();
+
+    expect(row(1).querySelector('.thread-digest')).toBeNull();
+    expect(shownReplies(1)).toEqual(['message 1', 'message 2', 'message 3']);
+    expect(row(1).querySelector('.reply.is-answer')!.getAttribute('data-reply-id')).toBe('2');
+    const toggle = rowButton(1, '.thread-toggle');
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement).toBe(toggle);
+  }));
+
+  it('keeps the answer\'s buttons outside the toggle button', () => {
+    const long = Array.from({ length: 6 }, (_, i) => `line ${i + 1}`).join('\n');
+    setup([makeAsk({ id: 1, state: AskState.Completed, answerReplyId: 1, replies: [
+      reply({ id: 1, body: long + '\n```\nSELECT 1;\n```' }), reply({ id: 2, authorUserId: 'requester', body: 'Thanks' })
+    ] })], 'requester');
+
+    const toggle = rowButton(1, '.thread-toggle');
+    expect(toggle.querySelectorAll('button, a, [tabindex]').length).toBe(0);
+    expect(toggle.contains(row(1).querySelector('.answer'))).toBeFalse();
+    expect(row(1).querySelector('.answer .reply-copy')).not.toBeNull();
+    expect(row(1).querySelector('.answer .answer-more')).not.toBeNull();
+  });
+
+  it('names and tints the latest reply as the open conversation would', () => {
+    doneAsk(['recipient', 'requester'], 1, 'requester');
+
+    const latest = row(1).querySelector<HTMLElement>('.digest-latest')!;
+    expect(latest.querySelector('.reply-author')!.textContent).toBe('You');
+    expect(latest.classList).toContain('offset');
+    expect(getComputedStyle(latest).backgroundColor).toBe(ownTint());
+    // The conversation's rule, as when open; the answer's lies on it.
+    const digestBox = row(1).querySelector<HTMLElement>('.thread-digest')!;
+    expect(getComputedStyle(digestBox).borderLeftWidth).toBe('2px');
+    expect(row(1).querySelector('.thread-digest .answer')!.getBoundingClientRect().left)
+      .toBe(digestBox.getBoundingClientRect().left);
+  });
+
+  it('keeps the latest reply untinted when it\'s the other person\'s', () => {
+    doneAsk(['requester', 'recipient'], 1, 'requester');
+
+    const latest = row(1).querySelector<HTMLElement>('.digest-latest')!;
+    expect(latest.querySelector('.reply-author')!.textContent).toBe('Ayse Recipient');
+    expect(latest.classList).not.toContain('offset');
   });
 
   it('shows no answer block on a done ask without an answer', () => {

@@ -46,9 +46,9 @@ const ANSWER_CLAMP_LINES = 3;
 let nextThreadId = 0;
 
 /**
- * One ask's answer and conversation. Closed, a Done ask shows its answer and a single toggle row
- * with the reply count and latest activity; one click opens the whole thread, where the answer is
- * tagged in place. Plain text only: ``` fences show as code blocks with a Copy button. The reply
+ * One ask's answer and conversation. Closed, the toggle row shows the reply count and the latest
+ * reply; a Done ask's shows the answer in its place among the replies instead, the ones around it
+ * counted. One click opens the whole thread, where the answer is tagged in place. Plain text only: ``` fences show as code blocks with a Copy button. The reply
  * box shows with the open conversation, on Reply, in the mark-done prompt, or always for the
  * recipient of an open ask. The panel sends the requests; this keeps the draft and what's open,
  * which survive the panel's reloads.
@@ -84,6 +84,7 @@ export class AskThreadComponent implements OnChanges {
 
   @ViewChild('box') private box?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('editBox') private editBox?: ElementRef<HTMLTextAreaElement>;
+  @ViewChild('toggleButton') private toggleButton?: ElementRef<HTMLButtonElement>;
 
   readonly AskState = AskState;
   readonly maxLength = ASK_REPLY_MAX_LENGTH;
@@ -145,9 +146,27 @@ export class AskThreadComponent implements OnChanges {
     return count === 1 ? '1 reply' : `${count} replies`;
   }
 
-  /** The latest reply previewed on the closed row, unless it's the answer already shown above. */
-  get showsLatestPreview(): boolean {
-    return !(this.showsAnswerBlock && this.latest.id === this.answer?.id);
+  // The closed conversation of a done ask: [N earlier] · answer · [M more] · latest.
+
+  get answerIndex(): number {
+    return this.ask.replies.findIndex(r => r.id === this.ask.answerReplyId);
+  }
+
+  get repliesBeforeAnswer(): number {
+    return Math.max(this.answerIndex, 0);
+  }
+
+  /** Between the answer and the latest reply, neither counted. */
+  get repliesBetweenAnswerAndLatest(): number {
+    return Math.max(this.ask.replies.length - this.answerIndex - 2, 0);
+  }
+
+  get latestIsAnswer(): boolean {
+    return this.latest.id === this.ask.answerReplyId;
+  }
+
+  gapLabel(count: number, side: 'earlier' | 'more'): string {
+    return `${count} ${side} ${count === 1 ? 'reply' : 'replies'}`;
   }
 
   get latestExcerpt(): string {
@@ -202,6 +221,16 @@ export class AskThreadComponent implements OnChanges {
       this.showAll = false;
       this.boxRequested = false;
     }
+  }
+
+  /**
+   * A count in the closed conversation was clicked: open it all. The count goes with the closed
+   * view, so focus moves to the toggle, which now reads "Hide conversation".
+   */
+  openConversation(): void {
+    this.expanded = true;
+    this.showAll = true;
+    setTimeout(() => this.toggleButton?.nativeElement.focus());
   }
 
   /** The Reply action: open the conversation (if there is one) and the box, ready to type. */

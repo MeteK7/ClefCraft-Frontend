@@ -6,8 +6,10 @@
 }
 
 /* The conversation is the container its offset is measured against: 10% of its width, 20-56px.
-   The tint marks the viewer's side, so the offset only needs to hint at it. */
-.thread-list {
+   The tint marks the viewer's side, so the offset only needs to hint at it. Closed, a done ask's
+   conversation keeps the same rule and offset, so the two read as one thing. */
+.thread-list,
+.thread-digest {
   container-type: inline-size;
   --reply-indent: clamp(20px, 10cqi, 56px);
   display: flex;
@@ -16,6 +18,28 @@
   padding: 0 0 0 10px;
   list-style: none;
   border-left: 2px solid var(--border);
+}
+
+.thread-digest {
+  gap: 4px;
+}
+
+/* As in the open conversation, the answer's rule lies on the conversation's. */
+.thread-digest .answer {
+  margin-left: -12px;
+}
+
+/* "2 more replies": opens the conversation. */
+.thread-gap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.thread-gap mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
 }
 
 .reply {
