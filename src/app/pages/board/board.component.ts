@@ -20,7 +20,7 @@ import {
 import { getConnectedDropListIds } from '../../board-engine/interactions/board-drag-engine';
 import { MatDialog } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
-import { ItemDetailDialogComponent, ItemDetailDialogResult } from '../item-detail-dialog/item-detail-dialog.component';
+import { ITEM_DIALOG_CONFIG, ItemDetailDialogComponent, ItemDetailDialogResult } from '../item-detail-dialog/item-detail-dialog.component';
 import { BoardDialogComponent } from '../board-dialog/board-dialog.component';
 import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-sidebar.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
@@ -268,11 +268,7 @@ export class BoardComponent implements OnInit, OnDestroy {
 
   openItemDetailDialog(item: BoardItemView | null, focusCommentId: number | null = null): void {
     const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
-      width: '1180px',
-      height: '100vh',
-      maxHeight: '90vh',
-      maxWidth: '95vw',
-      autoFocus: false,
+      ...ITEM_DIALOG_CONFIG,
       data: {
         item: item?.raw ?? null,
         boardId: this.selectedBoardId,

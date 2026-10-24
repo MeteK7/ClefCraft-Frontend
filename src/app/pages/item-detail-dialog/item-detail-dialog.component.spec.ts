@@ -1,11 +1,20 @@
-import { ComponentFixture, TestBed, fakeAsync, flush } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
-import { ItemDetailDialogComponent, ItemDetailDialogData } from './item-detail-dialog.component';
+import {
+  CHIME_RAIL_DEFAULT,
+  CHIME_RAIL_MIN,
+  DIALOG_BASE_WIDTH,
+  ITEM_DIALOG_CONFIG,
+  ItemDetailDialogComponent,
+  ItemDetailDialogData
+} from './item-detail-dialog.component';
+import { AuthService } from '../../_services/auth.service';
+import { OpenAskItemsService } from '../../_services/open-ask-items.service';
 import { Item } from '../../models/board.model';
 import { environment } from '../../../environments/environment';
 import { of } from 'rxjs';
@@ -32,7 +41,7 @@ describe('ItemDetailDialogComponent', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: dialogData },
-        { provide: MatDialogRef, useValue: { close: () => { } } }
+        { provide: MatDialogRef, useValue: { close: () => { }, updateSize: () => { } } }
       ]
     })
     .compileComponents();
@@ -51,7 +60,7 @@ describe('ItemDetailDialogComponent — markAsWorked()', () => {
   let component: ItemDetailDialogComponent;
   let fixture: ComponentFixture<ItemDetailDialogComponent>;
   let httpMock: HttpTestingController;
-  let dialogRefSpy: { close: jasmine.Spy };
+  let dialogRefSpy: { close: jasmine.Spy; updateSize: jasmine.Spy };
 
   const calendarApiUrl = `${environment.apiUrl}/Calendar`;
 
@@ -66,7 +75,7 @@ describe('ItemDetailDialogComponent — markAsWorked()', () => {
   } as Item;
 
   function setup(item: Item | null): void {
-    dialogRefSpy = { close: jasmine.createSpy('close') };
+    dialogRefSpy = { close: jasmine.createSpy('close'), updateSize: jasmine.createSpy('updateSize') };
 
     TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
@@ -150,7 +159,7 @@ describe('ItemDetailDialogComponent — assignee options', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: { item, boardId: 7 } as ItemDetailDialogData },
-        { provide: MatDialogRef, useValue: { close: () => { } } }
+        { provide: MatDialogRef, useValue: { close: () => { }, updateSize: () => { } } }
       ]
     }).compileComponents();
 
@@ -220,7 +229,7 @@ describe('ItemDetailDialogComponent — current status and priority', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: { item, boardId: 7 } as ItemDetailDialogData },
-        { provide: MatDialogRef, useValue: { close: () => { } } }
+        { provide: MatDialogRef, useValue: { close: () => { }, updateSize: () => { } } }
       ]
     }).compileComponents();
 
@@ -275,7 +284,7 @@ describe('ItemDetailDialogComponent — header', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: { item, boardId: 1 } as ItemDetailDialogData },
-        { provide: MatDialogRef, useValue: { close: () => { } } }
+        { provide: MatDialogRef, useValue: { close: () => { }, updateSize: () => { } } }
       ]
     }).compileComponents();
 
@@ -357,7 +366,7 @@ describe('ItemDetailDialogComponent — header', () => {
 describe('ItemDetailDialogComponent — completing an item with asks', () => {
   let component: ItemDetailDialogComponent;
   let httpMock: HttpTestingController;
-  let dialogRef: { close: jasmine.Spy };
+  let dialogRef: { close: jasmine.Spy; updateSize: jasmine.Spy };
   let askCompletion: { completeItem: jasmine.Spy };
   let asksAfterLoad: BoardItemAsk[];
   let element: HTMLElement;
@@ -367,7 +376,7 @@ describe('ItemDetailDialogComponent — completing an item with asks', () => {
   const closure: AskClosure = { acknowledgedAsks: [{ askId: 1, revision: 2 }], completeAskIds: [1], overrideAskIds: [] };
 
   function setup(statusId: number): void {
-    dialogRef = { close: jasmine.createSpy('close') };
+    dialogRef = { close: jasmine.createSpy('close'), updateSize: jasmine.createSpy('updateSize') };
     askCompletion = { completeItem: jasmine.createSpy('completeItem').and.callFake((_id: number, _title: string, save: (c: AskClosure) => unknown) => save(closure)) };
     asksAfterLoad = [makeAsk({ id: 1, state: AskState.Accepted })];
 
@@ -486,5 +495,465 @@ describe('ItemDetailDialogComponent — completing an item with asks', () => {
     component.onAskSummaryChange({ openCount: 4, unmetRequiredCount: 1, completedCount: 0, openAsks: [] });
 
     expect(emitted).toEqual([jasmine.objectContaining({ openCount: 4 })]);
+  }));
+});
+
+describe('ItemDetailDialogComponent — Chime In beside the fields', () => {
+  let component: ItemDetailDialogComponent;
+  let fixture: ComponentFixture<ItemDetailDialogComponent>;
+  let element: HTMLElement;
+
+  const statuses = [{ id: 3, name: 'In Progress' }, { id: 5, name: 'Done' }];
+  // One open ask waiting on the viewer, one on someone else.
+  const asks = [
+    makeAsk({ id: 1, state: AskState.Pending, recipientUserId: 'me' }),
+    makeAsk({ id: 2, state: AskState.Accepted, recipientUserId: 'someone-else' })
+  ];
+
+  function open(): void {
+    fixture = TestBed.createComponent(ItemDetailDialogComponent);
+    component = fixture.componentInstance;
+    element = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne(`${environment.apiUrl}/BoardItems/GetStatuses?boardId=7`).flush(statuses);
+    flush(); // the panel emits its summary asynchronously
+    fixture.detectChanges();
+    // As the ResizeObserver would report a full-size dialog's Details content.
+    component.onLayoutResized(1117);
+    fixture.detectChanges();
+  }
+
+  function setup(): void {
+    TestBed.configureTestingModule({
+      imports: [ItemDetailDialogComponent],
+      providers: [
+        provideHttpClient(withXhr()),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: { item: { id: 9, title: 'Release notes', boardId: 7, boardColumnId: 3, status: { id: 3, name: '' } }, boardId: 7 } as ItemDetailDialogData },
+        { provide: MatDialogRef, useValue: { close: jasmine.createSpy('close'), updateSize: jasmine.createSpy('updateSize') } },
+        { provide: AskCompletionService, useValue: { completeItem: jasmine.createSpy('completeItem') } },
+        { provide: BoardItemAskService, useValue: { getForItem: () => of(asks) } }
+      ]
+    }).compileComponents();
+    spyOn(TestBed.inject(AuthService), 'getUserId').and.returnValue('me');
+    open();
+  }
+
+  const separator = () => element.querySelector<HTMLElement>('.details-separator');
+  const chime = () => element.querySelector<HTMLElement>('.details-chime')!;
+  const reveal = () => element.querySelector<HTMLButtonElement>('.chime-reveal');
+  const key = (name: string) => {
+    separator()!.dispatchEvent(new KeyboardEvent('keydown', { key: name, cancelable: true }));
+    fixture.detectChanges();
+  };
+  const pointer = (type: string, clientX: number) => {
+    separator()!.dispatchEvent(new PointerEvent(type, { button: 0, pointerId: 1, clientX, cancelable: true, bubbles: true }));
+    fixture.detectChanges();
+  };
+
+  it('opens with Chime In visible at 360px, and a separator that reports the Details width', fakeAsync(() => {
+    setup();
+
+    expect(component.chimeHidden).toBeFalse();
+    expect(component.railWidth).toBe(CHIME_RAIL_DEFAULT);
+    const divider = separator()!;
+    expect(divider.getAttribute('role')).toBe('separator');
+    expect(divider.getAttribute('aria-orientation')).toBe('vertical');
+    expect(divider.getAttribute('tabindex')).toBe('0');
+    expect(divider.getAttribute('aria-valuenow')).toBe(String(1117 - 49 - 360));
+    expect(divider.getAttribute('aria-valuemin')).toBe('560');
+    expect(divider.getAttribute('aria-valuemax')).toBe(String(1117 - 49 - 320));
+    expect(divider.getAttribute('aria-valuetext')).toBe('Details 708 pixels, Chime In 360 pixels');
+    expect(element.querySelector('.details-grid')!.getAttribute('style')).toContain('--chime-width: 360px');
+  }));
+
+  it('resizes with the arrow keys, and Home and End go to the limits', fakeAsync(() => {
+    setup();
+
+    key('ArrowLeft');
+    expect(component.railWidth).toBe(376);
+    key('ArrowRight');
+    key('ArrowRight');
+    expect(component.railWidth).toBe(344);
+
+    key('Home');
+    expect(component.railWidth).toBe(1117 - 560 - 49);
+    key('ArrowLeft');
+    expect(component.railWidth).toBe(1117 - 560 - 49);
+
+    key('End');
+    expect(component.railWidth).toBe(CHIME_RAIL_MIN);
+    key('ArrowRight');
+    expect(component.railWidth).toBe(CHIME_RAIL_MIN);
+  }));
+
+  it('resets to 360px on double-click', fakeAsync(() => {
+    setup();
+    key('End');
+
+    separator()!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(component.railWidth).toBe(CHIME_RAIL_DEFAULT);
+  }));
+
+  it('drags within the limits, and every way a drag can end ends it', fakeAsync(() => {
+    setup();
+
+    pointer('pointerdown', 700);
+    expect(component.resizing).toBeTrue();
+    expect(element.querySelector('.details-layout')!.classList).toContain('resizing');
+    pointer('pointermove', 600);
+    expect(component.railWidth).toBe(460);
+    pointer('pointermove', 0);
+    expect(component.railWidth).toBe(1117 - 560 - 49);
+    pointer('pointermove', 2000);
+    expect(component.railWidth).toBe(CHIME_RAIL_MIN);
+    pointer('pointerup', 2000);
+    expect(component.resizing).toBeFalse();
+
+    // Moves after the drag ended change nothing.
+    pointer('pointermove', 0);
+    expect(component.railWidth).toBe(CHIME_RAIL_MIN);
+
+    for (const end of ['pointercancel', 'lostpointercapture']) {
+      pointer('pointerdown', 700);
+      pointer(end, 700);
+      expect(component.resizing).withContext(end).toBeFalse();
+    }
+  }));
+
+  it('keeps the fields at their minimum when the dialog gets narrower', fakeAsync(() => {
+    setup();
+    key('Home');
+
+    component.onLayoutResized(1024);
+    expect(component.railWidth).toBe(1024 - 560 - 49);
+
+    component.onLayoutResized(900);
+    expect(component.railWidth).toBe(CHIME_RAIL_MIN);
+  }));
+
+  it('hides Chime In, keeps it loaded, and brings it back with a count from the header', fakeAsync(() => {
+    setup();
+    const openItems = TestBed.inject(OpenAskItemsService);
+    expect(openItems.isOpen(9)).toBeTrue();
+    key('ArrowLeft');
+
+    element.querySelector<HTMLButtonElement>('.asks-hide')!.click();
+    fixture.detectChanges();
+    tick();
+
+    expect(component.chimeHidden).toBeTrue();
+    expect(separator()).toBeNull();
+    expect(element.querySelector('.details-grid')!.classList).toContain('chime-hidden');
+    expect(chime().querySelector('app-board-item-asks')).not.toBeNull();
+    expect(getComputedStyle(chime()).display).toBe('none');
+    // Hidden: new asks and replies on this item may raise toasts again.
+    expect(openItems.isOpen(9)).toBeFalse();
+
+    const button = reveal()!;
+    expect(document.activeElement).toBe(button);
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(button.getAttribute('aria-controls')).toBe('chime-in-panel');
+    expect(button.getAttribute('aria-label')).toBe('Show Chime In: 2 open asks, 1 waiting for you');
+    expect(button.querySelector('.chime-count')!.textContent!.trim()).toBe('2');
+    expect(button.classList).toContain('waiting');
+
+    // The panel keeps loading while hidden, so the count follows the asks.
+    component.onAskSummaryChange({ openCount: 1, unmetRequiredCount: 0, completedCount: 1, openAsks: [
+      { askId: 2, recipientUserId: 'someone-else', recipientFullName: 'S', state: AskState.Accepted, isRequired: false, dueDate: null, dateCreated: '2026-10-10T09:00:00Z' }
+    ] });
+    fixture.detectChanges();
+    expect(button.getAttribute('aria-label')).toBe('Show Chime In: 1 open ask');
+    expect(button.classList).not.toContain('waiting');
+
+    component.selectedTabIndex = 3;
+    button.click();
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    expect(component.chimeHidden).toBeFalse();
+    expect(component.selectedTabIndex).toBe(0);
+    expect(reveal()).toBeNull();
+    expect(openItems.isOpen(9)).toBeTrue();
+    // The width the user chose survives hiding.
+    expect(component.railWidth).toBe(376);
+    flush();
+  }));
+
+  it('moves focus to the Chime In heading when it comes back', fakeAsync(() => {
+    setup();
+    element.querySelector<HTMLButtonElement>('.asks-hide')!.click();
+    fixture.detectChanges();
+    tick();
+
+    reveal()!.click();
+    fixture.detectChanges();
+    tick();
+
+    expect(document.activeElement).toBe(element.querySelector('#asks-heading'));
+  }));
+
+  it('keeps the rail width while hidden, whatever the narrower hidden layout measures', fakeAsync(() => {
+    setup();
+    key('Home');
+    component.hideChime();
+    fixture.detectChanges();
+    tick();
+
+    component.onLayoutResized(700);
+    component.showChime();
+    fixture.detectChanges();
+    tick();
+
+    expect(component.layoutWidth).toBe(1117);
+    expect(component.railWidth).toBe(1117 - 560 - 49);
+  }));
+
+  it('moves focus to the Chime In heading when it comes back from another tab', fakeAsync(() => {
+    setup();
+    element.querySelector<HTMLButtonElement>('.asks-hide')!.click();
+    fixture.detectChanges();
+    tick();
+    component.selectedTabIndex = 3;
+    fixture.detectChanges();
+    flush();
+    fixture.detectChanges();
+    expect(element.querySelector('#asks-heading')).toBeNull();
+
+    reveal()!.click();
+    fixture.detectChanges();
+    flush();
+    fixture.detectChanges();
+    flush();
+
+    expect(document.activeElement).toBe(element.querySelector('#asks-heading'));
+  }));
+
+  it('stacks the fields in one column when Details is narrower than 600px', fakeAsync(() => {
+    setup();
+    const main = element.querySelector<HTMLElement>('.details-main')!;
+    const tracks = () => getComputedStyle(main.querySelector('.form-grid')!).gridTemplateColumns.split(' ').length;
+
+    main.style.width = '560px';
+    expect(tracks()).toBe(1);
+    // A narrow test window stacks the fields anyway (the 768px media rule).
+    if (!matchMedia('(max-width: 768px)').matches) {
+      main.style.width = '700px';
+      expect(tracks()).toBe(2);
+    }
+  }));
+
+  it('starts every new dialog visible at 360px', fakeAsync(() => {
+    setup();
+    key('Home');
+    component.hideChime();
+    fixture.detectChanges();
+    tick();
+    fixture.destroy();
+
+    open();
+
+    expect(component.chimeHidden).toBeFalse();
+    expect(component.railWidth).toBe(CHIME_RAIL_DEFAULT);
+    expect(separator()).not.toBeNull();
+  }));
+});
+
+describe('ItemDetailDialogComponent — its width follows Chime In', () => {
+  let component: ItemDetailDialogComponent;
+  let fixture: ComponentFixture<ItemDetailDialogComponent>;
+  let element: HTMLElement;
+  let pane: HTMLElement;
+  let updateSize: jasmine.Spy;
+  /** The window width that 95vw resolves against: the test window itself is far narrower. */
+  let windowWidth: number;
+
+  const visible = 'min(1309px, 95vw)';
+
+  function open(width: number): void {
+    windowWidth = width;
+    // A stand-in for the overlay pane: updateSize writes its width as a window this wide would resolve it.
+    pane = document.createElement('div');
+    pane.className = 'cdk-overlay-pane';
+    // A real pane has the dialog's height, so only the tab content scrolls.
+    pane.style.height = '800px';
+    document.body.appendChild(pane);
+    updateSize = jasmine.createSpy('updateSize').and.callFake((w: string) => {
+      pane.style.width = w.replace('95vw', `${windowWidth * 0.95}px`);
+    });
+
+    TestBed.configureTestingModule({
+      imports: [ItemDetailDialogComponent],
+      providers: [
+        provideHttpClient(withXhr()),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: { item: { id: 9, title: 'Release notes', boardId: 7, boardColumnId: 3, status: { id: 3, name: '' } }, boardId: 7 } as ItemDetailDialogData },
+        { provide: MatDialogRef, useValue: { close: jasmine.createSpy('close'), updateSize } },
+        { provide: AskCompletionService, useValue: { completeItem: jasmine.createSpy('completeItem') } },
+        { provide: BoardItemAskService, useValue: { getForItem: () => of([makeAsk({ id: 1, state: AskState.Pending })]) } }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ItemDetailDialogComponent);
+    component = fixture.componentInstance;
+    element = fixture.nativeElement as HTMLElement;
+    pane.appendChild(element);
+    // The narrow test window would apply the phone rules to the dialog; fill the pane instead.
+    element.style.setProperty('width', '100%', 'important');
+    element.style.setProperty('max-width', 'none', 'important');
+    element.style.setProperty('height', '100%', 'important');
+    element.style.setProperty('max-height', 'none', 'important');
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne(`${environment.apiUrl}/BoardItems/GetStatuses?boardId=7`).flush([]);
+    flush();
+    fixture.detectChanges();
+    observe();
+  }
+
+  /** What the ResizeObserver would report for the Details layout as it is now. */
+  function observe(): void {
+    component.onLayoutResized(layout().getBoundingClientRect().width);
+    fixture.detectChanges();
+  }
+
+  const layout = () => element.querySelector<HTMLElement>('.details-layout')!;
+  const mainWidth = () => element.querySelector<HTMLElement>('.details-main')!.getBoundingClientRect().width;
+  const separator = () => element.querySelector<HTMLElement>('.details-separator');
+  const lastWidth = () => updateSize.calls.mostRecent().args[0] as string;
+
+  function hide(): void {
+    component.hideChime();
+    fixture.detectChanges();
+    tick();
+  }
+
+  function resizeWindow(width: number): void {
+    windowWidth = width;
+    spyOnProperty(window, 'innerWidth').and.returnValue(width);
+    window.dispatchEvent(new Event('resize'));
+    fixture.detectChanges();
+  }
+
+  afterEach(() => {
+    fixture?.destroy();
+    pane?.remove();
+  });
+
+  it('opens at the base width plus the rail and its separator, with the height from the shared config', fakeAsync(() => {
+    open(1500);
+
+    expect(updateSize.calls.first().args).toEqual([visible, ITEM_DIALOG_CONFIG.height]);
+    expect(DIALOG_BASE_WIDTH + 49 + CHIME_RAIL_DEFAULT).toBe(1309);
+    expect(pane.getBoundingClientRect().width).toBe(1309);
+  }));
+
+  it('measures the chrome and the rail layout from the DOM while Chime In is visible', fakeAsync(() => {
+    open(1500);
+
+    expect(component['dialogChrome']).toBe(pane.offsetWidth - layout().getBoundingClientRect().width);
+    expect(getComputedStyle(separator()!).display).toBe('block');
+    expect(component['railLayout']).toBeTrue();
+  }));
+
+  it('hides Chime In beside the fields by taking away exactly the rail and separator', fakeAsync(() => {
+    open(1500);
+    component.setRailWidth(500);
+    fixture.detectChanges();
+    const before = mainWidth();
+
+    hide();
+
+    expect(lastWidth()).toBe(`calc(${visible} - 549px)`);
+    expect(mainWidth()).toBe(before);
+
+    component.showChime();
+    fixture.detectChanges();
+    tick();
+    observe();
+
+    expect(lastWidth()).toBe(visible);
+    expect(mainWidth()).toBe(before);
+    expect(component.railWidth).toBe(500);
+  }));
+
+  it('keeps the width when Chime In is under the fields', fakeAsync(() => {
+    open(1000);
+    expect(getComputedStyle(separator()!).display).toBe('none');
+    expect(component['railLayout']).toBeFalse();
+    const paneWidth = pane.getBoundingClientRect().width;
+
+    hide();
+
+    expect(lastWidth()).toBe(visible);
+    expect(pane.getBoundingClientRect().width).toBe(paneWidth);
+  }));
+
+  it('re-clamps the rail with the measured chrome when the window narrows while Chime In is hidden', fakeAsync(() => {
+    open(1500);
+    const chrome = component['dialogChrome']!;
+    component.setRailWidth(component.railMax);
+    hide();
+
+    resizeWindow(1200);
+
+    const visibleContent = Math.round(1200 * 0.95 - chrome);
+    expect(component.railWidth).toBe(visibleContent - 560 - 49);
+    expect(lastWidth()).toBe(`calc(${visible} - ${component.railWidth + 49}px)`);
+  }));
+
+  it('predicts the layout as the container query would: under 1024px of content it stacks', fakeAsync(() => {
+    open(1500);
+    const chrome = component['dialogChrome']!;
+    hide();
+
+    // Room for the fields' 560px beside the rail, but under the container query's 1024px.
+    const width = Math.ceil((1000 + chrome) / 0.95);
+    resizeWindow(width);
+
+    expect(component['railLayout']).toBeFalse();
+    expect(lastWidth()).toBe(visible);
+  }));
+
+  it('checks the prediction when the hidden layout changes size, even without a resize event', fakeAsync(() => {
+    open(1500);
+    hide();
+
+    // The window narrowed into the stacked range, but no resize event arrived: only the observer saw it.
+    windowWidth = 1000;
+    spyOnProperty(window, 'innerWidth').and.returnValue(1000);
+    component.onLayoutResized(500);
+
+    expect(component['railLayout']).toBeFalse();
+    expect(lastWidth()).toBe(visible);
+    expect(component.railWidth).toBe(CHIME_RAIL_DEFAULT);
+  }));
+
+  it('never resizes the dialog on a tab switch', fakeAsync(() => {
+    open(1500);
+    const calls = updateSize.calls.count();
+
+    // Work History, History and Info; Comments and Relationships load editors and graphs not needed here.
+    for (const tab of [2, 3, 5, 0]) {
+      component.selectedTabIndex = tab;
+      fixture.detectChanges();
+      flush();
+    }
+    hide();
+    const hiddenCalls = updateSize.calls.count();
+    for (const tab of [3, 5, 0]) {
+      component.selectedTabIndex = tab;
+      fixture.detectChanges();
+      flush();
+    }
+
+    expect(hiddenCalls).toBe(calls + 1);
+    expect(updateSize.calls.count()).toBe(hiddenCalls);
   }));
 });

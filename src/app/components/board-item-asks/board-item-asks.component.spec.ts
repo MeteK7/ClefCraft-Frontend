@@ -526,8 +526,10 @@ describe('BoardItemAsksComponent', () => {
     const toggle = rowButton(1, '.thread-toggle');
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(toggle.querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('3 replies');
-    expect(squash(toggle.querySelector('.thread-toggle-latest')!.textContent)).toContain('latest from Rae Requester');
-    expect(squash(toggle.querySelector('.thread-toggle-latest')!.textContent)).toContain('“three”');
+    // Line 1: count · author, time. Line 2: the latest message.
+    expect(toggle.querySelector('.thread-toggle-author')!.textContent).toBe('Rae Requester');
+    expect(toggle.querySelector('.thread-toggle-time time')).not.toBeNull();
+    expect(toggle.querySelector('.thread-toggle-excerpt')!.textContent).toBe('“three”');
     expect(row(1).querySelector('.reply')).toBeNull();
 
     toggleConversation(1);
@@ -559,7 +561,7 @@ describe('BoardItemAsksComponent', () => {
     // The count includes the answer: exactly what opening shows.
     const toggle = rowButton(1, '.thread-toggle');
     expect(toggle.querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('2 replies');
-    expect(squash(toggle.querySelector('.thread-toggle-latest')!.textContent)).toContain('“Test message”');
+    expect(toggle.querySelector('.thread-toggle-excerpt')!.textContent).toBe('“Test message”');
 
     toggleConversation(1);
     expect(row(1).querySelector('.answer')).toBeNull();
@@ -572,11 +574,23 @@ describe('BoardItemAsksComponent', () => {
     expect(row(1).querySelector('.answer')).not.toBeNull();
   });
 
+  it('lets only the author\'s name shrink on the row\'s first line', () => {
+    setup([makeAsk({ id: 1, replies: [reply({ authorFullName: 'Maximilian Alexander Featherstonehaugh-Montgomery' })] })]);
+
+    const line = rowButton(1, '.thread-toggle').querySelector('.thread-toggle-line')!;
+    const shrink = (selector: string) => getComputedStyle(line.querySelector(selector)!).flexShrink;
+    expect(shrink('.thread-toggle-label')).toBe('0');
+    expect(shrink('.thread-toggle-time')).toBe('0');
+    expect(shrink('.thread-toggle-author')).toBe('1');
+    expect(getComputedStyle(line.querySelector('.thread-toggle-author')!).textOverflow).toBe('ellipsis');
+  });
+
   it('doesn\'t preview the latest reply when it\'s the answer already shown', () => {
     setup([makeAsk({ id: 1, state: AskState.Completed, answerReplyId: 40, replies: [reply({ id: 40 })] })]);
 
     expect(rowButton(1, '.thread-toggle').querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('1 reply');
-    expect(row(1).querySelector('.thread-toggle-latest')).toBeNull();
+    expect(row(1).querySelector('.thread-toggle-author')).toBeNull();
+    expect(row(1).querySelector('.thread-toggle-excerpt')).toBeNull();
   });
 
   it('shows no answer block on a done ask without an answer', () => {
@@ -955,5 +969,54 @@ describe('BoardItemAsksComponent', () => {
 
     fixture.destroy();
     expect(openItems.isOpen(10)).toBeFalse();
+  });
+
+  it('lets toasts through while hidden, suppresses them again when shown, and unregisters once', () => {
+    setup([]);
+    const openItems = TestBed.inject(OpenAskItemsService);
+    const unregister = spyOn(openItems, 'unregister').and.callThrough();
+
+    fixture.componentRef.setInput('suppressToasts', false);
+    fixture.detectChanges();
+    expect(openItems.isOpen(10)).toBeFalse();
+
+    fixture.componentRef.setInput('suppressToasts', true);
+    fixture.detectChanges();
+    expect(openItems.isOpen(10)).toBeTrue();
+
+    fixture.componentRef.setInput('suppressToasts', false);
+    fixture.detectChanges();
+    fixture.destroy();
+    // Hidden at close: already unregistered, so closing doesn't unregister again.
+    expect(unregister).toHaveBeenCalledTimes(2);
+    expect(openItems.isOpen(10)).toBeFalse();
+  });
+
+  it('still reloads on its item\'s events while hidden', () => {
+    setup([makeAsk({ id: 7 })]);
+    fixture.componentRef.setInput('suppressToasts', false);
+    fixture.detectChanges();
+
+    askEvents$.next(askEvent(10));
+
+    httpMock.expectOne(asksUrl).flush([makeAsk({ id: 7, replies: [reply()] })]);
+  });
+
+  it('offers a hide button only where it can be hidden', () => {
+    setup([]);
+    expect(element().querySelector('.asks-hide')).toBeNull();
+
+    fixture.componentRef.setInput('hideable', true);
+    fixture.detectChanges();
+    const hide = element().querySelector<HTMLButtonElement>('.asks-hide')!;
+    const hidden = jasmine.createSpy('hide');
+    component.hide.subscribe(hidden);
+
+    expect(hide.getAttribute('aria-label')).toBe('Hide Chime In');
+    expect(hide.getAttribute('aria-expanded')).toBe('true');
+    expect(hide.getAttribute('aria-controls')).toBe('chime-in-panel');
+    hide.click();
+    expect(hidden).toHaveBeenCalledTimes(1);
+    expect(element().querySelector('#asks-heading')!.getAttribute('tabindex')).toBe('-1');
   });
 });

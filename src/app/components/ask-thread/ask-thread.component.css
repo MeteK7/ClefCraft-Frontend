@@ -157,11 +157,13 @@
   mask-image: linear-gradient(to bottom, #000 60%, transparent);
 }
 
-/* The one control for the conversation: a chevron, the reply count and the latest activity. */
+/* The one control for the conversation: a chevron, the reply count and the latest activity on the
+   first line, the latest message on the second. */
 .thread-toggle {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
   min-width: 0;
   max-width: 100%;
   padding: 2px 4px 2px 0;
@@ -193,8 +195,36 @@
   color: var(--link);
 }
 
-.thread-toggle-latest {
+.thread-toggle-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   min-width: 0;
+  white-space: nowrap;
+}
+
+/* Count, separator, comma and time never shrink; the author's name takes what's left. */
+.thread-toggle-label,
+.thread-toggle-sep,
+.thread-toggle-comma,
+.thread-toggle-time {
+  flex: 0 0 auto;
+}
+
+.thread-toggle-comma {
+  margin-left: -4px;
+}
+
+.thread-toggle-author {
+  flex: 0 1 auto;
+  min-width: 2ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread-toggle-excerpt {
+  min-width: 0;
+  padding-left: 22px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -10,7 +10,7 @@ import { BoardService } from '../../_services/board.service';
 import { AuthService } from '../../_services/auth.service';
 
 import { CalendarDialogComponent } from '../calendar-dialog/calendar-dialog.component';
-import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
+import { ITEM_DIALOG_CONFIG, ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
 
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 import { Item } from '../../models/board.model';
@@ -146,11 +146,7 @@ export class HomeComponent implements OnInit {
 
   openItem(entry: DueItem): void {
     this.dialog.open(ItemDetailDialogComponent, {
-      width: '1180px',
-      height: '100vh',
-      maxHeight: '90vh',
-      maxWidth: '95vw',
-      autoFocus: false,
+      ...ITEM_DIALOG_CONFIG,
       data: { item: entry.item, boardId: entry.boardId, columns: [] },
     });
   }

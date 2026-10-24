@@ -62,7 +62,9 @@
   font-style: italic;
 }
 
+/* Cards fill the width; only the text keeps a readable line length. */
 .comment-html {
+  max-width: 75ch;
   font-size: 13.5px;
   color: var(--text);
   margin-top: 4px;
