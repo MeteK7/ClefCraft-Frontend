@@ -20,6 +20,18 @@
       </h2>
     </div>
 
+    <!-- Brings back a hidden Chime In; its count stays current because the panel stays loaded. -->
+    @if (!isNewItem && chimeHidden) {
+      <button mat-stroked-button type="button" class="chime-reveal" [class.waiting]="chimeWaitingCount > 0"
+        aria-controls="chime-in-panel" aria-expanded="false" [attr.aria-label]="chimeRevealLabel"
+        matTooltip="Show Chime In" (click)="showChime()">
+        <mat-icon>group_add</mat-icon>Chime In
+        @if (chimeOpenCount > 0) {
+          <span class="chime-count" aria-hidden="true">{{ chimeOpenCount }}</span>
+        }
+      </button>
+    }
+
     <button mat-icon-button (click)="onCancel()" aria-label="Close dialog" type="button">
       <mat-icon>close</mat-icon>
     </button>
@@ -33,7 +45,7 @@
   }
 
   <mat-tab-group class="dialog-tabs" [selectedIndex]="selectedTabIndex ?? initialTabIndex"
-    (selectedIndexChange)="selectedTabIndex = $event">
+    (selectedIndexChange)="selectedTabIndex = $event" (animationDone)="focusChimeHeading()">
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon class="tab-icon">edit</mat-icon> Details
@@ -42,8 +54,8 @@
       <div class="dialog-content details-content">
         <!-- Chime In sits beside the fields when the dialog is wide enough, and under them
              otherwise (container query on .details-layout). It stays after the fields in the DOM. -->
-        <div class="details-layout">
-          <div class="details-grid">
+        <div class="details-layout" #detailsLayout [class.resizing]="resizing">
+          <div class="details-grid" [class.chime-hidden]="chimeHidden" [style.--chime-width]="railWidth + 'px'">
             <div class="details-main">
               <mat-form-field appearance="outline" class="w-100">
                 <mat-label>Title</mat-label>
@@ -154,14 +166,34 @@
               </div>
             </div>
 
+            @if (!isNewItem && !chimeHidden) {
+              <!-- Drag, or use the arrow keys, Home and End, to share the width; double-click resets it.
+                   It only shows in the rail layout. Its value is the Details width (window-splitter pattern). -->
+              <div class="details-separator" role="separator" aria-orientation="vertical" tabindex="0"
+                aria-label="Resize Details and Chime In" aria-controls="chime-in-panel"
+                [attr.aria-valuenow]="mainWidth" [attr.aria-valuemin]="detailsMainMin" [attr.aria-valuemax]="mainMax"
+                [attr.aria-valuetext]="separatorValueText"
+                (keydown)="onSeparatorKeydown($event)"
+                (pointerdown)="onSeparatorPointerDown($event)"
+                (pointermove)="onSeparatorPointerMove($event)"
+                (pointerup)="endResize()"
+                (pointercancel)="endResize()"
+                (lostpointercapture)="endResize()"
+                (dblclick)="resetRailWidth()"></div>
+            }
+
             @if (!isNewItem) {
-              <div class="details-chime">
+              <!-- Hidden, the panel stays loaded so the header's count stays current. -->
+              <div class="details-chime" id="chime-in-panel" [class.chime-hidden]="chimeHidden">
                 <!-- Ask actions apply at once; they aren't part of the form or its unsaved changes. -->
                 <app-board-item-asks
                   [itemId]="item.id"
                   [assigneeId]="item.assigneeId"
                   [itemDueDate]="form.value.dueDate"
                   [members]="assignees"
+                  [hideable]="true"
+                  [suppressToasts]="!chimeHidden"
+                  (hide)="hideChime()"
                   (summaryChange)="onAskSummaryChange($event)"
                   (openHistory)="selectedTabIndex = historyTabIndex">
                 </app-board-item-asks>

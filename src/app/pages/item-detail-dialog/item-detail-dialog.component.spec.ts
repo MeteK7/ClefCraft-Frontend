@@ -1,11 +1,13 @@
-import { ComponentFixture, TestBed, fakeAsync, flush } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
-import { ItemDetailDialogComponent, ItemDetailDialogData } from './item-detail-dialog.component';
+import { CHIME_RAIL_DEFAULT, CHIME_RAIL_MIN, ItemDetailDialogComponent, ItemDetailDialogData } from './item-detail-dialog.component';
+import { AuthService } from '../../_services/auth.service';
+import { OpenAskItemsService } from '../../_services/open-ask-items.service';
 import { Item } from '../../models/board.model';
 import { environment } from '../../../environments/environment';
 import { of } from 'rxjs';
@@ -486,5 +488,270 @@ describe('ItemDetailDialogComponent — completing an item with asks', () => {
     component.onAskSummaryChange({ openCount: 4, unmetRequiredCount: 1, completedCount: 0, openAsks: [] });
 
     expect(emitted).toEqual([jasmine.objectContaining({ openCount: 4 })]);
+  }));
+});
+
+describe('ItemDetailDialogComponent — Chime In beside the fields', () => {
+  let component: ItemDetailDialogComponent;
+  let fixture: ComponentFixture<ItemDetailDialogComponent>;
+  let element: HTMLElement;
+
+  const statuses = [{ id: 3, name: 'In Progress' }, { id: 5, name: 'Done' }];
+  // One open ask waiting on the viewer, one on someone else.
+  const asks = [
+    makeAsk({ id: 1, state: AskState.Pending, recipientUserId: 'me' }),
+    makeAsk({ id: 2, state: AskState.Accepted, recipientUserId: 'someone-else' })
+  ];
+
+  function open(): void {
+    fixture = TestBed.createComponent(ItemDetailDialogComponent);
+    component = fixture.componentInstance;
+    element = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne(`${environment.apiUrl}/BoardItems/GetStatuses?boardId=7`).flush(statuses);
+    flush(); // the panel emits its summary asynchronously
+    fixture.detectChanges();
+    // As the ResizeObserver would report a full-size dialog's Details content.
+    component.onLayoutResized(1117);
+    fixture.detectChanges();
+  }
+
+  function setup(): void {
+    TestBed.configureTestingModule({
+      imports: [ItemDetailDialogComponent],
+      providers: [
+        provideHttpClient(withXhr()),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: { item: { id: 9, title: 'Release notes', boardId: 7, boardColumnId: 3, status: { id: 3, name: '' } }, boardId: 7 } as ItemDetailDialogData },
+        { provide: MatDialogRef, useValue: { close: jasmine.createSpy('close') } },
+        { provide: AskCompletionService, useValue: { completeItem: jasmine.createSpy('completeItem') } },
+        { provide: BoardItemAskService, useValue: { getForItem: () => of(asks) } }
+      ]
+    }).compileComponents();
+    spyOn(TestBed.inject(AuthService), 'getUserId').and.returnValue('me');
+    open();
+  }
+
+  const separator = () => element.querySelector<HTMLElement>('.details-separator');
+  const chime = () => element.querySelector<HTMLElement>('.details-chime')!;
+  const reveal = () => element.querySelector<HTMLButtonElement>('.chime-reveal');
+  const key = (name: string) => {
+    separator()!.dispatchEvent(new KeyboardEvent('keydown', { key: name, cancelable: true }));
+    fixture.detectChanges();
+  };
+  const pointer = (type: string, clientX: number) => {
+    separator()!.dispatchEvent(new PointerEvent(type, { button: 0, pointerId: 1, clientX, cancelable: true, bubbles: true }));
+    fixture.detectChanges();
+  };
+
+  it('opens with Chime In visible at 360px, and a separator that reports the Details width', fakeAsync(() => {
+    setup();
+
+    expect(component.chimeHidden).toBeFalse();
+    expect(component.railWidth).toBe(CHIME_RAIL_DEFAULT);
+    const divider = separator()!;
+    expect(divider.getAttribute('role')).toBe('separator');
+    expect(divider.getAttribute('aria-orientation')).toBe('vertical');
+    expect(divider.getAttribute('tabindex')).toBe('0');
+    expect(divider.getAttribute('aria-valuenow')).toBe(String(1117 - 49 - 360));
+    expect(divider.getAttribute('aria-valuemin')).toBe('560');
+    expect(divider.getAttribute('aria-valuemax')).toBe(String(1117 - 49 - 320));
+    expect(divider.getAttribute('aria-valuetext')).toBe('Details 708 pixels, Chime In 360 pixels');
+    expect(element.querySelector('.details-grid')!.getAttribute('style')).toContain('--chime-width: 360px');
+  }));
+
+  it('resizes with the arrow keys, and Home and End go to the limits', fakeAsync(() => {
+    setup();
+
+    key('ArrowLeft');
+    expect(component.railWidth).toBe(376);
+    key('ArrowRight');
+    key('ArrowRight');
+    expect(component.railWidth).toBe(344);
+
+    key('Home');
+    expect(component.railWidth).toBe(1117 - 560 - 49);
+    key('ArrowLeft');
+    expect(component.railWidth).toBe(1117 - 560 - 49);
+
+    key('End');
+    expect(component.railWidth).toBe(CHIME_RAIL_MIN);
+    key('ArrowRight');
+    expect(component.railWidth).toBe(CHIME_RAIL_MIN);
+  }));
+
+  it('resets to 360px on double-click', fakeAsync(() => {
+    setup();
+    key('End');
+
+    separator()!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(component.railWidth).toBe(CHIME_RAIL_DEFAULT);
+  }));
+
+  it('drags within the limits, and every way a drag can end ends it', fakeAsync(() => {
+    setup();
+
+    pointer('pointerdown', 700);
+    expect(component.resizing).toBeTrue();
+    expect(element.querySelector('.details-layout')!.classList).toContain('resizing');
+    pointer('pointermove', 600);
+    expect(component.railWidth).toBe(460);
+    pointer('pointermove', 0);
+    expect(component.railWidth).toBe(1117 - 560 - 49);
+    pointer('pointermove', 2000);
+    expect(component.railWidth).toBe(CHIME_RAIL_MIN);
+    pointer('pointerup', 2000);
+    expect(component.resizing).toBeFalse();
+
+    // Moves after the drag ended change nothing.
+    pointer('pointermove', 0);
+    expect(component.railWidth).toBe(CHIME_RAIL_MIN);
+
+    for (const end of ['pointercancel', 'lostpointercapture']) {
+      pointer('pointerdown', 700);
+      pointer(end, 700);
+      expect(component.resizing).withContext(end).toBeFalse();
+    }
+  }));
+
+  it('keeps the fields at their minimum when the dialog gets narrower', fakeAsync(() => {
+    setup();
+    key('Home');
+
+    component.onLayoutResized(1024);
+    expect(component.railWidth).toBe(1024 - 560 - 49);
+
+    component.onLayoutResized(900);
+    expect(component.railWidth).toBe(CHIME_RAIL_MIN);
+  }));
+
+  it('hides Chime In, keeps it loaded, and brings it back with a count from the header', fakeAsync(() => {
+    setup();
+    const openItems = TestBed.inject(OpenAskItemsService);
+    expect(openItems.isOpen(9)).toBeTrue();
+    key('ArrowLeft');
+
+    element.querySelector<HTMLButtonElement>('.asks-hide')!.click();
+    fixture.detectChanges();
+    tick();
+
+    expect(component.chimeHidden).toBeTrue();
+    expect(separator()).toBeNull();
+    expect(element.querySelector('.details-grid')!.classList).toContain('chime-hidden');
+    expect(chime().querySelector('app-board-item-asks')).not.toBeNull();
+    expect(getComputedStyle(chime()).display).toBe('none');
+    // Hidden: new asks and replies on this item may raise toasts again.
+    expect(openItems.isOpen(9)).toBeFalse();
+
+    const button = reveal()!;
+    expect(document.activeElement).toBe(button);
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(button.getAttribute('aria-controls')).toBe('chime-in-panel');
+    expect(button.getAttribute('aria-label')).toBe('Show Chime In: 2 open asks, 1 waiting for you');
+    expect(button.querySelector('.chime-count')!.textContent!.trim()).toBe('2');
+    expect(button.classList).toContain('waiting');
+
+    // The panel keeps loading while hidden, so the count follows the asks.
+    component.onAskSummaryChange({ openCount: 1, unmetRequiredCount: 0, completedCount: 1, openAsks: [
+      { askId: 2, recipientUserId: 'someone-else', recipientFullName: 'S', state: AskState.Accepted, isRequired: false, dueDate: null, dateCreated: '2026-10-10T09:00:00Z' }
+    ] });
+    fixture.detectChanges();
+    expect(button.getAttribute('aria-label')).toBe('Show Chime In: 1 open ask');
+    expect(button.classList).not.toContain('waiting');
+
+    component.selectedTabIndex = 3;
+    button.click();
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    expect(component.chimeHidden).toBeFalse();
+    expect(component.selectedTabIndex).toBe(0);
+    expect(reveal()).toBeNull();
+    expect(openItems.isOpen(9)).toBeTrue();
+    // The width the user chose survives hiding.
+    expect(component.railWidth).toBe(376);
+    flush();
+  }));
+
+  it('moves focus to the Chime In heading when it comes back', fakeAsync(() => {
+    setup();
+    element.querySelector<HTMLButtonElement>('.asks-hide')!.click();
+    fixture.detectChanges();
+    tick();
+
+    reveal()!.click();
+    fixture.detectChanges();
+    tick();
+
+    expect(document.activeElement).toBe(element.querySelector('#asks-heading'));
+  }));
+
+  it('re-clamps the kept width if the dialog changed while Chime In was hidden', fakeAsync(() => {
+    setup();
+    key('Home');
+    component.hideChime();
+    fixture.detectChanges();
+    tick();
+
+    component.onLayoutResized(1024);
+    component.showChime();
+    fixture.detectChanges();
+    tick();
+
+    expect(component.railWidth).toBe(1024 - 560 - 49);
+  }));
+
+  it('moves focus to the Chime In heading when it comes back from another tab', fakeAsync(() => {
+    setup();
+    element.querySelector<HTMLButtonElement>('.asks-hide')!.click();
+    fixture.detectChanges();
+    tick();
+    component.selectedTabIndex = 3;
+    fixture.detectChanges();
+    flush();
+    fixture.detectChanges();
+    expect(element.querySelector('#asks-heading')).toBeNull();
+
+    reveal()!.click();
+    fixture.detectChanges();
+    flush();
+    fixture.detectChanges();
+    flush();
+
+    expect(document.activeElement).toBe(element.querySelector('#asks-heading'));
+  }));
+
+  it('stacks the fields in one column when Details is narrower than 600px', fakeAsync(() => {
+    setup();
+    const main = element.querySelector<HTMLElement>('.details-main')!;
+    const tracks = () => getComputedStyle(main.querySelector('.form-grid')!).gridTemplateColumns.split(' ').length;
+
+    main.style.width = '560px';
+    expect(tracks()).toBe(1);
+    // A narrow test window stacks the fields anyway (the 768px media rule).
+    if (!matchMedia('(max-width: 768px)').matches) {
+      main.style.width = '700px';
+      expect(tracks()).toBe(2);
+    }
+  }));
+
+  it('starts every new dialog visible at 360px', fakeAsync(() => {
+    setup();
+    key('Home');
+    component.hideChime();
+    fixture.detectChanges();
+    tick();
+    fixture.destroy();
+
+    open();
+
+    expect(component.chimeHidden).toBeFalse();
+    expect(component.railWidth).toBe(CHIME_RAIL_DEFAULT);
+    expect(separator()).not.toBeNull();
   }));
 });

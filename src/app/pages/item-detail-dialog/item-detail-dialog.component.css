@@ -189,9 +189,9 @@
   color: var(--text);
 }
 
-/* Details tab: the fields, with Chime In beside them in a 360px rail once the main column can
-   keep at least 640px (640 + 24 gap + 360 = 1024px of content), and under them otherwise. The
-   query reads the dialog's real width, not the window's. */
+/* Details tab: the fields, with Chime In beside them in a rail once there are 1024px of content
+   (the rail starts at 360px, the fields keep at least 560px), and under them otherwise. The query
+   reads the dialog's real width, not the window's. The divider between them sets --chime-width. */
 .details-content {
   /* The scrollbar's space is always reserved, so a layout switch that changes whether the tab
      scrolls can't change the width and flip the layout back. */
@@ -202,27 +202,112 @@
   container: details / inline-size;
 }
 
+.details-layout.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* The fields are their own container: a narrow column stacks them instead of squeezing them. */
+.details-main {
+  container: details-main / inline-size;
+}
+
 /* Stacked: under the fields, no wider than the panel has room to read well. */
 .details-chime {
   max-width: 760px;
   margin-top: 16px;
 }
 
+/* Hidden Chime In stays loaded (its counts stay current) but nothing may show it. */
+.details-chime.chime-hidden {
+  display: none !important;
+}
+
+/* The divider only exists in the rail layout. */
+.details-separator {
+  display: none;
+}
+
 @container details (min-width: 1024px) {
   .details-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
-    column-gap: 24px;
+    grid-template-columns: minmax(0, 1fr) 25px var(--chime-width, 360px);
+    column-gap: 12px;
   }
 
-  /* The rail: one divider, no card. It stretches to the fields' height, so the divider does too. */
+  /* Chime In hidden: the fields take the whole width. */
+  .details-grid.chime-hidden {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The rail: no card. It stretches to the fields' height, so the divider does too. */
   .details-chime {
     min-width: 0;
     max-width: none;
     margin-top: 0;
-    padding-left: 24px;
-    border-left: 1px solid var(--divider);
   }
+
+  /* A 25px hit area around a 1px line, which thickens on hover, focus and drag. */
+  .details-separator {
+    display: block;
+    position: relative;
+    cursor: col-resize;
+    touch-action: none;
+    outline: none;
+  }
+
+  .details-separator::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 12px;
+    width: 1px;
+    background: var(--divider);
+    transition: background-color 0.15s ease, width 0.15s ease, left 0.15s ease;
+  }
+
+  .details-separator:hover::before,
+  .details-separator:focus-visible::before,
+  .details-layout.resizing .details-separator::before {
+    left: 11px;
+    width: 3px;
+    background: var(--primary);
+  }
+}
+
+/* Brings back a hidden Chime In, with how many asks are open. */
+.chime-reveal {
+  flex-shrink: 0;
+  --mat-button-outlined-container-height: 32px;
+  /* App tokens, so it reads in both themes; only asks waiting on you make it primary. */
+  --mat-button-outlined-label-text-color: var(--text);
+  --mat-button-outlined-outline-color: var(--border-strong);
+}
+
+.chime-reveal mat-icon {
+  margin-right: 4px;
+}
+
+.chime-count {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+/* Something is waiting on the viewer: the button and its count say so. */
+.chime-reveal.waiting {
+  --mat-button-outlined-label-text-color: var(--primary);
+  --mat-button-outlined-outline-color: var(--primary);
+}
+
+.chime-reveal.waiting .chime-count {
+  background: var(--primary);
+  color: var(--text-inverse);
 }
 
 /* Comments keep a readable line length in the wide dialog. */
@@ -246,6 +331,14 @@ app-comment-thread {
   grid-template-columns: 1fr 1fr;
   gap: 20px;
   margin-top: 8px;
+}
+
+/* After the base rule, so a narrow Details column wins over it. */
+@container details-main (max-width: 599px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
 }
 
 .form-column {
