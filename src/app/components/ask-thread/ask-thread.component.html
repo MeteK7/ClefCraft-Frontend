@@ -21,18 +21,23 @@
 @if (ask.replies.length > 0) {
   <button type="button" class="thread-toggle" [attr.aria-expanded]="expanded" [attr.aria-controls]="threadId"
     (click)="toggle()">
-    <mat-icon class="thread-toggle-icon" aria-hidden="true">{{ expanded ? 'expand_more' : 'chevron_right' }}</mat-icon>
-    @if (expanded) {
-      <span class="thread-toggle-label">Hide conversation</span>
-    } @else {
-      <span class="thread-toggle-label">{{ countLabel }}</span>
-      @if (showsLatestPreview) {
-        <span class="thread-toggle-latest">
-          · latest from {{ latest.authorFullName }},
-          <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: latest.dateCreated }" />
-          — “{{ latestExcerpt }}”
-        </span>
+    <!-- Line 1 always shows the count and the time; only the author's name gives way when narrow. -->
+    <span class="thread-toggle-line">
+      <mat-icon class="thread-toggle-icon" aria-hidden="true">{{ expanded ? 'expand_more' : 'chevron_right' }}</mat-icon>
+      @if (expanded) {
+        <span class="thread-toggle-label">Hide conversation</span>
+      } @else {
+        <span class="thread-toggle-label">{{ countLabel }}</span>
+        @if (showsLatestPreview) {
+          <span class="thread-toggle-sep" aria-hidden="true">·</span>
+          <span class="thread-toggle-author">{{ latest.authorFullName }}</span>
+          <span class="thread-toggle-comma">,</span>
+          <span class="thread-toggle-time"><ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: latest.dateCreated }" /></span>
+        }
       }
+    </span>
+    @if (!expanded && showsLatestPreview) {
+      <span class="thread-toggle-excerpt">“{{ latestExcerpt }}”</span>
     }
   </button>
 }

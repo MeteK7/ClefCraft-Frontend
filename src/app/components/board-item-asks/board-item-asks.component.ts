@@ -160,6 +160,16 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   @Input() itemDueDate: Date | string | null | undefined;
   /** The board's members, as the dialog already loaded them for the assignee picker. */
   @Input() members: Assignee[] = [];
+  /** Offer to hide the panel (the item dialog shows it beside or under the item's fields). */
+  @Input() hideable = false;
+  /**
+   * While true, realtime ask events for this item refresh the panel instead of raising toasts.
+   * The dialog turns it off while the panel is hidden, so new asks and replies still get noticed.
+   */
+  @Input() suppressToasts = true;
+
+  /** The hide button was pressed. */
+  @Output() hide = new EventEmitter<void>();
 
   /**
    * Emits after every load. Asynchronous, because the parent dialog shows state derived from it:
@@ -219,8 +229,9 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.registerItem();
-    // Someone else changed or replied to an ask on this item: show it now, instead of a toast.
+    this.syncToastSuppression();
+    // Someone else changed or replied to an ask on this item: show it now (and, while the panel
+    // is visible, instead of a toast).
     this.askEvents = this.realtime.askEvents$.subscribe(event => {
       if (event.boardItemId === this.itemId) this.load();
     });
@@ -228,8 +239,12 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    // Idempotent, so the first binding (before ngOnInit) is harmless.
+    if (changes['suppressToasts']) {
+      this.syncToastSuppression();
+    }
     if (changes['itemId'] && !changes['itemId'].firstChange) {
-      this.registerItem();
+      this.syncToastSuppression();
       this.load();
     }
   }
@@ -237,13 +252,26 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   ngOnDestroy(): void {
     this.clearNudgeReload();
     this.askEvents?.unsubscribe();
-    if (this.registeredItemId !== null) this.openAskItems.unregister(this.registeredItemId);
+    this.unregisterItem();
   }
 
-  private registerItem(): void {
-    if (this.registeredItemId !== null) this.openAskItems.unregister(this.registeredItemId);
-    this.registeredItemId = this.itemId || null;
-    if (this.registeredItemId !== null) this.openAskItems.register(this.registeredItemId);
+  /** Registers the item as on screen exactly while toasts for it should be suppressed. */
+  private syncToastSuppression(): void {
+    const wanted = this.suppressToasts && this.itemId ? this.itemId : null;
+    if (wanted === this.registeredItemId) return;
+
+    this.unregisterItem();
+    if (wanted !== null) {
+      this.openAskItems.register(wanted);
+      this.registeredItemId = wanted;
+    }
+  }
+
+  private unregisterItem(): void {
+    if (this.registeredItemId !== null) {
+      this.openAskItems.unregister(this.registeredItemId);
+      this.registeredItemId = null;
+    }
   }
 
   // ---- Loading ----------------------------------------------------------------------------
