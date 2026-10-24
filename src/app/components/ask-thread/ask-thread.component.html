@@ -5,7 +5,7 @@
     <div class="reply-head">
       <span class="answer-label">Answer</span>
       <span aria-hidden="true">·</span>
-      <span class="reply-author">{{ answer.authorFullName }}</span>
+      <span class="reply-author">{{ authorLabel(answer) }}</span>
       <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: answer.dateCreated }" />
     </div>
     <div class="answer-body" [class.clamped]="answerIsLong && !answerExpanded">
@@ -30,7 +30,7 @@
         <span class="thread-toggle-label">{{ countLabel }}</span>
         @if (showsLatestPreview) {
           <span class="thread-toggle-sep" aria-hidden="true">·</span>
-          <span class="thread-toggle-author">{{ latest.authorFullName }}</span>
+          <span class="thread-toggle-author">{{ authorLabel(latest) }}</span>
           <span class="thread-toggle-comma">,</span>
           <span class="thread-toggle-time"><ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: latest.dateCreated }" /></span>
         }
@@ -50,12 +50,19 @@
       </button>
     }
 
+    <!-- The viewer's replies sit offset to the right on a tint, text still left-aligned; a run of
+         replies by one person sits close together and names them once. Always in the order sent. -->
     <ol class="thread-list" aria-label="Replies">
-      @for (reply of visibleReplies; track reply.id) {
-        <li class="reply" [class.is-answer]="reply.id === ask.answerReplyId" [attr.data-reply-id]="reply.id">
+      @for (reply of visibleReplies; track reply.id; let i = $index) {
+        <li class="reply" [class.is-answer]="reply.id === ask.answerReplyId" [class.offset]="isOffset(reply)"
+          [class.run-start]="startsRun(i)" [class.run-end]="endsRun(i)" [attr.data-reply-id]="reply.id">
           <div class="reply-head">
-            <span class="reply-author">{{ reply.authorFullName }}</span>
-            <span aria-hidden="true">·</span>
+            @if (startsRun(i)) {
+              <span class="reply-author">{{ authorLabel(reply) }}</span>
+              <span aria-hidden="true">·</span>
+            } @else {
+              <span class="visually-hidden">{{ authorLabel(reply) }}, </span>
+            }
             <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: reply.dateCreated }" />
             @if (reply.id === ask.answerReplyId) {
               <span class="answer-tag">Answer</span>

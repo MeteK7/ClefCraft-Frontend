@@ -620,6 +620,182 @@ describe('BoardItemAsksComponent', () => {
     expect(getComputedStyle(line.querySelector('.thread-toggle-author')!).textOverflow).toBe('ellipsis');
   });
 
+  // ---- Who's on which side --------------------------------------------------------------------
+
+  /** A conversation between Rae (requester) and Ayse (recipient), as `viewer` receives it. */
+  const conversation = (viewer: string, authors: string[]): AskReply[] => authors.map((author, i) => reply({
+    id: i + 1,
+    authorUserId: author,
+    authorFullName: author === 'requester' ? 'Rae Requester' : 'Ayse Recipient',
+    body: `message ${i + 1}`,
+    dateCreated: hoursFromNow(-10 + i),
+    isMine: author === viewer
+  }));
+
+  /** Opens the conversation of a thread by `authors`, as `viewer`, and returns its replies. */
+  function openConversation(viewer: string, authors: string[]): HTMLElement[] {
+    setup([makeAsk({ id: 1, replies: conversation(viewer, authors) })], viewer);
+    toggleConversation(1);
+    return Array.from(row(1).querySelectorAll<HTMLElement>('.thread .reply'));
+  }
+
+  const isOffset = (replies: HTMLElement[]) => replies.map(r => r.classList.contains('offset'));
+  const shownName = (r: HTMLElement) => r.querySelector('.reply-author')?.textContent ?? null;
+  /** The author as a screen reader hears it: the name shown, or the hidden label in its place. */
+  const spokenAuthor = (r: HTMLElement) => shownName(r) ?? squash(r.querySelector('.reply-head .visually-hidden')?.textContent);
+
+  for (const [viewer, expected] of [
+    ['requester', [true, false, true]],
+    ['recipient', [false, true, false]],
+    // Neither side: a fixed rule, the requester's replies offset.
+    ['caller', [true, false, true]]
+  ] as const) {
+    it(`offsets the right replies for the ${viewer === 'caller' ? 'third viewer' : viewer}`, () => {
+      expect(isOffset(openConversation(viewer, ['requester', 'recipient', 'requester']))).toEqual([...expected]);
+    });
+  }
+
+  /** Whether each reply starts and ends its run, as classes. */
+  const runFlags = (replies: HTMLElement[]) =>
+    replies.map(r => [r.classList.contains('run-start'), r.classList.contains('run-end')]);
+  const corners = (r: HTMLElement) => {
+    const s = getComputedStyle(r);
+    return [s.borderTopLeftRadius, s.borderTopRightRadius, s.borderBottomRightRadius, s.borderBottomLeftRadius].join(' ');
+  };
+  /** The run tint as the current theme resolves it. */
+  function ownTint(): string {
+    const probe = document.createElement('div');
+    probe.style.background = 'var(--reply-own-bg)';
+    document.body.appendChild(probe);
+    const color = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return color;
+  }
+  const transparent = 'rgba(0, 0, 0, 0)';
+
+  it('groups replies into runs by author', () => {
+    const replies = openConversation('requester', ['recipient', 'recipient', 'requester', 'requester', 'requester', 'recipient']);
+
+    expect(runFlags(replies)).toEqual([[true, false], [false, true], [true, false], [false, false], [false, true], [true, true]]);
+  });
+
+  it('tints the viewer\'s runs as one section: rounded outside, nearly square where messages meet', () => {
+    const replies = openConversation('requester', ['requester', 'requester', 'requester', 'recipient', 'requester']);
+
+    expect(ownTint()).not.toBe(transparent);
+    expect(replies.map(r => getComputedStyle(r).backgroundColor))
+      .toEqual([ownTint(), ownTint(), ownTint(), transparent, ownTint()]);
+    expect(corners(replies[0])).toBe('6px 6px 2px 2px');
+    expect(corners(replies[1])).toBe('2px 2px 2px 2px');
+    expect(corners(replies[2])).toBe('2px 2px 6px 6px');
+    // A run of one is rounded all round.
+    expect(corners(replies[4])).toBe('6px 6px 6px 6px');
+    // No shadows or borders: the tint alone sets the run apart.
+    expect(replies.map(r => getComputedStyle(r).boxShadow)).toEqual(['none', 'none', 'none', 'none', 'none']);
+    expect(getComputedStyle(replies[1]).borderTopWidth).toBe('0px');
+  });
+
+  it('tints the requester\'s runs for a third viewer', () => {
+    const replies = openConversation('caller', ['recipient', 'requester', 'requester']);
+
+    expect(replies.map(r => getComputedStyle(r).backgroundColor)).toEqual([transparent, ownTint(), ownTint()]);
+  });
+
+  it('shows "You" on the first of the viewer\'s runs only, and the other person\'s name once per run', () => {
+    const replies = openConversation('requester', ['requester', 'requester', 'recipient', 'recipient', 'requester']);
+
+    expect(replies.map(shownName)).toEqual(['You', null, 'Ayse Recipient', null, 'You']);
+    // "You" looks like the other side's names.
+    expect(replies[0].querySelector('.reply-author')!.className).toBe(replies[2].querySelector('.reply-author')!.className);
+  });
+
+  it('gives every reply exactly one author label, shown or for screen readers only', () => {
+    const replies = openConversation('requester', ['recipient', 'recipient', 'requester', 'requester']);
+
+    expect(replies.map(spokenAuthor)).toEqual(['Ayse Recipient', 'Ayse Recipient,', 'You', 'You,']);
+    expect(replies.map(r => r.querySelectorAll('.reply-head .reply-author, .reply-head .visually-hidden').length))
+      .toEqual([1, 1, 1, 1]);
+  });
+
+  it('names both sides once per run for a third viewer', () => {
+    const replies = openConversation('caller', ['recipient', 'recipient', 'requester', 'requester', 'recipient']);
+
+    expect(replies.map(shownName)).toEqual(['Ayse Recipient', null, 'Rae Requester', null, 'Ayse Recipient']);
+    expect(replies.map(spokenAuthor)).toEqual(
+      ['Ayse Recipient', 'Ayse Recipient,', 'Rae Requester', 'Rae Requester,', 'Ayse Recipient']);
+  });
+
+  it('keeps a run close together and opens a gap where the author changes, in the order sent', () => {
+    const replies = openConversation('requester', ['recipient', 'recipient', 'requester']);
+
+    expect(replies.map(r => getComputedStyle(r).marginTop)).toEqual(['0px', '3px', '12px']);
+    expect(replies.map(r => r.getAttribute('data-reply-id'))).toEqual(['1', '2', '3']);
+    expect(replies.map(r => getComputedStyle(r).order)).toEqual(['0', '0', '0']);
+    expect(getComputedStyle(row(1).querySelector('.thread-list')!).flexDirection).toBe('column');
+  });
+
+  it('keeps code in the viewer\'s reply inside its tinted block, scrolling there rather than overflowing', () => {
+    const long = 'npm run migrate -- --env staging --dry-run --verbose --tag release-2026-10-24';
+    setup([makeAsk({ id: 1, replies: [
+      reply({ id: 1, authorUserId: 'requester', isMine: true, body: 'Ran:\n```\n' + long + '\n```' })
+    ] })], 'requester');
+    toggleConversation(1);
+
+    // The narrowest rail.
+    element().style.display = 'block';
+    element().style.width = '320px';
+
+    const block = row(1).querySelector<HTMLElement>('[data-reply-id="1"]')!;
+    const code = block.querySelector<HTMLElement>('.reply-code')!;
+    const text = block.querySelector('.reply-text')!.getBoundingClientRect();
+    const blockStyle = getComputedStyle(block);
+    const inner = block.getBoundingClientRect();
+
+    expect(code.getBoundingClientRect().left).toBe(text.left);
+    expect(code.getBoundingClientRect().left).toBeGreaterThanOrEqual(inner.left + parseFloat(blockStyle.paddingLeft));
+    expect(code.getBoundingClientRect().right).toBeLessThanOrEqual(inner.right - parseFloat(blockStyle.paddingRight));
+    // The long line scrolls inside the code block, which keeps its Copy button; nothing around it overflows.
+    const pre = code.querySelector('pre')!;
+    expect(pre.scrollWidth).toBeGreaterThan(pre.clientWidth);
+    expect(code.querySelector('.reply-copy')).not.toBeNull();
+    expect(block.scrollWidth).toBe(block.clientWidth);
+    const list = row(1).querySelector<HTMLElement>('.thread-list')!;
+    expect(list.scrollWidth).toBe(list.clientWidth);
+  });
+
+  it('draws the answer\'s rule on the viewer\'s own answer without losing the tag in the tint', () => {
+    const replies = conversation('recipient', ['recipient', 'recipient', 'requester']);
+    setup([makeAsk({ id: 1, state: AskState.Completed, answerReplyId: 1, replies })], 'recipient');
+    toggleConversation(1);
+
+    const answer = row(1).querySelector<HTMLElement>('.reply.is-answer')!;
+    const style = getComputedStyle(answer);
+    expect(answer.classList).toContain('offset');
+    expect(style.backgroundColor).toBe(ownTint());
+    expect(style.borderLeftWidth).toBe('2px');
+    expect(style.borderLeftColor).not.toBe(style.backgroundColor);
+    expect([style.borderTopLeftRadius, style.borderBottomLeftRadius]).toEqual(['0px', '0px']);
+    // Its text lines up with the run's next message: the 2px rule plus 4px matches the 6px padding.
+    const textLeft = (r: Element) => r.querySelector('.reply-text')!.getBoundingClientRect().left;
+    expect(textLeft(answer)).toBe(textLeft(row(1).querySelector('[data-reply-id="2"]')!));
+    const tag = getComputedStyle(answer.querySelector('.answer-tag')!).backgroundColor;
+    expect(tag).not.toBe(style.backgroundColor);
+  });
+
+  it('says "You" for the viewer\'s own latest reply on the closed row', () => {
+    setup([makeAsk({ id: 1, replies: conversation('requester', ['recipient', 'requester']) })], 'requester');
+
+    expect(rowButton(1, '.thread-toggle').querySelector('.thread-toggle-author')!.textContent).toBe('You');
+  });
+
+  it('says "You" on the answer block when the viewer gave the answer', () => {
+    setup([makeAsk({
+      id: 1, state: AskState.Completed, answerReplyId: 1, replies: conversation('recipient', ['recipient', 'requester'])
+    })], 'recipient');
+
+    expect(row(1).querySelector('.answer .reply-author')!.textContent).toBe('You');
+  });
+
   it('doesn\'t preview the latest reply when it\'s the answer already shown', () => {
     setup([makeAsk({ id: 1, state: AskState.Completed, answerReplyId: 40, replies: [reply({ id: 40 })] })]);
 

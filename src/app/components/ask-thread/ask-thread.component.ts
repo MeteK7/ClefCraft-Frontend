@@ -21,6 +21,7 @@ import {
   ASK_REPLY_MAX_LENGTH,
   AskReply,
   AskState,
+  AskViewpoint,
   BoardItemAsk,
   ReplySegment,
   parseReplyBody,
@@ -61,6 +62,8 @@ let nextThreadId = 0;
 })
 export class AskThreadComponent implements OnChanges {
   @Input({ required: true }) ask!: BoardItemAsk;
+  /** The viewer's side of the ask: which replies sit offset, and whose names show. */
+  @Input() viewpoint: AskViewpoint = 'other';
   /** The panel's time template: relative within a day, with the exact time on hover. */
   @Input({ required: true }) when!: TemplateRef<unknown>;
   @Input() busy = false;
@@ -158,6 +161,34 @@ export class AskThreadComponent implements OnChanges {
 
   get hiddenCount(): number {
     return this.ask.replies.length - this.visibleReplies.length;
+  }
+
+  /** How an author is named in text: "You" for the viewer's own replies. */
+  authorLabel(reply: AskReply): string {
+    return reply.isMine ? 'You' : reply.authorFullName;
+  }
+
+  /**
+   * The reply sits offset, on the conversation's right: the viewer's own when they're one of the
+   * two sides; for anyone else, the requester's (a fixed rule, since they have no side of their own).
+   */
+  isOffset(reply: AskReply): boolean {
+    return this.viewpoint === 'other' ? reply.authorUserId === this.ask.requestedByUserId : reply.isMine;
+  }
+
+  /**
+   * The first of the visible replies, or by someone other than the reply before it. A run names
+   * its author once, here ("You" for the viewer); the rest name them to screen readers only.
+   */
+  startsRun(index: number): boolean {
+    const replies = this.visibleReplies;
+    return index === 0 || replies[index - 1].authorUserId !== replies[index].authorUserId;
+  }
+
+  /** The last of the visible replies, or followed by someone else's. */
+  endsRun(index: number): boolean {
+    const replies = this.visibleReplies;
+    return index === replies.length - 1 || replies[index + 1].authorUserId !== replies[index].authorUserId;
   }
 
   get boxVisible(): boolean {
