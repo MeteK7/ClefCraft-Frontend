@@ -46,9 +46,9 @@ const ANSWER_CLAMP_LINES = 3;
 let nextThreadId = 0;
 
 /**
- * One ask's answer and conversation. Closed, the toggle row shows the reply count and the latest
- * reply; a Done ask's shows the answer in its place among the replies instead, the ones around it
- * counted. One click opens the whole thread, where the answer is tagged in place. Plain text only: ``` fences show as code blocks with a Copy button. The reply
+ * One ask's answer and conversation. Closed, the conversation shows its reply count and latest
+ * reply, the ones before it counted; a Done ask's shows the answer in its place among them. One
+ * click opens the whole thread, where the answer is tagged in place. Plain text only: ``` fences show as code blocks with a Copy button. The reply
  * box shows with the open conversation, on Reply, in the mark-done prompt, or always for the
  * recipient of an open ask. The panel sends the requests; this keeps the draft and what's open,
  * which survive the panel's reloads.
@@ -146,23 +146,29 @@ export class AskThreadComponent implements OnChanges {
     return count === 1 ? '1 reply' : `${count} replies`;
   }
 
-  // The closed conversation of a done ask: [N earlier] · answer · [M more] · latest.
+  // The closed conversation: [N earlier] · latest, or on a done ask
+  // [N earlier] · answer · [M more] · latest.
 
-  get answerIndex(): number {
-    return this.ask.replies.findIndex(r => r.id === this.ask.answerReplyId);
+  /** The answer shown among the closed conversation's replies. */
+  get digestAnswer(): AskReply | null {
+    return this.showsAnswerBlock ? this.answer : null;
   }
 
-  get repliesBeforeAnswer(): number {
-    return Math.max(this.answerIndex, 0);
+  /** Before the answer, or before the latest reply when no answer shows. */
+  get earlierCount(): number {
+    const answer = this.digestAnswer;
+    return answer ? this.ask.replies.indexOf(answer) : this.ask.replies.length - 1;
   }
 
   /** Between the answer and the latest reply, neither counted. */
-  get repliesBetweenAnswerAndLatest(): number {
-    return Math.max(this.ask.replies.length - this.answerIndex - 2, 0);
+  get moreCount(): number {
+    const answer = this.digestAnswer;
+    return answer ? Math.max(this.ask.replies.length - this.ask.replies.indexOf(answer) - 2, 0) : 0;
   }
 
-  get latestIsAnswer(): boolean {
-    return this.latest.id === this.ask.answerReplyId;
+  /** The latest reply has its own line, unless it's the answer shown already. */
+  get showsLatest(): boolean {
+    return this.latest.id !== this.digestAnswer?.id;
   }
 
   gapLabel(count: number, side: 'earlier' | 'more'): string {

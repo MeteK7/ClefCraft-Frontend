@@ -6,7 +6,7 @@
 }
 
 /* The conversation is the container its offset is measured against: 10% of its width, 20-56px.
-   The tint marks the viewer's side, so the offset only needs to hint at it. Closed, a done ask's
+   The tint marks the viewer's side, so the offset only needs to hint at it. Closed, the
    conversation keeps the same rule and offset, so the two read as one thing. */
 .thread-list,
 .thread-digest {
@@ -238,14 +238,12 @@
   mask-image: linear-gradient(to bottom, #000 60%, transparent);
 }
 
-/* The one control for the conversation: a chevron, the reply count and the latest activity on the
-   first line, the latest message on the second. */
+/* The control that opens and closes the conversation: a chevron and the reply count. */
 .thread-toggle {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
   max-width: 100%;
   padding: 2px 4px 2px 0;
   border: 0;
@@ -271,44 +269,8 @@
 }
 
 .thread-toggle-label {
-  flex: 0 0 auto;
   font-weight: 500;
   color: var(--link);
-}
-
-.thread-toggle-line {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  white-space: nowrap;
-}
-
-/* Count, separator, comma and time never shrink; the author's name takes what's left. */
-.thread-toggle-label,
-.thread-toggle-sep,
-.thread-toggle-comma,
-.thread-toggle-time {
-  flex: 0 0 auto;
-}
-
-.thread-toggle-comma {
-  margin-left: -4px;
-}
-
-.thread-toggle-author {
-  flex: 0 1 auto;
-  min-width: 2ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.thread-toggle-excerpt {
-  min-width: 0;
-  padding-left: 22px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .thread {

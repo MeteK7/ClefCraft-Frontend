@@ -537,6 +537,9 @@ describe('BoardItemAsksComponent', () => {
     fixture.detectChanges();
   }
 
+  /** What the conversation toggle holds, element by element: the chevron and the count, nothing else. */
+  const toggleParts = (toggle: Element) => Array.from(toggle.children).map(c => squash(c.textContent));
+
   const shownReplies = (askId: number) =>
     Array.from(row(askId).querySelectorAll('.thread .reply .reply-text')).map(p => p.textContent);
 
@@ -545,27 +548,30 @@ describe('BoardItemAsksComponent', () => {
     setup([makeAsk({ id: 1, replies: [reply({ dateCreated: at, body: 'Here:\n```sql\nSELECT *\n  FROM items;\n```\nThanks' })] })]);
     toggleConversation(1);
 
-    const shown = row(1).querySelector('.reply')!;
+    const shown = row(1).querySelector('.thread .reply')!;
     expect(shown.querySelector('.reply-author')!.textContent).toBe('Ayse Recipient');
     expect(shown.querySelector('.reply-head time')!.textContent!.trim()).toBe('2 hours ago');
     expect(Array.from(shown.querySelectorAll('.reply-text')).map(p => p.textContent)).toEqual(['Here:', 'Thanks']);
     expect(shown.querySelector('pre code')!.textContent).toBe('SELECT *\n  FROM items;');
   });
 
-  it('opens the whole conversation with one click, and says how many replies and the latest first', () => {
+  it('opens the whole conversation with one click, and shows the latest reply while closed', () => {
     setup([makeAsk({ id: 1, replies: [
       reply({ id: 1, body: 'one' }), reply({ id: 2, body: 'two' }),
       reply({ id: 3, authorFullName: 'Rae Requester', authorUserId: 'requester', body: 'three' })
     ] })]);
 
+    // Closed: the count, the replies before the latest counted, and the latest as it reads in the thread.
     const toggle = rowButton(1, '.thread-toggle');
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(toggle.querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('3 replies');
-    // Line 1: count · author, time. Line 2: the latest message.
-    expect(toggle.querySelector('.thread-toggle-author')!.textContent).toBe('Rae Requester');
-    expect(toggle.querySelector('.thread-toggle-time time')).not.toBeNull();
-    expect(toggle.querySelector('.thread-toggle-excerpt')!.textContent).toBe('“three”');
-    expect(row(1).querySelector('.reply')).toBeNull();
+    expect(toggleParts(toggle)).toEqual(['chevron_right', '3 replies']);
+    const gap = row(1).querySelector('.thread-digest .thread-gap')!;
+    expect(squash(gap.textContent).replace('more_horiz', '')).toBe('2 earlier replies');
+    const latest = row(1).querySelector('.thread-digest .digest-latest')!;
+    expect(latest.querySelector('.reply-author')!.textContent).toBe('Rae Requester');
+    expect(latest.querySelector('.reply-head time')).not.toBeNull();
+    expect(latest.querySelector('.reply-text')!.textContent).toBe('three');
+    expect(row(1).querySelector('.thread')).toBeNull();
 
     toggleConversation(1);
 
@@ -573,9 +579,11 @@ describe('BoardItemAsksComponent', () => {
     expect(toggle.getAttribute('aria-controls')).toBe(row(1).querySelector('.thread')!.id);
     expect(toggle.querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('Hide conversation');
     expect(shownReplies(1)).toEqual(['one', 'two', 'three']);
+    expect(row(1).querySelector('.thread-digest')).toBeNull();
 
     toggleConversation(1);
-    expect(row(1).querySelector('.reply')).toBeNull();
+    expect(row(1).querySelector('.thread')).toBeNull();
+    expect(row(1).querySelector('.thread-digest')).not.toBeNull();
   });
 
   it('shows a done ask\'s answer in its place in the closed conversation, and never twice', () => {
@@ -597,8 +605,7 @@ describe('BoardItemAsksComponent', () => {
     // answer, with its own author and time, rather than sitting on the toggle.
     const toggle = rowButton(1, '.thread-toggle');
     expect(toggle.querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('2 replies');
-    expect(toggle.querySelector('.thread-toggle-excerpt')).toBeNull();
-    expect(toggle.querySelector('.thread-toggle-author')).toBeNull();
+    expect(toggleParts(toggle)).toEqual(['chevron_right', '2 replies']);
     const latest = row(1).querySelector('.thread-digest .digest-latest')!;
     expect(latest.querySelector('.reply-author')!.textContent).toBe('Rae Requester');
     expect(latest.querySelector('.reply-head time')).not.toBeNull();
@@ -615,15 +622,12 @@ describe('BoardItemAsksComponent', () => {
     expect(row(1).querySelector('.answer')).not.toBeNull();
   });
 
-  it('lets only the author\'s name shrink on the row\'s first line', () => {
-    setup([makeAsk({ id: 1, replies: [reply({ authorFullName: 'Maximilian Alexander Featherstonehaugh-Montgomery' })] })]);
+  it('shows a single reply as it reads in the thread, with nothing counted before it', () => {
+    setup([makeAsk({ id: 1, replies: [reply({ id: 1, body: 'Only one' })] })]);
 
-    const line = rowButton(1, '.thread-toggle').querySelector('.thread-toggle-line')!;
-    const shrink = (selector: string) => getComputedStyle(line.querySelector(selector)!).flexShrink;
-    expect(shrink('.thread-toggle-label')).toBe('0');
-    expect(shrink('.thread-toggle-time')).toBe('0');
-    expect(shrink('.thread-toggle-author')).toBe('1');
-    expect(getComputedStyle(line.querySelector('.thread-toggle-author')!).textOverflow).toBe('ellipsis');
+    expect(toggleParts(rowButton(1, '.thread-toggle'))).toEqual(['chevron_right', '1 reply']);
+    expect(row(1).querySelector('.thread-gap')).toBeNull();
+    expect(row(1).querySelector('.digest-latest .reply-text')!.textContent).toBe('Only one');
   });
 
   // ---- Who's on which side --------------------------------------------------------------------
@@ -791,7 +795,7 @@ describe('BoardItemAsksComponent', () => {
   it('says "You" for the viewer\'s own latest reply on the closed row', () => {
     setup([makeAsk({ id: 1, replies: conversation('requester', ['recipient', 'requester']) })], 'requester');
 
-    expect(rowButton(1, '.thread-toggle').querySelector('.thread-toggle-author')!.textContent).toBe('You');
+    expect(row(1).querySelector('.digest-latest .reply-author')!.textContent).toBe('You');
   });
 
   it('says "You" on the answer block when the viewer gave the answer', () => {
@@ -806,8 +810,6 @@ describe('BoardItemAsksComponent', () => {
     setup([makeAsk({ id: 1, state: AskState.Completed, answerReplyId: 40, replies: [reply({ id: 40 })] })]);
 
     expect(rowButton(1, '.thread-toggle').querySelector('.thread-toggle-label')!.textContent!.trim()).toBe('1 reply');
-    expect(row(1).querySelector('.thread-toggle-author')).toBeNull();
-    expect(row(1).querySelector('.thread-toggle-excerpt')).toBeNull();
     expect(row(1).querySelector('.digest-latest')).toBeNull();
     expect(row(1).querySelector('.thread-gap')).toBeNull();
   });
@@ -1039,7 +1041,7 @@ describe('BoardItemAsksComponent', () => {
 
     expect(row(7).querySelector('.reply-box')).toBeNull();
     expect(row(7).querySelector('.ask-reply')).toBeNull();
-    expect(row(7).querySelector('.reply')).not.toBeNull();
+    expect(row(7).querySelector('.thread .reply')).not.toBeNull();
   });
 
   it('shows the counter only near the limit', () => {
