@@ -27,6 +27,7 @@ import {
 import { ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
 import { makeAsk } from '../../models/board-item-ask.testing';
 import { environment } from '../../../environments/environment';
+import { provideAppDateFormat } from '../../date-format';
 
 describe('BoardItemAsksComponent', () => {
   let component: BoardItemAsksComponent;
@@ -41,6 +42,7 @@ describe('BoardItemAsksComponent', () => {
     TestBed.configureTestingModule({
       imports: [BoardItemAsksComponent],
       providers: [
+        provideAppDateFormat(),
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideNoopAnimations(),
@@ -463,6 +465,39 @@ describe('BoardItemAsksComponent', () => {
     expect(req.request.body).toEqual({
       recipientUserId: 'helper', note: 'Review the API', dueDate: '2026-11-02T00:00:00.000Z', isRequired: true, expectsAnswer: true
     });
+  });
+
+  it('shows the date format as the placeholder on "By when", and its calendar opens', fakeAsync(() => {
+    setup([]);
+    component.openCreate();
+    fixture.detectChanges();
+
+    const field = element().querySelector('.ask-due')!;
+    expect(field.querySelector('input')!.getAttribute('placeholder')).toBe('MM/DD/YYYY');
+    expect(field.querySelector('mat-hint')).toBeNull();
+
+    field.querySelector<HTMLButtonElement>('mat-datepicker-toggle button')!.click();
+    fixture.detectChanges();
+    flush();
+
+    expect(document.querySelector('.mat-datepicker-content .mat-calendar')).not.toBeNull();
+    document.querySelector<HTMLElement>('.cdk-overlay-backdrop')?.click();
+    fixture.detectChanges();
+    flush();
+  }));
+
+  it('reads a typed date as that day, ISO included', () => {
+    setup([]);
+    component.openCreate();
+    fixture.detectChanges();
+    const input = element().querySelector<HTMLInputElement>('.ask-due input')!;
+
+    for (const text of ['11/02/2026', '2026-11-02']) {
+      input.value = text;
+      input.dispatchEvent(new Event('input'));
+      const due = component.form.value.dueDate as Date;
+      expect([due.getFullYear(), due.getMonth(), due.getDate()]).withContext(text).toEqual([2026, 10, 2]);
+    }
   });
 
   // ---- Replies ----------------------------------------------------------------------------------

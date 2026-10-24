@@ -5,6 +5,7 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptorFn } from './_services/auth.interceptor';
+import { provideAppDateFormat } from './date-format';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -15,6 +16,8 @@ export const appConfig: ApplicationConfig = {
     // Since CDK 21, overlays (dialogs, menus, tooltips, snackbars) open in the browser's top layer
     // by default. Elements appended to <body>, such as quill-mention's suggestion list, can then
     // never appear above an open dialog, so keep overlays in the regular stacking order.
-    { provide: OVERLAY_DEFAULT_CONFIG, useValue: { usePopover: false } }
+    { provide: OVERLAY_DEFAULT_CONFIG, useValue: { usePopover: false } },
+    // At the root, so date pickers' calendar popups (created in overlays) find the adapter too.
+    provideAppDateFormat()
   ]
 };

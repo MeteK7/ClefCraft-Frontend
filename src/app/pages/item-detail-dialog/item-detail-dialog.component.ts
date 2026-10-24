@@ -24,7 +24,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule, MatRippleModule } from '@angular/material/core';
+import { MatRippleModule } from '@angular/material/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, map, of, switchMap } from 'rxjs';
 
@@ -43,6 +43,7 @@ import { AuthService } from '../../_services/auth.service';
 import { RelationshipHubComponent } from '../../components/relationship-hub/relationship-hub.component';
 import { HistoryTimelineComponent } from '../../components/history-timeline/history-timeline.component';
 import { CommentThreadComponent } from '../../components/comment-thread/comment-thread.component';
+import { DATE_INPUT_PLACEHOLDER } from '../../date-format';
 
 export type ItemDetailDialogResult =
   | { type: 'saved'; item: Item }
@@ -102,7 +103,6 @@ export interface ItemDetailDialogData {
         MatInputModule,
         MatButtonModule,
         MatDatepickerModule,
-        MatNativeDateModule,
         MatRippleModule,
         MatDialogTitle,
         RelationshipHubComponent,
@@ -167,6 +167,9 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
 
   /** The History tab's position (fixed past create mode): Chime In's "Full history" opens it. */
   readonly historyTabIndex = 3;
+
+  /** The format the Due Date field reads, shown as its placeholder. */
+  readonly dateFormat = DATE_INPUT_PLACEHOLDER;
 
   /** The tab chosen since the dialog opened; until then, initialTabIndex. */
   selectedTabIndex: number | null = null;

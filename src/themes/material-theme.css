@@ -98,6 +98,12 @@ body.dark-theme {
   --mat-datepicker-toggle-icon-color: var(--text-secondary);
   --mat-datepicker-calendar-date-hover-state-background-color: var(--surface-hover);
   --mat-datepicker-calendar-date-today-outline-color: var(--primary);
+  --mat-datepicker-calendar-date-selected-state-background-color: var(--primary);
+  --mat-datepicker-calendar-date-selected-state-text-color: var(--text-inverse);
+  /* The month/year switch and the previous/next arrows above the grid */
+  --mat-datepicker-calendar-period-button-text-color: var(--text);
+  --mat-datepicker-calendar-period-button-icon-color: var(--text-secondary);
+  --mat-datepicker-calendar-navigation-button-icon-color: var(--text-secondary);
 
   /* ---------- Tooltip ---------- */
   --mat-tooltip-container-color: var(--surface-2);

@@ -15,7 +15,6 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -57,6 +56,7 @@ import {
   toAskSummary
 } from '../../models/board-item-ask.model';
 import { toDueDate } from '../../relationship-engine/analytics/finish-before';
+import { DATE_INPUT_PLACEHOLDER } from '../../date-format';
 
 /** The note's limit, as the API enforces it (BoardItemAskLimits.NoteMaxLength). */
 export const ASK_NOTE_MAX_LENGTH = 200;
@@ -143,7 +143,6 @@ const STATE_LABELS: Record<AskState, string> = {
     MatDividerModule,
     MatInputModule,
     MatMenuModule,
-    MatNativeDateModule,
     MatSelectModule,
     MatTooltipModule,
     AskThreadComponent
@@ -185,6 +184,8 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   readonly AskState = AskState;
   readonly AskAction = AskAction;
   readonly noteMaxLength = ASK_NOTE_MAX_LENGTH;
+  /** The format "By when" reads, shown as its placeholder. */
+  readonly dateFormat = DATE_INPUT_PLACEHOLDER;
   readonly nudgeRule = NUDGE_RULE_TEXT;
   readonly exactTimeFormat = ASK_EXACT_TIME_FORMAT;
   readonly answerFirst = ANSWER_FIRST_TEXT;

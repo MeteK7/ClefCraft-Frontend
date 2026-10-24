@@ -25,7 +25,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
 import { ItemDetailDialogComponent } from '../item-detail-dialog/item-detail-dialog.component';
 import { EventType } from '../../models/event-type.model';
 import { Attachment } from '../../models/attachment.model';
@@ -48,6 +47,7 @@ import { CalendarCollaboratorsPanelComponent } from '../../components/calendar-c
 import { defaultQuillModules } from '../../shared/quill-config';
 import { stageWithinLimits } from '../../shared/attachment-limits';
 import { AuthService } from '../../_services/auth.service';
+import { DATE_INPUT_PLACEHOLDER } from '../../date-format';
 
 /** What the calendar and home pages pass when they open this dialog. */
 export interface CalendarDialogData {
@@ -71,7 +71,6 @@ export interface CalendarDialogData {
     MatIconModule,
     MatDividerModule,
     MatDatepickerModule,
-    MatNativeDateModule,
     NgxMatTimepickerModule,
     QuillModule,
     MatAutocompleteModule,
@@ -85,6 +84,9 @@ export interface CalendarDialogData {
     styleUrls: ['./calendar-dialog.component.css']
 })
 export class CalendarDialogComponent implements OnInit {
+
+  /** The format the date fields read, shown as their placeholder. */
+  readonly dateFormat = DATE_INPUT_PLACEHOLDER;
 
   @Output() onSave = new EventEmitter<SavePayload>();
   @Output() onCancel = new EventEmitter<void>();
