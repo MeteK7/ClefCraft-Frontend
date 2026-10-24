@@ -5,7 +5,14 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
-import { CHIME_RAIL_DEFAULT, CHIME_RAIL_MIN, ItemDetailDialogComponent, ItemDetailDialogData } from './item-detail-dialog.component';
+import {
+  CHIME_RAIL_DEFAULT,
+  CHIME_RAIL_MIN,
+  DIALOG_BASE_WIDTH,
+  ITEM_DIALOG_CONFIG,
+  ItemDetailDialogComponent,
+  ItemDetailDialogData
+} from './item-detail-dialog.component';
 import { AuthService } from '../../_services/auth.service';
 import { OpenAskItemsService } from '../../_services/open-ask-items.service';
 import { Item } from '../../models/board.model';
@@ -34,7 +41,7 @@ describe('ItemDetailDialogComponent', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: dialogData },
-        { provide: MatDialogRef, useValue: { close: () => { } } }
+        { provide: MatDialogRef, useValue: { close: () => { }, updateSize: () => { } } }
       ]
     })
     .compileComponents();
@@ -53,7 +60,7 @@ describe('ItemDetailDialogComponent — markAsWorked()', () => {
   let component: ItemDetailDialogComponent;
   let fixture: ComponentFixture<ItemDetailDialogComponent>;
   let httpMock: HttpTestingController;
-  let dialogRefSpy: { close: jasmine.Spy };
+  let dialogRefSpy: { close: jasmine.Spy; updateSize: jasmine.Spy };
 
   const calendarApiUrl = `${environment.apiUrl}/Calendar`;
 
@@ -68,7 +75,7 @@ describe('ItemDetailDialogComponent — markAsWorked()', () => {
   } as Item;
 
   function setup(item: Item | null): void {
-    dialogRefSpy = { close: jasmine.createSpy('close') };
+    dialogRefSpy = { close: jasmine.createSpy('close'), updateSize: jasmine.createSpy('updateSize') };
 
     TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
@@ -152,7 +159,7 @@ describe('ItemDetailDialogComponent — assignee options', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: { item, boardId: 7 } as ItemDetailDialogData },
-        { provide: MatDialogRef, useValue: { close: () => { } } }
+        { provide: MatDialogRef, useValue: { close: () => { }, updateSize: () => { } } }
       ]
     }).compileComponents();
 
@@ -222,7 +229,7 @@ describe('ItemDetailDialogComponent — current status and priority', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: { item, boardId: 7 } as ItemDetailDialogData },
-        { provide: MatDialogRef, useValue: { close: () => { } } }
+        { provide: MatDialogRef, useValue: { close: () => { }, updateSize: () => { } } }
       ]
     }).compileComponents();
 
@@ -277,7 +284,7 @@ describe('ItemDetailDialogComponent — header', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: { item, boardId: 1 } as ItemDetailDialogData },
-        { provide: MatDialogRef, useValue: { close: () => { } } }
+        { provide: MatDialogRef, useValue: { close: () => { }, updateSize: () => { } } }
       ]
     }).compileComponents();
 
@@ -359,7 +366,7 @@ describe('ItemDetailDialogComponent — header', () => {
 describe('ItemDetailDialogComponent — completing an item with asks', () => {
   let component: ItemDetailDialogComponent;
   let httpMock: HttpTestingController;
-  let dialogRef: { close: jasmine.Spy };
+  let dialogRef: { close: jasmine.Spy; updateSize: jasmine.Spy };
   let askCompletion: { completeItem: jasmine.Spy };
   let asksAfterLoad: BoardItemAsk[];
   let element: HTMLElement;
@@ -369,7 +376,7 @@ describe('ItemDetailDialogComponent — completing an item with asks', () => {
   const closure: AskClosure = { acknowledgedAsks: [{ askId: 1, revision: 2 }], completeAskIds: [1], overrideAskIds: [] };
 
   function setup(statusId: number): void {
-    dialogRef = { close: jasmine.createSpy('close') };
+    dialogRef = { close: jasmine.createSpy('close'), updateSize: jasmine.createSpy('updateSize') };
     askCompletion = { completeItem: jasmine.createSpy('completeItem').and.callFake((_id: number, _title: string, save: (c: AskClosure) => unknown) => save(closure)) };
     asksAfterLoad = [makeAsk({ id: 1, state: AskState.Accepted })];
 
@@ -525,7 +532,7 @@ describe('ItemDetailDialogComponent — Chime In beside the fields', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: { item: { id: 9, title: 'Release notes', boardId: 7, boardColumnId: 3, status: { id: 3, name: '' } }, boardId: 7 } as ItemDetailDialogData },
-        { provide: MatDialogRef, useValue: { close: jasmine.createSpy('close') } },
+        { provide: MatDialogRef, useValue: { close: jasmine.createSpy('close'), updateSize: jasmine.createSpy('updateSize') } },
         { provide: AskCompletionService, useValue: { completeItem: jasmine.createSpy('completeItem') } },
         { provide: BoardItemAskService, useValue: { getForItem: () => of(asks) } }
       ]
@@ -691,19 +698,20 @@ describe('ItemDetailDialogComponent — Chime In beside the fields', () => {
     expect(document.activeElement).toBe(element.querySelector('#asks-heading'));
   }));
 
-  it('re-clamps the kept width if the dialog changed while Chime In was hidden', fakeAsync(() => {
+  it('keeps the rail width while hidden, whatever the narrower hidden layout measures', fakeAsync(() => {
     setup();
     key('Home');
     component.hideChime();
     fixture.detectChanges();
     tick();
 
-    component.onLayoutResized(1024);
+    component.onLayoutResized(700);
     component.showChime();
     fixture.detectChanges();
     tick();
 
-    expect(component.railWidth).toBe(1024 - 560 - 49);
+    expect(component.layoutWidth).toBe(1117);
+    expect(component.railWidth).toBe(1117 - 560 - 49);
   }));
 
   it('moves focus to the Chime In heading when it comes back from another tab', fakeAsync(() => {
@@ -753,5 +761,199 @@ describe('ItemDetailDialogComponent — Chime In beside the fields', () => {
     expect(component.chimeHidden).toBeFalse();
     expect(component.railWidth).toBe(CHIME_RAIL_DEFAULT);
     expect(separator()).not.toBeNull();
+  }));
+});
+
+describe('ItemDetailDialogComponent — its width follows Chime In', () => {
+  let component: ItemDetailDialogComponent;
+  let fixture: ComponentFixture<ItemDetailDialogComponent>;
+  let element: HTMLElement;
+  let pane: HTMLElement;
+  let updateSize: jasmine.Spy;
+  /** The window width that 95vw resolves against: the test window itself is far narrower. */
+  let windowWidth: number;
+
+  const visible = 'min(1309px, 95vw)';
+
+  function open(width: number): void {
+    windowWidth = width;
+    // A stand-in for the overlay pane: updateSize writes its width as a window this wide would resolve it.
+    pane = document.createElement('div');
+    pane.className = 'cdk-overlay-pane';
+    // A real pane has the dialog's height, so only the tab content scrolls.
+    pane.style.height = '800px';
+    document.body.appendChild(pane);
+    updateSize = jasmine.createSpy('updateSize').and.callFake((w: string) => {
+      pane.style.width = w.replace('95vw', `${windowWidth * 0.95}px`);
+    });
+
+    TestBed.configureTestingModule({
+      imports: [ItemDetailDialogComponent],
+      providers: [
+        provideHttpClient(withXhr()),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: { item: { id: 9, title: 'Release notes', boardId: 7, boardColumnId: 3, status: { id: 3, name: '' } }, boardId: 7 } as ItemDetailDialogData },
+        { provide: MatDialogRef, useValue: { close: jasmine.createSpy('close'), updateSize } },
+        { provide: AskCompletionService, useValue: { completeItem: jasmine.createSpy('completeItem') } },
+        { provide: BoardItemAskService, useValue: { getForItem: () => of([makeAsk({ id: 1, state: AskState.Pending })]) } }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ItemDetailDialogComponent);
+    component = fixture.componentInstance;
+    element = fixture.nativeElement as HTMLElement;
+    pane.appendChild(element);
+    // The narrow test window would apply the phone rules to the dialog; fill the pane instead.
+    element.style.setProperty('width', '100%', 'important');
+    element.style.setProperty('max-width', 'none', 'important');
+    element.style.setProperty('height', '100%', 'important');
+    element.style.setProperty('max-height', 'none', 'important');
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne(`${environment.apiUrl}/BoardItems/GetStatuses?boardId=7`).flush([]);
+    flush();
+    fixture.detectChanges();
+    observe();
+  }
+
+  /** What the ResizeObserver would report for the Details layout as it is now. */
+  function observe(): void {
+    component.onLayoutResized(layout().getBoundingClientRect().width);
+    fixture.detectChanges();
+  }
+
+  const layout = () => element.querySelector<HTMLElement>('.details-layout')!;
+  const mainWidth = () => element.querySelector<HTMLElement>('.details-main')!.getBoundingClientRect().width;
+  const separator = () => element.querySelector<HTMLElement>('.details-separator');
+  const lastWidth = () => updateSize.calls.mostRecent().args[0] as string;
+
+  function hide(): void {
+    component.hideChime();
+    fixture.detectChanges();
+    tick();
+  }
+
+  function resizeWindow(width: number): void {
+    windowWidth = width;
+    spyOnProperty(window, 'innerWidth').and.returnValue(width);
+    window.dispatchEvent(new Event('resize'));
+    fixture.detectChanges();
+  }
+
+  afterEach(() => {
+    fixture?.destroy();
+    pane?.remove();
+  });
+
+  it('opens at the base width plus the rail and its separator, with the height from the shared config', fakeAsync(() => {
+    open(1500);
+
+    expect(updateSize.calls.first().args).toEqual([visible, ITEM_DIALOG_CONFIG.height]);
+    expect(DIALOG_BASE_WIDTH + 49 + CHIME_RAIL_DEFAULT).toBe(1309);
+    expect(pane.getBoundingClientRect().width).toBe(1309);
+  }));
+
+  it('measures the chrome and the rail layout from the DOM while Chime In is visible', fakeAsync(() => {
+    open(1500);
+
+    expect(component['dialogChrome']).toBe(pane.offsetWidth - layout().getBoundingClientRect().width);
+    expect(getComputedStyle(separator()!).display).toBe('block');
+    expect(component['railLayout']).toBeTrue();
+  }));
+
+  it('hides Chime In beside the fields by taking away exactly the rail and separator', fakeAsync(() => {
+    open(1500);
+    component.setRailWidth(500);
+    fixture.detectChanges();
+    const before = mainWidth();
+
+    hide();
+
+    expect(lastWidth()).toBe(`calc(${visible} - 549px)`);
+    expect(mainWidth()).toBe(before);
+
+    component.showChime();
+    fixture.detectChanges();
+    tick();
+    observe();
+
+    expect(lastWidth()).toBe(visible);
+    expect(mainWidth()).toBe(before);
+    expect(component.railWidth).toBe(500);
+  }));
+
+  it('keeps the width when Chime In is under the fields', fakeAsync(() => {
+    open(1000);
+    expect(getComputedStyle(separator()!).display).toBe('none');
+    expect(component['railLayout']).toBeFalse();
+    const paneWidth = pane.getBoundingClientRect().width;
+
+    hide();
+
+    expect(lastWidth()).toBe(visible);
+    expect(pane.getBoundingClientRect().width).toBe(paneWidth);
+  }));
+
+  it('re-clamps the rail with the measured chrome when the window narrows while Chime In is hidden', fakeAsync(() => {
+    open(1500);
+    const chrome = component['dialogChrome']!;
+    component.setRailWidth(component.railMax);
+    hide();
+
+    resizeWindow(1200);
+
+    const visibleContent = Math.round(1200 * 0.95 - chrome);
+    expect(component.railWidth).toBe(visibleContent - 560 - 49);
+    expect(lastWidth()).toBe(`calc(${visible} - ${component.railWidth + 49}px)`);
+  }));
+
+  it('predicts the layout as the container query would: under 1024px of content it stacks', fakeAsync(() => {
+    open(1500);
+    const chrome = component['dialogChrome']!;
+    hide();
+
+    // Room for the fields' 560px beside the rail, but under the container query's 1024px.
+    const width = Math.ceil((1000 + chrome) / 0.95);
+    resizeWindow(width);
+
+    expect(component['railLayout']).toBeFalse();
+    expect(lastWidth()).toBe(visible);
+  }));
+
+  it('checks the prediction when the hidden layout changes size, even without a resize event', fakeAsync(() => {
+    open(1500);
+    hide();
+
+    // The window narrowed into the stacked range, but no resize event arrived: only the observer saw it.
+    windowWidth = 1000;
+    spyOnProperty(window, 'innerWidth').and.returnValue(1000);
+    component.onLayoutResized(500);
+
+    expect(component['railLayout']).toBeFalse();
+    expect(lastWidth()).toBe(visible);
+    expect(component.railWidth).toBe(CHIME_RAIL_DEFAULT);
+  }));
+
+  it('never resizes the dialog on a tab switch', fakeAsync(() => {
+    open(1500);
+    const calls = updateSize.calls.count();
+
+    // Work History, History and Info; Comments and Relationships load editors and graphs not needed here.
+    for (const tab of [2, 3, 5, 0]) {
+      component.selectedTabIndex = tab;
+      fixture.detectChanges();
+      flush();
+    }
+    hide();
+    const hiddenCalls = updateSize.calls.count();
+    for (const tab of [3, 5, 0]) {
+      component.selectedTabIndex = tab;
+      fixture.detectChanges();
+      flush();
+    }
+
+    expect(hiddenCalls).toBe(calls + 1);
+    expect(updateSize.calls.count()).toBe(hiddenCalls);
   }));
 });

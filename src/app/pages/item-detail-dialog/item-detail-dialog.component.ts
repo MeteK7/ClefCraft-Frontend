@@ -2,6 +2,7 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  HostListener,
   Inject,
   NgZone,
   OnDestroy,
@@ -10,7 +11,7 @@ import {
   ViewChild,
   ChangeDetectionStrategy
 } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogConfig, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -55,6 +56,27 @@ export const DETAILS_MAIN_MIN = 560;
 export const CHIME_SEPARATOR_SPACE = 49;
 /** How far one arrow key moves the divider. */
 export const CHIME_RESIZE_STEP = 16;
+
+/** The dialog's width with Chime In hidden, when the window leaves room: the fields in two readable columns. */
+export const DIALOG_BASE_WIDTH = 900;
+/** The most of the window's width the dialog may take, in vw. */
+const DIALOG_MAX_WIDTH_VW = 95;
+/** Chime In visible: the base width plus the separator and the rail at its default width. */
+const DIALOG_WIDE_WIDTH = DIALOG_BASE_WIDTH + CHIME_SEPARATOR_SPACE + CHIME_RAIL_DEFAULT;
+/**
+ * The Details content width from which Chime In sits beside the fields. The same number as
+ * `@container details (min-width: 1024px)` in item-detail-dialog.component.css (container queries
+ * can't read variables); keep the two together. Only used to predict the layout while Chime In is hidden.
+ */
+export const RAIL_LAYOUT_MIN_CONTENT = 1024;
+
+/** How Board and Home open the dialog; the dialog sets its own width (it follows Chime In). */
+export const ITEM_DIALOG_CONFIG = {
+  height: '100vh',
+  maxHeight: '90vh',
+  maxWidth: `${DIALOG_MAX_WIDTH_VW}vw`,
+  autoFocus: false
+} satisfies MatDialogConfig;
 
 export interface ItemDetailDialogData {
   /** null => dialog is in "create new item" mode */
@@ -167,6 +189,11 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
   private resizeObserver?: ResizeObserver;
   private observedLayout?: HTMLElement;
   private chimeHeadingFocusPending = false;
+  /** What the dialog adds around the Details layout (padding, the scrollbar gutter), as last measured. */
+  private dialogChrome: number | null = null;
+  /** Chime In beside the fields (the container query's rail layout), as last seen while it was visible. */
+  private railLayout = false;
+  private appliedDialogWidth: string | null = null;
 
   /** The Details layout comes and goes with its tab: observe whichever element is current. */
   @ViewChild('detailsLayout') set detailsLayout(ref: ElementRef<HTMLElement> | undefined) {
@@ -202,6 +229,7 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
     authService: AuthService
   ) {
     this.currentUserId = authService.getUserId();
+    this.applyDialogWidth();
   }
 
   ngOnDestroy(): void {
@@ -235,8 +263,24 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
   }
 
   onLayoutResized(width: number): void {
+    // Hidden, the layout is only the fields: keep the rail's width for when Chime In comes back.
+    // It changed size, though, so the window may have: check the prediction.
+    if (this.chimeHidden) {
+      this.predictHiddenLayout();
+      return;
+    }
     this.layoutWidth = Math.round(width);
+    this.measureDialog(width);
     this.setRailWidth(this.railWidth);
+  }
+
+  /** Reads what the CSS decided: the dialog's chrome around the layout, and whether the rail layout is on. */
+  private measureDialog(layoutWidth: number): void {
+    const pane = this.host.nativeElement.closest<HTMLElement>('.cdk-overlay-pane');
+    // offsetWidth, unlike the bounding box, ignores the dialog's opening scale animation.
+    if (pane) this.dialogChrome = pane.offsetWidth - layoutWidth;
+    const separator = this.host.nativeElement.querySelector<HTMLElement>('.details-separator');
+    this.railLayout = !!separator && getComputedStyle(separator).display !== 'none';
   }
 
   onSeparatorKeydown(event: KeyboardEvent): void {
@@ -298,14 +342,60 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
     return waiting > 0 ? `Show Chime In: ${asks}, ${waiting} waiting for you` : `Show Chime In: ${asks}`;
   }
 
+  // ---- The dialog's width: it follows Chime In, never the tab -----------------------------------
+
+  get visibleDialogWidth(): string {
+    return `min(${DIALOG_WIDE_WIDTH}px, ${DIALOG_MAX_WIDTH_VW}vw)`;
+  }
+
+  /** Beside the fields, hiding Chime In takes away exactly its rail and separator, so the fields keep their width. */
+  get hiddenDialogWidth(): string {
+    return this.railLayout
+      ? `calc(${this.visibleDialogWidth} - ${this.railWidth + CHIME_SEPARATOR_SPACE}px)`
+      : this.visibleDialogWidth;
+  }
+
+  private applyDialogWidth(): void {
+    const width = this.chimeHidden ? this.hiddenDialogWidth : this.visibleDialogWidth;
+    if (width === this.appliedDialogWidth) return;
+    this.appliedDialogWidth = width;
+    this.dialogRef.updateSize(width, ITEM_DIALOG_CONFIG.height);
+  }
+
+  /**
+   * While Chime In is visible the layout follows the window by itself. Hidden, nothing measures the
+   * rail layout, so predict it with the container query's rule and the chrome last measured: on a
+   * window resize, and whenever the hidden layout changes size.
+   */
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.predictHiddenLayout();
+  }
+
+  private predictHiddenLayout(): void {
+    if (!this.chimeHidden || this.dialogChrome === null) return;
+    const visiblePane = Math.min(DIALOG_WIDE_WIDTH, window.innerWidth * DIALOG_MAX_WIDTH_VW / 100);
+    const visibleContent = Math.round(visiblePane - this.dialogChrome);
+    this.railLayout = visibleContent >= RAIL_LAYOUT_MIN_CONTENT;
+    if (this.railLayout) {
+      this.layoutWidth = visibleContent;
+      this.setRailWidth(this.railWidth);
+    }
+    this.applyDialogWidth();
+  }
+
   hideChime(): void {
+    // Measured now, while the rail still shows.
+    if (this.layoutWidth > 0) this.measureDialog(this.layoutWidth);
     this.chimeHidden = true;
+    this.applyDialogWidth();
     // The panel's hide button is gone: focus goes to the button that brings it back.
     setTimeout(() => this.host.nativeElement.querySelector<HTMLElement>('.chime-reveal')?.focus());
   }
 
   showChime(): void {
     this.chimeHidden = false;
+    this.applyDialogWidth();
     this.selectedTabIndex = 0;
     // Announce the panel that came back: right away on Details, or once the Details tab has rendered again.
     this.chimeHeadingFocusPending = true;

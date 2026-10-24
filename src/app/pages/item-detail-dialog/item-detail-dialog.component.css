@@ -187,6 +187,9 @@
   overflow: auto;
   box-sizing: border-box;
   color: var(--text);
+  /* The containing block of anything positioned inside (screen-reader-only text, say), so it
+     scrolls with the tab instead of overflowing the tab body and giving it a second scrollbar. */
+  position: relative;
 }
 
 /* Details tab: the fields, with Chime In beside them in a rail once there are 1024px of content
@@ -228,6 +231,7 @@
   display: none;
 }
 
+/* 1024 is also RAIL_LAYOUT_MIN_CONTENT in item-detail-dialog.component.ts: keep the two together. */
 @container details (min-width: 1024px) {
   .details-grid {
     display: grid;
@@ -308,12 +312,6 @@
 .chime-reveal.waiting .chime-count {
   background: var(--primary);
   color: var(--text-inverse);
-}
-
-/* Comments keep a readable line length in the wide dialog. */
-app-comment-thread {
-  display: block;
-  max-width: 760px;
 }
 
 /* Utility layout rules */
