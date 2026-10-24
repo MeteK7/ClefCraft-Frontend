@@ -16,6 +16,8 @@ body.dark-theme {
   --primary: #64b5f6;
   --primary-hover: #42a5f5;
   --primary-light: #1e2a38;
+  /* The viewer's own replies in a Chime In conversation (see light-theme.css). */
+  --reply-own-bg: color-mix(in srgb, var(--primary) 12%, var(--surface));
 
   --accent: #9575cd;
   --accent-light: #2b2438;

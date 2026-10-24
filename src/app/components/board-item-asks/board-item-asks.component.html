@@ -180,7 +180,7 @@
         }
 
         @if (ask.replies.length > 0 || ask.canReply) {
-          <app-ask-thread #thread [ask]="ask" [when]="when" [busy]="isBusy"
+          <app-ask-thread #thread [ask]="ask" [viewpoint]="viewpoint(ask)" [when]="when" [busy]="isBusy"
             [canSendAndComplete]="canSendAndComplete(ask)" [completePrompt]="completePromptAskId === ask.id"
             [replyToName]="replyToName(ask)" [boxByDefault]="replyBoxByDefault(ask)"
             (send)="sendReply(ask, $event, thread)"

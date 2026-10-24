@@ -5,18 +5,73 @@
   min-width: 0;
 }
 
-.thread-list {
+/* The conversation is the container its offset is measured against: 10% of its width, 20-56px.
+   The tint marks the viewer's side, so the offset only needs to hint at it. Closed, the
+   conversation keeps the same rule and offset, so the two read as one thing. */
+.thread-list,
+.thread-digest {
+  container-type: inline-size;
+  --reply-indent: clamp(20px, 10cqi, 56px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
   margin: 0;
   padding: 0 0 0 10px;
   list-style: none;
   border-left: 2px solid var(--border);
 }
 
+.thread-digest {
+  gap: 4px;
+}
+
+/* As in the open conversation, the answer's rule lies on the conversation's. */
+.thread-digest .answer {
+  margin-left: -12px;
+}
+
+/* "2 more replies": opens the conversation. */
+.thread-gap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.thread-gap mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
 .reply {
   min-width: 0;
+}
+
+/* Runs: a change of author opens a gap; within a run, each message keeps a small seam. */
+.reply + .reply {
+  margin-top: 12px;
+}
+
+.reply + .reply:not(.run-start) {
+  margin-top: 3px;
+}
+
+/* The viewer's side: offset and tinted, the text still left-aligned. A run reads as one section,
+   rounded at its outer corners, with each message its own block. Code stays inside its block. */
+.reply.offset {
+  margin-left: var(--reply-indent);
+  padding: 4px 6px;
+  border-radius: 2px;
+  background: var(--reply-own-bg);
+}
+
+.reply.offset.run-start {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+.reply.offset.run-end {
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
 }
 
 .reply-head {
@@ -149,6 +204,32 @@
   border-left: 2px solid var(--primary);
 }
 
+/* An offset answer keeps its place in the run: the rule becomes its tinted block's left edge
+   (square there), and its text stays in line with the run's (2px rule + 4px). */
+.reply.offset.is-answer {
+  margin-left: var(--reply-indent);
+  padding-left: 4px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* The tag's own tint would blend into the run's. */
+.reply.offset .answer-tag {
+  background: var(--surface);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* A long answer shows its first lines until "Show more". */
 .answer-body.clamped {
   max-height: 4.4em;
@@ -157,14 +238,12 @@
   mask-image: linear-gradient(to bottom, #000 60%, transparent);
 }
 
-/* The one control for the conversation: a chevron, the reply count and the latest activity on the
-   first line, the latest message on the second. */
+/* The control that opens and closes the conversation: a chevron and the reply count. */
 .thread-toggle {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
   max-width: 100%;
   padding: 2px 4px 2px 0;
   border: 0;
@@ -190,44 +269,8 @@
 }
 
 .thread-toggle-label {
-  flex: 0 0 auto;
   font-weight: 500;
   color: var(--link);
-}
-
-.thread-toggle-line {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  white-space: nowrap;
-}
-
-/* Count, separator, comma and time never shrink; the author's name takes what's left. */
-.thread-toggle-label,
-.thread-toggle-sep,
-.thread-toggle-comma,
-.thread-toggle-time {
-  flex: 0 0 auto;
-}
-
-.thread-toggle-comma {
-  margin-left: -4px;
-}
-
-.thread-toggle-author {
-  flex: 0 1 auto;
-  min-width: 2ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.thread-toggle-excerpt {
-  min-width: 0;
-  padding-left: 22px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .thread {

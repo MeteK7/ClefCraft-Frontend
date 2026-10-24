@@ -1,45 +1,57 @@
-<!-- The answer: what the ask produced, shown while the conversation is closed. Opening the
-     conversation shows the same reply in place, tagged "Answer", so it never appears twice. -->
-@if (showsAnswerBlock && answer; as answer) {
-  <div class="answer" [attr.data-reply-id]="answer.id">
-    <div class="reply-head">
-      <span class="answer-label">Answer</span>
-      <span aria-hidden="true">·</span>
-      <span class="reply-author">{{ answer.authorFullName }}</span>
-      <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: answer.dateCreated }" />
-    </div>
-    <div class="answer-body" [class.clamped]="answerIsLong && !answerExpanded">
-      <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{ $implicit: answer }" />
-    </div>
-    @if (answerIsLong) {
-      <button type="button" class="thread-link answer-more" [attr.aria-expanded]="answerExpanded"
-        (click)="answerExpanded = !answerExpanded">{{ answerExpanded ? 'Show less' : 'Show more' }}</button>
-    }
-  </div>
+@if (ask.replies.length > 0) {
+  <button #toggleButton type="button" class="thread-toggle" [attr.aria-expanded]="expanded" [attr.aria-controls]="threadId"
+    (click)="toggle()">
+    <mat-icon class="thread-toggle-icon" aria-hidden="true">{{ expanded ? 'expand_more' : 'chevron_right' }}</mat-icon>
+    <span class="thread-toggle-label">{{ expanded ? 'Hide conversation' : countLabel }}</span>
+  </button>
 }
 
-@if (ask.replies.length > 0) {
-  <button type="button" class="thread-toggle" [attr.aria-expanded]="expanded" [attr.aria-controls]="threadId"
-    (click)="toggle()">
-    <!-- Line 1 always shows the count and the time; only the author's name gives way when narrow. -->
-    <span class="thread-toggle-line">
-      <mat-icon class="thread-toggle-icon" aria-hidden="true">{{ expanded ? 'expand_more' : 'chevron_right' }}</mat-icon>
-      @if (expanded) {
-        <span class="thread-toggle-label">Hide conversation</span>
-      } @else {
-        <span class="thread-toggle-label">{{ countLabel }}</span>
-        @if (showsLatestPreview) {
-          <span class="thread-toggle-sep" aria-hidden="true">·</span>
-          <span class="thread-toggle-author">{{ latest.authorFullName }}</span>
-          <span class="thread-toggle-comma">,</span>
-          <span class="thread-toggle-time"><ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: latest.dateCreated }" /></span>
-        }
-      }
-    </span>
-    @if (!expanded && showsLatestPreview) {
-      <span class="thread-toggle-excerpt">“{{ latestExcerpt }}”</span>
+<!-- The conversation, closed: the latest reply as it reads in the thread, the ones before it
+     counted. A done ask's answer shows in its place among them; opening the conversation shows
+     the same answer in place, tagged "Answer". -->
+@if (!expanded && ask.replies.length > 0) {
+  <div class="thread-digest">
+    @if (earlierCount > 0) {
+      <button type="button" class="thread-link thread-gap" (click)="openConversation()">
+        <mat-icon aria-hidden="true">more_horiz</mat-icon>{{ gapLabel(earlierCount, 'earlier') }}
+      </button>
     }
-  </button>
+
+    @if (digestAnswer; as answer) {
+      <div class="answer" [attr.data-reply-id]="answer.id">
+        <div class="reply-head">
+          <span class="answer-label">Answer</span>
+          <span aria-hidden="true">·</span>
+          <span class="reply-author">{{ authorLabel(answer) }}</span>
+          <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: answer.dateCreated }" />
+        </div>
+        <div class="answer-body" [class.clamped]="answerIsLong && !answerExpanded">
+          <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{ $implicit: answer }" />
+        </div>
+        @if (answerIsLong) {
+          <button type="button" class="thread-link answer-more" [attr.aria-expanded]="answerExpanded"
+            (click)="answerExpanded = !answerExpanded">{{ answerExpanded ? 'Show less' : 'Show more' }}</button>
+        }
+      </div>
+    }
+
+    @if (moreCount > 0) {
+      <button type="button" class="thread-link thread-gap" (click)="openConversation()">
+        <mat-icon aria-hidden="true">more_horiz</mat-icon>{{ gapLabel(moreCount, 'more') }}
+      </button>
+    }
+
+    @if (showsLatest) {
+      <div class="reply digest-latest run-start run-end" [class.offset]="isOffset(latest)" [attr.data-reply-id]="latest.id">
+        <div class="reply-head">
+          <span class="reply-author">{{ authorLabel(latest) }}</span>
+          <span aria-hidden="true">·</span>
+          <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: latest.dateCreated }" />
+        </div>
+        <p class="reply-text digest-excerpt">{{ latestExcerpt }}</p>
+      </div>
+    }
+  </div>
 }
 
 @if (expanded) {
@@ -50,12 +62,19 @@
       </button>
     }
 
+    <!-- The viewer's replies sit offset to the right on a tint, text still left-aligned; a run of
+         replies by one person sits close together and names them once. Always in the order sent. -->
     <ol class="thread-list" aria-label="Replies">
-      @for (reply of visibleReplies; track reply.id) {
-        <li class="reply" [class.is-answer]="reply.id === ask.answerReplyId" [attr.data-reply-id]="reply.id">
+      @for (reply of visibleReplies; track reply.id; let i = $index) {
+        <li class="reply" [class.is-answer]="reply.id === ask.answerReplyId" [class.offset]="isOffset(reply)"
+          [class.run-start]="startsRun(i)" [class.run-end]="endsRun(i)" [attr.data-reply-id]="reply.id">
           <div class="reply-head">
-            <span class="reply-author">{{ reply.authorFullName }}</span>
-            <span aria-hidden="true">·</span>
+            @if (startsRun(i)) {
+              <span class="reply-author">{{ authorLabel(reply) }}</span>
+              <span aria-hidden="true">·</span>
+            } @else {
+              <span class="visually-hidden">{{ authorLabel(reply) }}, </span>
+            }
             <ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: reply.dateCreated }" />
             @if (reply.id === ask.answerReplyId) {
               <span class="answer-tag">Answer</span>
