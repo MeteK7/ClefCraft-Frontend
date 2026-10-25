@@ -112,6 +112,45 @@ describe('BoardItemAsksComponent', () => {
     expect(summaries).toEqual([jasmine.objectContaining({ openCount: 1, unmetRequiredCount: 1 })]);
   }));
 
+  it('reports who helped after every load, for the item dialog to show beside Assignee', fakeAsync(() => {
+    const accepted = makeAsk({ id: 1, state: AskState.Accepted, recipientUserId: 'helper', recipientFullName: 'Hale Helper' });
+    setup([accepted]);
+    flush();
+    const reported: string[][] = [];
+    component.contributorsChange.subscribe(c => reported.push(c.map(p => p.fullName)));
+
+    // Accepted is not done yet: nobody to report.
+    component.load();
+    httpMock.expectOne(asksUrl).flush([accepted]);
+    flush();
+
+    // The ask is marked done: the reload reports its recipient.
+    component.load();
+    httpMock.expectOne(asksUrl).flush([makeAsk({
+      id: 1, state: AskState.Completed, recipientUserId: 'helper', recipientFullName: 'Hale Helper', completedAt: '2026-10-22T10:00:00Z'
+    })]);
+    flush();
+
+    expect(reported).toEqual([[], ['Hale Helper']]);
+  }));
+
+  it('brings an ask\'s card into view and focus, highlighted briefly', fakeAsync(() => {
+    setup([makeAsk({ id: 1 }), makeAsk({ id: 2 })]);
+    flush();
+    const card = element().querySelector<HTMLElement>('[data-ask-id="2"]')!;
+
+    component.revealAsk(2);
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(card);
+    expect(card.getAttribute('tabindex')).toBe('-1');
+    expect(card.classList).toContain('revealed');
+
+    tick(BoardItemAsksComponent.REVEAL_HIGHLIGHT_MS);
+    fixture.detectChanges();
+    expect(card.classList).not.toContain('revealed');
+  }));
+
   it('is headed "Chime In", and invites a first ask when nobody has been asked', () => {
     setup([]);
 

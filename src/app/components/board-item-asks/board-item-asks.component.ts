@@ -1,5 +1,6 @@
 import {
   Component,
+  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
@@ -37,6 +38,7 @@ import {
   ASK_EXACT_TIME_FORMAT,
   AskAction,
   AskCancelReason,
+  AskContributor,
   AskState,
   AskKeyDate,
   AskStatusPart,
@@ -53,7 +55,8 @@ import {
   isNudgeTooSoonError,
   isWithinDay,
   timeAgo,
-  toAskSummary
+  toAskSummary,
+  toContributors
 } from '../../models/board-item-ask.model';
 import { toDueDate } from '../../relationship-engine/analytics/finish-before';
 import { DATE_INPUT_PLACEHOLDER } from '../../date-format';
@@ -176,6 +179,9 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
    */
   @Output() summaryChange = new EventEmitter<AskSummary>(true);
 
+  /** Who helped with the item, after every load: asynchronous for the same reason as summaryChange. */
+  @Output() contributorsChange = new EventEmitter<AskContributor[]>(true);
+
   /** "Full history" under an ask's Details: the item's History tab has every ask event. */
   @Output() openHistory = new EventEmitter<void>();
 
@@ -216,6 +222,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     private dialog: MatDialog,
     private realtime: NotificationRealtimeService,
     private openAskItems: OpenAskItemsService,
+    private host: ElementRef<HTMLElement>,
     authService: AuthService,
     fb: FormBuilder
   ) {
@@ -251,6 +258,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.revealTimer !== null) clearTimeout(this.revealTimer);
     this.clearNudgeReload();
     this.askEvents?.unsubscribe();
     this.unregisterItem();
@@ -275,6 +283,27 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
+  /** How long a card revealed from outside the panel stays highlighted. */
+  static readonly REVEAL_HIGHLIGHT_MS = 1_600;
+
+  /** The ask whose card was just revealed, highlighted briefly. */
+  revealedAskId: number | null = null;
+  private revealTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Brings an ask's card into view and focuses it, e.g. from "Helped by" beside the item's fields. */
+  revealAsk(askId: number): void {
+    const card = this.host.nativeElement.querySelector<HTMLElement>(`[data-ask-id="${askId}"]`);
+    if (!card) return;
+    card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    card.focus({ preventScroll: true });
+    this.revealedAskId = askId;
+    if (this.revealTimer !== null) clearTimeout(this.revealTimer);
+    this.revealTimer = setTimeout(() => {
+      this.revealedAskId = null;
+      this.revealTimer = null;
+    }, BoardItemAsksComponent.REVEAL_HIGHLIGHT_MS);
+  }
+
   // ---- Loading ----------------------------------------------------------------------------
 
   load(): void {
@@ -286,6 +315,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
         this.asks = asks;
         this.isLoading = false;
         this.summaryChange.emit(toAskSummary(asks));
+        this.contributorsChange.emit(toContributors(asks));
         this.scheduleNudgeReload();
       },
       error: error => {

@@ -21,11 +21,57 @@ import {
   isStaleAskClosureError,
   isWithinDay,
   timeAgo,
-  toAskSummary
+  toAskSummary,
+  toContributors
 } from './board-item-ask.model';
 import { makeAsk } from './board-item-ask.testing';
 
 describe('board-item-ask model', () => {
+  describe('toContributors', () => {
+    const done = (id: number, recipient: string, completedAt: string, note = `ask ${id}`) => makeAsk({
+      id, state: AskState.Completed, recipientUserId: recipient, recipientFullName: `${recipient} name`, completedAt, note
+    });
+
+    it('credits the recipients of done asks only', () => {
+      const contributors = toContributors([
+        done(1, 'ayse', '2026-10-20T10:00:00Z'),
+        makeAsk({ id: 2, state: AskState.Declined, recipientUserId: 'bo' }),
+        makeAsk({ id: 3, state: AskState.Cancelled, recipientUserId: 'cy' }),
+        makeAsk({ id: 4, state: AskState.Accepted, recipientUserId: 'di' }),
+        makeAsk({ id: 5, state: AskState.Pending, recipientUserId: 'ed' })
+      ]);
+
+      expect(contributors.map(c => c.userId)).toEqual(['ayse']);
+      expect(contributors[0]).toEqual({
+        userId: 'ayse', fullName: 'ayse name', asks: [{ askId: 1, note: 'ask 1', completedAt: '2026-10-20T10:00:00Z' }]
+      });
+    });
+
+    it('groups each person\'s asks, newest first, and orders people by their latest contribution', () => {
+      const contributors = toContributors([
+        done(1, 'ayse', '2026-10-18T10:00:00Z'),
+        done(2, 'bo', '2026-10-21T10:00:00Z'),
+        done(3, 'ayse', '2026-10-22T10:00:00Z'),
+        done(4, 'bo', '2026-10-19T10:00:00Z')
+      ]);
+
+      expect(contributors.map(c => [c.userId, c.asks.map(a => a.askId)])).toEqual([['ayse', [3, 1]], ['bo', [2, 4]]]);
+    });
+
+    it('credits the recipient when the requester marked the ask done', () => {
+      const contributors = toContributors([
+        makeAsk({ ...done(1, 'ayse', '2026-10-20T10:00:00Z'), completedByUserId: 'requester', completedByFullName: 'Rae Requester' })
+      ]);
+
+      expect(contributors.map(c => c.userId)).toEqual(['ayse']);
+    });
+
+    it('is empty without done asks', () => {
+      expect(toContributors([])).toEqual([]);
+      expect(toContributors([makeAsk({ state: AskState.Pending })])).toEqual([]);
+    });
+  });
+
   describe('buildAskClosure', () => {
     const pending = makeAsk({ id: 1, state: AskState.Pending, revision: 4 });
     const acceptedRequired = makeAsk({ id: 2, state: AskState.Accepted, isRequired: true, revision: 7 });
