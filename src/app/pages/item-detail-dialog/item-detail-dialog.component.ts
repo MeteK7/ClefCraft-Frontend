@@ -12,7 +12,7 @@ import {
   ChangeDetectionStrategy
 } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogConfig, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
-import { CommonModule } from '@angular/common';
+import { CommonModule, formatDate } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSelectModule } from '@angular/material/select';
@@ -29,7 +29,15 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, map, of, switchMap } from 'rxjs';
 
 import { Column, Item, ItemUpdate, Priority, Status, Tag } from '../../models/board.model';
-import { AskClosure, AskSummary, askErrorMessage, toAskSummary } from '../../models/board-item-ask.model';
+import {
+  AskClosure,
+  AskContributor,
+  AskSummary,
+  askDayFormat,
+  askErrorMessage,
+  replyExcerpt,
+  toAskSummary
+} from '../../models/board-item-ask.model';
 import { AskCompletionService } from '../../_services/ask-completion.service';
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
 import { BoardItemAsksComponent } from '../../components/board-item-asks/board-item-asks.component';
@@ -70,6 +78,9 @@ const DIALOG_WIDE_WIDTH = DIALOG_BASE_WIDTH + CHIME_SEPARATOR_SPACE + CHIME_RAIL
  * can't read variables); keep the two together. Only used to predict the layout while Chime In is hidden.
  */
 export const RAIL_LAYOUT_MIN_CONTENT = 1024;
+
+/** How many of a person's done asks "Helped by" lists on hover before "and N more". */
+const CONTRIBUTOR_TOOLTIP_ASKS = 3;
 
 /** How Board and Home open the dialog; the dialog sets its own width (it follows Chime In). */
 export const ITEM_DIALOG_CONFIG = {
@@ -131,6 +142,11 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
 
   /** The item's ask counts as the Chime In panel last loaded them; null until it has. */
   askSummary: AskSummary | null = null;
+
+  /** Who helped, as the Chime In panel last loaded it: the recipients of done asks. */
+  private allContributors: AskContributor[] = [];
+
+  @ViewChild(BoardItemAsksComponent) private asksPanel?: BoardItemAsksComponent;
 
   /**
    * Emits whenever the item's asks were (re)loaded, so the board can update the card while the
@@ -417,6 +433,52 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
   onAskSummaryChange(summary: AskSummary): void {
     this.askSummary = summary;
     this.askSummaryChange.emit(summary);
+  }
+
+  onContributorsChange(contributors: AskContributor[]): void {
+    this.allContributors = contributors;
+  }
+
+  /**
+   * "Helped by" under Assignee: who contributed through Chime In. The assignee is left out, since
+   * being responsible for the item already covers what they did.
+   */
+  get contributors(): AskContributor[] {
+    const assigneeId = this.form.value.assigneeId;
+    return this.allContributors.filter(c => c.userId !== assigneeId);
+  }
+
+  /** What they did, newest first: up to three asks, quoted as asked, then how many more. */
+  contributorTooltip(contributor: AskContributor): string {
+    const shown = contributor.asks.slice(0, CONTRIBUTOR_TOOLTIP_ASKS).map(ask =>
+      `“${replyExcerpt(ask.note, 60)}” - done ${formatDate(ask.completedAt, askDayFormat(ask.completedAt), 'en-US')}`);
+    const more = contributor.asks.length - shown.length;
+    return [...shown, ...(more > 0 ? [`and ${more} more`] : [])].join('\n');
+  }
+
+  /** "System User" → "SU": the first letters of the first and last names. */
+  initials(fullName: string): string {
+    const words = fullName.trim().split(/\s+/).filter(Boolean);
+    const letters = words.length > 1 ? [words[0], words[words.length - 1]] : words;
+    return letters.map(w => w[0]).join('').toUpperCase();
+  }
+
+  contributorLabel(contributor: AskContributor): string {
+    const count = contributor.asks.length;
+    return `${contributor.fullName} helped with ${count === 1 ? '1 ask' : `${count} asks`}. Show in Chime In.`;
+  }
+
+  /** Shows the person's latest done ask in Chime In, bringing the panel back if it's hidden. */
+  showContribution(contributor: AskContributor): void {
+    const askId = contributor.asks[0].askId;
+    if (!this.chimeHidden) {
+      this.asksPanel?.revealAsk(askId);
+      return;
+    }
+    this.chimeHidden = false;
+    this.applyDialogWidth();
+    // Once the panel shows again.
+    setTimeout(() => this.asksPanel?.revealAsk(askId));
   }
 
   /** Open asks or unmet requirements, but nobody responsible for the item. */

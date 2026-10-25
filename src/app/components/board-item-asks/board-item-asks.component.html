@@ -81,7 +81,9 @@
 
   <ul class="ask-list">
     @for (ask of asks; track ask.id) {
-      <li class="ask-row" [class.closed]="!ask.isOpen && !ask.isUnmetRequirement" [attr.data-ask-id]="ask.id">
+      <!-- Focusable from code only: "Helped by" beside the item's fields brings a card here. -->
+      <li class="ask-row" [class.closed]="!ask.isOpen && !ask.isUnmetRequirement" [class.revealed]="revealedAskId === ask.id"
+        [attr.data-ask-id]="ask.id" tabindex="-1">
         <div class="ask-head">
           <div class="ask-line">
             <!-- Who it's between, from the viewer's side: "Asked Ayse", "From Rae", or "Rae → Ayse". -->

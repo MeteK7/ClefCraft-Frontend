@@ -187,6 +187,36 @@ export function toAskSummary(asks: BoardItemAsk[]): AskSummary {
   };
 }
 
+/** Someone who helped with an item: the recipient of asks that are done, newest first. */
+export interface AskContributor {
+  userId: string;
+  fullName: string;
+  asks: { askId: number; note: string; completedAt: string }[];
+}
+
+/**
+ * Who helped with an item: the recipients of its done asks, whoever marked them done. Declined,
+ * withdrawn and waived asks don't count, nor do replies alone. People come in order of their
+ * latest contribution.
+ */
+export function toContributors(asks: BoardItemAsk[]): AskContributor[] {
+  const byUser = new Map<string, AskContributor>();
+  const done = asks
+    .filter(a => a.state === AskState.Completed)
+    .map(a => ({ ask: a, completedAt: a.completedAt ?? a.dateCreated }))
+    .sort((x, y) => Date.parse(y.completedAt) - Date.parse(x.completedAt));
+
+  for (const { ask, completedAt } of done) {
+    let contributor = byUser.get(ask.recipientUserId);
+    if (!contributor) {
+      contributor = { userId: ask.recipientUserId, fullName: ask.recipientFullName, asks: [] };
+      byUser.set(ask.recipientUserId, contributor);
+    }
+    contributor.asks.push({ askId: ask.id, note: ask.note, completedAt });
+  }
+  return [...byUser.values()];
+}
+
 /**
  * The completion snapshot for the reviewed asks, given which Accepted asks the user chose to mark
  * done. The override list is derived from those choices: every required ask that isn't being

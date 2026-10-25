@@ -126,6 +126,21 @@
   opacity: 0.75;
 }
 
+/* A card brought here from "Helped by": a brief primary border, kept while focus is visible. */
+.ask-row {
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.ask-row:focus {
+  outline: none;
+}
+
+.ask-row.revealed,
+.ask-row:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
 .ask-head {
   display: flex;
   align-items: flex-start;
