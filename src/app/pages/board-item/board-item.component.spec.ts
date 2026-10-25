@@ -38,4 +38,33 @@ describe('BoardItemComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  // "Your move": some of the item's asks wait on the viewer, as the board load says.
+  const marker = () => (fixture.nativeElement as HTMLElement).querySelector('.your-move');
+  const showWithYourMove = (yourMove: number | undefined) => {
+    component.item = { ...component.item, askAttention: yourMove === undefined ? undefined : { yourMove } };
+    fixture.detectChanges();
+  };
+
+  it('shows no marker when nothing waits on the viewer', () => {
+    showWithYourMove(undefined);
+    expect(marker()).toBeNull();
+    showWithYourMove(0);
+    expect(marker()).toBeNull();
+  });
+
+  it('says "Your move" in words and an icon, with how many asks for screen readers', () => {
+    showWithYourMove(1);
+
+    expect(marker()!.querySelector('mat-icon')!.getAttribute('aria-hidden')).toBe('true');
+    expect(marker()!.querySelector('[aria-hidden="true"]:not(mat-icon)')!.textContent!.trim()).toBe('Your move');
+    expect(marker()!.querySelector('.visually-hidden')!.textContent!.trim()).toBe('Your move on 1 ask');
+  });
+
+  it('counts more than one', () => {
+    showWithYourMove(2);
+
+    expect(marker()!.querySelector('[aria-hidden="true"]:not(mat-icon)')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Your move · 2');
+    expect(marker()!.querySelector('.visually-hidden')!.textContent!.trim()).toBe('Your move on 2 asks');
+  });
 });

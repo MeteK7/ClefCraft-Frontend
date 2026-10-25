@@ -11,6 +11,9 @@ import { OpenAskItemsService } from './_services/open-ask-items.service';
 import { LiveReminderToastComponent } from './pages/live-reminder-toast/live-reminder-toast.component';
 import { MentionToastComponent } from './pages/mention-toast/mention-toast.component';
 import { AskToastComponent } from './pages/ask-toast/ask-toast.component';
+import { AskGroupToastComponent } from './pages/ask-toast/ask-group-toast.component';
+import { AskToastCoordinator } from './_services/ask-toast-coordinator.service';
+import { AskAttentionService } from './_services/ask-attention.service';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
@@ -55,12 +58,17 @@ describe('AppComponent — realtime toasts on every page', () => {
   let snackBar: jasmine.SpyObj<MatSnackBar>;
   let action$: Subject<void>;
   let router: Router;
+  // The coordinator (timing, tabs, typing) has its own spec; here every offer comes straight out.
+  let batches$: Subject<AskEventPayload[]>;
+  let offered: AskEventPayload[];
 
   beforeEach(async () => {
     reminders$ = new Subject<ReminderPayload>();
     mentions$ = new Subject<MentionPayload>();
     askEvents$ = new Subject<AskEventPayload>();
     action$ = new Subject<void>();
+    batches$ = new Subject<AskEventPayload[]>();
+    offered = [];
     snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['openFromComponent', 'open']);
     snackBar.openFromComponent.and.returnValue({ onAction: () => action$.asObservable() } as any);
 
@@ -71,8 +79,12 @@ describe('AppComponent — realtime toasts on every page', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
-        { provide: NotificationRealtimeService, useValue: { reminders$, mentions$, askEvents$ } },
+        { provide: NotificationRealtimeService, useValue: { reminders$, mentions$, askEvents$, connected$: new Subject<void>() } },
         { provide: MatSnackBar, useValue: snackBar },
+        {
+          provide: AskToastCoordinator,
+          useValue: { batches$, offer: (event: AskEventPayload) => { offered.push(event); batches$.next([event]); } }
+        },
       ],
     }).compileComponents();
 
@@ -84,14 +96,21 @@ describe('AppComponent — realtime toasts on every page', () => {
   const askEvent = (overrides: Partial<AskEventPayload> = {}): AskEventPayload => ({
     askId: 7, boardItemId: 1, boardId: 3, itemTitle: 'Implement RAG pipeline', event: 'Replied',
     actorFullName: 'Ayse Recipient', note: 'Share the SQL', reason: null, actedOnBehalf: false,
-    replyId: 40, replyExcerpt: 'INSERT INTO items', ...overrides
+    replyId: 40, replyExcerpt: 'INSERT INTO items', occurredAt: '2026-10-25T10:00:00Z', ...overrides
   });
 
-  it('shows an ask event as a toast that opens the item on its board', () => {
+  it('shows an ask event as a toast that opens the ask on its board', () => {
     askEvents$.next(askEvent());
 
     expect(snackBar.openFromComponent).toHaveBeenCalledOnceWith(
       AskToastComponent, jasmine.objectContaining({ data: askEvent() }));
+
+    action$.next();
+    expect(router.navigate).toHaveBeenCalledWith(['/board'], { queryParams: { openItemId: 1, boardId: 3, askId: 7 } });
+  });
+
+  it('opens just the item for a cancelled ask, which has nothing left to act on', () => {
+    askEvents$.next(askEvent({ event: 'Cancelled', reason: 'Withdrawn' }));
 
     action$.next();
     expect(router.navigate).toHaveBeenCalledWith(['/board'], { queryParams: { openItemId: 1, boardId: 3 } });
@@ -107,6 +126,29 @@ describe('AppComponent — realtime toasts on every page', () => {
     openItems.unregister(1);
     askEvents$.next(askEvent());
     expect(snackBar.openFromComponent).toHaveBeenCalledTimes(1);
+    expect(offered.length).toBe(1);
+  });
+
+  it('shows several events that arrived together as one toast, whose action opens Waiting for you', () => {
+    const openTray = spyOn(TestBed.inject(AskAttentionService), 'openTray');
+    const events = [askEvent(), askEvent({ askId: 8, boardItemId: 2, itemTitle: 'Release notes', event: 'Requested' })];
+
+    batches$.next(events);
+
+    expect(snackBar.openFromComponent).toHaveBeenCalledOnceWith(
+      AskGroupToastComponent, jasmine.objectContaining({ data: events }));
+    action$.next();
+    expect(openTray).toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('leaves out of a waiting batch an item the user opened meanwhile', () => {
+    TestBed.inject(OpenAskItemsService).register(1);
+
+    batches$.next([askEvent(), askEvent({ askId: 8, boardItemId: 2, itemTitle: 'Release notes' })]);
+
+    expect(snackBar.openFromComponent).toHaveBeenCalledOnceWith(
+      AskToastComponent, jasmine.objectContaining({ data: jasmine.objectContaining({ askId: 8 }) }));
   });
 
   it('shows a reminder whatever page is open', () => {

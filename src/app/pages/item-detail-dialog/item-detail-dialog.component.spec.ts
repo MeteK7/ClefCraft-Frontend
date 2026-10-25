@@ -23,7 +23,7 @@ import { environment } from '../../../environments/environment';
 import { of } from 'rxjs';
 import { AskCompletionService } from '../../_services/ask-completion.service';
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
-import { AskClosure, AskState, BoardItemAsk, askDayFormat } from '../../models/board-item-ask.model';
+import { AskClosure, AskState, AskTurnReason, BoardItemAsk, askDayFormat } from '../../models/board-item-ask.model';
 import { BoardItemAsksComponent } from '../../components/board-item-asks/board-item-asks.component';
 import { makeAsk } from '../../models/board-item-ask.testing';
 import { provideAppDateFormat } from '../../date-format';
@@ -517,7 +517,8 @@ describe('ItemDetailDialogComponent — Chime In beside the fields', () => {
   const statuses = [{ id: 3, name: 'In Progress' }, { id: 5, name: 'Done' }];
   // One open ask waiting on the viewer, one on someone else.
   const asks = [
-    makeAsk({ id: 1, state: AskState.Pending, recipientUserId: 'me' }),
+    // The server says which asks are the viewer's move (AskTurn).
+    makeAsk({ id: 1, state: AskState.Pending, recipientUserId: 'me', yourMove: AskTurnReason.Respond }),
     makeAsk({ id: 2, state: AskState.Accepted, recipientUserId: 'someone-else' })
   ];
 
@@ -678,6 +679,7 @@ describe('ItemDetailDialogComponent — Chime In beside the fields', () => {
     component.onAskSummaryChange({ openCount: 1, unmetRequiredCount: 0, completedCount: 1, openAsks: [
       { askId: 2, recipientUserId: 'someone-else', recipientFullName: 'S', state: AskState.Accepted, isRequired: false, dueDate: null, dateCreated: '2026-10-10T09:00:00Z' }
     ] });
+    component.onAskAttentionChange({ yourMove: 0 });
     fixture.detectChanges();
     expect(button.getAttribute('aria-label')).toBe('Show Chime In: 1 open ask');
     expect(button.classList).not.toContain('waiting');
@@ -985,7 +987,7 @@ describe('ItemDetailDialogComponent — who helped', () => {
     makeAsk({ id: 4, state: AskState.Declined, recipientUserId: 'bo', recipientFullName: 'Bo Decliner' })
   ];
 
-  function setup(asks: BoardItemAsk[] = helpedAsks): void {
+  function setup(asks: BoardItemAsk[] = helpedAsks, focusAskId: number | null = null): void {
     TestBed.configureTestingModule({
       imports: [ItemDetailDialogComponent],
       providers: [
@@ -994,7 +996,7 @@ describe('ItemDetailDialogComponent — who helped', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         provideNoopAnimations(),
-        { provide: MAT_DIALOG_DATA, useValue: { item: { id: 9, title: 'Release notes', boardId: 7, boardColumnId: 3, status: { id: 3, name: '' } }, boardId: 7 } as ItemDetailDialogData },
+        { provide: MAT_DIALOG_DATA, useValue: { item: { id: 9, title: 'Release notes', boardId: 7, boardColumnId: 3, status: { id: 3, name: '' } }, boardId: 7, focusAskId } as ItemDetailDialogData },
         { provide: MatDialogRef, useValue: { close: jasmine.createSpy('close'), updateSize: jasmine.createSpy('updateSize') } },
         { provide: AskCompletionService, useValue: { completeItem: jasmine.createSpy('completeItem') } },
         { provide: BoardItemAskService, useValue: { getForItem: () => of(asks) } }
@@ -1017,6 +1019,16 @@ describe('ItemDetailDialogComponent — who helped', () => {
   const tooltipOn = (native: Element) =>
     fixture.debugElement.queryAll(By.directive(MatTooltip)).find(d => d.nativeElement === native)?.injector.get(MatTooltip).message;
   const doneOn = (iso: string) => formatDate(iso, askDayFormat(iso), 'en-US');
+
+  it('shows the ask a link opened the item for, once Chime In has loaded', fakeAsync(() => {
+    setup(helpedAsks, 3);
+    tick();
+    fixture.detectChanges();
+
+    const card = element.querySelector<HTMLElement>('.details-chime [data-ask-id="3"]')!;
+    // The setup's flush() already ran the highlight's timer; the card keeps focus.
+    expect(document.activeElement).toBe(card);
+  }));
 
   it('shows nothing until someone has helped', fakeAsync(() => {
     setup([makeAsk({ id: 1, state: AskState.Pending }), makeAsk({ id: 2, state: AskState.Declined })]);
@@ -1041,7 +1053,7 @@ describe('ItemDetailDialogComponent — who helped', () => {
     expect(hale.querySelector('.helped-by-count')!.textContent!.trim()).toBe('· 2');
     expect(hale.getAttribute('aria-label')).toBe('Hale Helper helped with 2 asks. Show in Chime In.');
     expect(tooltipOn(hale)).toBe(
-      `“Check the index” — done ${doneOn('2026-10-22T10:00:00Z')}\n“Review the migration script” — done ${doneOn('2026-10-21T10:00:00Z')}`);
+      `“Check the index” - done ${doneOn('2026-10-22T10:00:00Z')}\n“Review the migration script” - done ${doneOn('2026-10-21T10:00:00Z')}`);
 
     expect(ada.querySelector('.helped-by-name')!.textContent).toBe('Ada Lovelace');
     expect(ada.querySelector('.helped-by-count')).toBeNull();

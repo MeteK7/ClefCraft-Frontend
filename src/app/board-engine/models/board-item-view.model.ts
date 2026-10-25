@@ -1,5 +1,5 @@
 import { Item } from '../../models/board.model';
-import { AskSummary } from '../../models/board-item-ask.model';
+import { AskAttention, AskSummary } from '../../models/board-item-ask.model';
 
 /**
  * UI-ready representation of an Item.
@@ -36,6 +36,9 @@ export interface BoardItemView {
 
   /** Left undefined when the source item carries none (a save response), so a merge keeps the card's. */
   askSummary?: AskSummary;
+
+  /** What the item's asks need from the current user; undefined like askSummary when the source has none. */
+  askAttention?: AskAttention;
 }
 
 /**
@@ -68,5 +71,6 @@ export function toBoardItemView(item: Item): BoardItemView {
     createdByFullName: item.createdByFullName,
     modifiedByFullName: item.modifiedByFullName,
     askSummary: item.askSummary,
+    askAttention: item.askAttention,
   };
 }

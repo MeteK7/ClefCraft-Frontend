@@ -3,7 +3,7 @@ import { Component, Inject, OnInit, ChangeDetectionStrategy } from '@angular/cor
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_SNACK_BAR_DATA, MatSnackBarRef } from '@angular/material/snack-bar';
-import { AskEventPayload } from '../../_services/notification-realtime.service';
+import { AskEventPayload, REQUIREMENT_WAIVED_REASON } from '../../_services/notification-realtime.service';
 
 export interface AskToastText {
   icon: string;
@@ -37,7 +37,9 @@ export function askToastText(event: AskEventPayload): AskToastText {
     case 'Reopened':
       return { icon: 'replay', headline: `${actor} reopened your ask`, message: event.note };
     case 'Changed':
-      return { icon: 'edit', headline: `${actor} changed what they asked`, message: event.note };
+      return event.reason === REQUIREMENT_WAIVED_REASON
+        ? { icon: 'remove_done', headline: `${actor} waived the requirement on your ask`, message: event.note }
+        : { icon: 'edit', headline: `${actor} changed what they asked`, message: event.note };
     case 'Cancelled':
       return {
         icon: 'undo',
@@ -53,7 +55,15 @@ export function askToastText(event: AskEventPayload): AskToastText {
   }
 }
 
-/** A realtime ask event, with a link to the item. Shares the mention toast's look. */
+/**
+ * Whether the toast leads to the ask itself. A withdrawn or closed ask has nothing left to act on,
+ * so it leads to the item.
+ */
+export function leadsToAsk(event: AskEventPayload): boolean {
+  return event.event !== 'Cancelled';
+}
+
+/** A realtime ask event, with a link to the ask (or its item). Shares the mention toast's look. */
 @Component({
   selector: 'app-ask-toast',
   imports: [MatIconModule, MatButtonModule],
@@ -64,6 +74,7 @@ export function askToastText(event: AskEventPayload): AskToastText {
 export class AskToastComponent implements OnInit {
   readonly duration = 12000;
   readonly text: AskToastText;
+  readonly leadsToAsk: boolean;
   isEntering = false;
 
   constructor(
@@ -71,6 +82,7 @@ export class AskToastComponent implements OnInit {
     @Inject(MAT_SNACK_BAR_DATA) public data: AskEventPayload
   ) {
     this.text = askToastText(data);
+    this.leadsToAsk = leadsToAsk(data);
   }
 
   ngOnInit(): void {

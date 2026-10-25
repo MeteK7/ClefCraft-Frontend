@@ -1,4 +1,6 @@
 .board-item {
+  /* Contains the visually hidden "Your move" label. */
+  position: relative;
   background-color: var(--surface);
   padding: 10px;
   margin-bottom: 10px;
@@ -107,4 +109,36 @@
 .assignee {
   text-align: right;
   font-weight: 500;
+}
+
+/* "Your move": an outlined label, unlike the filled tag chips, so it reads as a signal, not a tag. */
+.your-move {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 1px 8px 1px 4px;
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.your-move mat-icon {
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

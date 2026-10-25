@@ -37,6 +37,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/con
 import {
   ASK_EXACT_TIME_FORMAT,
   AskAction,
+  AskAttention,
   AskCancelReason,
   AskContributor,
   AskState,
@@ -55,6 +56,7 @@ import {
   isNudgeTooSoonError,
   isWithinDay,
   timeAgo,
+  toAskAttention,
   toAskSummary,
   toContributors
 } from '../../models/board-item-ask.model';
@@ -181,6 +183,9 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
 
   /** Who helped with the item, after every load: asynchronous for the same reason as summaryChange. */
   @Output() contributorsChange = new EventEmitter<AskContributor[]>(true);
+
+  /** How many asks are the viewer's move, after every load: asynchronous like summaryChange. */
+  @Output() attentionChange = new EventEmitter<AskAttention>(true);
 
   /** "Full history" under an ask's Details: the item's History tab has every ask event. */
   @Output() openHistory = new EventEmitter<void>();
@@ -316,6 +321,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
         this.isLoading = false;
         this.summaryChange.emit(toAskSummary(asks));
         this.contributorsChange.emit(toContributors(asks));
+        this.attentionChange.emit(toAskAttention(asks));
         this.scheduleNudgeReload();
       },
       error: error => {

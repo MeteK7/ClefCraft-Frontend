@@ -19,6 +19,7 @@ import {
   AskReply,
   AskState,
   AskSummary,
+  AskTurnReason,
   BoardItemAsk,
   ASK_EXACT_TIME_FORMAT,
   askDayFormat,
@@ -132,6 +133,22 @@ describe('BoardItemAsksComponent', () => {
     flush();
 
     expect(reported).toEqual([[], ['Hale Helper']]);
+  }));
+
+  it('reports how many asks are the viewer\'s move after every load, as the server says', fakeAsync(() => {
+    setup([
+      makeAsk({ id: 1, state: AskState.Pending, yourMove: AskTurnReason.Respond }),
+      makeAsk({ id: 2, state: AskState.Pending })
+    ]);
+    const reported: number[] = [];
+    component.attentionChange.subscribe(a => reported.push(a.yourMove));
+    flush();
+
+    component.load();
+    httpMock.expectOne(asksUrl).flush([makeAsk({ id: 1, state: AskState.Accepted, yourMove: AskTurnReason.Deliver })]);
+    flush();
+
+    expect(reported).toEqual([1]);
   }));
 
   it('brings an ask\'s card into view and focus, highlighted briefly', fakeAsync(() => {
@@ -1287,7 +1304,8 @@ describe('BoardItemAsksComponent', () => {
 
   const askEvent = (boardItemId: number): AskEventPayload => ({
     askId: 7, boardItemId, boardId: 3, itemTitle: 'Release notes', event: 'Replied', actorFullName: 'Ayse Recipient',
-    note: 'Review the migration', reason: null, actedOnBehalf: false, replyId: 40, replyExcerpt: 'Done'
+    note: 'Review the migration', reason: null, actedOnBehalf: false, replyId: 40, replyExcerpt: 'Done',
+    occurredAt: '2026-10-25T10:00:00Z'
   });
 
   it('reloads when someone acts on an ask of this item, and only this item', () => {

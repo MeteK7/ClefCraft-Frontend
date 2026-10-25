@@ -116,7 +116,7 @@ describe('NotificationRealtimeService', () => {
     const event: AskEventPayload = {
       askId: 7, boardItemId: 1, boardId: 3, itemTitle: 'Implement RAG pipeline', event: 'Replied',
       actorFullName: 'Ayse Recipient', note: 'Share the SQL', reason: null, actedOnBehalf: false,
-      replyId: 40, replyExcerpt: 'INSERT INTO items'
+      replyId: 40, replyExcerpt: 'INSERT INTO items', occurredAt: '2026-10-25T10:00:00Z'
     };
     handler(event);
 

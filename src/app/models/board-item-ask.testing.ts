@@ -32,6 +32,7 @@ export function makeAsk(overrides: Partial<BoardItemAsk> = {}): BoardItemAsk {
     isOpen: state === AskState.Pending || state === AskState.Accepted,
     isUnmetRequirement: !!overrides.isRequired && state !== AskState.Completed,
     allowedActions: [],
+    yourMove: null,
     canReply: false,
     replies: [],
     answerReplyId: null,
