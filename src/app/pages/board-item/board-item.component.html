@@ -11,6 +11,15 @@
     }
   </div>
 
+  <!-- Some of the item's asks wait on the viewer (AskTurn on the server): icon and words, not colour alone. -->
+  @if (yourMove > 0) {
+    <div class="your-move">
+      <mat-icon aria-hidden="true">front_hand</mat-icon>
+      <span aria-hidden="true">Your move@if (yourMove > 1) { · {{ yourMove }}}</span>
+      <span class="visually-hidden">Your move on {{ yourMove === 1 ? '1 ask' : yourMove + ' asks' }}</span>
+    </div>
+  }
+
   <div class="item-footer">
     @if (item.priorityId) {
       <div class="priority-container">
