@@ -33,6 +33,23 @@ export enum AskAction {
   ClearExpectsAnswer = 13
 }
 
+/**
+ * Why an ask is the current user's move (AskTurn on the server, the one place this is decided).
+ * Respond: accept or decline. Deliver: mark done what you accepted. ResolveRequirement: a required
+ * ask was declined or cancelled; ask someone else or waive it.
+ */
+export enum AskTurnReason {
+  Respond = 0,
+  Deliver = 1,
+  ResolveRequirement = 2
+}
+
+/** What an item's asks need from the current user (BoardItemDto.askAttention). */
+export interface AskAttention {
+  /** How many of the item's asks are the current user's move. */
+  yourMove: number;
+}
+
 /** A plain-text message on an ask from its requester or recipient (AskReplyDto). */
 export interface AskReply {
   id: number;
@@ -51,6 +68,8 @@ export interface BoardItemAsk {
   boardItemId: number;
   boardItemTitle: string;
   boardId: number;
+  /** Filled for the caller's own lists ("Waiting for you"); null elsewhere. */
+  boardTitle?: string | null;
   requestedByUserId: string;
   requestedByFullName: string;
   recipientUserId: string;
@@ -84,6 +103,8 @@ export interface BoardItemAsk {
   /** Required and not Completed: blocks completing the item until it's resolved. */
   isUnmetRequirement: boolean;
   allowedActions: AskAction[];
+  /** Why the ask is the current user's move; null when it isn't theirs. Optional actions never make it so. */
+  yourMove: AskTurnReason | null;
   /** The current user may post a reply: they are the requester or recipient, and it isn't cancelled. */
   canReply: boolean;
   /** Oldest first. */
@@ -152,10 +173,24 @@ export interface ReassignAskRequest {
 
 export type AskStateChange = 'accept' | 'decline' | 'complete' | 'reopen' | 'cancel';
 
-export type AskDirection = 'received' | 'sent';
+/** received: asked of you; sent: asks you made; waiting: your move, as recipient or requester (AskTurn). */
+export type AskDirection = 'received' | 'sent' | 'waiting';
 
 /** The backend's 400 title when the completion snapshot doesn't match the item's asks any more. */
 export const ASKS_CHANGED_MESSAGE = "The item's asks changed; review them again.";
+
+/**
+ * The board link to an item, opening it with the ask in view (null: just the item). The board
+ * page switches to boardId first when another board is showing.
+ */
+export function askLink(boardId: number, boardItemId: number, askId: number | null): { openItemId: number; boardId: number; askId?: number } {
+  return askId === null ? { openItemId: boardItemId, boardId } : { openItemId: boardItemId, boardId, askId };
+}
+
+/** What an item's asks need from the current user: how many the server says are their move. */
+export function toAskAttention(asks: BoardItemAsk[]): AskAttention {
+  return { yourMove: asks.filter(a => a.yourMove !== null).length };
+}
 
 /** The backend's 400 title when an item with asks to review is completed without a closure. */
 export const ASK_CLOSURE_MISSING_MESSAGE = 'This item has open or required asks; review them before completing it.';

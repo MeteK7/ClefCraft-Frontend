@@ -6,8 +6,10 @@ import {
   AskAction,
   AskCancelReason,
   AskState,
+  AskTurnReason,
   NUDGE_TOO_SOON_MESSAGE,
   askDayFormat,
+  askLink,
   askErrorMessage,
   askKeyDates,
   askStatusLine,
@@ -21,6 +23,7 @@ import {
   isStaleAskClosureError,
   isWithinDay,
   timeAgo,
+  toAskAttention,
   toAskSummary,
   toContributors
 } from './board-item-ask.model';
@@ -121,6 +124,21 @@ describe('board-item-ask model', () => {
     ];
 
     expect(asksToReview(asks).map(a => a.id)).toEqual([1, 3]);
+  });
+
+  it('toAskAttention counts the asks the server says are your move, never deciding it itself', () => {
+    expect(toAskAttention([
+      makeAsk({ id: 1, state: AskState.Pending, yourMove: AskTurnReason.Respond }),
+      // Pending but not your move (someone else's), as the server says: not counted.
+      makeAsk({ id: 2, state: AskState.Pending, yourMove: null }),
+      makeAsk({ id: 3, state: AskState.Declined, isRequired: true, yourMove: AskTurnReason.ResolveRequirement })
+    ])).toEqual({ yourMove: 2 });
+    expect(toAskAttention([])).toEqual({ yourMove: 0 });
+  });
+
+  it('askLink opens the item with the ask in view, or just the item', () => {
+    expect(askLink(3, 9, 5)).toEqual({ openItemId: 9, boardId: 3, askId: 5 });
+    expect(askLink(3, 9, null)).toEqual({ openItemId: 9, boardId: 3 });
   });
 
   it('toAskSummary counts like the board does', () => {
