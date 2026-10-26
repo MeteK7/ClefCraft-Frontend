@@ -8,9 +8,11 @@ import {
   Output,
   SimpleChanges,
   TemplateRef,
-  ViewChild
+  ViewChild,
+  inject
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,12 +20,14 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import {
   ASK_REPLY_COUNTER_FROM,
+  ASK_REPLY_LIMIT_THRESHOLDS,
   ASK_REPLY_MAX_LENGTH,
   AskReply,
   AskState,
   AskViewpoint,
   BoardItemAsk,
   ReplySegment,
+  crossedThreshold,
   parseReplyBody,
   replyExcerpt
 } from '../../models/board-item-ask.model';
@@ -109,6 +113,7 @@ export class AskThreadComponent implements OnChanges {
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly segmentCache = new Map<string, ReplySegment[]>();
+  private readonly liveAnnouncer = inject(LiveAnnouncer);
 
   ngOnChanges(changes: SimpleChanges): void {
     const prompt = changes['completePrompt'];
@@ -261,8 +266,25 @@ export class AskThreadComponent implements OnChanges {
 
   // ---- The reply box ------------------------------------------------------------------------
 
+  /** The counter shows from ASK_REPLY_COUNTER_FROM on. */
+  get showsCount(): boolean {
+    return this.draft.length >= this.counterFrom;
+  }
+
+  /** The box is described by the complete prompt and the counter, whichever show. */
+  get replyDescribedBy(): string | null {
+    const ids = [
+      ...(this.completePrompt ? [`complete-prompt-${this.ask.id}`] : []),
+      ...(this.showsCount ? [`reply-count-${this.ask.id}`] : [])
+    ];
+    return ids.length ? ids.join(' ') : null;
+  }
+
+  /** Typing: announces "200 characters left" and the limit once each as they're reached. */
   onDraftInput(value: string): void {
+    const crossed = crossedThreshold(this.draft.length, value.length, ASK_REPLY_LIMIT_THRESHOLDS);
     this.draft = value;
+    if (crossed) this.liveAnnouncer.announce(crossed.message, 'polite');
   }
 
   onBoxKeydown(event: KeyboardEvent): void {

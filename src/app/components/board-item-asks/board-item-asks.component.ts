@@ -13,6 +13,7 @@ import {
   ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -25,7 +26,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, filter } from 'rxjs';
 
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
 import { AuthService } from '../../_services/auth.service';
@@ -34,8 +35,10 @@ import { OpenAskItemsService } from '../../_services/open-ask-items.service';
 import { AskThreadComponent, ReplyEdit } from '../ask-thread/ask-thread.component';
 import { Assignee } from '../../models/assignee.model';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
+import { REASON_DIALOG_MESSAGE_ID, ReasonDialogComponent, ReasonDialogData } from '../reason-dialog/reason-dialog.component';
 import {
   ASK_EXACT_TIME_FORMAT,
+  ASK_RESPONSE_NOTE_MAX_LENGTH,
   AskAction,
   AskAttention,
   AskCancelReason,
@@ -52,19 +55,28 @@ import {
   askKeyDates,
   askStatusLine,
   askViewpoint,
+  crossedThreshold,
   isAnswerRequiredError,
   isNudgeTooSoonError,
   isWithinDay,
+  limitThresholds,
+  newestFirst,
   timeAgo,
   toAskAttention,
   toAskSummary,
-  toContributors
+  toContributors,
+  quotedNote
 } from '../../models/board-item-ask.model';
 import { toDueDate } from '../../relationship-engine/analytics/finish-before';
 import { DATE_INPUT_PLACEHOLDER } from '../../date-format';
 
 /** The note's limit, as the API enforces it (BoardItemAskLimits.NoteMaxLength). */
 export const ASK_NOTE_MAX_LENGTH = 200;
+
+/** Announced once each as typing reaches them: 20 characters left, then the limit. */
+export const ASK_NOTE_LIMIT_THRESHOLDS = limitThresholds(ASK_NOTE_MAX_LENGTH, ASK_NOTE_MAX_LENGTH - 20);
+
+let nextAsksPanelId = 0;
 
 /** Shown when the server refuses a nudge inside the 24-hour cooldown. */
 export const NUDGE_TOO_SOON_TEXT = 'Too soon to nudge again';
@@ -195,6 +207,10 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   readonly AskState = AskState;
   readonly AskAction = AskAction;
   readonly noteMaxLength = ASK_NOTE_MAX_LENGTH;
+  /** The note's counter: it describes the note field instead of sitting in a live region. */
+  readonly noteCountId = `ask-note-count-${nextAsksPanelId++}`;
+  /** The note's length as of the last input or fill, to announce each threshold once. */
+  private noteLengthSeen = 0;
   /** The format "By when" reads, shown as its placeholder. */
   readonly dateFormat = DATE_INPUT_PLACEHOLDER;
   readonly nudgeRule = NUDGE_RULE_TEXT;
@@ -228,6 +244,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     private realtime: NotificationRealtimeService,
     private openAskItems: OpenAskItemsService,
     private host: ElementRef<HTMLElement>,
+    private liveAnnouncer: LiveAnnouncer,
     authService: AuthService,
     fb: FormBuilder
   ) {
@@ -317,7 +334,8 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     this.isLoading = true;
     this.askService.getForItem(this.itemId).subscribe({
       next: asks => {
-        this.asks = asks;
+        // The server sends them oldest first; the rail shows the newest first.
+        this.asks = newestFirst(asks);
         this.isLoading = false;
         this.summaryChange.emit(toAskSummary(asks));
         this.contributorsChange.emit(toContributors(asks));
@@ -572,10 +590,20 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
+  /** Typing in the note: announces "20 characters left" and the limit once each as they're reached. */
+  onNoteInput(event: Event): void {
+    const length = (event.target as HTMLInputElement).value.length;
+    const crossed = crossedThreshold(this.noteLengthSeen, length, ASK_NOTE_LIMIT_THRESHOLDS);
+    this.noteLengthSeen = length;
+    if (crossed) this.liveAnnouncer.announce(crossed.message, 'polite');
+  }
+
   private openForm(mode: AskFormMode, value: AskFormValue): void {
     this.formMode = mode;
     this.errorMessage = null;
     this.form.reset(value);
+    // Filling the form isn't typing: an edited 190-character note announces nothing on opening.
+    this.noteLengthSeen = (this.form.value.note ?? '').length;
 
     // Reassigning moves the requirement and the expected answer as they are; editing changes
     // them through their own actions.
@@ -596,12 +624,19 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
       case AskAction.Accept:
         this.run(this.askService.changeState(ask.id, 'accept', ask.revision));
         break;
-      case AskAction.Decline: {
-        const reason = window.prompt('Why are you declining? (optional)', '');
-        if (reason === null) return;
-        this.run(this.askService.changeState(ask.id, 'decline', ask.revision, reason.trim() || null));
+      case AskAction.Decline:
+        // The reason shows on the ask's status line to everyone on the board.
+        this.askForReason({
+          title: 'Decline this ask?',
+          message: `${ask.requestedByFullName} asked you:`,
+          quote: quotedNote(ask.note),
+          label: 'Why you\'re declining (optional)',
+          hint: 'Everyone on this board will see this on the ask.',
+          confirmLabel: 'Decline',
+          maxLength: ASK_RESPONSE_NOTE_MAX_LENGTH
+        }).subscribe(reason =>
+          this.run(this.askService.changeState(ask.id, 'decline', ask.revision, reason || null)));
         break;
-      }
       case AskAction.Complete:
         // Nothing from the recipient yet: offer to send the result with it first.
         if (!ask.isAnswered) {
@@ -641,14 +676,21 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
       case AskAction.ClearExpectsAnswer:
         this.run(this.askService.setExpectsAnswer(ask.id, ask.revision, action === AskAction.SetExpectsAnswer));
         break;
-      case AskAction.WaiveRequirement: {
-        const reason = window.prompt('Why is this ask no longer required? (optional)', '');
-        if (reason === null) return;
-        this.run(this.askService.update(ask.id, {
-          expectedRevision: ask.revision, note: ask.note, dueDate: ask.dueDate, isRequired: false, waiveReason: reason.trim() || null
-        }));
+      case AskAction.WaiveRequirement:
+        // The reason is kept only in the item's history, which everyone on the board can read.
+        this.askForReason({
+          title: 'Waive the requirement?',
+          message: `The item can then be completed without waiting for ${ask.recipientFullName}.`,
+          quote: quotedNote(ask.note),
+          label: 'Why it\'s no longer required (optional)',
+          hint: 'Everyone on this board will see this in the item\'s history.',
+          confirmLabel: 'Waive',
+          maxLength: ASK_RESPONSE_NOTE_MAX_LENGTH
+        }).subscribe(reason =>
+          this.run(this.askService.update(ask.id, {
+            expectedRevision: ask.revision, note: ask.note, dueDate: ask.dueDate, isRequired: false, waiveReason: reason || null
+          })));
         break;
-      }
       case AskAction.Edit:
         this.openForm({ kind: 'edit', ask }, termsOf(ask, ask.recipientUserId));
         break;
@@ -659,6 +701,20 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
         this.openForm({ kind: 'askAgain', ask }, termsOf(ask, null));
         break;
     }
+  }
+
+  /**
+   * Asks for an optional reason in an in-app dialog; emits it ('' when none) once confirmed, and
+   * nothing when cancelled. Opened with disableClose: the dialog itself lets a backdrop click
+   * cancel only while nothing is typed.
+   */
+  private askForReason(data: ReasonDialogData): Observable<string> {
+    return this.dialog.open<ReasonDialogComponent, ReasonDialogData, string>(ReasonDialogComponent, {
+      data,
+      disableClose: true,
+      ariaDescribedBy: REASON_DIALOG_MESSAGE_ID,
+      maxWidth: '95vw'
+    }).afterClosed().pipe(filter((reason): reason is string => typeof reason === 'string'));
   }
 
   // ---- Replies ------------------------------------------------------------------------------
