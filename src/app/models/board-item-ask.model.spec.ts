@@ -22,6 +22,7 @@ import {
   crossedThreshold,
   isAnswerRequiredError,
   limitThresholds,
+  newestFirst,
   isNudgeTooSoonError,
   parseReplyBody,
   quotedNote,
@@ -50,6 +51,31 @@ describe('board-item-ask model', () => {
       expect(quotedNote('')).toBeNull();
       expect(quotedNote('   ')).toBeNull();
       expect(quotedNote(null)).toBeNull();
+    });
+  });
+
+  describe('newestFirst', () => {
+    it('puts the newest ask first, by when it was asked', () => {
+      const asks = [
+        makeAsk({ id: 1, dateCreated: '2026-10-01T09:00:00Z' }),
+        makeAsk({ id: 2, dateCreated: '2026-10-03T09:00:00Z' }),
+        makeAsk({ id: 3, dateCreated: '2026-10-02T09:00:00Z' })
+      ];
+      expect(newestFirst(asks).map(a => a.id)).toEqual([2, 3, 1]);
+    });
+
+    it('puts the higher id first when two were asked at the same moment', () => {
+      const asks = [
+        makeAsk({ id: 4, dateCreated: '2026-10-02T09:00:00Z' }),
+        makeAsk({ id: 5, dateCreated: '2026-10-02T09:00:00Z' })
+      ];
+      expect(newestFirst(asks).map(a => a.id)).toEqual([5, 4]);
+    });
+
+    it('leaves the list it was given as it was', () => {
+      const asks = [makeAsk({ id: 1, dateCreated: '2026-10-01T09:00:00Z' }), makeAsk({ id: 2, dateCreated: '2026-10-02T09:00:00Z' })];
+      newestFirst(asks);
+      expect(asks.map(a => a.id)).toEqual([1, 2]);
     });
   });
 

@@ -115,6 +115,37 @@ describe('BoardItemAsksComponent', () => {
     expect(summaries).toEqual([jasmine.objectContaining({ openCount: 1, unmetRequiredCount: 1 })]);
   }));
 
+  describe('the order of the asks', () => {
+    const shownIds = () => Array.from(element().querySelectorAll<HTMLElement>('[data-ask-id]')).map(card => Number(card.dataset['askId']));
+    const asked = (id: number, day: number) => makeAsk({ id, dateCreated: `2026-10-0${day}T09:00:00Z` });
+
+    it('shows the newest ask first, though the server sends the oldest first', fakeAsync(() => {
+      const summaries = setup([asked(1, 1), asked(2, 3), asked(3, 2)]);
+      flush();
+
+      expect(shownIds()).toEqual([2, 3, 1]);
+      // What the panel reports doesn't depend on the order it shows.
+      expect(summaries).toEqual([jasmine.objectContaining({ openCount: 3 })]);
+    }));
+
+    it('puts a new ask on top after a realtime reload, and leaves the others where they were', fakeAsync(() => {
+      setup([asked(1, 1), asked(2, 2)]);
+      flush();
+      expect(shownIds()).toEqual([2, 1]);
+
+      askEvents$.next({
+        askId: 3, boardItemId: 10, boardId: 3, itemTitle: 'Release notes', event: 'Requested', actorFullName: 'Rae Requester',
+        note: 'Review the migration', reason: null, actedOnBehalf: false, replyId: null, replyExcerpt: null,
+        occurredAt: '2026-10-04T09:00:00Z'
+      });
+      httpMock.expectOne(asksUrl).flush([asked(1, 1), asked(2, 2), asked(3, 4)]);
+      fixture.detectChanges();
+      flush();
+
+      expect(shownIds()).toEqual([3, 2, 1]);
+    }));
+  });
+
   it('reports who helped after every load, for the item dialog to show beside Assignee', fakeAsync(() => {
     const accepted = makeAsk({ id: 1, state: AskState.Accepted, recipientUserId: 'helper', recipientFullName: 'Hale Helper' });
     setup([accepted]);

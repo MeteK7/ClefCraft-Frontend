@@ -60,6 +60,7 @@ import {
   isNudgeTooSoonError,
   isWithinDay,
   limitThresholds,
+  newestFirst,
   timeAgo,
   toAskAttention,
   toAskSummary,
@@ -333,7 +334,8 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     this.isLoading = true;
     this.askService.getForItem(this.itemId).subscribe({
       next: asks => {
-        this.asks = asks;
+        // The server sends them oldest first; the rail shows the newest first.
+        this.asks = newestFirst(asks);
         this.isLoading = false;
         this.summaryChange.emit(toAskSummary(asks));
         this.contributorsChange.emit(toContributors(asks));

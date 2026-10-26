@@ -230,6 +230,14 @@ export interface AskContributor {
 }
 
 /**
+ * The rail's order: the newest ask first, by when it was asked; the higher id first on a tie.
+ * Not by latest activity, so a card never moves while it's being read or replied to.
+ */
+export function newestFirst(asks: readonly BoardItemAsk[]): BoardItemAsk[] {
+  return [...asks].sort((a, b) => Date.parse(b.dateCreated) - Date.parse(a.dateCreated) || b.id - a.id);
+}
+
+/**
  * Who helped with an item: the recipients of its done asks, whoever marked them done. Declined,
  * withdrawn and waived asks don't count, nor do replies alone. People come in order of their
  * latest contribution.
