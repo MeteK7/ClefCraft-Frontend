@@ -19,6 +19,7 @@ import {
   isAnswerRequiredError,
   isNudgeTooSoonError,
   parseReplyBody,
+  quotedNote,
   replyExcerpt,
   isStaleAskClosureError,
   isWithinDay,
@@ -30,6 +31,23 @@ import {
 import { makeAsk } from './board-item-ask.testing';
 
 describe('board-item-ask model', () => {
+  describe('quotedNote', () => {
+    it('keeps a short note as it is, on one line', () => {
+      expect(quotedNote('Review the\n  migration')).toBe('Review the migration');
+    });
+
+    it('cuts a long note at 80 characters with an ellipsis', () => {
+      const long = 'x'.repeat(200);
+      expect(quotedNote(long)).toBe('x'.repeat(80) + '…');
+    });
+
+    it('gives nothing to quote for an empty note', () => {
+      expect(quotedNote('')).toBeNull();
+      expect(quotedNote('   ')).toBeNull();
+      expect(quotedNote(null)).toBeNull();
+    });
+  });
+
   describe('toContributors', () => {
     const done = (id: number, recipient: string, completedAt: string, note = `ask ${id}`) => makeAsk({
       id, state: AskState.Completed, recipientUserId: recipient, recipientFullName: `${recipient} name`, completedAt, note

@@ -482,6 +482,15 @@ function pushText(segments: ReplySegment[], text: string): void {
 }
 
 /** A reply on one line, for a folded list: whitespace collapsed, fences dropped, cut at the length. */
+/** A decline reason or a waive reason, as the API enforces it (BoardItemAskLimits.ResponseNoteMaxLength). */
+export const ASK_RESPONSE_NOTE_MAX_LENGTH = 500;
+
+/** An ask's note quoted in a message: one line, cut at 80 characters with "…"; null when empty. */
+export function quotedNote(note: string | null | undefined): string | null {
+  const excerpt = replyExcerpt(note ?? '', 80);
+  return excerpt === '' ? null : excerpt;
+}
+
 export function replyExcerpt(body: string, max = 120): string {
   const text = body.replace(/```[\w+#.-]*/g, ' ').replace(/\s+/g, ' ').trim();
   return text.length > max ? text.slice(0, max).trimEnd() + '…' : text;

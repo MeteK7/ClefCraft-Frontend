@@ -1,0 +1,45 @@
+.reason-message {
+  max-width: 420px;
+  margin-bottom: 12px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.reason-message p {
+  margin: 0;
+}
+
+.reason-quote {
+  margin-top: 4px !important;
+  color: var(--text-secondary);
+}
+
+.reason-field {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Where mat-form-field would put its hints, typeset like them. */
+.reason-subscript {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 420px;
+  padding: 4px 16px 0;
+  box-sizing: border-box;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.reason-count {
+  flex-shrink: 0;
+}
+
+/* "Dismissive": the action says no or lets go of something, legitimately. Neither destructive
+   (red, like Withdraw) nor primary (filled): an outlined button in the text colour. */
+.reason-confirm.dismissive {
+  --mat-button-outlined-label-text-color: var(--text);
+  --mat-button-outlined-outline-color: var(--border-strong);
+  --mat-button-outlined-state-layer-color: var(--text);
+}

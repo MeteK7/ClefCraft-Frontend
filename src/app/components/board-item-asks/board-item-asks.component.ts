@@ -25,7 +25,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, filter } from 'rxjs';
 
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
 import { AuthService } from '../../_services/auth.service';
@@ -34,8 +34,10 @@ import { OpenAskItemsService } from '../../_services/open-ask-items.service';
 import { AskThreadComponent, ReplyEdit } from '../ask-thread/ask-thread.component';
 import { Assignee } from '../../models/assignee.model';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
+import { REASON_DIALOG_MESSAGE_ID, ReasonDialogComponent, ReasonDialogData } from '../reason-dialog/reason-dialog.component';
 import {
   ASK_EXACT_TIME_FORMAT,
+  ASK_RESPONSE_NOTE_MAX_LENGTH,
   AskAction,
   AskAttention,
   AskCancelReason,
@@ -58,7 +60,8 @@ import {
   timeAgo,
   toAskAttention,
   toAskSummary,
-  toContributors
+  toContributors,
+  quotedNote
 } from '../../models/board-item-ask.model';
 import { toDueDate } from '../../relationship-engine/analytics/finish-before';
 import { DATE_INPUT_PLACEHOLDER } from '../../date-format';
@@ -596,12 +599,19 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
       case AskAction.Accept:
         this.run(this.askService.changeState(ask.id, 'accept', ask.revision));
         break;
-      case AskAction.Decline: {
-        const reason = window.prompt('Why are you declining? (optional)', '');
-        if (reason === null) return;
-        this.run(this.askService.changeState(ask.id, 'decline', ask.revision, reason.trim() || null));
+      case AskAction.Decline:
+        // The reason shows on the ask's status line to everyone on the board.
+        this.askForReason({
+          title: 'Decline this ask?',
+          message: `${ask.requestedByFullName} asked you:`,
+          quote: quotedNote(ask.note),
+          label: 'Why you\'re declining (optional)',
+          hint: 'Everyone on this board will see this on the ask.',
+          confirmLabel: 'Decline',
+          maxLength: ASK_RESPONSE_NOTE_MAX_LENGTH
+        }).subscribe(reason =>
+          this.run(this.askService.changeState(ask.id, 'decline', ask.revision, reason || null)));
         break;
-      }
       case AskAction.Complete:
         // Nothing from the recipient yet: offer to send the result with it first.
         if (!ask.isAnswered) {
@@ -641,14 +651,21 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
       case AskAction.ClearExpectsAnswer:
         this.run(this.askService.setExpectsAnswer(ask.id, ask.revision, action === AskAction.SetExpectsAnswer));
         break;
-      case AskAction.WaiveRequirement: {
-        const reason = window.prompt('Why is this ask no longer required? (optional)', '');
-        if (reason === null) return;
-        this.run(this.askService.update(ask.id, {
-          expectedRevision: ask.revision, note: ask.note, dueDate: ask.dueDate, isRequired: false, waiveReason: reason.trim() || null
-        }));
+      case AskAction.WaiveRequirement:
+        // The reason is kept only in the item's history, which everyone on the board can read.
+        this.askForReason({
+          title: 'Waive the requirement?',
+          message: `The item can then be completed without waiting for ${ask.recipientFullName}.`,
+          quote: quotedNote(ask.note),
+          label: 'Why it\'s no longer required (optional)',
+          hint: 'Everyone on this board will see this in the item\'s history.',
+          confirmLabel: 'Waive',
+          maxLength: ASK_RESPONSE_NOTE_MAX_LENGTH
+        }).subscribe(reason =>
+          this.run(this.askService.update(ask.id, {
+            expectedRevision: ask.revision, note: ask.note, dueDate: ask.dueDate, isRequired: false, waiveReason: reason || null
+          })));
         break;
-      }
       case AskAction.Edit:
         this.openForm({ kind: 'edit', ask }, termsOf(ask, ask.recipientUserId));
         break;
@@ -659,6 +676,20 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
         this.openForm({ kind: 'askAgain', ask }, termsOf(ask, null));
         break;
     }
+  }
+
+  /**
+   * Asks for an optional reason in an in-app dialog; emits it ('' when none) once confirmed, and
+   * nothing when cancelled. Opened with disableClose: the dialog itself lets a backdrop click
+   * cancel only while nothing is typed.
+   */
+  private askForReason(data: ReasonDialogData): Observable<string> {
+    return this.dialog.open<ReasonDialogComponent, ReasonDialogData, string>(ReasonDialogComponent, {
+      data,
+      disableClose: true,
+      ariaDescribedBy: REASON_DIALOG_MESSAGE_ID,
+      maxWidth: '95vw'
+    }).afterClosed().pipe(filter((reason): reason is string => typeof reason === 'string'));
   }
 
   // ---- Replies ------------------------------------------------------------------------------

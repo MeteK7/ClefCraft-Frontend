@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core
 import { formatDate } from '@angular/common';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatTooltip } from '@angular/material/tooltip';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -26,6 +26,7 @@ import {
   NUDGE_TOO_SOON_MESSAGE
 } from '../../models/board-item-ask.model';
 import { ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
+import { REASON_DIALOG_MESSAGE_ID, ReasonDialogData } from '../reason-dialog/reason-dialog.component';
 import { makeAsk } from '../../models/board-item-ask.testing';
 import { environment } from '../../../environments/environment';
 import { provideAppDateFormat } from '../../date-format';
@@ -241,6 +242,100 @@ describe('BoardItemAsksComponent', () => {
 
     expect(answers).toEqual([]);
     httpMock.expectNone(() => true);
+  });
+
+  // ---- Reasons: an in-app dialog, never window.prompt ------------------------------------------
+
+  /** Opens the reason dialog through MatDialog.open; returns its config and the answer to give. */
+  function spyOnReasonDialog(): { config: () => MatDialogConfig<ReasonDialogData>; answer: Subject<string | undefined> } {
+    const answer = new Subject<string | undefined>();
+    const open = spyOn(TestBed.inject(MatDialog), 'open').and.returnValue({ afterClosed: () => answer } as never);
+    return { config: () => open.calls.mostRecent().args[1] as MatDialogConfig<ReasonDialogData>, answer };
+  }
+
+  beforeEach(() => spyOn(window, 'prompt').and.throwError('window.prompt must not be used'));
+
+  it('asks why in a dialog before declining, and sends the reason', () => {
+    setup([makeAsk({ id: 7, revision: 3, allowedActions: [AskAction.Decline] })], 'recipient');
+    const dialog = spyOnReasonDialog();
+
+    inlineButton('Decline').click();
+
+    const config = dialog.config();
+    expect(config.data).toEqual({
+      title: 'Decline this ask?',
+      message: 'Rae Requester asked you:',
+      quote: 'Review the migration',
+      label: 'Why you\'re declining (optional)',
+      hint: 'Everyone on this board will see this on the ask.',
+      confirmLabel: 'Decline',
+      maxLength: 500
+    });
+    expect(config.disableClose).toBeTrue();
+    expect(config.ariaDescribedBy).toBe(REASON_DIALOG_MESSAGE_ID);
+    httpMock.expectNone(`${environment.apiUrl}/BoardItemAsks/7/decline`);
+
+    dialog.answer.next('Out this week');
+    expect(httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/7/decline`).request.body)
+      .toEqual({ expectedRevision: 3, reason: 'Out this week' });
+    expect(window.prompt).not.toHaveBeenCalled();
+  });
+
+  it('declines without a reason when none is given, and not at all when cancelled', () => {
+    setup([makeAsk({ id: 7, revision: 3, allowedActions: [AskAction.Decline] })], 'recipient');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.Decline);
+    dialog.answer.next(undefined);
+    httpMock.expectNone(`${environment.apiUrl}/BoardItemAsks/7/decline`);
+
+    dialog.answer.next('');
+    expect(httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/7/decline`).request.body)
+      .toEqual({ expectedRevision: 3, reason: null });
+  });
+
+  it('asks why in a dialog before waiving a requirement, and sends the reason', () => {
+    setup([makeAsk({ id: 7, revision: 3, isRequired: true, dueDate: null, allowedActions: [AskAction.WaiveRequirement] })], 'requester');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.WaiveRequirement);
+
+    expect(dialog.config().data).toEqual({
+      title: 'Waive the requirement?',
+      message: 'The item can then be completed without waiting for Ayse Recipient.',
+      quote: 'Review the migration',
+      label: 'Why it\'s no longer required (optional)',
+      hint: 'Everyone on this board will see this in the item\'s history.',
+      confirmLabel: 'Waive',
+      maxLength: 500
+    });
+    expect(dialog.config().disableClose).toBeTrue();
+
+    dialog.answer.next('Signed off in person');
+    expect(httpMock.expectOne(r => r.method === 'PUT' && r.url === `${environment.apiUrl}/BoardItemAsks/7`).request.body)
+      .toEqual({ expectedRevision: 3, note: 'Review the migration', dueDate: null, isRequired: false, waiveReason: 'Signed off in person' });
+  });
+
+  it('waives without a reason when none is given, and not at all when cancelled', () => {
+    setup([makeAsk({ id: 7, revision: 3, isRequired: true, allowedActions: [AskAction.WaiveRequirement] })], 'requester');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.WaiveRequirement);
+    dialog.answer.next(undefined);
+    httpMock.expectNone(r => r.method === 'PUT');
+
+    dialog.answer.next('');
+    expect(httpMock.expectOne(r => r.method === 'PUT').request.body.waiveReason).toBeNull();
+  });
+
+  it('quotes a long note in one line, cut at 80 characters', () => {
+    const note = 'Check the migration '.repeat(10).trim();
+    setup([makeAsk({ id: 7, note, allowedActions: [AskAction.Decline] })], 'recipient');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.Decline);
+
+    expect(dialog.config().data!.quote).toBe(note.slice(0, 80).trimEnd() + '…');
   });
 
   it('says where each ask stands in one line: its state and when, nothing more', () => {
