@@ -119,13 +119,16 @@
     }
     <textarea #box class="reply-input" cdkTextareaAutosize cdkAutosizeMinRows="1" cdkAutosizeMaxRows="10"
       placeholder="Reply…" [attr.aria-label]="'Reply to ' + replyToName"
-      [attr.aria-describedby]="completePrompt ? 'complete-prompt-' + ask.id : null"
+      [attr.aria-describedby]="replyDescribedBy"
       [attr.maxlength]="maxLength" [value]="draft"
       (input)="onDraftInput(box.value)" (keydown)="onBoxKeydown($event)"></textarea>
 
-    @if (draft.length >= counterFrom) {
-      <span class="reply-count" [class.at-limit]="draft.length >= maxLength" aria-live="polite">
-        {{ draft.length }} / {{ maxLength }}
+    <!-- Not a live region: the count is read with the box, and nearing the limit is announced
+         once per threshold (onDraftInput). -->
+    @if (showsCount) {
+      <span class="reply-count" [id]="'reply-count-' + ask.id" [class.at-limit]="draft.length >= maxLength">
+        <span aria-hidden="true">{{ draft.length }} / {{ maxLength }}</span>
+        <span class="visually-hidden">{{ draft.length }} of {{ maxLength }} characters</span>
       </span>
     }
 

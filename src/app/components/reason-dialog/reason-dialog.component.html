@@ -10,7 +10,7 @@
 
   <!-- The hint and the counter describe the field. They sit outside mat-form-field on purpose: its
        hint area is an aria-live region, which would read the count on every keystroke. Here it's
-       read on reaching the field. -->
+       read on reaching the field, as "13 of 500 characters". -->
   <mat-form-field appearance="outline" class="reason-field" subscriptSizing="dynamic">
     <mat-label>{{ data.label }}</mat-label>
     <textarea matInput class="reason-input" cdkTextareaAutosize cdkAutosizeMinRows="2" cdkAutosizeMaxRows="6"
@@ -19,7 +19,10 @@
   </mat-form-field>
   <div class="reason-subscript">
     <span class="reason-hint" [id]="hintId">{{ data.hint }}</span>
-    <span class="reason-count" [id]="countId">{{ text.length }} / {{ data.maxLength }}</span>
+    <span class="reason-count" [id]="countId">
+      <span aria-hidden="true">{{ text.length }} / {{ data.maxLength }}</span>
+      <span class="visually-hidden">{{ text.length }} of {{ data.maxLength }} characters</span>
+    </span>
   </div>
 </mat-dialog-content>
 

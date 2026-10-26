@@ -13,6 +13,7 @@ import {
   ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -54,9 +55,11 @@ import {
   askKeyDates,
   askStatusLine,
   askViewpoint,
+  crossedThreshold,
   isAnswerRequiredError,
   isNudgeTooSoonError,
   isWithinDay,
+  limitThresholds,
   timeAgo,
   toAskAttention,
   toAskSummary,
@@ -68,6 +71,11 @@ import { DATE_INPUT_PLACEHOLDER } from '../../date-format';
 
 /** The note's limit, as the API enforces it (BoardItemAskLimits.NoteMaxLength). */
 export const ASK_NOTE_MAX_LENGTH = 200;
+
+/** Announced once each as typing reaches them: 20 characters left, then the limit. */
+export const ASK_NOTE_LIMIT_THRESHOLDS = limitThresholds(ASK_NOTE_MAX_LENGTH, ASK_NOTE_MAX_LENGTH - 20);
+
+let nextAsksPanelId = 0;
 
 /** Shown when the server refuses a nudge inside the 24-hour cooldown. */
 export const NUDGE_TOO_SOON_TEXT = 'Too soon to nudge again';
@@ -198,6 +206,10 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   readonly AskState = AskState;
   readonly AskAction = AskAction;
   readonly noteMaxLength = ASK_NOTE_MAX_LENGTH;
+  /** The note's counter: it describes the note field instead of sitting in a live region. */
+  readonly noteCountId = `ask-note-count-${nextAsksPanelId++}`;
+  /** The note's length as of the last input or fill, to announce each threshold once. */
+  private noteLengthSeen = 0;
   /** The format "By when" reads, shown as its placeholder. */
   readonly dateFormat = DATE_INPUT_PLACEHOLDER;
   readonly nudgeRule = NUDGE_RULE_TEXT;
@@ -231,6 +243,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     private realtime: NotificationRealtimeService,
     private openAskItems: OpenAskItemsService,
     private host: ElementRef<HTMLElement>,
+    private liveAnnouncer: LiveAnnouncer,
     authService: AuthService,
     fb: FormBuilder
   ) {
@@ -575,10 +588,20 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
+  /** Typing in the note: announces "20 characters left" and the limit once each as they're reached. */
+  onNoteInput(event: Event): void {
+    const length = (event.target as HTMLInputElement).value.length;
+    const crossed = crossedThreshold(this.noteLengthSeen, length, ASK_NOTE_LIMIT_THRESHOLDS);
+    this.noteLengthSeen = length;
+    if (crossed) this.liveAnnouncer.announce(crossed.message, 'polite');
+  }
+
   private openForm(mode: AskFormMode, value: AskFormValue): void {
     this.formMode = mode;
     this.errorMessage = null;
     this.form.reset(value);
+    // Filling the form isn't typing: an edited 190-character note announces nothing on opening.
+    this.noteLengthSeen = (this.form.value.note ?? '').length;
 
     // Reassigning moves the requirement and the expected answer as they are; editing changes
     // them through their own actions.

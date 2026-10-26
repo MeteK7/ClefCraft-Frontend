@@ -36,6 +36,18 @@
   flex-shrink: 0;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* "Dismissive": the action says no or lets go of something, legitimately. Neither destructive
    (red, like Withdraw) nor primary (filled): an outlined button in the text colour. */
 .reason-confirm.dismissive {

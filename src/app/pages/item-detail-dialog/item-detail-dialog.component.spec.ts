@@ -429,6 +429,34 @@ describe('ItemDetailDialogComponent — completing an item with asks', () => {
     flush();
   }));
 
+  it('loads the History tab each time it opens, so it shows what changed meanwhile', fakeAsync(() => {
+    const historyRequests = () => httpMock.match(req => req.url === `${environment.apiUrl}/ActivityLogs/BoardItem/9`);
+    const page = { items: [], hasMore: false };
+    const selectTab = (index: number) => {
+      component.selectedTabIndex = index;
+      detectChanges();
+      flush();
+      detectChanges();
+    };
+
+    setup(3);
+    expect(historyRequests().length).withContext('on opening the dialog').toBe(0);
+    expect(element.querySelector('app-history-timeline')).toBeNull();
+
+    selectTab(component.historyTabIndex);
+    const first = historyRequests();
+    expect(first.length).withContext('on opening History').toBe(1);
+    first[0].flush(page);
+    expect(element.querySelector('app-history-timeline')).not.toBeNull();
+
+    selectTab(0);
+    selectTab(component.historyTabIndex);
+    const second = historyRequests();
+    expect(second.length).withContext('on opening History again').toBe(1);
+    second[0].flush(page);
+    flush();
+  }));
+
   it('places Chime In in its own column, after the fields in reading order', fakeAsync(() => {
     setup(3);
 

@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
 import { formatDate } from '@angular/common';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -543,6 +544,84 @@ describe('BoardItemAsksComponent', () => {
     expect(element().querySelector<HTMLInputElement>('input[formcontrolname="note"]')!.value).toBe('Review the migration and the seed');
     flush();
   }));
+
+  describe('the note counter', () => {
+    const noteInput = () => element().querySelector<HTMLInputElement>('input[formcontrolname="note"]')!;
+    const noteCount = () => element().querySelector<HTMLElement>('.ask-note-count')!;
+    function typeNote(length: number): void {
+      noteInput().value = 'x'.repeat(length);
+      noteInput().dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    }
+    function openNewAsk(): void {
+      element().querySelector<HTMLButtonElement>('.ask-someone')!.click();
+      fixture.detectChanges();
+    }
+    let announce: jasmine.Spy;
+    const announced = () => announce.calls.allArgs();
+
+    function setupForm(asks: BoardItemAsk[] = []): void {
+      setup(asks);
+      announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+    }
+
+    it('counts the note, as "n / 200" to see and "n of 200 characters" to hear', () => {
+      setupForm();
+      openNewAsk();
+      typeNote(45);
+
+      expect(squash(noteCount().querySelector('[aria-hidden="true"]')!.textContent)).toBe('45 / 200');
+      expect(squash(noteCount().querySelector('.visually-hidden')!.textContent)).toBe('45 of 200 characters');
+    });
+
+    it('describes the note field with the count, outside any live region', () => {
+      setupForm();
+      openNewAsk();
+
+      expect(noteCount().id).toBe(component.noteCountId);
+      expect(noteInput().getAttribute('aria-describedby')!.split(' ')).toContain(component.noteCountId);
+      expect(noteCount().closest('[aria-live]')).toBeNull();
+      expect(element().querySelector('.ask-form mat-hint')).toBeNull();
+    });
+
+    it('gives each panel its own counter id', () => {
+      setupForm();
+      const other = TestBed.createComponent(BoardItemAsksComponent).componentInstance;
+      expect(other.noteCountId).not.toBe(component.noteCountId);
+    });
+
+    it('announces 20 characters left and the limit once each while typing, politely', () => {
+      setupForm();
+      openNewAsk();
+      for (let length = 175; length <= 200; length++) typeNote(length);
+
+      expect(announced()).toEqual([['20 characters left', 'polite'], ['Character limit reached', 'polite']]);
+    });
+
+    it('stays quiet while deleting, and announces again on typing back over a threshold', () => {
+      setupForm();
+      openNewAsk();
+      typeNote(185);
+      announce.calls.reset();
+
+      for (let length = 184; length >= 170; length--) typeNote(length);
+      expect(announced()).toEqual([]);
+
+      for (let length = 171; length <= 180; length++) typeNote(length);
+      expect(announced()).toEqual([['20 characters left', 'polite']]);
+    });
+
+    it('announces nothing on opening Edit on a long note, only on typing on to the limit', () => {
+      setupForm([makeAsk({ id: 5, note: 'x'.repeat(190), allowedActions: [AskAction.Edit] })]);
+      component.act(component.asks[0], AskAction.Edit);
+      fixture.detectChanges();
+      expect(squash(noteCount().querySelector('[aria-hidden="true"]')!.textContent)).toBe('190 / 200');
+      expect(announced()).toEqual([]);
+
+      for (let length = 191; length <= 200; length++) typeNote(length);
+      expect(announced()).toEqual([['Character limit reached', 'polite']]);
+    });
+  });
 
   it('says it is too soon when the server refuses an early nudge, and reloads', fakeAsync(() => {
     setup([makeAsk({ id: 7, allowedActions: [AskAction.Nudge] })]);
@@ -1202,7 +1281,46 @@ describe('BoardItemAsksComponent', () => {
     expect(row(7).querySelector('.reply-count')).toBeNull();
 
     type(replyBox(7), 'x'.repeat(1_800));
-    expect(squash(row(7).querySelector('.reply-count')!.textContent)).toBe('1800 / 2000');
+    expect(squash(row(7).querySelector('.reply-count [aria-hidden="true"]')!.textContent)).toBe('1800 / 2000');
+    expect(squash(row(7).querySelector('.reply-count .visually-hidden')!.textContent)).toBe('1800 of 2000 characters');
+  });
+
+  it('describes the reply box with the counter once it shows, outside any live region', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'recipient');
+
+    type(replyBox(7), 'x'.repeat(1_799));
+    expect(replyBox(7).getAttribute('aria-describedby')).toBeNull();
+
+    type(replyBox(7), 'x'.repeat(1_800));
+    const count = row(7).querySelector('.reply-count')!;
+    expect(count.id).toBe('reply-count-7');
+    expect(replyBox(7).getAttribute('aria-describedby')).toBe('reply-count-7');
+    expect(count.closest('[aria-live]')).toBeNull();
+  });
+
+  it('describes the reply box by both the complete prompt and the counter', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'recipient');
+    component.completePromptAskId = 7;
+    fixture.detectChanges();
+
+    type(replyBox(7), 'x'.repeat(1_800));
+    expect(replyBox(7).getAttribute('aria-describedby')).toBe('complete-prompt-7 reply-count-7');
+  });
+
+  it('announces 200 characters left as the reply counter appears, and the limit, once each', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'recipient');
+    const announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+
+    type(replyBox(7), 'x'.repeat(1_799));
+    type(replyBox(7), 'x'.repeat(1_800));
+    expect(announce.calls.allArgs()).toEqual([['200 characters left', 'polite']]);
+
+    for (const length of [1_801, 1_900, 1_999]) type(replyBox(7), 'x'.repeat(length));
+    expect(announce.calls.count()).toBe(1);
+
+    type(replyBox(7), 'x'.repeat(2_000));
+    type(replyBox(7), 'x'.repeat(1_990));
+    expect(announce.calls.allArgs()).toEqual([['200 characters left', 'polite'], ['Character limit reached', 'polite']]);
   });
 
   /** Presses Esc where it bubbles, and says whether it got past the panel (to the item dialog). */

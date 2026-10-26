@@ -3,6 +3,9 @@ import {
   ASK_CLOSURE_MISSING_MESSAGE,
   ASK_ANSWER_REQUIRED_CODE,
   ASK_EXACT_TIME_FORMAT,
+  ASK_REPLY_COUNTER_FROM,
+  ASK_REPLY_LIMIT_THRESHOLDS,
+  ASK_REPLY_MAX_LENGTH,
   AskAction,
   AskCancelReason,
   AskState,
@@ -16,7 +19,9 @@ import {
   askViewpoint,
   asksToReview,
   buildAskClosure,
+  crossedThreshold,
   isAnswerRequiredError,
+  limitThresholds,
   isNudgeTooSoonError,
   parseReplyBody,
   quotedNote,
@@ -45,6 +50,47 @@ describe('board-item-ask model', () => {
       expect(quotedNote('')).toBeNull();
       expect(quotedNote('   ')).toBeNull();
       expect(quotedNote(null)).toBeNull();
+    });
+  });
+
+  describe('crossedThreshold', () => {
+    const note = limitThresholds(200, 180);
+    const message = (previous: number, current: number, thresholds = note) =>
+      crossedThreshold(previous, current, thresholds)?.message ?? null;
+
+    it('says how much is left on reaching the warning, and when the limit is reached', () => {
+      expect(message(179, 180)).toBe('20 characters left');
+      expect(message(199, 200)).toBe('Character limit reached');
+    });
+
+    it('stays quiet while typing between thresholds', () => {
+      for (let length = 181; length < 200; length++) {
+        expect(message(length - 1, length)).withContext(`at ${length}`).toBeNull();
+      }
+      expect(message(0, 179)).toBeNull();
+    });
+
+    it('stays quiet while deleting, even across a threshold', () => {
+      expect(message(200, 199)).toBeNull();
+      expect(message(181, 170)).toBeNull();
+      expect(message(190, 190)).toBeNull();
+    });
+
+    it('announces again after dropping below a threshold and typing back over it', () => {
+      expect(message(179, 180)).toBe('20 characters left');
+      expect(message(180, 170)).toBeNull();
+      expect(message(170, 180)).toBe('20 characters left');
+    });
+
+    it('gives only the highest threshold when one paste passes both', () => {
+      expect(message(0, 200)).toBe('Character limit reached');
+    });
+
+    it('warns replies as their counter appears, and at their limit', () => {
+      expect(ASK_REPLY_LIMIT_THRESHOLDS).toEqual(limitThresholds(ASK_REPLY_MAX_LENGTH, ASK_REPLY_COUNTER_FROM));
+      expect(message(1799, 1800, ASK_REPLY_LIMIT_THRESHOLDS)).toBe('200 characters left');
+      expect(message(1800, 1999, ASK_REPLY_LIMIT_THRESHOLDS)).toBeNull();
+      expect(message(1999, 2000, ASK_REPLY_LIMIT_THRESHOLDS)).toBe('Character limit reached');
     });
   });
 

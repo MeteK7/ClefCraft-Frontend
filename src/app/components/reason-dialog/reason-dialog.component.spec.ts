@@ -131,7 +131,8 @@ describe('ReasonDialogComponent', () => {
     type('Out this week');
 
     expect(field().getAttribute('maxlength')).toBe('500');
-    expect(text('.reason-count')).toBe('13 / 500');
+    expect(text('.reason-count [aria-hidden="true"]')).toBe('13 / 500');
+    expect(text('.reason-count .visually-hidden')).toBe('13 of 500 characters');
   }));
 
   it('starts in the reason field', fakeAsync(() => {

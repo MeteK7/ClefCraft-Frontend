@@ -427,6 +427,39 @@ export const ASK_REPLY_MAX_LENGTH = 2000;
 /** The reply box shows its character count from this length on. */
 export const ASK_REPLY_COUNTER_FROM = 1800;
 
+/** A length worth announcing once, as typing reaches it. */
+export interface LengthThreshold {
+  at: number;
+  message: string;
+}
+
+/** "N characters left" at `warnAt`, then "Character limit reached" at `max`. */
+export function limitThresholds(max: number, warnAt: number): LengthThreshold[] {
+  return [
+    { at: warnAt, message: `${max - warnAt} characters left` },
+    { at: max, message: 'Character limit reached' }
+  ];
+}
+
+export const ASK_REPLY_LIMIT_THRESHOLDS = limitThresholds(ASK_REPLY_MAX_LENGTH, ASK_REPLY_COUNTER_FROM);
+
+/**
+ * The highest threshold that typing from `previous` to `current` characters reached, or null.
+ * A threshold is reached when previous < at <= current, so deleting never announces, and
+ * dropping below one lets it be reached, and announced, again.
+ */
+export function crossedThreshold(
+  previous: number, current: number, thresholds: readonly LengthThreshold[]
+): LengthThreshold | null {
+  let crossed: LengthThreshold | null = null;
+  for (const threshold of thresholds) {
+    if (previous < threshold.at && threshold.at <= current && (!crossed || threshold.at > crossed.at)) {
+      crossed = threshold;
+    }
+  }
+  return crossed;
+}
+
 /** The code of the 400 that refuses to mark an ask done before the recipient has answered. */
 export const ASK_ANSWER_REQUIRED_CODE = 'ASK_ANSWER_REQUIRED';
 
