@@ -310,6 +310,10 @@
   overflow-wrap: anywhere;
 }
 
+.ask-key-dates dd .ask-warning-icon {
+  vertical-align: middle;
+}
+
 .ask-full-history {
   align-self: flex-start;
   padding: 0;
