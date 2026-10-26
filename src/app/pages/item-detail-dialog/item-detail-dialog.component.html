@@ -218,6 +218,7 @@
                   (hide)="hideChime()"
                   (summaryChange)="onAskSummaryChange($event)"
                   (contributorsChange)="onContributorsChange($event)"
+                  (attentionChange)="onAskAttentionChange($event)"
                   (openHistory)="selectedTabIndex = historyTabIndex">
                 </app-board-item-asks>
               </div>
@@ -285,21 +286,25 @@
           <mat-icon class="tab-icon">history</mat-icon>
           History
         </ng-template>
-        <div class="dialog-content">
-          <div class="history-section">
-            <h4 class="section-title">
-              <mat-icon>history</mat-icon>
-              Item History
-            </h4>
-            <app-history-timeline
-              [entityType]="'BoardItem'"
-              [entityId]="item.id"
-              [columns]="columns"
-              [statuses]="statuses"
-              [priorities]="priorities">
-            </app-history-timeline>
+        <!-- Lazy: created each time the tab opens, so it shows what changed while the dialog was
+             open (a waive, a decline, a saved edit) instead of what was there when it opened. -->
+        <ng-template matTabContent>
+          <div class="dialog-content">
+            <div class="history-section">
+              <h4 class="section-title">
+                <mat-icon>history</mat-icon>
+                Item History
+              </h4>
+              <app-history-timeline
+                [entityType]="'BoardItem'"
+                [entityId]="item.id"
+                [columns]="columns"
+                [statuses]="statuses"
+                [priorities]="priorities">
+              </app-history-timeline>
+            </div>
           </div>
-        </div>
+        </ng-template>
       </mat-tab>
     }
 

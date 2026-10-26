@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   AskDirection,
@@ -23,12 +23,23 @@ export class BoardItemAskService {
     return this.http.get<BoardItemAsk[]>(`${this.apiUrl}/BoardItems/${itemId}/asks`, { withCredentials: true });
   }
 
-  /** "Asked of you" (received) or "Asks you sent" (sent), across the caller's boards. */
+  /**
+   * "Asked of you" (received), "Asks you sent" (sent) or "Waiting for you" (waiting: the asks that
+   * are your move, grouped by board), across the caller's boards.
+   */
   getMine(direction: AskDirection): Observable<BoardItemAsk[]> {
     return this.http.get<BoardItemAsk[]>(`${this.apiUrl}/BoardItemAsks/mine`, {
       params: { direction },
       withCredentials: true
     });
+  }
+
+  /** How many asks one of those lists holds, without loading them: the "Waiting for you" badge. */
+  countMine(direction: AskDirection): Observable<number> {
+    return this.http.get<{ count: number }>(`${this.apiUrl}/BoardItemAsks/mine/count`, {
+      params: { direction },
+      withCredentials: true
+    }).pipe(map(r => r.count));
   }
 
   create(itemId: number, request: CreateAskRequest): Observable<BoardItemAsk> {

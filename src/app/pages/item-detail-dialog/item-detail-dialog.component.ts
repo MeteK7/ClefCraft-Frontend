@@ -30,6 +30,7 @@ import { Observable, map, of, switchMap } from 'rxjs';
 
 import { Column, Item, ItemUpdate, Priority, Status, Tag } from '../../models/board.model';
 import {
+  AskAttention,
   AskClosure,
   AskContributor,
   AskSummary,
@@ -40,6 +41,7 @@ import {
 } from '../../models/board-item-ask.model';
 import { AskCompletionService } from '../../_services/ask-completion.service';
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
+import { AskAttentionService } from '../../_services/ask-attention.service';
 import { BoardItemAsksComponent } from '../../components/board-item-asks/board-item-asks.component';
 import { isCompletedStatus } from '../../relationship-engine/analytics/finish-before';
 import { BoardService } from '../../_services/board.service';
@@ -47,7 +49,6 @@ import { CalendarService } from '../../_services/calendar.service';
 import { Assignee } from '../../models/assignee.model';
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 import { UserService } from '../../_services/user.service';
-import { AuthService } from '../../_services/auth.service';
 import { RelationshipHubComponent } from '../../components/relationship-hub/relationship-hub.component';
 import { HistoryTimelineComponent } from '../../components/history-timeline/history-timeline.component';
 import { CommentThreadComponent } from '../../components/comment-thread/comment-thread.component';
@@ -98,6 +99,8 @@ export interface ItemDetailDialogData {
   columns?: Column[];
   /** set when opened from a mention notification/deep link — selects the Comments tab and scrolls to it */
   focusCommentId?: number | null;
+  /** set when opened from an ask link (a toast, "Waiting for you"): shows that ask in Chime In */
+  focusAskId?: number | null;
 }
 
 @Component({
@@ -153,6 +156,15 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
    * dialog is still open. The board subscribes through the dialog ref.
    */
   @Output() askSummaryChange = new EventEmitter<AskSummary>();
+
+  /** How many of the item's asks are the user's move, after every load, for the card's marker. */
+  @Output() askAttentionChange = new EventEmitter<AskAttention>();
+
+  /** As the Chime In panel last loaded it; null until it has. */
+  askAttention: AskAttention | null = null;
+
+  /** The linked ask still to show once the panel has loaded. */
+  private pendingFocusAskId: number | null = null;
 
   /** True while creating a brand new item rather than editing an existing one. */
   get isNewItem(): boolean {
@@ -230,8 +242,6 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
     this.resizeObserver.observe(element);
   }
 
-  private readonly currentUserId: string | null;
-
   constructor(
     public dialogRef: MatDialogRef<ItemDetailDialogComponent, ItemDetailDialogResult>,
     @Inject(MAT_DIALOG_DATA) public data: ItemDetailDialogData,
@@ -245,9 +255,9 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private zone: NgZone,
     private host: ElementRef<HTMLElement>,
-    authService: AuthService
+    private askAttentionService: AskAttentionService
   ) {
-    this.currentUserId = authService.getUserId();
+    this.pendingFocusAskId = data.focusAskId ?? null;
     this.applyDialogWidth();
   }
 
@@ -348,9 +358,9 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
     return this.askSummary?.openCount ?? 0;
   }
 
-  /** Open asks the current user is asked to help with. */
+  /** The item's asks that are the current user's move, as the server decides it (AskTurn). */
   get chimeWaitingCount(): number {
-    return this.askSummary?.openAsks.filter(a => a.recipientUserId === this.currentUserId).length ?? 0;
+    return this.askAttention?.yourMove ?? 0;
   }
 
   get chimeRevealLabel(): string {
@@ -435,6 +445,20 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
     this.askSummaryChange.emit(summary);
   }
 
+  onAskAttentionChange(attention: AskAttention): void {
+    this.askAttention = attention;
+    this.askAttentionChange.emit(attention);
+    // The user's own actions send them no push: recount "Waiting for you" after each load.
+    this.askAttentionService.refresh();
+
+    // Opened from an ask link: show it once the panel has its cards.
+    if (this.pendingFocusAskId !== null) {
+      const askId = this.pendingFocusAskId;
+      this.pendingFocusAskId = null;
+      setTimeout(() => this.showAsk(askId));
+    }
+  }
+
   onContributorsChange(contributors: AskContributor[]): void {
     this.allContributors = contributors;
   }
@@ -470,7 +494,11 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
 
   /** Shows the person's latest done ask in Chime In, bringing the panel back if it's hidden. */
   showContribution(contributor: AskContributor): void {
-    const askId = contributor.asks[0].askId;
+    this.showAsk(contributor.asks[0].askId);
+  }
+
+  /** Brings an ask's card into view and focus, showing Chime In first if it's hidden. */
+  showAsk(askId: number): void {
     if (!this.chimeHidden) {
       this.asksPanel?.revealAsk(askId);
       return;

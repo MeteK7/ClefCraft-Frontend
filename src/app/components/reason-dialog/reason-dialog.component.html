@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+
+<mat-dialog-content>
+  <div class="reason-message" [id]="messageId">
+    <p>{{ data.message }}</p>
+    @if (data.quote) {
+      <p class="reason-quote">“{{ data.quote }}”</p>
+    }
+  </div>
+
+  <!-- The hint and the counter describe the field. They sit outside mat-form-field on purpose: its
+       hint area is an aria-live region, which would read the count on every keystroke. Here it's
+       read on reaching the field, as "13 of 500 characters". -->
+  <mat-form-field appearance="outline" class="reason-field" subscriptSizing="dynamic">
+    <mat-label>{{ data.label }}</mat-label>
+    <textarea matInput class="reason-input" cdkTextareaAutosize cdkAutosizeMinRows="2" cdkAutosizeMaxRows="6"
+      [attr.maxlength]="data.maxLength" [value]="text" (input)="text = $any($event.target).value"
+      [aria-describedby]="hintId + ' ' + countId" (keydown)="onFieldKeydown($event)" cdkFocusInitial></textarea>
+  </mat-form-field>
+  <div class="reason-subscript">
+    <span class="reason-hint" [id]="hintId">{{ data.hint }}</span>
+    <span class="reason-count" [id]="countId">
+      <span aria-hidden="true">{{ text.length }} / {{ data.maxLength }}</span>
+      <span class="visually-hidden">{{ text.length }} of {{ data.maxLength }} characters</span>
+    </span>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" class="reason-cancel" (click)="cancel()">Cancel</button>
+  <button mat-stroked-button type="button" class="reason-confirm dismissive" (click)="confirm()">{{ data.confirmLabel }}</button>
+</mat-dialog-actions>

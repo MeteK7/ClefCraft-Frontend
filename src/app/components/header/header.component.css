@@ -14,11 +14,22 @@ header{
 
 }
 
-.theme-btn{
+/* "Waiting for you" and the theme switch, at the right end of the bar. */
+.header-actions{
 
     position:absolute;
 
     right:20px;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:4px;
+
+}
+
+.theme-btn{
 
     display:flex;
 
@@ -68,9 +79,22 @@ h1 {
   margin: 0;
 }
 
-/* Mobile override */
+/* Mobile override: the title moves left and gives way to the buttons on the right. */
 @media (max-width: 768px) {
+  header {
+    justify-content: flex-start;
+    padding: 0 104px 0 16px;
+  }
+
   h1 {
     font-size: 20px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    right: 12px;
   }
 }

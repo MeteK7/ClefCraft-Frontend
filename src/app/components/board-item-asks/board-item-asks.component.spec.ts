@@ -1,8 +1,9 @@
 import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
 import { formatDate } from '@angular/common';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatTooltip } from '@angular/material/tooltip';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -19,12 +20,14 @@ import {
   AskReply,
   AskState,
   AskSummary,
+  AskTurnReason,
   BoardItemAsk,
   ASK_EXACT_TIME_FORMAT,
   askDayFormat,
   NUDGE_TOO_SOON_MESSAGE
 } from '../../models/board-item-ask.model';
 import { ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
+import { REASON_DIALOG_MESSAGE_ID, ReasonDialogData } from '../reason-dialog/reason-dialog.component';
 import { makeAsk } from '../../models/board-item-ask.testing';
 import { environment } from '../../../environments/environment';
 import { provideAppDateFormat } from '../../date-format';
@@ -112,6 +115,37 @@ describe('BoardItemAsksComponent', () => {
     expect(summaries).toEqual([jasmine.objectContaining({ openCount: 1, unmetRequiredCount: 1 })]);
   }));
 
+  describe('the order of the asks', () => {
+    const shownIds = () => Array.from(element().querySelectorAll<HTMLElement>('[data-ask-id]')).map(card => Number(card.dataset['askId']));
+    const asked = (id: number, day: number) => makeAsk({ id, dateCreated: `2026-10-0${day}T09:00:00Z` });
+
+    it('shows the newest ask first, though the server sends the oldest first', fakeAsync(() => {
+      const summaries = setup([asked(1, 1), asked(2, 3), asked(3, 2)]);
+      flush();
+
+      expect(shownIds()).toEqual([2, 3, 1]);
+      // What the panel reports doesn't depend on the order it shows.
+      expect(summaries).toEqual([jasmine.objectContaining({ openCount: 3 })]);
+    }));
+
+    it('puts a new ask on top after a realtime reload, and leaves the others where they were', fakeAsync(() => {
+      setup([asked(1, 1), asked(2, 2)]);
+      flush();
+      expect(shownIds()).toEqual([2, 1]);
+
+      askEvents$.next({
+        askId: 3, boardItemId: 10, boardId: 3, itemTitle: 'Release notes', event: 'Requested', actorFullName: 'Rae Requester',
+        note: 'Review the migration', reason: null, actedOnBehalf: false, replyId: null, replyExcerpt: null,
+        occurredAt: '2026-10-04T09:00:00Z'
+      });
+      httpMock.expectOne(asksUrl).flush([asked(1, 1), asked(2, 2), asked(3, 4)]);
+      fixture.detectChanges();
+      flush();
+
+      expect(shownIds()).toEqual([3, 2, 1]);
+    }));
+  });
+
   it('reports who helped after every load, for the item dialog to show beside Assignee', fakeAsync(() => {
     const accepted = makeAsk({ id: 1, state: AskState.Accepted, recipientUserId: 'helper', recipientFullName: 'Hale Helper' });
     setup([accepted]);
@@ -132,6 +166,22 @@ describe('BoardItemAsksComponent', () => {
     flush();
 
     expect(reported).toEqual([[], ['Hale Helper']]);
+  }));
+
+  it('reports how many asks are the viewer\'s move after every load, as the server says', fakeAsync(() => {
+    setup([
+      makeAsk({ id: 1, state: AskState.Pending, yourMove: AskTurnReason.Respond }),
+      makeAsk({ id: 2, state: AskState.Pending })
+    ]);
+    const reported: number[] = [];
+    component.attentionChange.subscribe(a => reported.push(a.yourMove));
+    flush();
+
+    component.load();
+    httpMock.expectOne(asksUrl).flush([makeAsk({ id: 1, state: AskState.Accepted, yourMove: AskTurnReason.Deliver })]);
+    flush();
+
+    expect(reported).toEqual([1]);
   }));
 
   it('brings an ask\'s card into view and focus, highlighted briefly', fakeAsync(() => {
@@ -224,6 +274,100 @@ describe('BoardItemAsksComponent', () => {
 
     expect(answers).toEqual([]);
     httpMock.expectNone(() => true);
+  });
+
+  // ---- Reasons: an in-app dialog, never window.prompt ------------------------------------------
+
+  /** Opens the reason dialog through MatDialog.open; returns its config and the answer to give. */
+  function spyOnReasonDialog(): { config: () => MatDialogConfig<ReasonDialogData>; answer: Subject<string | undefined> } {
+    const answer = new Subject<string | undefined>();
+    const open = spyOn(TestBed.inject(MatDialog), 'open').and.returnValue({ afterClosed: () => answer } as never);
+    return { config: () => open.calls.mostRecent().args[1] as MatDialogConfig<ReasonDialogData>, answer };
+  }
+
+  beforeEach(() => spyOn(window, 'prompt').and.throwError('window.prompt must not be used'));
+
+  it('asks why in a dialog before declining, and sends the reason', () => {
+    setup([makeAsk({ id: 7, revision: 3, allowedActions: [AskAction.Decline] })], 'recipient');
+    const dialog = spyOnReasonDialog();
+
+    inlineButton('Decline').click();
+
+    const config = dialog.config();
+    expect(config.data).toEqual({
+      title: 'Decline this ask?',
+      message: 'Rae Requester asked you:',
+      quote: 'Review the migration',
+      label: 'Why you\'re declining (optional)',
+      hint: 'Everyone on this board will see this on the ask.',
+      confirmLabel: 'Decline',
+      maxLength: 500
+    });
+    expect(config.disableClose).toBeTrue();
+    expect(config.ariaDescribedBy).toBe(REASON_DIALOG_MESSAGE_ID);
+    httpMock.expectNone(`${environment.apiUrl}/BoardItemAsks/7/decline`);
+
+    dialog.answer.next('Out this week');
+    expect(httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/7/decline`).request.body)
+      .toEqual({ expectedRevision: 3, reason: 'Out this week' });
+    expect(window.prompt).not.toHaveBeenCalled();
+  });
+
+  it('declines without a reason when none is given, and not at all when cancelled', () => {
+    setup([makeAsk({ id: 7, revision: 3, allowedActions: [AskAction.Decline] })], 'recipient');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.Decline);
+    dialog.answer.next(undefined);
+    httpMock.expectNone(`${environment.apiUrl}/BoardItemAsks/7/decline`);
+
+    dialog.answer.next('');
+    expect(httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/7/decline`).request.body)
+      .toEqual({ expectedRevision: 3, reason: null });
+  });
+
+  it('asks why in a dialog before waiving a requirement, and sends the reason', () => {
+    setup([makeAsk({ id: 7, revision: 3, isRequired: true, dueDate: null, allowedActions: [AskAction.WaiveRequirement] })], 'requester');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.WaiveRequirement);
+
+    expect(dialog.config().data).toEqual({
+      title: 'Waive the requirement?',
+      message: 'The item can then be completed without waiting for Ayse Recipient.',
+      quote: 'Review the migration',
+      label: 'Why it\'s no longer required (optional)',
+      hint: 'Everyone on this board will see this in the item\'s history.',
+      confirmLabel: 'Waive',
+      maxLength: 500
+    });
+    expect(dialog.config().disableClose).toBeTrue();
+
+    dialog.answer.next('Signed off in person');
+    expect(httpMock.expectOne(r => r.method === 'PUT' && r.url === `${environment.apiUrl}/BoardItemAsks/7`).request.body)
+      .toEqual({ expectedRevision: 3, note: 'Review the migration', dueDate: null, isRequired: false, waiveReason: 'Signed off in person' });
+  });
+
+  it('waives without a reason when none is given, and not at all when cancelled', () => {
+    setup([makeAsk({ id: 7, revision: 3, isRequired: true, allowedActions: [AskAction.WaiveRequirement] })], 'requester');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.WaiveRequirement);
+    dialog.answer.next(undefined);
+    httpMock.expectNone(r => r.method === 'PUT');
+
+    dialog.answer.next('');
+    expect(httpMock.expectOne(r => r.method === 'PUT').request.body.waiveReason).toBeNull();
+  });
+
+  it('quotes a long note in one line, cut at 80 characters', () => {
+    const note = 'Check the migration '.repeat(10).trim();
+    setup([makeAsk({ id: 7, note, allowedActions: [AskAction.Decline] })], 'recipient');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.Decline);
+
+    expect(dialog.config().data!.quote).toBe(note.slice(0, 80).trimEnd() + '…');
   });
 
   it('says where each ask stands in one line: its state and when, nothing more', () => {
@@ -431,6 +575,84 @@ describe('BoardItemAsksComponent', () => {
     expect(element().querySelector<HTMLInputElement>('input[formcontrolname="note"]')!.value).toBe('Review the migration and the seed');
     flush();
   }));
+
+  describe('the note counter', () => {
+    const noteInput = () => element().querySelector<HTMLInputElement>('input[formcontrolname="note"]')!;
+    const noteCount = () => element().querySelector<HTMLElement>('.ask-note-count')!;
+    function typeNote(length: number): void {
+      noteInput().value = 'x'.repeat(length);
+      noteInput().dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    }
+    function openNewAsk(): void {
+      element().querySelector<HTMLButtonElement>('.ask-someone')!.click();
+      fixture.detectChanges();
+    }
+    let announce: jasmine.Spy;
+    const announced = () => announce.calls.allArgs();
+
+    function setupForm(asks: BoardItemAsk[] = []): void {
+      setup(asks);
+      announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+    }
+
+    it('counts the note, as "n / 200" to see and "n of 200 characters" to hear', () => {
+      setupForm();
+      openNewAsk();
+      typeNote(45);
+
+      expect(squash(noteCount().querySelector('[aria-hidden="true"]')!.textContent)).toBe('45 / 200');
+      expect(squash(noteCount().querySelector('.visually-hidden')!.textContent)).toBe('45 of 200 characters');
+    });
+
+    it('describes the note field with the count, outside any live region', () => {
+      setupForm();
+      openNewAsk();
+
+      expect(noteCount().id).toBe(component.noteCountId);
+      expect(noteInput().getAttribute('aria-describedby')!.split(' ')).toContain(component.noteCountId);
+      expect(noteCount().closest('[aria-live]')).toBeNull();
+      expect(element().querySelector('.ask-form mat-hint')).toBeNull();
+    });
+
+    it('gives each panel its own counter id', () => {
+      setupForm();
+      const other = TestBed.createComponent(BoardItemAsksComponent).componentInstance;
+      expect(other.noteCountId).not.toBe(component.noteCountId);
+    });
+
+    it('announces 20 characters left and the limit once each while typing, politely', () => {
+      setupForm();
+      openNewAsk();
+      for (let length = 175; length <= 200; length++) typeNote(length);
+
+      expect(announced()).toEqual([['20 characters left', 'polite'], ['Character limit reached', 'polite']]);
+    });
+
+    it('stays quiet while deleting, and announces again on typing back over a threshold', () => {
+      setupForm();
+      openNewAsk();
+      typeNote(185);
+      announce.calls.reset();
+
+      for (let length = 184; length >= 170; length--) typeNote(length);
+      expect(announced()).toEqual([]);
+
+      for (let length = 171; length <= 180; length++) typeNote(length);
+      expect(announced()).toEqual([['20 characters left', 'polite']]);
+    });
+
+    it('announces nothing on opening Edit on a long note, only on typing on to the limit', () => {
+      setupForm([makeAsk({ id: 5, note: 'x'.repeat(190), allowedActions: [AskAction.Edit] })]);
+      component.act(component.asks[0], AskAction.Edit);
+      fixture.detectChanges();
+      expect(squash(noteCount().querySelector('[aria-hidden="true"]')!.textContent)).toBe('190 / 200');
+      expect(announced()).toEqual([]);
+
+      for (let length = 191; length <= 200; length++) typeNote(length);
+      expect(announced()).toEqual([['Character limit reached', 'polite']]);
+    });
+  });
 
   it('says it is too soon when the server refuses an early nudge, and reloads', fakeAsync(() => {
     setup([makeAsk({ id: 7, allowedActions: [AskAction.Nudge] })]);
@@ -1090,7 +1312,46 @@ describe('BoardItemAsksComponent', () => {
     expect(row(7).querySelector('.reply-count')).toBeNull();
 
     type(replyBox(7), 'x'.repeat(1_800));
-    expect(squash(row(7).querySelector('.reply-count')!.textContent)).toBe('1800 / 2000');
+    expect(squash(row(7).querySelector('.reply-count [aria-hidden="true"]')!.textContent)).toBe('1800 / 2000');
+    expect(squash(row(7).querySelector('.reply-count .visually-hidden')!.textContent)).toBe('1800 of 2000 characters');
+  });
+
+  it('describes the reply box with the counter once it shows, outside any live region', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'recipient');
+
+    type(replyBox(7), 'x'.repeat(1_799));
+    expect(replyBox(7).getAttribute('aria-describedby')).toBeNull();
+
+    type(replyBox(7), 'x'.repeat(1_800));
+    const count = row(7).querySelector('.reply-count')!;
+    expect(count.id).toBe('reply-count-7');
+    expect(replyBox(7).getAttribute('aria-describedby')).toBe('reply-count-7');
+    expect(count.closest('[aria-live]')).toBeNull();
+  });
+
+  it('describes the reply box by both the complete prompt and the counter', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'recipient');
+    component.completePromptAskId = 7;
+    fixture.detectChanges();
+
+    type(replyBox(7), 'x'.repeat(1_800));
+    expect(replyBox(7).getAttribute('aria-describedby')).toBe('complete-prompt-7 reply-count-7');
+  });
+
+  it('announces 200 characters left as the reply counter appears, and the limit, once each', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'recipient');
+    const announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+
+    type(replyBox(7), 'x'.repeat(1_799));
+    type(replyBox(7), 'x'.repeat(1_800));
+    expect(announce.calls.allArgs()).toEqual([['200 characters left', 'polite']]);
+
+    for (const length of [1_801, 1_900, 1_999]) type(replyBox(7), 'x'.repeat(length));
+    expect(announce.calls.count()).toBe(1);
+
+    type(replyBox(7), 'x'.repeat(2_000));
+    type(replyBox(7), 'x'.repeat(1_990));
+    expect(announce.calls.allArgs()).toEqual([['200 characters left', 'polite'], ['Character limit reached', 'polite']]);
   });
 
   /** Presses Esc where it bubbles, and says whether it got past the panel (to the item dialog). */
@@ -1287,7 +1548,8 @@ describe('BoardItemAsksComponent', () => {
 
   const askEvent = (boardItemId: number): AskEventPayload => ({
     askId: 7, boardItemId, boardId: 3, itemTitle: 'Release notes', event: 'Replied', actorFullName: 'Ayse Recipient',
-    note: 'Review the migration', reason: null, actedOnBehalf: false, replyId: 40, replyExcerpt: 'Done'
+    note: 'Review the migration', reason: null, actedOnBehalf: false, replyId: 40, replyExcerpt: 'Done',
+    occurredAt: '2026-10-25T10:00:00Z'
   });
 
   it('reloads when someone acts on an ask of this item, and only this item', () => {
