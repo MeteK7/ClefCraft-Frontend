@@ -1,5 +1,8 @@
 import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
+import { formatDate } from '@angular/common';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MatTooltip } from '@angular/material/tooltip';
+import { By } from '@angular/platform-browser';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
@@ -20,7 +23,8 @@ import { environment } from '../../../environments/environment';
 import { of } from 'rxjs';
 import { AskCompletionService } from '../../_services/ask-completion.service';
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
-import { AskClosure, AskState, BoardItemAsk } from '../../models/board-item-ask.model';
+import { AskClosure, AskState, AskTurnReason, BoardItemAsk, askDayFormat } from '../../models/board-item-ask.model';
+import { BoardItemAsksComponent } from '../../components/board-item-asks/board-item-asks.component';
 import { makeAsk } from '../../models/board-item-ask.testing';
 import { provideAppDateFormat } from '../../date-format';
 
@@ -425,6 +429,34 @@ describe('ItemDetailDialogComponent — completing an item with asks', () => {
     flush();
   }));
 
+  it('loads the History tab each time it opens, so it shows what changed meanwhile', fakeAsync(() => {
+    const historyRequests = () => httpMock.match(req => req.url === `${environment.apiUrl}/ActivityLogs/BoardItem/9`);
+    const page = { items: [], hasMore: false };
+    const selectTab = (index: number) => {
+      component.selectedTabIndex = index;
+      detectChanges();
+      flush();
+      detectChanges();
+    };
+
+    setup(3);
+    expect(historyRequests().length).withContext('on opening the dialog').toBe(0);
+    expect(element.querySelector('app-history-timeline')).toBeNull();
+
+    selectTab(component.historyTabIndex);
+    const first = historyRequests();
+    expect(first.length).withContext('on opening History').toBe(1);
+    first[0].flush(page);
+    expect(element.querySelector('app-history-timeline')).not.toBeNull();
+
+    selectTab(0);
+    selectTab(component.historyTabIndex);
+    const second = historyRequests();
+    expect(second.length).withContext('on opening History again').toBe(1);
+    second[0].flush(page);
+    flush();
+  }));
+
   it('places Chime In in its own column, after the fields in reading order', fakeAsync(() => {
     setup(3);
 
@@ -513,7 +545,8 @@ describe('ItemDetailDialogComponent — Chime In beside the fields', () => {
   const statuses = [{ id: 3, name: 'In Progress' }, { id: 5, name: 'Done' }];
   // One open ask waiting on the viewer, one on someone else.
   const asks = [
-    makeAsk({ id: 1, state: AskState.Pending, recipientUserId: 'me' }),
+    // The server says which asks are the viewer's move (AskTurn).
+    makeAsk({ id: 1, state: AskState.Pending, recipientUserId: 'me', yourMove: AskTurnReason.Respond }),
     makeAsk({ id: 2, state: AskState.Accepted, recipientUserId: 'someone-else' })
   ];
 
@@ -674,6 +707,7 @@ describe('ItemDetailDialogComponent — Chime In beside the fields', () => {
     component.onAskSummaryChange({ openCount: 1, unmetRequiredCount: 0, completedCount: 1, openAsks: [
       { askId: 2, recipientUserId: 'someone-else', recipientFullName: 'S', state: AskState.Accepted, isRequired: false, dueDate: null, dateCreated: '2026-10-10T09:00:00Z' }
     ] });
+    component.onAskAttentionChange({ yourMove: 0 });
     fixture.detectChanges();
     expect(button.getAttribute('aria-label')).toBe('Show Chime In: 1 open ask');
     expect(button.classList).not.toContain('waiting');
@@ -964,5 +998,137 @@ describe('ItemDetailDialogComponent — its width follows Chime In', () => {
 
     expect(hiddenCalls).toBe(calls + 1);
     expect(updateSize.calls.count()).toBe(hiddenCalls);
+  }));
+});
+
+describe('ItemDetailDialogComponent — who helped', () => {
+  let component: ItemDetailDialogComponent;
+  let fixture: ComponentFixture<ItemDetailDialogComponent>;
+  let element: HTMLElement;
+
+  const done = (id: number, userId: string, fullName: string, note: string, completedAt: string) =>
+    makeAsk({ id, state: AskState.Completed, recipientUserId: userId, recipientFullName: fullName, note, completedAt });
+  const helpedAsks = [
+    done(1, 'hale', 'Hale Helper', 'Review the migration script', '2026-10-21T10:00:00Z'),
+    done(2, 'hale', 'Hale Helper', 'Check the index', '2026-10-22T10:00:00Z'),
+    done(3, 'ada', 'Ada Lovelace', 'Proofread the notes', '2026-10-20T10:00:00Z'),
+    makeAsk({ id: 4, state: AskState.Declined, recipientUserId: 'bo', recipientFullName: 'Bo Decliner' })
+  ];
+
+  function setup(asks: BoardItemAsk[] = helpedAsks, focusAskId: number | null = null): void {
+    TestBed.configureTestingModule({
+      imports: [ItemDetailDialogComponent],
+      providers: [
+        provideAppDateFormat(),
+        provideHttpClient(withXhr()),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: { item: { id: 9, title: 'Release notes', boardId: 7, boardColumnId: 3, status: { id: 3, name: '' } }, boardId: 7, focusAskId } as ItemDetailDialogData },
+        { provide: MatDialogRef, useValue: { close: jasmine.createSpy('close'), updateSize: jasmine.createSpy('updateSize') } },
+        { provide: AskCompletionService, useValue: { completeItem: jasmine.createSpy('completeItem') } },
+        { provide: BoardItemAskService, useValue: { getForItem: () => of(asks) } }
+      ]
+    }).compileComponents();
+    spyOn(TestBed.inject(AuthService), 'getUserId').and.returnValue('me');
+
+    fixture = TestBed.createComponent(ItemDetailDialogComponent);
+    component = fixture.componentInstance;
+    element = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne(`${environment.apiUrl}/BoardItems/GetStatuses?boardId=7`).flush([]);
+    flush(); // the panel emits what it loaded asynchronously
+    fixture.detectChanges();
+    component.onLayoutResized(1117);
+    fixture.detectChanges();
+  }
+
+  const people = () => Array.from(element.querySelectorAll<HTMLButtonElement>('.helped-by-person'));
+  const tooltipOn = (native: Element) =>
+    fixture.debugElement.queryAll(By.directive(MatTooltip)).find(d => d.nativeElement === native)?.injector.get(MatTooltip).message;
+  const doneOn = (iso: string) => formatDate(iso, askDayFormat(iso), 'en-US');
+
+  it('shows the ask a link opened the item for, once Chime In has loaded', fakeAsync(() => {
+    setup(helpedAsks, 3);
+    tick();
+    fixture.detectChanges();
+
+    const card = element.querySelector<HTMLElement>('.details-chime [data-ask-id="3"]')!;
+    // The setup's flush() already ran the highlight's timer; the card keeps focus.
+    expect(document.activeElement).toBe(card);
+  }));
+
+  it('shows nothing until someone has helped', fakeAsync(() => {
+    setup([makeAsk({ id: 1, state: AskState.Pending }), makeAsk({ id: 2, state: AskState.Declined })]);
+
+    expect(element.querySelector('.helped-by')).toBeNull();
+  }));
+
+  it('lists who helped under Assignee, latest first, with what they did on hover', fakeAsync(() => {
+    setup();
+
+    const block = element.querySelector('.helped-by')!;
+    expect(block.querySelector('.helped-by-label')!.textContent).toBe('Helped by');
+    expect(block.querySelector('ul')!.getAttribute('aria-labelledby')).toBe('helped-by-label');
+    // Right after the Assignee field.
+    const assignee = Array.from(element.querySelectorAll('mat-form-field')).find(f => f.textContent!.includes('Assignee'))!;
+    expect(assignee.nextElementSibling).toBe(block);
+
+    const [hale, ada] = people();
+    expect(people().length).toBe(2);
+    expect(hale.querySelector('.helped-by-initials')!.textContent).toBe('HH');
+    expect(hale.querySelector('.helped-by-name')!.textContent).toBe('Hale Helper');
+    expect(hale.querySelector('.helped-by-count')!.textContent!.trim()).toBe('· 2');
+    expect(hale.getAttribute('aria-label')).toBe('Hale Helper helped with 2 asks. Show in Chime In.');
+    expect(tooltipOn(hale)).toBe(
+      `“Check the index” - done ${doneOn('2026-10-22T10:00:00Z')}\n“Review the migration script” - done ${doneOn('2026-10-21T10:00:00Z')}`);
+
+    expect(ada.querySelector('.helped-by-name')!.textContent).toBe('Ada Lovelace');
+    expect(ada.querySelector('.helped-by-count')).toBeNull();
+    expect(ada.getAttribute('aria-label')).toBe('Ada Lovelace helped with 1 ask. Show in Chime In.');
+  }));
+
+  it('lists at most three asks on hover, then how many more', fakeAsync(() => {
+    setup([1, 2, 3, 4, 5].map(i => done(i, 'hale', 'Hale Helper', `Task ${i}`, `2026-10-1${i}T10:00:00Z`)));
+
+    const lines = tooltipOn(people()[0])!.split('\n');
+    expect(lines.length).toBe(4);
+    expect(lines[0]).toContain('Task 5');
+    expect(lines[3]).toBe('and 2 more');
+  }));
+
+  it('leaves out the assignee, who is responsible already', fakeAsync(() => {
+    setup();
+
+    component.form.patchValue({ assigneeId: 'hale' });
+    fixture.detectChanges();
+
+    expect(people().map(p => p.querySelector('.helped-by-name')!.textContent)).toEqual(['Ada Lovelace']);
+  }));
+
+  it('shows the person\'s latest done ask in Chime In, bringing the panel back when hidden', fakeAsync(() => {
+    setup();
+    const card = (askId: number) => element.querySelector<HTMLElement>(`.details-chime [data-ask-id="${askId}"]`)!;
+
+    people()[0].click();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(card(2));
+    expect(card(2).classList).toContain('revealed');
+    tick(BoardItemAsksComponent.REVEAL_HIGHLIGHT_MS);
+    fixture.detectChanges();
+    expect(card(2).classList).not.toContain('revealed');
+
+    element.querySelector<HTMLButtonElement>('.asks-hide')!.click();
+    fixture.detectChanges();
+    tick();
+    expect(component.chimeHidden).toBeTrue();
+
+    people()[1].click();
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+    expect(component.chimeHidden).toBeFalse();
+    expect(document.activeElement).toBe(card(3));
+    tick(BoardItemAsksComponent.REVEAL_HIGHLIGHT_MS);
   }));
 });

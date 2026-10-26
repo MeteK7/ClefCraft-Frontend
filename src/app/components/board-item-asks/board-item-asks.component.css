@@ -78,6 +78,16 @@
   font-weight: 500;
 }
 
+/* Where mat-form-field would put an end hint, typeset like one. */
+.ask-note-count {
+  margin-top: -4px;
+  padding: 0 16px;
+  text-align: right;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
 .ask-form-row {
   display: flex;
   flex-wrap: wrap;
@@ -124,6 +134,21 @@
 
 .ask-row.closed {
   opacity: 0.75;
+}
+
+/* A card brought here from "Helped by": a brief primary border, kept while focus is visible. */
+.ask-row {
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.ask-row:focus {
+  outline: none;
+}
+
+.ask-row.revealed,
+.ask-row:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
 }
 
 .ask-head {

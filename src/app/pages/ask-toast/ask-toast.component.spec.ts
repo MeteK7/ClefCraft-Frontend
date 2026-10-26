@@ -1,11 +1,11 @@
-import { AskEventPayload } from '../../_services/notification-realtime.service';
-import { askToastText } from './ask-toast.component';
+import { AskEventPayload, REQUIREMENT_WAIVED_REASON } from '../../_services/notification-realtime.service';
+import { askToastText, leadsToAsk } from './ask-toast.component';
 
 describe('askToastText', () => {
   const event = (overrides: Partial<AskEventPayload>): AskEventPayload => ({
     askId: 7, boardItemId: 1, boardId: 3, itemTitle: 'Implement RAG pipeline', event: 'Requested',
     actorFullName: 'Rae Requester', note: 'Share the dummy-data SQL', reason: null, actedOnBehalf: false,
-    replyId: null, replyExcerpt: null, ...overrides
+    replyId: null, replyExcerpt: null, occurredAt: '2026-10-25T10:00:00Z', ...overrides
   });
 
   it('says who asked, and what', () => {
@@ -36,5 +36,17 @@ describe('askToastText', () => {
 
   it('names a nudge', () => {
     expect(askToastText(event({ event: 'Nudged' })).headline).toBe('Rae Requester nudged you');
+  });
+
+  it('says when someone else waived the requirement on your ask', () => {
+    expect(askToastText(event({ event: 'Changed', reason: REQUIREMENT_WAIVED_REASON, actorFullName: 'Ada Assignee' })).headline)
+      .toBe('Ada Assignee waived the requirement on your ask');
+    expect(askToastText(event({ event: 'Changed' })).headline).toBe('Rae Requester changed what they asked');
+  });
+
+  it('leads to the ask, except for one that was withdrawn or closed', () => {
+    expect(leadsToAsk(event({ event: 'Requested' }))).toBeTrue();
+    expect(leadsToAsk(event({ event: 'Replied' }))).toBeTrue();
+    expect(leadsToAsk(event({ event: 'Cancelled', reason: 'Withdrawn' }))).toBeFalse();
   });
 });

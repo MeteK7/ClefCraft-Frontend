@@ -2,10 +2,11 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { ThemeService } from '../../services/theme.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
+import { WaitingTrayComponent } from '../waiting-tray/waiting-tray.component';
 
 @Component({
     selector: 'app-header',
-    imports: [MatTooltipModule, MatIconModule],
+    imports: [MatTooltipModule, MatIconModule, WaitingTrayComponent],
     templateUrl: './header.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './header.component.css'

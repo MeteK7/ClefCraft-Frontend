@@ -1,5 +1,5 @@
 // models/board.model.ts
-import { AskClosure, AskSummary } from './board-item-ask.model';
+import { AskAttention, AskClosure, AskSummary } from './board-item-ask.model';
 
 export interface Board {
   id: number;
@@ -69,6 +69,9 @@ export interface Item {
 
   /** The card's ask counts; only the board load (GetBoardItemsByBoardId) fills it. */
   askSummary?: AskSummary;
+
+  /** How many of the item's asks are the current user's move; only the board load fills it. */
+  askAttention?: AskAttention;
 }
 
 /**

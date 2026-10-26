@@ -32,13 +32,21 @@ export interface AskEventPayload {
     event: string;
     actorFullName: string;
     note: string;
-    /** The decline reason, or the cancel reason (Withdrawn, ItemCompleted, RecipientRemoved). */
+    /**
+     * The decline reason, or the cancel reason (Withdrawn, ItemCompleted, RecipientRemoved), or
+     * RequirementWaived on a Changed event that only waived the requirement.
+     */
     reason: string | null;
     actedOnBehalf: boolean;
     /** A Replied event, or a Completed one sent with its answer. */
     replyId: number | null;
     replyExcerpt: string | null;
+    /** When it happened (UTC, ISO). With askId and event, it identifies the event across tabs. */
+    occurredAt: string;
 }
+
+/** AskEventPayload.reason on a Changed event that only waived the requirement. */
+export const REQUIREMENT_WAIVED_REASON = 'RequirementWaived';
 
 // Retry delays for (re)connecting after the first start() failed or after SignalR's own automatic
 // reconnect gave up: 2 s, 4 s, 8 s, 16 s, then every 30 s for as long as the user is signed in.
@@ -55,10 +63,17 @@ export class NotificationRealtimeService implements OnDestroy {
     private reminderSubject = new Subject<ReminderPayload>();
     private mentionSubject = new Subject<MentionPayload>();
     private askEventSubject = new Subject<AskEventPayload>();
+    private connectedSubject = new Subject<void>();
 
     public reminders$: Observable<ReminderPayload> = this.reminderSubject.asObservable();
     public mentions$: Observable<MentionPayload> = this.mentionSubject.asObservable();
     public askEvents$: Observable<AskEventPayload> = this.askEventSubject.asObservable();
+
+    /**
+     * Each time the connection is (re)established. Pushes sent while it was down are lost, so this
+     * is when to refetch anything kept current by them.
+     */
+    public connected$: Observable<void> = this.connectedSubject.asObservable();
 
     // start()/stop() are async and SignalR rejects start() unless fully Disconnected, so a quick
     // logout -> login must wait for the stop to finish. Chaining transitions guarantees that.
@@ -123,6 +138,8 @@ export class NotificationRealtimeService implements OnDestroy {
                 this.scheduleRetry();
             }
         });
+
+        this.hubConnection.onreconnected(() => this.connectedSubject.next());
     }
 
     private startConnection(): void {
@@ -162,6 +179,7 @@ export class NotificationRealtimeService implements OnDestroy {
         try {
             await this.hubConnection.start();
             this.retryAttempt = 0;
+            this.connectedSubject.next();
         } catch (err) {
             console.error('Could not connect to Notification Hub:', err);
             this.scheduleRetry();

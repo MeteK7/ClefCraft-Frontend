@@ -39,11 +39,19 @@
         </mat-form-field>
       }
 
-      <mat-form-field appearance="outline" class="w-100">
+      <!-- The counter describes the note instead of being a mat-hint: the hint area is a live
+           region, which would read the count on every keystroke. Nearing the limit is announced
+           once per threshold instead (onNoteInput). -->
+      <mat-form-field appearance="outline" class="w-100" subscriptSizing="dynamic">
         <mat-label>What do you need?</mat-label>
-        <input matInput formControlName="note" [maxlength]="noteMaxLength" placeholder="Review the migration script" />
-        <mat-hint align="end">{{ form.value.note?.length ?? 0 }} / {{ noteMaxLength }}</mat-hint>
+        <input matInput formControlName="note" [maxlength]="noteMaxLength" placeholder="Review the migration script"
+          [aria-describedby]="noteCountId" (input)="onNoteInput($event)" />
       </mat-form-field>
+      @let noteLength = form.value.note?.length ?? 0;
+      <div class="ask-note-count" [id]="noteCountId">
+        <span aria-hidden="true">{{ noteLength }} / {{ noteMaxLength }}</span>
+        <span class="visually-hidden">{{ noteLength }} of {{ noteMaxLength }} characters</span>
+      </div>
 
       <div class="ask-form-row">
         <mat-form-field appearance="outline" class="ask-due">
@@ -81,7 +89,9 @@
 
   <ul class="ask-list">
     @for (ask of asks; track ask.id) {
-      <li class="ask-row" [class.closed]="!ask.isOpen && !ask.isUnmetRequirement" [attr.data-ask-id]="ask.id">
+      <!-- Focusable from code only: "Helped by" beside the item's fields brings a card here. -->
+      <li class="ask-row" [class.closed]="!ask.isOpen && !ask.isUnmetRequirement" [class.revealed]="revealedAskId === ask.id"
+        [attr.data-ask-id]="ask.id" tabindex="-1">
         <div class="ask-head">
           <div class="ask-line">
             <!-- Who it's between, from the viewer's side: "Asked Ayse", "From Rae", or "Rae → Ayse". -->

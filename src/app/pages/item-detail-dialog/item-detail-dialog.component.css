@@ -138,6 +138,74 @@
   color: var(--warning-text);
 }
 
+/* "Helped by" under Assignee: information, not a field. Each person opens their latest done ask
+   in Chime In. */
+.helped-by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0 0 12px 2px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.helped-by-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.helped-by-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px 8px 2px 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.helped-by-person:hover {
+  background: var(--surface-hover);
+}
+
+.helped-by-person:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.helped-by-initials {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.helped-by-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.helped-by-count {
+  color: var(--text-secondary);
+}
+
 /* Unsaved Changes Banner Styling */
 .unsaved-banner {
   display: flex;

@@ -12,7 +12,7 @@ import {
   ChangeDetectionStrategy
 } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogConfig, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
-import { CommonModule } from '@angular/common';
+import { CommonModule, formatDate } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSelectModule } from '@angular/material/select';
@@ -29,9 +29,19 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, map, of, switchMap } from 'rxjs';
 
 import { Column, Item, ItemUpdate, Priority, Status, Tag } from '../../models/board.model';
-import { AskClosure, AskSummary, askErrorMessage, toAskSummary } from '../../models/board-item-ask.model';
+import {
+  AskAttention,
+  AskClosure,
+  AskContributor,
+  AskSummary,
+  askDayFormat,
+  askErrorMessage,
+  replyExcerpt,
+  toAskSummary
+} from '../../models/board-item-ask.model';
 import { AskCompletionService } from '../../_services/ask-completion.service';
 import { BoardItemAskService } from '../../_services/board-item-ask.service';
+import { AskAttentionService } from '../../_services/ask-attention.service';
 import { BoardItemAsksComponent } from '../../components/board-item-asks/board-item-asks.component';
 import { isCompletedStatus } from '../../relationship-engine/analytics/finish-before';
 import { BoardService } from '../../_services/board.service';
@@ -39,7 +49,6 @@ import { CalendarService } from '../../_services/calendar.service';
 import { Assignee } from '../../models/assignee.model';
 import { CalendarEventUI } from '../../models/calendar-event.model-ui';
 import { UserService } from '../../_services/user.service';
-import { AuthService } from '../../_services/auth.service';
 import { RelationshipHubComponent } from '../../components/relationship-hub/relationship-hub.component';
 import { HistoryTimelineComponent } from '../../components/history-timeline/history-timeline.component';
 import { CommentThreadComponent } from '../../components/comment-thread/comment-thread.component';
@@ -71,6 +80,9 @@ const DIALOG_WIDE_WIDTH = DIALOG_BASE_WIDTH + CHIME_SEPARATOR_SPACE + CHIME_RAIL
  */
 export const RAIL_LAYOUT_MIN_CONTENT = 1024;
 
+/** How many of a person's done asks "Helped by" lists on hover before "and N more". */
+const CONTRIBUTOR_TOOLTIP_ASKS = 3;
+
 /** How Board and Home open the dialog; the dialog sets its own width (it follows Chime In). */
 export const ITEM_DIALOG_CONFIG = {
   height: '100vh',
@@ -87,6 +99,8 @@ export interface ItemDetailDialogData {
   columns?: Column[];
   /** set when opened from a mention notification/deep link — selects the Comments tab and scrolls to it */
   focusCommentId?: number | null;
+  /** set when opened from an ask link (a toast, "Waiting for you"): shows that ask in Chime In */
+  focusAskId?: number | null;
 }
 
 @Component({
@@ -132,11 +146,25 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
   /** The item's ask counts as the Chime In panel last loaded them; null until it has. */
   askSummary: AskSummary | null = null;
 
+  /** Who helped, as the Chime In panel last loaded it: the recipients of done asks. */
+  private allContributors: AskContributor[] = [];
+
+  @ViewChild(BoardItemAsksComponent) private asksPanel?: BoardItemAsksComponent;
+
   /**
    * Emits whenever the item's asks were (re)loaded, so the board can update the card while the
    * dialog is still open. The board subscribes through the dialog ref.
    */
   @Output() askSummaryChange = new EventEmitter<AskSummary>();
+
+  /** How many of the item's asks are the user's move, after every load, for the card's marker. */
+  @Output() askAttentionChange = new EventEmitter<AskAttention>();
+
+  /** As the Chime In panel last loaded it; null until it has. */
+  askAttention: AskAttention | null = null;
+
+  /** The linked ask still to show once the panel has loaded. */
+  private pendingFocusAskId: number | null = null;
 
   /** True while creating a brand new item rather than editing an existing one. */
   get isNewItem(): boolean {
@@ -214,8 +242,6 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
     this.resizeObserver.observe(element);
   }
 
-  private readonly currentUserId: string | null;
-
   constructor(
     public dialogRef: MatDialogRef<ItemDetailDialogComponent, ItemDetailDialogResult>,
     @Inject(MAT_DIALOG_DATA) public data: ItemDetailDialogData,
@@ -229,9 +255,9 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private zone: NgZone,
     private host: ElementRef<HTMLElement>,
-    authService: AuthService
+    private askAttentionService: AskAttentionService
   ) {
-    this.currentUserId = authService.getUserId();
+    this.pendingFocusAskId = data.focusAskId ?? null;
     this.applyDialogWidth();
   }
 
@@ -332,9 +358,9 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
     return this.askSummary?.openCount ?? 0;
   }
 
-  /** Open asks the current user is asked to help with. */
+  /** The item's asks that are the current user's move, as the server decides it (AskTurn). */
   get chimeWaitingCount(): number {
-    return this.askSummary?.openAsks.filter(a => a.recipientUserId === this.currentUserId).length ?? 0;
+    return this.askAttention?.yourMove ?? 0;
   }
 
   get chimeRevealLabel(): string {
@@ -417,6 +443,70 @@ export class ItemDetailDialogComponent implements OnInit, OnDestroy {
   onAskSummaryChange(summary: AskSummary): void {
     this.askSummary = summary;
     this.askSummaryChange.emit(summary);
+  }
+
+  onAskAttentionChange(attention: AskAttention): void {
+    this.askAttention = attention;
+    this.askAttentionChange.emit(attention);
+    // The user's own actions send them no push: recount "Waiting for you" after each load.
+    this.askAttentionService.refresh();
+
+    // Opened from an ask link: show it once the panel has its cards.
+    if (this.pendingFocusAskId !== null) {
+      const askId = this.pendingFocusAskId;
+      this.pendingFocusAskId = null;
+      setTimeout(() => this.showAsk(askId));
+    }
+  }
+
+  onContributorsChange(contributors: AskContributor[]): void {
+    this.allContributors = contributors;
+  }
+
+  /**
+   * "Helped by" under Assignee: who contributed through Chime In. The assignee is left out, since
+   * being responsible for the item already covers what they did.
+   */
+  get contributors(): AskContributor[] {
+    const assigneeId = this.form.value.assigneeId;
+    return this.allContributors.filter(c => c.userId !== assigneeId);
+  }
+
+  /** What they did, newest first: up to three asks, quoted as asked, then how many more. */
+  contributorTooltip(contributor: AskContributor): string {
+    const shown = contributor.asks.slice(0, CONTRIBUTOR_TOOLTIP_ASKS).map(ask =>
+      `“${replyExcerpt(ask.note, 60)}” - done ${formatDate(ask.completedAt, askDayFormat(ask.completedAt), 'en-US')}`);
+    const more = contributor.asks.length - shown.length;
+    return [...shown, ...(more > 0 ? [`and ${more} more`] : [])].join('\n');
+  }
+
+  /** "System User" → "SU": the first letters of the first and last names. */
+  initials(fullName: string): string {
+    const words = fullName.trim().split(/\s+/).filter(Boolean);
+    const letters = words.length > 1 ? [words[0], words[words.length - 1]] : words;
+    return letters.map(w => w[0]).join('').toUpperCase();
+  }
+
+  contributorLabel(contributor: AskContributor): string {
+    const count = contributor.asks.length;
+    return `${contributor.fullName} helped with ${count === 1 ? '1 ask' : `${count} asks`}. Show in Chime In.`;
+  }
+
+  /** Shows the person's latest done ask in Chime In, bringing the panel back if it's hidden. */
+  showContribution(contributor: AskContributor): void {
+    this.showAsk(contributor.asks[0].askId);
+  }
+
+  /** Brings an ask's card into view and focus, showing Chime In first if it's hidden. */
+  showAsk(askId: number): void {
+    if (!this.chimeHidden) {
+      this.asksPanel?.revealAsk(askId);
+      return;
+    }
+    this.chimeHidden = false;
+    this.applyDialogWidth();
+    // Once the panel shows again.
+    setTimeout(() => this.asksPanel?.revealAsk(askId));
   }
 
   /** Open asks or unmet requirements, but nobody responsible for the item. */
