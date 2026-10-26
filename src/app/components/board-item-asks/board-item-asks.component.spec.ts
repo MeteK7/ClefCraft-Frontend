@@ -105,7 +105,7 @@ describe('BoardItemAsksComponent', () => {
   const day = (iso: string) => formatDate(iso, askDayFormat(iso), 'en-US');
   /** The facts on an ask's status line, as read. */
   const statusParts = (askId: number) =>
-    Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status > span`)).map(s => squash(s.textContent));
+    Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status-summary > span`)).map(s => squash(s.textContent));
 
   it('loads the item\'s asks and emits their summary for the card', fakeAsync(() => {
     const summaries = setup([makeAsk({ id: 1, state: AskState.Pending }), makeAsk({ id: 2, state: AskState.Declined, isRequired: true })]);
@@ -438,7 +438,7 @@ describe('BoardItemAsksComponent', () => {
 
   describe('Details in place of the summary', () => {
     const summaryParts = (askId: number) =>
-      Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status > :not(.ask-details-toggle)`));
+      Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status-summary > *`));
     const toggleOf = (askId: number) => element().querySelector<HTMLButtonElement>(`[data-ask-id="${askId}"] .ask-details-toggle`)!;
     function toggle(askId: number): void {
       toggleOf(askId).click();
@@ -458,6 +458,19 @@ describe('BoardItemAsksComponent', () => {
       toggle(1);
       expect(statusParts(1)).toEqual([`Asked ${day('2026-10-10T09:05:00Z')}`]);
       expect(toggleOf(1)).toBe(button);
+    });
+
+    it('keeps the toggle in its own column of the status line, apart from the summary, open or closed', () => {
+      setup([makeAsk({ id: 3, state: AskState.Declined, respondedAt: '2026-10-11T08:30:00Z', responseNote: 'Out this week' })]);
+      const row = element().querySelector('[data-ask-id="3"] .ask-status')!;
+      const inItsColumn = () =>
+        toggleOf(3).parentElement === row && row.lastElementChild === toggleOf(3) && !toggleOf(3).closest('.ask-status-summary');
+
+      expect(inItsColumn()).toBeTrue();
+      toggle(3);
+      expect(inItsColumn()).toBeTrue();
+      toggle(3);
+      expect(inItsColumn()).toBeTrue();
     });
 
     it('shows the decline reason, who marked it done and the due date only once, inside Details', () => {
