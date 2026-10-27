@@ -132,25 +132,32 @@
         <p class="ask-note">{{ ask.note }}</p>
 
         <!-- Where the ask stands, in one line; its key dates are a click away. Times are in the
-             viewer's own timezone (the API sends UTC instants). -->
+             viewer's own timezone (the API sends UTC instants). While Details is open it says
+             all of this with exact times, so the summary is left out. The toggle has its own
+             column, on the first line at the right, so it stays put whether the summary wraps,
+             shows or not (the same element, so focus stays on it). -->
         <p class="ask-meta ask-status">
-          @for (part of statusLine(ask); track $index) {
-            <span class="ask-status-part">{{ part.label }}@if (part.iso) {&nbsp;<ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: part.iso }" />}</span>
-          }
-          @if (ask.state === AskState.Declined && ask.responseNote) {
-            <span class="ask-reason" [matTooltip]="ask.responseNote">“{{ ask.responseNote }}”</span>
-          }
-          @if (markedBy(ask); as by) {
-            <span class="ask-marked">marked by {{ by }}</span>
-          }
-          @if (ask.dueDate && ask.isOpen) {
-            <span class="ask-due-on">
-              Due {{ ask.dueDate | date: dayFormat(ask.dueDate) }}
-              @if (isDueAfterItem(ask.dueDate)) {
-                <mat-icon class="ask-warning-icon" matTooltip="Due after the item itself">schedule</mat-icon>
+          <span class="ask-status-summary">
+            @if (!isDetailsOpen(ask)) {
+              @for (part of statusLine(ask); track $index) {
+                <span class="ask-status-part">{{ part.label }}@if (part.iso) {&nbsp;<ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: part.iso }" />}</span>
               }
-            </span>
-          }
+              @if (ask.state === AskState.Declined && ask.responseNote) {
+                <span class="ask-reason" [matTooltip]="ask.responseNote">“{{ ask.responseNote }}”</span>
+              }
+              @if (markedBy(ask); as by) {
+                <span class="ask-marked">marked by {{ by }}</span>
+              }
+              @if (ask.dueDate && ask.isOpen) {
+                <span class="ask-due-on">
+                  Due {{ ask.dueDate | date: dayFormat(ask.dueDate) }}
+                  @if (isDueAfterItem(ask.dueDate)) {
+                    <mat-icon class="ask-warning-icon" matTooltip="Due after the item itself">schedule</mat-icon>
+                  }
+                </span>
+              }
+            }
+          </span>
           <button type="button" class="ask-details-toggle" [attr.aria-expanded]="isDetailsOpen(ask)"
             [attr.aria-controls]="'ask-dates-' + ask.id" (click)="toggleDetails(ask)">
             Details<mat-icon aria-hidden="true">{{ isDetailsOpen(ask) ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -177,7 +184,12 @@
               @if (ask.dueDate) {
                 <div class="ask-key-date">
                   <dt>Due</dt>
-                  <dd>{{ ask.dueDate | date: dayFormat(ask.dueDate) }}</dd>
+                  <dd>
+                    {{ ask.dueDate | date: dayFormat(ask.dueDate) }}
+                    @if (ask.isOpen && isDueAfterItem(ask.dueDate)) {
+                      <mat-icon class="ask-warning-icon" matTooltip="Due after the item itself">schedule</mat-icon>
+                    }
+                  </dd>
                 </div>
               }
             </dl>

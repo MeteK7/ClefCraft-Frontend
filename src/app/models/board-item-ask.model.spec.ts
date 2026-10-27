@@ -367,6 +367,38 @@ describe('board-item-ask model', () => {
       expect(dates.map(d => d.label)).toEqual(['Asked', 'Last nudged', 'Accepted', 'Done']);
     });
 
+    it('dates a cancel when the ask records it, and keeps each reason\'s wording', () => {
+      const cancelledAt = '2026-10-26T21:43:00Z';
+      expect(askStatusLine(makeAsk({ state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn, cancelledAt })))
+        .toEqual([{ label: 'Withdrawn', iso: cancelledAt }]);
+      expect(askStatusLine(makeAsk({ state: AskState.Cancelled, cancelReason: AskCancelReason.ItemCompleted, cancelledAt })))
+        .toEqual([{ label: 'Closed when the item was completed', iso: cancelledAt }]);
+      expect(askStatusLine(makeAsk({ state: AskState.Cancelled, cancelReason: AskCancelReason.RecipientRemoved, cancelledAt })))
+        .toEqual([{ label: 'Closed: the recipient left the board', iso: cancelledAt }]);
+    });
+
+    it('lists the cancel among the key dates, with who did it, in time order', () => {
+      const dates = askKeyDates(makeAsk({
+        state: AskState.Cancelled,
+        cancelReason: AskCancelReason.Withdrawn,
+        dateCreated: '2026-10-26T21:42:00Z',
+        respondedAt: '2026-10-26T21:42:30Z',
+        cancelledAt: '2026-10-26T21:43:00Z',
+        cancelledByFullName: 'Rae Requester'
+      }));
+
+      expect(dates.map(d => [d.label, d.iso, d.by])).toEqual([
+        ['Asked', '2026-10-26T21:42:00Z', 'Rae Requester'],
+        ['Accepted', '2026-10-26T21:42:30Z', 'Ayse Recipient'],
+        ['Withdrawn', '2026-10-26T21:43:00Z', 'Rae Requester']
+      ]);
+    });
+
+    it('leaves the cancel out of the key dates when the ask doesn\'t record when', () => {
+      const dates = askKeyDates(makeAsk({ state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn }));
+      expect(dates.map(d => d.label)).toEqual(['Asked']);
+    });
+
     it('shows the decline with its reason, and only what the ask records', () => {
       const dates = askKeyDates(makeAsk({ state: AskState.Declined, respondedAt: '2026-10-19T09:29:00Z', responseNote: 'Out this week' }));
 
