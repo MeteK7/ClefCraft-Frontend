@@ -225,45 +225,60 @@
   white-space: pre-line;
 }
 
+/* The summary wraps in its own column; the Details toggle has the other, on the first line at the
+   right edge, so the summary's length, or its absence while Details is open, never moves it. Every
+   line is --ask-status-line high, the toggle's box included, so it lines up with the first one. */
 .ask-meta {
+  --ask-status-line: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 8px;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: var(--ask-status-line);
+  color: var(--text-secondary);
+}
+
+.ask-status-summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 2px 0;
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
+  min-width: 0;
 }
 
-.ask-meta > span {
+.ask-status-summary > span {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-height: var(--ask-status-line);
 }
 
-.ask-meta > span + span::before {
+.ask-status-summary > span + span::before {
   content: "·";
   margin: 0 6px;
 }
 
 /* Each fact keeps its words together, so a wrapped line never starts mid-fact. */
-.ask-status > span {
+.ask-status-summary > span {
   white-space: nowrap;
 }
 
 /* A decline reason stays on one line; the full text is on hover and under Details. */
-.ask-status > .ask-reason {
+.ask-status-summary > .ask-reason {
   display: inline-block;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: var(--ask-status-line);
 }
 
 .ask-details-toggle {
   display: inline-flex;
   align-items: center;
-  margin-left: auto;
+  height: var(--ask-status-line);
   padding: 0 0 0 8px;
   border: 0;
   background: none;
@@ -308,6 +323,10 @@
 .ask-key-dates dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.ask-key-dates dd .ask-warning-icon {
+  vertical-align: middle;
 }
 
 .ask-full-history {

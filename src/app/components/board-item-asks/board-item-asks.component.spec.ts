@@ -105,7 +105,7 @@ describe('BoardItemAsksComponent', () => {
   const day = (iso: string) => formatDate(iso, askDayFormat(iso), 'en-US');
   /** The facts on an ask's status line, as read. */
   const statusParts = (askId: number) =>
-    Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status > span`)).map(s => squash(s.textContent));
+    Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status-summary > span`)).map(s => squash(s.textContent));
 
   it('loads the item\'s asks and emits their summary for the card', fakeAsync(() => {
     const summaries = setup([makeAsk({ id: 1, state: AskState.Pending }), makeAsk({ id: 2, state: AskState.Declined, isRequired: true })]);
@@ -434,6 +434,90 @@ describe('BoardItemAsksComponent', () => {
 
     element().querySelector<HTMLButtonElement>('#ask-dates-1 .ask-full-history')!.click();
     expect(history).toHaveBeenCalledTimes(1);
+  });
+
+  describe('Details in place of the summary', () => {
+    const summaryParts = (askId: number) =>
+      Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status-summary > *`));
+    const toggleOf = (askId: number) => element().querySelector<HTMLButtonElement>(`[data-ask-id="${askId}"] .ask-details-toggle`)!;
+    function toggle(askId: number): void {
+      toggleOf(askId).click();
+      fixture.detectChanges();
+    }
+
+    it('keeps only the toggle on the summary line while Details is open, and brings the summary back', () => {
+      setup([makeAsk({ id: 1, dateCreated: '2026-10-10T09:05:00Z' })]);
+      const button = toggleOf(1);
+      expect(statusParts(1)).toEqual([`Asked ${day('2026-10-10T09:05:00Z')}`]);
+
+      toggle(1);
+      expect(summaryParts(1)).toEqual([]);
+      expect(toggleOf(1)).toBe(button);
+      expect(Array.from(element().querySelectorAll('#ask-dates-1 dt')).map(dt => dt.textContent!.trim())).toEqual(['Asked']);
+
+      toggle(1);
+      expect(statusParts(1)).toEqual([`Asked ${day('2026-10-10T09:05:00Z')}`]);
+      expect(toggleOf(1)).toBe(button);
+    });
+
+    it('keeps the toggle in its own column of the status line, apart from the summary, open or closed', () => {
+      setup([makeAsk({ id: 3, state: AskState.Declined, respondedAt: '2026-10-11T08:30:00Z', responseNote: 'Out this week' })]);
+      const row = element().querySelector('[data-ask-id="3"] .ask-status')!;
+      const inItsColumn = () =>
+        toggleOf(3).parentElement === row && row.lastElementChild === toggleOf(3) && !toggleOf(3).closest('.ask-status-summary');
+
+      expect(inItsColumn()).toBeTrue();
+      toggle(3);
+      expect(inItsColumn()).toBeTrue();
+      toggle(3);
+      expect(inItsColumn()).toBeTrue();
+    });
+
+    it('shows the decline reason, who marked it done and the due date only once, inside Details', () => {
+      setup([
+        makeAsk({ id: 3, state: AskState.Declined, respondedAt: '2026-10-11T08:30:00Z', responseNote: 'Out this week' }),
+        makeAsk({
+          id: 4, state: AskState.Completed, completedAt: '2026-10-12T15:45:00Z',
+          completedByUserId: 'closer', completedByFullName: 'Kemal Closer'
+        }),
+        makeAsk({ id: 5, state: AskState.Accepted, respondedAt: '2026-10-11T08:30:00Z', dueDate: '2026-11-02T00:00:00Z' })
+      ]);
+      expect(element().querySelector('[data-ask-id="3"] .ask-status .ask-reason')).not.toBeNull();
+      expect(element().querySelector('[data-ask-id="4"] .ask-status .ask-marked')).not.toBeNull();
+      expect(element().querySelector('[data-ask-id="5"] .ask-status .ask-due-on')).not.toBeNull();
+
+      for (const id of [3, 4, 5]) toggle(id);
+
+      for (const id of [3, 4, 5]) expect(summaryParts(id)).withContext(`ask ${id}`).toEqual([]);
+      expect(squash(element().querySelector('#ask-dates-3')!.textContent)).toContain('“Out this week”');
+      expect(squash(element().querySelector('#ask-dates-4')!.textContent)).toContain('Kemal Closer');
+      expect(squash(element().querySelector('#ask-dates-5')!.textContent)).toContain('Due');
+    });
+
+    it('warns in the Details Due row when an open ask is due after the item', () => {
+      setup([makeAsk({ id: 5, state: AskState.Accepted, respondedAt: '2026-10-11T08:30:00Z', dueDate: '2026-11-02T00:00:00Z' })]);
+      toggle(5);
+
+      const dueRow = Array.from(element().querySelectorAll('#ask-dates-5 .ask-key-date')).find(row => row.querySelector('dt')!.textContent!.trim() === 'Due')!;
+      expect(dueRow.querySelector('.ask-warning-icon')).not.toBeNull();
+    });
+
+    it('dates a withdrawn ask on the summary line and in Details', () => {
+      const cancelledAt = '2026-10-10T09:30:00Z';
+      setup([makeAsk({
+        id: 6, state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn, dateCreated: '2026-10-10T09:05:00Z',
+        cancelledAt, cancelledByUserId: 'requester', cancelledByFullName: 'Rae Requester'
+      })]);
+      expect(statusParts(6)).toEqual([`Withdrawn ${day(cancelledAt)}`]);
+
+      toggle(6);
+      const rows = Array.from(element().querySelectorAll('#ask-dates-6 .ask-key-date'))
+        .map(row => [squash(row.querySelector('dt')!.textContent), squash(row.querySelector('dd')!.textContent)]);
+      expect(rows).toEqual([
+        ['Asked', `${exact('2026-10-10T09:05:00Z')} · Rae Requester`],
+        ['Withdrawn', `${exact(cancelledAt)} · Rae Requester`]
+      ]);
+    });
   });
 
   it('keeps a decline reason to one line, with the full text on hover', () => {
