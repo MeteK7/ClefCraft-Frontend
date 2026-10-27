@@ -89,6 +89,10 @@ export interface BoardItemAsk {
   completedByUserId: string | null;
   completedByFullName: string | null;
   cancelReason: AskCancelReason | null;
+  /** When it was cancelled, and by whom; null while it isn't, or for a cancel with no record of it. */
+  cancelledAt: string | null;
+  cancelledByUserId: string | null;
+  cancelledByFullName: string | null;
   /** When the ask was made: its age. Never reset by edits or nudges. */
   dateCreated: string;
   lastNudgedAt: string | null;
@@ -374,14 +378,16 @@ export function askStatusLine(ask: BoardItemAsk): AskStatusPart[] {
     case AskState.Completed:
       return [{ label: 'Done', iso: ask.completedAt }];
     case AskState.Cancelled:
-      return [{
-        label: ask.cancelReason === AskCancelReason.ItemCompleted
-          ? 'Closed when the item was completed'
-          : ask.cancelReason === AskCancelReason.RecipientRemoved
-            ? 'Closed: the recipient left the board'
-            : 'Withdrawn',
-        iso: null
-      }];
+      return [{ label: cancelLabel(ask), iso: ask.cancelledAt }];
+  }
+}
+
+/** How a cancelled ask ended, by its cancel reason. */
+export function cancelLabel(ask: BoardItemAsk): string {
+  switch (ask.cancelReason) {
+    case AskCancelReason.ItemCompleted: return 'Closed when the item was completed';
+    case AskCancelReason.RecipientRemoved: return 'Closed: the recipient left the board';
+    default: return 'Withdrawn';
   }
 }
 
@@ -396,7 +402,8 @@ export interface AskKeyDate {
 
 /**
  * The dates the ask records, oldest first: asked, the latest nudge, the latest accept or decline,
- * and done. Earlier nudges and reopen cycles aren't kept on the ask; the item's History has them.
+ * and done or cancelled. Earlier nudges and reopen cycles aren't kept on the ask; the item's
+ * History has them.
  */
 export function askKeyDates(ask: BoardItemAsk): AskKeyDate[] {
   const dates: AskKeyDate[] = [{ label: 'Asked', iso: ask.dateCreated, by: ask.requestedByFullName, note: null }];
@@ -415,6 +422,9 @@ export function askKeyDates(ask: BoardItemAsk): AskKeyDate[] {
   }
   if (ask.completedAt && ask.state === AskState.Completed) {
     dates.push({ label: 'Done', iso: ask.completedAt, by: ask.completedByFullName, note: null });
+  }
+  if (ask.cancelledAt && ask.state === AskState.Cancelled) {
+    dates.push({ label: cancelLabel(ask), iso: ask.cancelledAt, by: ask.cancelledByFullName, note: null });
   }
 
   return dates.sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime());
