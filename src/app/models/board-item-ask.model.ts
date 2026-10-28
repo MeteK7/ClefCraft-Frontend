@@ -242,6 +242,15 @@ export function newestFirst(asks: readonly BoardItemAsk[]): BoardItemAsk[] {
 }
 
 /**
+ * Whether the rail lists an ask with the active ones: it's open (pending or accepted), or it's an
+ * unmet requirement, as the server says (required and not done, whatever its state: a declined
+ * or withdrawn one still needs asking again or waiving). Everything else is closed.
+ */
+export function isActiveAsk(ask: BoardItemAsk): boolean {
+  return ask.isOpen || ask.isUnmetRequirement;
+}
+
+/**
  * Who helped with an item: the recipients of its done asks, whoever marked them done. Declined,
  * withdrawn and waived asks don't count, nor do replies alone. People come in order of their
  * latest contribution.
