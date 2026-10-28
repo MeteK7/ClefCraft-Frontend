@@ -16,17 +16,24 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
-/* Dialogs, and the buttons in them, are half as rounded as Material's defaults: the surface goes
-   from 28px to 14px, and full-pill buttons (20px on a 40px button, 16px on a 32px one) to 10px
-   and, for text buttons, mostly 32px tall, 8px. Icon buttons stay round. */
-.mat-mdc-dialog-container {
-  --mat-dialog-container-shape: 14px;
-  --mat-button-filled-container-shape: 10px;
-  --mat-button-outlined-container-shape: 10px;
-  --mat-button-protected-container-shape: 10px;
-  --mat-button-tonal-container-shape: 10px;
-  --mat-button-text-container-shape: 8px;
+/* Every dialog's corners: 30% less rounded than Material's 28px. The dialog surface clips its
+   content, so this is the corner every dialog shows, whatever its own container sets. */
+:root {
+  --mat-dialog-container-shape: 20px;
 }
+
+/* Buttons inside dialogs: 30% less rounded than Material's full pill, i.e. 70% of half their
+   height, from each button's own height token (40px by default; Chime In's card actions are 32px,
+   a reply's Copy 28px), so every size keeps the same proportion. Icon buttons and FABs stay
+   circles. Declared on the button itself, where its height token resolves. */
+.mat-mdc-dialog-container .mat-mdc-button-base:not(.mat-mdc-icon-button, .mat-mdc-fab, .mat-mdc-mini-fab, .mat-mdc-extended-fab) {
+  --mat-button-text-container-shape: calc(var(--mat-button-text-container-height, 40px) * 0.35);
+  --mat-button-filled-container-shape: calc(var(--mat-button-filled-container-height, 40px) * 0.35);
+  --mat-button-outlined-container-shape: calc(var(--mat-button-outlined-container-height, 40px) * 0.35);
+  --mat-button-protected-container-shape: calc(var(--mat-button-protected-container-height, 40px) * 0.35);
+  --mat-button-tonal-container-shape: calc(var(--mat-button-tonal-container-height, 40px) * 0.35);
+}
+
 /* Remove Material's own snackbar chrome */
 .clean-reminder-viewport-override .mdc-snackbar__surface {
   padding: 0 !important;

@@ -16,8 +16,7 @@
   overflow: hidden;
 
   background: var(--surface);
-  /* The dialog surface's own rounding (styles.css), so the two corners always match. */
-  border-radius: var(--mat-dialog-container-shape, 14px);
+  border-radius: 12px;
 }
 
 /* Header UI Elements */
