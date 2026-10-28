@@ -11,11 +11,19 @@
     }
   </div>
 
-  <!-- Some of the item's asks wait on the viewer (AskTurn on the server): icon and words, not colour alone. -->
+  <!-- Some of the item's asks wait on the viewer (AskTurn on the server). Deliberately the loudest
+       thing on the card, so a pending move is hard to ignore and clearing it is felt: words and
+       shape, not colour alone. Screen readers get the sentence instead of the graphic. -->
   @if (yourMove > 0) {
     <div class="your-move">
-      <mat-icon aria-hidden="true">front_hand</mat-icon>
-      <span aria-hidden="true">Your move@if (yourMove > 1) { · {{ yourMove }}}</span>
+      <span class="your-move-signal" aria-hidden="true">
+        <span class="your-move-stripe"></span><span class="your-move-stripe"></span>
+        <span class="your-move-banner"><span>Your move</span></span>
+        @if (yourMove > 1) {
+          <span class="your-move-count">{{ countLabel }}</span>
+        }
+        <span class="your-move-bar"></span><span class="your-move-bar"></span><span class="your-move-bar"></span>
+      </span>
       <span class="visually-hidden">Your move on {{ yourMove === 1 ? '1 ask' : yourMove + ' asks' }}</span>
     </div>
   }
