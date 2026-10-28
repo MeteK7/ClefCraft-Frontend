@@ -994,7 +994,12 @@
 
 /* ==================== AGENDA VIEW ==================== */
 
+/* Scrolls on its own like the week and day views: the host clips (overflow: hidden), so without
+   this the agenda past the first screen couldn't be reached. */
 .agenda-view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 0 0 2rem;
 }
 

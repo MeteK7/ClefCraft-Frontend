@@ -60,6 +60,9 @@ body.dark-theme {
   --your-move-count-edge: #3d3d3d;
   --your-move-count-text: #ffdb5c;
 
+  /* Every scrollbar's thumb (styles.css): a soft tint of the secondary text colour. */
+  --scrollbar-thumb: color-mix(in srgb, var(--text-secondary) 45%, transparent);
+
   --success-light: #1b3320;
   --success-text: #81c995;
 

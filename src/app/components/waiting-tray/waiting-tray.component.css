@@ -56,7 +56,6 @@
    strip that cuts through rounded corners. The list scrolls in .tray-scroll instead, below the
    title and above a bottom padding as deep as the radius, so its scrollbar never reaches a curve. */
 .tray-panel {
-  --tray-scrollbar: color-mix(in srgb, var(--text-secondary) 45%, transparent);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -76,9 +75,8 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  /* Thin and themed like every scrollbar (styles.css); the gutter keeps rows from shifting. */
   scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: var(--tray-scrollbar) transparent;
 }
 
 .tray-panel:focus {

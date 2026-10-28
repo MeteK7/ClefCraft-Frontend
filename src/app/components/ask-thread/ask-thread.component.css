@@ -132,10 +132,12 @@
   background: var(--surface-2);
 }
 
+/* Inset by the block's radius, so its scrollbar ends where the bottom corners start to curve; the
+   text keeps its 10px from the border (6px margin + 4px padding). */
 .reply-code pre {
-  margin: 0;
-  padding: 8px 10px;
-  padding-right: 84px;
+  margin: 0 6px;
+  padding: 8px 4px;
+  padding-right: 78px;
   overflow-x: auto;
   white-space: pre;
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;

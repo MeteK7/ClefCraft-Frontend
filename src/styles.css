@@ -7,6 +7,14 @@
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+/* One scrollbar for the whole app, as the "Waiting for you" tray set it: thin, its thumb tinted
+   from the theme's text colour (--scrollbar-thumb), no visible track. scrollbar-color inherits
+   but scrollbar-width doesn't, so both are set on every element, overlays and dialogs included. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
 /* Remove Material's own snackbar chrome */
 .clean-reminder-viewport-override .mdc-snackbar__surface {
   padding: 0 !important;
