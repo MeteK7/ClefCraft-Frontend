@@ -15,6 +15,18 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
+
+/* Dialogs, and the buttons in them, are half as rounded as Material's defaults: the surface goes
+   from 28px to 14px, and full-pill buttons (20px on a 40px button, 16px on a 32px one) to 10px
+   and, for text buttons, mostly 32px tall, 8px. Icon buttons stay round. */
+.mat-mdc-dialog-container {
+  --mat-dialog-container-shape: 14px;
+  --mat-button-filled-container-shape: 10px;
+  --mat-button-outlined-container-shape: 10px;
+  --mat-button-protected-container-shape: 10px;
+  --mat-button-tonal-container-shape: 10px;
+  --mat-button-text-container-shape: 8px;
+}
 /* Remove Material's own snackbar chrome */
 .clean-reminder-viewport-override .mdc-snackbar__surface {
   padding: 0 !important;
