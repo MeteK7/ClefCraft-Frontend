@@ -7,6 +7,33 @@
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+/* One scrollbar for the whole app, as the "Waiting for you" tray set it: thin, its thumb tinted
+   from the theme's text colour (--scrollbar-thumb), no visible track. scrollbar-color inherits
+   but scrollbar-width doesn't, so both are set on every element, overlays and dialogs included. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+/* Every dialog's corners: 30% less rounded than Material's 28px. The dialog surface clips its
+   content, so this is the corner every dialog shows, whatever its own container sets. */
+:root {
+  --mat-dialog-container-shape: 20px;
+}
+
+/* Buttons inside dialogs: 30% less rounded than Material's full pill, i.e. 70% of half their
+   height, from each button's own height token (40px by default; Chime In's card actions are 32px,
+   a reply's Copy 28px), so every size keeps the same proportion. Icon buttons and FABs stay
+   circles. Declared on the button itself, where its height token resolves. */
+.mat-mdc-dialog-container .mat-mdc-button-base:not(.mat-mdc-icon-button, .mat-mdc-fab, .mat-mdc-mini-fab, .mat-mdc-extended-fab) {
+  --mat-button-text-container-shape: calc(var(--mat-button-text-container-height, 40px) * 0.35);
+  --mat-button-filled-container-shape: calc(var(--mat-button-filled-container-height, 40px) * 0.35);
+  --mat-button-outlined-container-shape: calc(var(--mat-button-outlined-container-height, 40px) * 0.35);
+  --mat-button-protected-container-shape: calc(var(--mat-button-protected-container-height, 40px) * 0.35);
+  --mat-button-tonal-container-shape: calc(var(--mat-button-tonal-container-height, 40px) * 0.35);
+}
+
 /* Remove Material's own snackbar chrome */
 .clean-reminder-viewport-override .mdc-snackbar__surface {
   padding: 0 !important;

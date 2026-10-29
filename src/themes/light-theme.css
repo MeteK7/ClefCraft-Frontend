@@ -62,6 +62,9 @@
   --your-move-count-bg: #1c1c1c;
   --your-move-count-edge: #1c1c1c;
   --your-move-count-text: #ffdb5c;
+
+  /* Every scrollbar's thumb (styles.css): a soft tint of the secondary text colour. */
+  --scrollbar-thumb: color-mix(in srgb, var(--text-secondary) 45%, transparent);
   
   --graph-canvas-start: #eef1f6;
   --graph-canvas-mid: #e4e9f2;
