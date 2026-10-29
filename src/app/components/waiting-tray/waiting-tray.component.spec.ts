@@ -90,6 +90,25 @@ describe('WaitingTrayComponent', () => {
     expect(count()).toBe(3);
   }));
 
+  it('keeps the title above the list, which scrolls on its own inside the rounded panel', fakeAsync(() => {
+    setup(3);
+    button()!.click();
+    fixture.detectChanges();
+    tick();
+
+    const title = panel()!.querySelector('.tray-title')!;
+    const scroll = panel()!.querySelector('.tray-scroll')!;
+    expect(title.parentElement).toBe(panel());
+    expect(scroll.parentElement).toBe(panel());
+    expect(scroll.contains(title)).toBeFalse();
+    expect(scroll.querySelectorAll('.tray-board').length).toBe(2);
+    expect(scroll.querySelectorAll('.tray-row').length).toBe(3);
+    expect(getComputedStyle(panel()!).overflowY).toBe('hidden');
+    expect(getComputedStyle(scroll).overflowY).toBe('auto');
+    // Focus still opens on the first row, now inside the scrolling list.
+    expect(document.activeElement).toBe(scroll.querySelector('.tray-row'));
+  }));
+
   it('opens the item with the ask in view from a row, and closes', fakeAsync(() => {
     setup(1, [asks[0]]);
     const router = TestBed.inject(Router);
