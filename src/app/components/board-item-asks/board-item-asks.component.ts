@@ -10,7 +10,8 @@ import {
   QueryList,
   SimpleChanges,
   ViewChildren,
-  ChangeDetectionStrategy
+  ChangeDetectionStrategy,
+  ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
@@ -60,6 +61,7 @@ import {
   isNudgeTooSoonError,
   isWithinDay,
   limitThresholds,
+  isActiveAsk,
   newestFirst,
   timeAgo,
   toAskAttention,
@@ -221,6 +223,13 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
   private nudgeReloadTimer: ReturnType<typeof setTimeout> | null = null;
 
   asks: BoardItemAsk[] = [];
+  /** The rail's two lists, each newest first: active asks, then closed ones (isActiveAsk). */
+  activeAsks: BoardItemAsk[] = [];
+  closedAsks: BoardItemAsk[] = [];
+  /** The closed list is folded until opened; the choice lasts while the dialog is open. */
+  closedOpen = false;
+  readonly closedListId = `ask-closed-${nextAsksPanelId++}`;
+  readonly isActive = isActiveAsk;
   isLoading = false;
   isBusy = false;
   errorMessage: string | null = null;
@@ -245,6 +254,7 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     private openAskItems: OpenAskItemsService,
     private host: ElementRef<HTMLElement>,
     private liveAnnouncer: LiveAnnouncer,
+    private changeDetector: ChangeDetectorRef,
     authService: AuthService,
     fb: FormBuilder
   ) {
@@ -314,6 +324,11 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
 
   /** Brings an ask's card into view and focuses it, e.g. from "Helped by" beside the item's fields. */
   revealAsk(askId: number): void {
+    // A link (a toast, the tray, "Helped by") can point at a closed ask: unfold it first.
+    if (!this.closedOpen && this.closedAsks.some(a => a.id === askId)) {
+      this.closedOpen = true;
+      this.changeDetector.detectChanges();
+    }
     const card = this.host.nativeElement.querySelector<HTMLElement>(`[data-ask-id="${askId}"]`);
     if (!card) return;
     card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -334,9 +349,14 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
     this.isLoading = true;
     this.askService.getForItem(this.itemId).subscribe({
       next: asks => {
+        const wasActive = new Map(this.asks.map(a => [a.id, isActiveAsk(a)]));
+        const focusedAskId = this.focusedActiveCardAskId();
         // The server sends them oldest first; the rail shows the newest first.
         this.asks = newestFirst(asks);
+        this.activeAsks = this.asks.filter(isActiveAsk);
+        this.closedAsks = this.asks.filter(a => !isActiveAsk(a));
         this.isLoading = false;
+        this.followCardThatClosed(focusedAskId, wasActive);
         this.summaryChange.emit(toAskSummary(asks));
         this.contributorsChange.emit(toContributors(asks));
         this.attentionChange.emit(toAskAttention(asks));
@@ -347,6 +367,35 @@ export class BoardItemAsksComponent implements OnInit, OnChanges, OnDestroy {
         this.errorMessage = askErrorMessage(error, 'The asks could not be loaded.');
       }
     });
+  }
+
+  toggleClosed(): void {
+    this.closedOpen = !this.closedOpen;
+  }
+
+  /** The ask whose active card holds focus (the card or a control in it); null otherwise. */
+  private focusedActiveCardAskId(): number | null {
+    const card = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-ask-id]');
+    if (!card || !this.host.nativeElement.contains(card) || card.closest(`#${this.closedListId}`)) return null;
+    return Number(card.dataset['askId']);
+  }
+
+  /**
+   * When the card holding focus has just moved from the active list to the closed one (it was
+   * withdrawn, marked done or declined), focus follows instead of falling to the page: to the card
+   * in its new place while the closed list is open, else to the "Closed · n" toggle. Announced
+   * once, for that move only; any other reload leaves focus alone.
+   */
+  private followCardThatClosed(focusedAskId: number | null, wasActive: Map<number, boolean>): void {
+    if (focusedAskId === null || wasActive.get(focusedAskId) !== true) return;
+    if (!this.closedAsks.some(a => a.id === focusedAskId)) return;
+
+    this.changeDetector.detectChanges();
+    const target = this.closedOpen
+      ? this.host.nativeElement.querySelector<HTMLElement>(`[data-ask-id="${focusedAskId}"]`)
+      : this.host.nativeElement.querySelector<HTMLElement>('.asks-closed-toggle');
+    target?.focus({ preventScroll: !this.closedOpen });
+    this.liveAnnouncer.announce('Moved to closed asks', 'polite');
   }
 
   /**

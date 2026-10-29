@@ -113,6 +113,59 @@
   color: var(--warning-text);
 }
 
+/* The folded closed list: display: flex would otherwise override the hidden attribute. */
+.ask-list[hidden] {
+  display: none;
+}
+
+/* "Closed · n": a plain row under a divider, between the active asks and the folded closed ones.
+   Label and count read as one phrase in the text colour; only the dot and the chevron are muted.
+   No box of any kind: the divider is its only line. */
+.asks-closed-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--divider);
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Folded, it's the panel's last row: keep some room below it. Open, the closed list follows. */
+.asks-closed-toggle[aria-expanded="false"] {
+  margin-bottom: 12px;
+}
+
+.asks-closed-dot {
+  margin: 0 6px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.asks-closed-toggle mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  color: var(--text-secondary);
+}
+
+.asks-closed-toggle:hover mat-icon {
+  color: var(--text);
+}
+
+.asks-closed-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .ask-list {
   display: flex;
   flex-direction: column;

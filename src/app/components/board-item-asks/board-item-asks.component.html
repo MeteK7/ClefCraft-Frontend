@@ -87,10 +87,34 @@
     <p class="asks-empty">Need a quick opinion or a hand? Ask someone on this board.</p>
   }
 
+  <!-- Active asks first: open ones, and declined or withdrawn ones still required (someone has to
+       ask again or waive). Closed ones fold away below a counted toggle, newest first in each. -->
   <ul class="ask-list">
-    @for (ask of asks; track ask.id) {
+    @for (ask of activeAsks; track ask.id) {
+      <ng-container [ngTemplateOutlet]="askCard" [ngTemplateOutletContext]="{ $implicit: ask }" />
+    }
+  </ul>
+
+  @if (asks.length > 0 && activeAsks.length === 0) {
+    <p class="asks-empty">No open asks.</p>
+  }
+
+  @if (closedAsks.length > 0) {
+    <button type="button" class="asks-closed-toggle" [attr.aria-expanded]="closedOpen"
+      [attr.aria-controls]="closedListId" (click)="toggleClosed()">
+      <span class="asks-closed-label">Closed</span><span class="asks-closed-dot" aria-hidden="true">·</span><span class="asks-closed-count">{{ closedAsks.length }}</span><mat-icon aria-hidden="true">{{ closedOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+    </button>
+    <!-- Hidden rather than removed, so a folded card keeps its open Details and reply draft. -->
+    <ul class="ask-list" [id]="closedListId" [hidden]="!closedOpen">
+      @for (ask of closedAsks; track ask.id) {
+        <ng-container [ngTemplateOutlet]="askCard" [ngTemplateOutletContext]="{ $implicit: ask }" />
+      }
+    </ul>
+  }
+
+  <ng-template #askCard let-ask>
       <!-- Focusable from code only: "Helped by" beside the item's fields brings a card here. -->
-      <li class="ask-row" [class.closed]="!ask.isOpen && !ask.isUnmetRequirement" [class.revealed]="revealedAskId === ask.id"
+      <li class="ask-row" [class.closed]="!isActive(ask)" [class.revealed]="revealedAskId === ask.id"
         [attr.data-ask-id]="ask.id" tabindex="-1">
         <div class="ask-head">
           <div class="ask-line">
@@ -246,8 +270,7 @@
           </div>
         }
       </li>
-    }
-  </ul>
+  </ng-template>
 
   <!-- One menu for every card; the trigger hands it the ask. -->
   <mat-menu #askMenu="matMenu" xPosition="before">

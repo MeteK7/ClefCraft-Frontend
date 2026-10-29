@@ -146,6 +146,173 @@ describe('BoardItemAsksComponent', () => {
     }));
   });
 
+  describe('active and closed asks', () => {
+    const on = (day: number) => `2026-10-${String(day).padStart(2, '0')}T09:00:00Z`;
+    const idsIn = (list: Element | null) => Array.from(list?.querySelectorAll<HTMLElement>('[data-ask-id]') ?? []).map(c => Number(c.dataset['askId']));
+    const activeList = () => element().querySelector('.ask-list');
+    const closedList = () => element().querySelector<HTMLElement>(`#${component.closedListId}`);
+    const closedToggle = () => element().querySelector<HTMLButtonElement>('.asks-closed-toggle');
+    const emptyNote = () => Array.from(element().querySelectorAll('.asks-empty')).map(p => squash(p.textContent));
+
+    it('lists open asks and unmet requirements first, the rest closed, each newest first', () => {
+      setup([
+        makeAsk({ id: 1, state: AskState.Pending, dateCreated: on(1) }),
+        makeAsk({ id: 2, state: AskState.Accepted, dateCreated: on(2) }),
+        makeAsk({ id: 3, state: AskState.Declined, isRequired: true, dateCreated: on(3) }),
+        makeAsk({ id: 4, state: AskState.Declined, dateCreated: on(4) }),
+        makeAsk({ id: 5, state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn, dateCreated: on(5) }),
+        makeAsk({ id: 6, state: AskState.Completed, isRequired: true, dateCreated: on(6) }),
+        makeAsk({ id: 7, state: AskState.Cancelled, cancelReason: AskCancelReason.RecipientRemoved, isRequired: true, dateCreated: on(7) })
+      ]);
+
+      // Declined or withdrawn but still required: someone still has to ask again or waive it.
+      expect(idsIn(activeList())).toEqual([7, 3, 2, 1]);
+      expect(idsIn(closedList())).toEqual([6, 5, 4]);
+    });
+
+    it('folds the closed asks under a counted toggle, opened and closed on demand', () => {
+      setup([
+        makeAsk({ id: 1, state: AskState.Pending, dateCreated: on(1) }),
+        makeAsk({ id: 2, state: AskState.Completed, dateCreated: on(2) }),
+        makeAsk({ id: 3, state: AskState.Declined, dateCreated: on(3) })
+      ]);
+
+      expect(squash(closedToggle()!.querySelector('.asks-closed-label')!.textContent)).toBe('Closed');
+      expect(squash(closedToggle()!.querySelector('.asks-closed-dot')!.textContent)).toBe('·');
+      expect(squash(closedToggle()!.querySelector('.asks-closed-count')!.textContent)).toBe('2');
+      // Read as "Closed 2": the dot and the chevron are decoration.
+      expect(closedToggle()!.querySelector('.asks-closed-dot')!.getAttribute('aria-hidden')).toBe('true');
+      expect(closedToggle()!.querySelector('mat-icon')!.getAttribute('aria-hidden')).toBe('true');
+      expect(closedToggle()!.getAttribute('aria-expanded')).toBe('false');
+      expect(closedToggle()!.getAttribute('aria-controls')).toBe(component.closedListId);
+      expect(closedList()!.hidden).toBeTrue();
+
+      closedToggle()!.click();
+      fixture.detectChanges();
+      expect(closedToggle()!.getAttribute('aria-expanded')).toBe('true');
+      expect(closedList()!.hidden).toBeFalse();
+
+      closedToggle()!.click();
+      fixture.detectChanges();
+      expect(closedList()!.hidden).toBeTrue();
+    });
+
+    it('shows no toggle when nothing is closed', () => {
+      setup([makeAsk({ id: 1, state: AskState.Pending })]);
+      expect(closedToggle()).toBeNull();
+      expect(closedList()).toBeNull();
+    });
+
+    it('says "No open asks." only when nothing is open and no requirement is unmet', () => {
+      setup([
+        makeAsk({ id: 1, state: AskState.Completed, dateCreated: on(1) }),
+        makeAsk({ id: 2, state: AskState.Declined, dateCreated: on(2) })
+      ]);
+      expect(emptyNote()).toEqual(['No open asks.']);
+      TestBed.resetTestingModule();
+
+      // A declined required ask is still active, so the rail has something open to show.
+      setup([
+        makeAsk({ id: 1, state: AskState.Completed, dateCreated: on(1) }),
+        makeAsk({ id: 2, state: AskState.Declined, isRequired: true, dateCreated: on(2) })
+      ]);
+      expect(emptyNote()).toEqual([]);
+      expect(idsIn(activeList())).toEqual([2]);
+    });
+
+    it('unfolds the closed asks to reveal one from a link', fakeAsync(() => {
+      setup([
+        makeAsk({ id: 1, state: AskState.Pending, dateCreated: on(1) }),
+        makeAsk({ id: 2, state: AskState.Completed, dateCreated: on(2) })
+      ]);
+
+      component.revealAsk(2);
+      fixture.detectChanges();
+
+      expect(component.closedOpen).toBeTrue();
+      expect(closedList()!.hidden).toBeFalse();
+      expect(row(2).classList).toContain('revealed');
+      expect(document.activeElement).toBe(row(2));
+      flush();
+    }));
+
+    describe('when an ask closes', () => {
+      const pending = (id: number, day: number) =>
+        makeAsk({ id, state: AskState.Pending, dateCreated: on(day), allowedActions: [AskAction.Cancel] });
+      const withdrawn = (id: number, day: number) =>
+        makeAsk({ id, state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn, dateCreated: on(day) });
+      let announce: jasmine.Spy;
+
+      function withdrawFromItsCard(id: number, reloaded: BoardItemAsk[]): void {
+        spyOn(TestBed.inject(MatDialog), 'open').and.returnValue({ afterClosed: () => of(true) } as never);
+        moreButton(id)!.focus();
+        component.act(component.asks.find(a => a.id === id)!, AskAction.Cancel);
+        httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/${id}/cancel`).flush(withdrawn(id, 0));
+        httpMock.expectOne(asksUrl).flush(reloaded);
+        fixture.detectChanges();
+      }
+
+      function reload(asks: BoardItemAsk[]): void {
+        component.load();
+        httpMock.expectOne(asksUrl).flush(asks);
+        fixture.detectChanges();
+      }
+
+      it('moves focus from the card that closed to the toggle, and says so once', () => {
+        setup([pending(1, 1), pending(2, 2)]);
+        announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+
+        withdrawFromItsCard(2, [pending(1, 1), withdrawn(2, 2)]);
+
+        expect(idsIn(closedList())).toEqual([2]);
+        expect(document.activeElement).toBe(closedToggle());
+        expect(announce.calls.allArgs()).toEqual([['Moved to closed asks', 'polite']]);
+
+        reload([pending(1, 1), withdrawn(2, 2)]);
+        expect(announce).toHaveBeenCalledTimes(1);
+      });
+
+      it('moves focus to the card in its new place while the closed asks are open', () => {
+        setup([pending(1, 1), pending(2, 2), withdrawn(3, 3)]);
+        announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+        closedToggle()!.click();
+        fixture.detectChanges();
+
+        withdrawFromItsCard(2, [pending(1, 1), withdrawn(2, 2), withdrawn(3, 3)]);
+
+        expect(document.activeElement).toBe(row(2));
+        expect(row(2).closest(`#${component.closedListId}`)).not.toBeNull();
+        expect(announce).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves focus alone when an ask closes that focus isn\'t in', () => {
+        setup([pending(1, 1), pending(2, 2)]);
+        announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+        moreButton(1)!.focus();
+
+        // Someone else withdrew ask 2: a realtime reload.
+        reload([pending(1, 1), withdrawn(2, 2)]);
+
+        expect(document.activeElement).toBe(moreButton(1));
+        expect(announce).not.toHaveBeenCalled();
+      });
+
+      it('leaves focus alone when it\'s outside the panel', () => {
+        setup([pending(1, 1)]);
+        announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+        const outside = document.createElement('button');
+        document.body.appendChild(outside);
+        outside.focus();
+
+        reload([withdrawn(1, 1)]);
+
+        expect(document.activeElement).toBe(outside);
+        expect(announce).not.toHaveBeenCalled();
+        outside.remove();
+      });
+    });
+  });
+
   it('reports who helped after every load, for the item dialog to show beside Assignee', fakeAsync(() => {
     const accepted = makeAsk({ id: 1, state: AskState.Accepted, recipientUserId: 'helper', recipientFullName: 'Hale Helper' });
     setup([accepted]);
@@ -1194,6 +1361,9 @@ describe('BoardItemAsksComponent', () => {
 
   it('opens the whole conversation from a count, with focus on the toggle', fakeAsync(() => {
     doneAsk(['recipient', 'recipient', 'requester'], 2);
+    // A done ask is closed: unfold the closed list so its controls can take focus.
+    element().querySelector<HTMLButtonElement>('.asks-closed-toggle')!.click();
+    fixture.detectChanges();
 
     rowButton(1, '.thread-gap').click();
     fixture.detectChanges();
