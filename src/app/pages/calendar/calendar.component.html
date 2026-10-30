@@ -144,7 +144,7 @@
                     </div>
                   }
                   @for (item of col.layoutItems; track item) {
-                    <div class="time-block-event" [style.top.px]="item.top"
+                    <div class="time-block-event" [class.compact]="item.height < COMPACT_BLOCK_HEIGHT" [style.top.px]="item.top"
                       [style.height.px]="item.height" [style.left.%]="item.left" [style.width.%]="item.width"
                       [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
                       (click)="onEventClicked(item.event, $event)" (mousedown)="startDrag($event, item, col.date)">
@@ -201,7 +201,7 @@
             </div>
           }
           @for (item of dayView.layoutItems; track item) {
-            <div class="time-block-event" [style.top.px]="item.top"
+            <div class="time-block-event" [class.compact]="item.height < COMPACT_BLOCK_HEIGHT" [style.top.px]="item.top"
               [style.height.px]="item.height" [style.left.%]="item.left" [style.width.%]="item.width"
               [ngStyle]="item.event.eventColor ? {'border-left': '6px solid ' + item.event.eventColor} : {}"
               (click)="onEventClicked(item.event, $event)" (mousedown)="startDrag($event, item, selectedDate)">
