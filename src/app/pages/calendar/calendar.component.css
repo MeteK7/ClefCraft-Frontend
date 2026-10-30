@@ -954,6 +954,31 @@
   opacity: 0.8;
 }
 
+/* Short events (e.g. 15 min = 20px) can't fit two lines: title and time share one line,
+   and the time gives way first so the title stays readable. */
+.time-block-event.compact {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  line-height: 16px;
+}
+
+.time-block-event.compact .time-block-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.time-block-event.compact .time-block-time {
+  flex: 0 1000 auto;
+  min-width: 0;
+  overflow: hidden;
+  margin-top: 0;
+}
+
 /* TODAY HIGHLIGHT */
 .week-day-header.today,
 .week-day-column.today {
