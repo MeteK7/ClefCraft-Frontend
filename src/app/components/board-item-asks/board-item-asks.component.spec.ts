@@ -1,8 +1,9 @@
 import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
 import { formatDate } from '@angular/common';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatTooltip } from '@angular/material/tooltip';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -19,12 +20,14 @@ import {
   AskReply,
   AskState,
   AskSummary,
+  AskTurnReason,
   BoardItemAsk,
   ASK_EXACT_TIME_FORMAT,
   askDayFormat,
   NUDGE_TOO_SOON_MESSAGE
 } from '../../models/board-item-ask.model';
 import { ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
+import { REASON_DIALOG_MESSAGE_ID, ReasonDialogData } from '../reason-dialog/reason-dialog.component';
 import { makeAsk } from '../../models/board-item-ask.testing';
 import { environment } from '../../../environments/environment';
 import { provideAppDateFormat } from '../../date-format';
@@ -102,7 +105,7 @@ describe('BoardItemAsksComponent', () => {
   const day = (iso: string) => formatDate(iso, askDayFormat(iso), 'en-US');
   /** The facts on an ask's status line, as read. */
   const statusParts = (askId: number) =>
-    Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status > span`)).map(s => squash(s.textContent));
+    Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status-summary > span`)).map(s => squash(s.textContent));
 
   it('loads the item\'s asks and emits their summary for the card', fakeAsync(() => {
     const summaries = setup([makeAsk({ id: 1, state: AskState.Pending }), makeAsk({ id: 2, state: AskState.Declined, isRequired: true })]);
@@ -111,6 +114,204 @@ describe('BoardItemAsksComponent', () => {
     expect(component.asks.length).toBe(2);
     expect(summaries).toEqual([jasmine.objectContaining({ openCount: 1, unmetRequiredCount: 1 })]);
   }));
+
+  describe('the order of the asks', () => {
+    const shownIds = () => Array.from(element().querySelectorAll<HTMLElement>('[data-ask-id]')).map(card => Number(card.dataset['askId']));
+    const asked = (id: number, day: number) => makeAsk({ id, dateCreated: `2026-10-0${day}T09:00:00Z` });
+
+    it('shows the newest ask first, though the server sends the oldest first', fakeAsync(() => {
+      const summaries = setup([asked(1, 1), asked(2, 3), asked(3, 2)]);
+      flush();
+
+      expect(shownIds()).toEqual([2, 3, 1]);
+      // What the panel reports doesn't depend on the order it shows.
+      expect(summaries).toEqual([jasmine.objectContaining({ openCount: 3 })]);
+    }));
+
+    it('puts a new ask on top after a realtime reload, and leaves the others where they were', fakeAsync(() => {
+      setup([asked(1, 1), asked(2, 2)]);
+      flush();
+      expect(shownIds()).toEqual([2, 1]);
+
+      askEvents$.next({
+        askId: 3, boardItemId: 10, boardId: 3, itemTitle: 'Release notes', event: 'Requested', actorFullName: 'Rae Requester',
+        note: 'Review the migration', reason: null, actedOnBehalf: false, replyId: null, replyExcerpt: null,
+        occurredAt: '2026-10-04T09:00:00Z'
+      });
+      httpMock.expectOne(asksUrl).flush([asked(1, 1), asked(2, 2), asked(3, 4)]);
+      fixture.detectChanges();
+      flush();
+
+      expect(shownIds()).toEqual([3, 2, 1]);
+    }));
+  });
+
+  describe('active and closed asks', () => {
+    const on = (day: number) => `2026-10-${String(day).padStart(2, '0')}T09:00:00Z`;
+    const idsIn = (list: Element | null) => Array.from(list?.querySelectorAll<HTMLElement>('[data-ask-id]') ?? []).map(c => Number(c.dataset['askId']));
+    const activeList = () => element().querySelector('.ask-list');
+    const closedList = () => element().querySelector<HTMLElement>(`#${component.closedListId}`);
+    const closedToggle = () => element().querySelector<HTMLButtonElement>('.asks-closed-toggle');
+    const emptyNote = () => Array.from(element().querySelectorAll('.asks-empty')).map(p => squash(p.textContent));
+
+    it('lists open asks and unmet requirements first, the rest closed, each newest first', () => {
+      setup([
+        makeAsk({ id: 1, state: AskState.Pending, dateCreated: on(1) }),
+        makeAsk({ id: 2, state: AskState.Accepted, dateCreated: on(2) }),
+        makeAsk({ id: 3, state: AskState.Declined, isRequired: true, dateCreated: on(3) }),
+        makeAsk({ id: 4, state: AskState.Declined, dateCreated: on(4) }),
+        makeAsk({ id: 5, state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn, dateCreated: on(5) }),
+        makeAsk({ id: 6, state: AskState.Completed, isRequired: true, dateCreated: on(6) }),
+        makeAsk({ id: 7, state: AskState.Cancelled, cancelReason: AskCancelReason.RecipientRemoved, isRequired: true, dateCreated: on(7) })
+      ]);
+
+      // Declined or withdrawn but still required: someone still has to ask again or waive it.
+      expect(idsIn(activeList())).toEqual([7, 3, 2, 1]);
+      expect(idsIn(closedList())).toEqual([6, 5, 4]);
+    });
+
+    it('folds the closed asks under a counted toggle, opened and closed on demand', () => {
+      setup([
+        makeAsk({ id: 1, state: AskState.Pending, dateCreated: on(1) }),
+        makeAsk({ id: 2, state: AskState.Completed, dateCreated: on(2) }),
+        makeAsk({ id: 3, state: AskState.Declined, dateCreated: on(3) })
+      ]);
+
+      expect(squash(closedToggle()!.querySelector('.asks-closed-label')!.textContent)).toBe('Closed');
+      expect(squash(closedToggle()!.querySelector('.asks-closed-dot')!.textContent)).toBe('·');
+      expect(squash(closedToggle()!.querySelector('.asks-closed-count')!.textContent)).toBe('2');
+      // Read as "Closed 2": the dot and the chevron are decoration.
+      expect(closedToggle()!.querySelector('.asks-closed-dot')!.getAttribute('aria-hidden')).toBe('true');
+      expect(closedToggle()!.querySelector('mat-icon')!.getAttribute('aria-hidden')).toBe('true');
+      expect(closedToggle()!.getAttribute('aria-expanded')).toBe('false');
+      expect(closedToggle()!.getAttribute('aria-controls')).toBe(component.closedListId);
+      expect(closedList()!.hidden).toBeTrue();
+
+      closedToggle()!.click();
+      fixture.detectChanges();
+      expect(closedToggle()!.getAttribute('aria-expanded')).toBe('true');
+      expect(closedList()!.hidden).toBeFalse();
+
+      closedToggle()!.click();
+      fixture.detectChanges();
+      expect(closedList()!.hidden).toBeTrue();
+    });
+
+    it('shows no toggle when nothing is closed', () => {
+      setup([makeAsk({ id: 1, state: AskState.Pending })]);
+      expect(closedToggle()).toBeNull();
+      expect(closedList()).toBeNull();
+    });
+
+    it('says "No open asks." only when nothing is open and no requirement is unmet', () => {
+      setup([
+        makeAsk({ id: 1, state: AskState.Completed, dateCreated: on(1) }),
+        makeAsk({ id: 2, state: AskState.Declined, dateCreated: on(2) })
+      ]);
+      expect(emptyNote()).toEqual(['No open asks.']);
+      TestBed.resetTestingModule();
+
+      // A declined required ask is still active, so the rail has something open to show.
+      setup([
+        makeAsk({ id: 1, state: AskState.Completed, dateCreated: on(1) }),
+        makeAsk({ id: 2, state: AskState.Declined, isRequired: true, dateCreated: on(2) })
+      ]);
+      expect(emptyNote()).toEqual([]);
+      expect(idsIn(activeList())).toEqual([2]);
+    });
+
+    it('unfolds the closed asks to reveal one from a link', fakeAsync(() => {
+      setup([
+        makeAsk({ id: 1, state: AskState.Pending, dateCreated: on(1) }),
+        makeAsk({ id: 2, state: AskState.Completed, dateCreated: on(2) })
+      ]);
+
+      component.revealAsk(2);
+      fixture.detectChanges();
+
+      expect(component.closedOpen).toBeTrue();
+      expect(closedList()!.hidden).toBeFalse();
+      expect(row(2).classList).toContain('revealed');
+      expect(document.activeElement).toBe(row(2));
+      flush();
+    }));
+
+    describe('when an ask closes', () => {
+      const pending = (id: number, day: number) =>
+        makeAsk({ id, state: AskState.Pending, dateCreated: on(day), allowedActions: [AskAction.Cancel] });
+      const withdrawn = (id: number, day: number) =>
+        makeAsk({ id, state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn, dateCreated: on(day) });
+      let announce: jasmine.Spy;
+
+      function withdrawFromItsCard(id: number, reloaded: BoardItemAsk[]): void {
+        spyOn(TestBed.inject(MatDialog), 'open').and.returnValue({ afterClosed: () => of(true) } as never);
+        moreButton(id)!.focus();
+        component.act(component.asks.find(a => a.id === id)!, AskAction.Cancel);
+        httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/${id}/cancel`).flush(withdrawn(id, 0));
+        httpMock.expectOne(asksUrl).flush(reloaded);
+        fixture.detectChanges();
+      }
+
+      function reload(asks: BoardItemAsk[]): void {
+        component.load();
+        httpMock.expectOne(asksUrl).flush(asks);
+        fixture.detectChanges();
+      }
+
+      it('moves focus from the card that closed to the toggle, and says so once', () => {
+        setup([pending(1, 1), pending(2, 2)]);
+        announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+
+        withdrawFromItsCard(2, [pending(1, 1), withdrawn(2, 2)]);
+
+        expect(idsIn(closedList())).toEqual([2]);
+        expect(document.activeElement).toBe(closedToggle());
+        expect(announce.calls.allArgs()).toEqual([['Moved to closed asks', 'polite']]);
+
+        reload([pending(1, 1), withdrawn(2, 2)]);
+        expect(announce).toHaveBeenCalledTimes(1);
+      });
+
+      it('moves focus to the card in its new place while the closed asks are open', () => {
+        setup([pending(1, 1), pending(2, 2), withdrawn(3, 3)]);
+        announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+        closedToggle()!.click();
+        fixture.detectChanges();
+
+        withdrawFromItsCard(2, [pending(1, 1), withdrawn(2, 2), withdrawn(3, 3)]);
+
+        expect(document.activeElement).toBe(row(2));
+        expect(row(2).closest(`#${component.closedListId}`)).not.toBeNull();
+        expect(announce).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves focus alone when an ask closes that focus isn\'t in', () => {
+        setup([pending(1, 1), pending(2, 2)]);
+        announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+        moreButton(1)!.focus();
+
+        // Someone else withdrew ask 2: a realtime reload.
+        reload([pending(1, 1), withdrawn(2, 2)]);
+
+        expect(document.activeElement).toBe(moreButton(1));
+        expect(announce).not.toHaveBeenCalled();
+      });
+
+      it('leaves focus alone when it\'s outside the panel', () => {
+        setup([pending(1, 1)]);
+        announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+        const outside = document.createElement('button');
+        document.body.appendChild(outside);
+        outside.focus();
+
+        reload([withdrawn(1, 1)]);
+
+        expect(document.activeElement).toBe(outside);
+        expect(announce).not.toHaveBeenCalled();
+        outside.remove();
+      });
+    });
+  });
 
   it('reports who helped after every load, for the item dialog to show beside Assignee', fakeAsync(() => {
     const accepted = makeAsk({ id: 1, state: AskState.Accepted, recipientUserId: 'helper', recipientFullName: 'Hale Helper' });
@@ -132,6 +333,22 @@ describe('BoardItemAsksComponent', () => {
     flush();
 
     expect(reported).toEqual([[], ['Hale Helper']]);
+  }));
+
+  it('reports how many asks are the viewer\'s move after every load, as the server says', fakeAsync(() => {
+    setup([
+      makeAsk({ id: 1, state: AskState.Pending, yourMove: AskTurnReason.Respond }),
+      makeAsk({ id: 2, state: AskState.Pending })
+    ]);
+    const reported: number[] = [];
+    component.attentionChange.subscribe(a => reported.push(a.yourMove));
+    flush();
+
+    component.load();
+    httpMock.expectOne(asksUrl).flush([makeAsk({ id: 1, state: AskState.Accepted, yourMove: AskTurnReason.Deliver })]);
+    flush();
+
+    expect(reported).toEqual([1]);
   }));
 
   it('brings an ask\'s card into view and focus, highlighted briefly', fakeAsync(() => {
@@ -226,6 +443,100 @@ describe('BoardItemAsksComponent', () => {
     httpMock.expectNone(() => true);
   });
 
+  // ---- Reasons: an in-app dialog, never window.prompt ------------------------------------------
+
+  /** Opens the reason dialog through MatDialog.open; returns its config and the answer to give. */
+  function spyOnReasonDialog(): { config: () => MatDialogConfig<ReasonDialogData>; answer: Subject<string | undefined> } {
+    const answer = new Subject<string | undefined>();
+    const open = spyOn(TestBed.inject(MatDialog), 'open').and.returnValue({ afterClosed: () => answer } as never);
+    return { config: () => open.calls.mostRecent().args[1] as MatDialogConfig<ReasonDialogData>, answer };
+  }
+
+  beforeEach(() => spyOn(window, 'prompt').and.throwError('window.prompt must not be used'));
+
+  it('asks why in a dialog before declining, and sends the reason', () => {
+    setup([makeAsk({ id: 7, revision: 3, allowedActions: [AskAction.Decline] })], 'recipient');
+    const dialog = spyOnReasonDialog();
+
+    inlineButton('Decline').click();
+
+    const config = dialog.config();
+    expect(config.data).toEqual({
+      title: 'Decline this ask?',
+      message: 'Rae Requester asked you:',
+      quote: 'Review the migration',
+      label: 'Why you\'re declining (optional)',
+      hint: 'Everyone on this board will see this on the ask.',
+      confirmLabel: 'Decline',
+      maxLength: 500
+    });
+    expect(config.disableClose).toBeTrue();
+    expect(config.ariaDescribedBy).toBe(REASON_DIALOG_MESSAGE_ID);
+    httpMock.expectNone(`${environment.apiUrl}/BoardItemAsks/7/decline`);
+
+    dialog.answer.next('Out this week');
+    expect(httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/7/decline`).request.body)
+      .toEqual({ expectedRevision: 3, reason: 'Out this week' });
+    expect(window.prompt).not.toHaveBeenCalled();
+  });
+
+  it('declines without a reason when none is given, and not at all when cancelled', () => {
+    setup([makeAsk({ id: 7, revision: 3, allowedActions: [AskAction.Decline] })], 'recipient');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.Decline);
+    dialog.answer.next(undefined);
+    httpMock.expectNone(`${environment.apiUrl}/BoardItemAsks/7/decline`);
+
+    dialog.answer.next('');
+    expect(httpMock.expectOne(`${environment.apiUrl}/BoardItemAsks/7/decline`).request.body)
+      .toEqual({ expectedRevision: 3, reason: null });
+  });
+
+  it('asks why in a dialog before waiving a requirement, and sends the reason', () => {
+    setup([makeAsk({ id: 7, revision: 3, isRequired: true, dueDate: null, allowedActions: [AskAction.WaiveRequirement] })], 'requester');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.WaiveRequirement);
+
+    expect(dialog.config().data).toEqual({
+      title: 'Waive the requirement?',
+      message: 'The item can then be completed without waiting for Ayse Recipient.',
+      quote: 'Review the migration',
+      label: 'Why it\'s no longer required (optional)',
+      hint: 'Everyone on this board will see this in the item\'s history.',
+      confirmLabel: 'Waive',
+      maxLength: 500
+    });
+    expect(dialog.config().disableClose).toBeTrue();
+
+    dialog.answer.next('Signed off in person');
+    expect(httpMock.expectOne(r => r.method === 'PUT' && r.url === `${environment.apiUrl}/BoardItemAsks/7`).request.body)
+      .toEqual({ expectedRevision: 3, note: 'Review the migration', dueDate: null, isRequired: false, waiveReason: 'Signed off in person' });
+  });
+
+  it('waives without a reason when none is given, and not at all when cancelled', () => {
+    setup([makeAsk({ id: 7, revision: 3, isRequired: true, allowedActions: [AskAction.WaiveRequirement] })], 'requester');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.WaiveRequirement);
+    dialog.answer.next(undefined);
+    httpMock.expectNone(r => r.method === 'PUT');
+
+    dialog.answer.next('');
+    expect(httpMock.expectOne(r => r.method === 'PUT').request.body.waiveReason).toBeNull();
+  });
+
+  it('quotes a long note in one line, cut at 80 characters', () => {
+    const note = 'Check the migration '.repeat(10).trim();
+    setup([makeAsk({ id: 7, note, allowedActions: [AskAction.Decline] })], 'recipient');
+    const dialog = spyOnReasonDialog();
+
+    component.act(component.asks[0], AskAction.Decline);
+
+    expect(dialog.config().data!.quote).toBe(note.slice(0, 80).trimEnd() + '…');
+  });
+
   it('says where each ask stands in one line: its state and when, nothing more', () => {
     const asked = '2026-10-10T09:05:00Z';
     const respondedAt = '2026-10-11T08:30:00Z';
@@ -290,6 +601,90 @@ describe('BoardItemAsksComponent', () => {
 
     element().querySelector<HTMLButtonElement>('#ask-dates-1 .ask-full-history')!.click();
     expect(history).toHaveBeenCalledTimes(1);
+  });
+
+  describe('Details in place of the summary', () => {
+    const summaryParts = (askId: number) =>
+      Array.from(element().querySelectorAll(`[data-ask-id="${askId}"] .ask-status-summary > *`));
+    const toggleOf = (askId: number) => element().querySelector<HTMLButtonElement>(`[data-ask-id="${askId}"] .ask-details-toggle`)!;
+    function toggle(askId: number): void {
+      toggleOf(askId).click();
+      fixture.detectChanges();
+    }
+
+    it('keeps only the toggle on the summary line while Details is open, and brings the summary back', () => {
+      setup([makeAsk({ id: 1, dateCreated: '2026-10-10T09:05:00Z' })]);
+      const button = toggleOf(1);
+      expect(statusParts(1)).toEqual([`Asked ${day('2026-10-10T09:05:00Z')}`]);
+
+      toggle(1);
+      expect(summaryParts(1)).toEqual([]);
+      expect(toggleOf(1)).toBe(button);
+      expect(Array.from(element().querySelectorAll('#ask-dates-1 dt')).map(dt => dt.textContent!.trim())).toEqual(['Asked']);
+
+      toggle(1);
+      expect(statusParts(1)).toEqual([`Asked ${day('2026-10-10T09:05:00Z')}`]);
+      expect(toggleOf(1)).toBe(button);
+    });
+
+    it('keeps the toggle in its own column of the status line, apart from the summary, open or closed', () => {
+      setup([makeAsk({ id: 3, state: AskState.Declined, respondedAt: '2026-10-11T08:30:00Z', responseNote: 'Out this week' })]);
+      const row = element().querySelector('[data-ask-id="3"] .ask-status')!;
+      const inItsColumn = () =>
+        toggleOf(3).parentElement === row && row.lastElementChild === toggleOf(3) && !toggleOf(3).closest('.ask-status-summary');
+
+      expect(inItsColumn()).toBeTrue();
+      toggle(3);
+      expect(inItsColumn()).toBeTrue();
+      toggle(3);
+      expect(inItsColumn()).toBeTrue();
+    });
+
+    it('shows the decline reason, who marked it done and the due date only once, inside Details', () => {
+      setup([
+        makeAsk({ id: 3, state: AskState.Declined, respondedAt: '2026-10-11T08:30:00Z', responseNote: 'Out this week' }),
+        makeAsk({
+          id: 4, state: AskState.Completed, completedAt: '2026-10-12T15:45:00Z',
+          completedByUserId: 'closer', completedByFullName: 'Kemal Closer'
+        }),
+        makeAsk({ id: 5, state: AskState.Accepted, respondedAt: '2026-10-11T08:30:00Z', dueDate: '2026-11-02T00:00:00Z' })
+      ]);
+      expect(element().querySelector('[data-ask-id="3"] .ask-status .ask-reason')).not.toBeNull();
+      expect(element().querySelector('[data-ask-id="4"] .ask-status .ask-marked')).not.toBeNull();
+      expect(element().querySelector('[data-ask-id="5"] .ask-status .ask-due-on')).not.toBeNull();
+
+      for (const id of [3, 4, 5]) toggle(id);
+
+      for (const id of [3, 4, 5]) expect(summaryParts(id)).withContext(`ask ${id}`).toEqual([]);
+      expect(squash(element().querySelector('#ask-dates-3')!.textContent)).toContain('“Out this week”');
+      expect(squash(element().querySelector('#ask-dates-4')!.textContent)).toContain('Kemal Closer');
+      expect(squash(element().querySelector('#ask-dates-5')!.textContent)).toContain('Due');
+    });
+
+    it('warns in the Details Due row when an open ask is due after the item', () => {
+      setup([makeAsk({ id: 5, state: AskState.Accepted, respondedAt: '2026-10-11T08:30:00Z', dueDate: '2026-11-02T00:00:00Z' })]);
+      toggle(5);
+
+      const dueRow = Array.from(element().querySelectorAll('#ask-dates-5 .ask-key-date')).find(row => row.querySelector('dt')!.textContent!.trim() === 'Due')!;
+      expect(dueRow.querySelector('.ask-warning-icon')).not.toBeNull();
+    });
+
+    it('dates a withdrawn ask on the summary line and in Details', () => {
+      const cancelledAt = '2026-10-10T09:30:00Z';
+      setup([makeAsk({
+        id: 6, state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn, dateCreated: '2026-10-10T09:05:00Z',
+        cancelledAt, cancelledByUserId: 'requester', cancelledByFullName: 'Rae Requester'
+      })]);
+      expect(statusParts(6)).toEqual([`Withdrawn ${day(cancelledAt)}`]);
+
+      toggle(6);
+      const rows = Array.from(element().querySelectorAll('#ask-dates-6 .ask-key-date'))
+        .map(row => [squash(row.querySelector('dt')!.textContent), squash(row.querySelector('dd')!.textContent)]);
+      expect(rows).toEqual([
+        ['Asked', `${exact('2026-10-10T09:05:00Z')} · Rae Requester`],
+        ['Withdrawn', `${exact(cancelledAt)} · Rae Requester`]
+      ]);
+    });
   });
 
   it('keeps a decline reason to one line, with the full text on hover', () => {
@@ -431,6 +826,84 @@ describe('BoardItemAsksComponent', () => {
     expect(element().querySelector<HTMLInputElement>('input[formcontrolname="note"]')!.value).toBe('Review the migration and the seed');
     flush();
   }));
+
+  describe('the note counter', () => {
+    const noteInput = () => element().querySelector<HTMLInputElement>('input[formcontrolname="note"]')!;
+    const noteCount = () => element().querySelector<HTMLElement>('.ask-note-count')!;
+    function typeNote(length: number): void {
+      noteInput().value = 'x'.repeat(length);
+      noteInput().dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    }
+    function openNewAsk(): void {
+      element().querySelector<HTMLButtonElement>('.ask-someone')!.click();
+      fixture.detectChanges();
+    }
+    let announce: jasmine.Spy;
+    const announced = () => announce.calls.allArgs();
+
+    function setupForm(asks: BoardItemAsk[] = []): void {
+      setup(asks);
+      announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+    }
+
+    it('counts the note, as "n / 200" to see and "n of 200 characters" to hear', () => {
+      setupForm();
+      openNewAsk();
+      typeNote(45);
+
+      expect(squash(noteCount().querySelector('[aria-hidden="true"]')!.textContent)).toBe('45 / 200');
+      expect(squash(noteCount().querySelector('.visually-hidden')!.textContent)).toBe('45 of 200 characters');
+    });
+
+    it('describes the note field with the count, outside any live region', () => {
+      setupForm();
+      openNewAsk();
+
+      expect(noteCount().id).toBe(component.noteCountId);
+      expect(noteInput().getAttribute('aria-describedby')!.split(' ')).toContain(component.noteCountId);
+      expect(noteCount().closest('[aria-live]')).toBeNull();
+      expect(element().querySelector('.ask-form mat-hint')).toBeNull();
+    });
+
+    it('gives each panel its own counter id', () => {
+      setupForm();
+      const other = TestBed.createComponent(BoardItemAsksComponent).componentInstance;
+      expect(other.noteCountId).not.toBe(component.noteCountId);
+    });
+
+    it('announces 20 characters left and the limit once each while typing, politely', () => {
+      setupForm();
+      openNewAsk();
+      for (let length = 175; length <= 200; length++) typeNote(length);
+
+      expect(announced()).toEqual([['20 characters left', 'polite'], ['Character limit reached', 'polite']]);
+    });
+
+    it('stays quiet while deleting, and announces again on typing back over a threshold', () => {
+      setupForm();
+      openNewAsk();
+      typeNote(185);
+      announce.calls.reset();
+
+      for (let length = 184; length >= 170; length--) typeNote(length);
+      expect(announced()).toEqual([]);
+
+      for (let length = 171; length <= 180; length++) typeNote(length);
+      expect(announced()).toEqual([['20 characters left', 'polite']]);
+    });
+
+    it('announces nothing on opening Edit on a long note, only on typing on to the limit', () => {
+      setupForm([makeAsk({ id: 5, note: 'x'.repeat(190), allowedActions: [AskAction.Edit] })]);
+      component.act(component.asks[0], AskAction.Edit);
+      fixture.detectChanges();
+      expect(squash(noteCount().querySelector('[aria-hidden="true"]')!.textContent)).toBe('190 / 200');
+      expect(announced()).toEqual([]);
+
+      for (let length = 191; length <= 200; length++) typeNote(length);
+      expect(announced()).toEqual([['Character limit reached', 'polite']]);
+    });
+  });
 
   it('says it is too soon when the server refuses an early nudge, and reloads', fakeAsync(() => {
     setup([makeAsk({ id: 7, allowedActions: [AskAction.Nudge] })]);
@@ -888,6 +1361,9 @@ describe('BoardItemAsksComponent', () => {
 
   it('opens the whole conversation from a count, with focus on the toggle', fakeAsync(() => {
     doneAsk(['recipient', 'recipient', 'requester'], 2);
+    // A done ask is closed: unfold the closed list so its controls can take focus.
+    element().querySelector<HTMLButtonElement>('.asks-closed-toggle')!.click();
+    fixture.detectChanges();
 
     rowButton(1, '.thread-gap').click();
     fixture.detectChanges();
@@ -1090,7 +1566,46 @@ describe('BoardItemAsksComponent', () => {
     expect(row(7).querySelector('.reply-count')).toBeNull();
 
     type(replyBox(7), 'x'.repeat(1_800));
-    expect(squash(row(7).querySelector('.reply-count')!.textContent)).toBe('1800 / 2000');
+    expect(squash(row(7).querySelector('.reply-count [aria-hidden="true"]')!.textContent)).toBe('1800 / 2000');
+    expect(squash(row(7).querySelector('.reply-count .visually-hidden')!.textContent)).toBe('1800 of 2000 characters');
+  });
+
+  it('describes the reply box with the counter once it shows, outside any live region', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'recipient');
+
+    type(replyBox(7), 'x'.repeat(1_799));
+    expect(replyBox(7).getAttribute('aria-describedby')).toBeNull();
+
+    type(replyBox(7), 'x'.repeat(1_800));
+    const count = row(7).querySelector('.reply-count')!;
+    expect(count.id).toBe('reply-count-7');
+    expect(replyBox(7).getAttribute('aria-describedby')).toBe('reply-count-7');
+    expect(count.closest('[aria-live]')).toBeNull();
+  });
+
+  it('describes the reply box by both the complete prompt and the counter', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'recipient');
+    component.completePromptAskId = 7;
+    fixture.detectChanges();
+
+    type(replyBox(7), 'x'.repeat(1_800));
+    expect(replyBox(7).getAttribute('aria-describedby')).toBe('complete-prompt-7 reply-count-7');
+  });
+
+  it('announces 200 characters left as the reply counter appears, and the limit, once each', () => {
+    setup([makeAsk({ id: 7, canReply: true })], 'recipient');
+    const announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+
+    type(replyBox(7), 'x'.repeat(1_799));
+    type(replyBox(7), 'x'.repeat(1_800));
+    expect(announce.calls.allArgs()).toEqual([['200 characters left', 'polite']]);
+
+    for (const length of [1_801, 1_900, 1_999]) type(replyBox(7), 'x'.repeat(length));
+    expect(announce.calls.count()).toBe(1);
+
+    type(replyBox(7), 'x'.repeat(2_000));
+    type(replyBox(7), 'x'.repeat(1_990));
+    expect(announce.calls.allArgs()).toEqual([['200 characters left', 'polite'], ['Character limit reached', 'polite']]);
   });
 
   /** Presses Esc where it bubbles, and says whether it got past the panel (to the item dialog). */
@@ -1287,7 +1802,8 @@ describe('BoardItemAsksComponent', () => {
 
   const askEvent = (boardItemId: number): AskEventPayload => ({
     askId: 7, boardItemId, boardId: 3, itemTitle: 'Release notes', event: 'Replied', actorFullName: 'Ayse Recipient',
-    note: 'Review the migration', reason: null, actedOnBehalf: false, replyId: 40, replyExcerpt: 'Done'
+    note: 'Review the migration', reason: null, actedOnBehalf: false, replyId: 40, replyExcerpt: 'Done',
+    occurredAt: '2026-10-25T10:00:00Z'
   });
 
   it('reloads when someone acts on an ask of this item, and only this item', () => {

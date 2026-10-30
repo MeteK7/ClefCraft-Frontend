@@ -1,0 +1,54 @@
+@if (attention.count() !== null) {
+  <button #trayButton type="button" class="tray-button" [class.has-count]="count > 0"
+    cdkOverlayOrigin #origin="cdkOverlayOrigin"
+    [attr.aria-label]="label" [attr.aria-expanded]="open" aria-controls="waiting-tray-panel"
+    matTooltip="Waiting for you" (click)="toggle()">
+    <mat-icon aria-hidden="true">front_hand</mat-icon>
+    @if (count > 0) {
+      <span class="tray-count" aria-hidden="true">{{ count > 99 ? '99+' : count }}</span>
+    }
+  </button>
+
+  <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origin" [cdkConnectedOverlayOpen]="open"
+    [cdkConnectedOverlayPositions]="positions" [cdkConnectedOverlayPush]="true" [cdkConnectedOverlayViewportMargin]="8"
+    cdkConnectedOverlayPanelClass="waiting-tray-overlay"
+    (overlayOutsideClick)="onOutsideClick($event)" (detach)="close()" (attach)="onPanelAttached()">
+    <section id="waiting-tray-panel" class="tray-panel" role="dialog" aria-labelledby="waiting-tray-title"
+      tabindex="-1" (keydown)="onPanelKeydown($event)">
+      <h2 id="waiting-tray-title" class="tray-title">Waiting for you</h2>
+
+      <!-- Scrolls on its own, below the title and above the panel's bottom padding, so the
+           scrollbar never reaches the panel's rounded corners. -->
+      <div class="tray-scroll">
+        @if (isLoading && boards.length === 0) {
+          <p class="tray-note">Loading…</p>
+        } @else if (failed) {
+          <p class="tray-note">Couldn't load what's waiting for you. Try again in a moment.</p>
+        } @else if (boards.length === 0) {
+          <p class="tray-note">Nothing is waiting for you.</p>
+        } @else {
+          @for (board of boards; track board.boardId) {
+            <h3 class="tray-board">{{ board.boardTitle }}</h3>
+            <ul class="tray-list" [attr.aria-label]="board.boardTitle">
+              @for (ask of board.asks; track ask.id) {
+                <li>
+                  <a class="tray-row" [routerLink]="['/board']" [queryParams]="link(ask)" (click)="close()">
+                    <span class="tray-item">{{ ask.boardItemTitle }}</span>
+                    <span class="tray-reason">{{ reason(ask) }}</span>
+                    <span class="tray-meta">
+                      {{ withWhom(ask) }}
+                      @if (ask.dueDate) {
+                        · Due {{ ask.dueDate | date: dayFormat(ask.dueDate) }}
+                      }
+                    </span>
+                    <span class="tray-note-text">“{{ ask.note }}”</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        }
+      </div>
+    </section>
+  </ng-template>
+}

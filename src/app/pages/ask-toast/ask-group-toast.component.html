@@ -1,0 +1,41 @@
+<div
+  class="reminder-toast"
+  role="alertdialog"
+  aria-live="assertive"
+  aria-label="Ask updates"
+  [class.reminder-toast--entering]="isEntering">
+
+  <div class="reminder-color-bar"></div>
+
+  <button
+    class="reminder-close"
+    mat-icon-button
+    aria-label="Dismiss notification"
+    (click)="onDismiss()">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <div class="reminder-body">
+    <div class="reminder-icon-wrap">
+      <mat-icon class="reminder-icon">{{ text.icon }}</mat-icon>
+    </div>
+
+    <div class="reminder-content">
+      <span class="reminder-eyebrow">{{ text.headline }}</span>
+      <p class="reminder-message">{{ text.message }}</p>
+      <div class="reminder-actions">
+        <button mat-stroked-button class="reminder-btn-view" (click)="onActionClicked()">
+          <mat-icon>front_hand</mat-icon>
+          Waiting for you
+        </button>
+        <button mat-button class="reminder-btn-dismiss" (click)="onDismiss()">
+          Dismiss
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="reminder-progress-track">
+    <div class="reminder-progress-fill" [style.animation-duration]="duration + 'ms'"></div>
+  </div>
+</div>

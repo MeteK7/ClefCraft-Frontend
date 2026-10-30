@@ -8,7 +8,11 @@ import { AuthService } from './_services/auth.service';
 import { ThemeService } from './services/theme.service';
 import { NotificationRealtimeService, MentionPayload, ReminderPayload, AskEventPayload } from './_services/notification-realtime.service';
 import { MentionToastComponent } from './pages/mention-toast/mention-toast.component';
-import { AskToastComponent } from './pages/ask-toast/ask-toast.component';
+import { AskToastComponent, leadsToAsk } from './pages/ask-toast/ask-toast.component';
+import { AskGroupToastComponent } from './pages/ask-toast/ask-group-toast.component';
+import { AskToastCoordinator } from './_services/ask-toast-coordinator.service';
+import { AskAttentionService } from './_services/ask-attention.service';
+import { askLink } from './models/board-item-ask.model';
 import { OpenAskItemsService } from './_services/open-ask-items.service';
 import { LiveReminderToastComponent } from './pages/live-reminder-toast/live-reminder-toast.component';
 import { IdleSessionService } from './_services/idle-session.service';
@@ -34,7 +38,9 @@ export class AppComponent implements OnInit {
     private openAskItems: OpenAskItemsService,
     private snackBar: MatSnackBar,
     private router: Router,
-    private zone: NgZone
+    private zone: NgZone,
+    private askToasts: AskToastCoordinator,
+    private askAttention: AskAttentionService
   ) { }
 
   ngOnInit() {
@@ -96,18 +102,26 @@ export class AppComponent implements OnInit {
     }
   }
 
+  // An item whose asks are on screen refreshes itself (its panel listens too), so a toast there
+  // would only repeat what the user is looking at. The rest go to the coordinator, which shows them
+  // in one visible tab, a few seconds' worth at a time, and not while the user is typing.
   private listenForAskEvents(): void {
     this.notificationRealtimeService.askEvents$.subscribe({
-      next: event => this.zone.run(() => this.displayAskToast(event)),
+      next: event => {
+        if (!this.openAskItems.isOpen(event.boardItemId)) this.askToasts.offer(event);
+      },
       error: err => console.error('Ask channel broadcast error:', err),
     });
+
+    // Checked again on the way out: the user may have opened the item while the batch waited.
+    this.askToasts.batches$.subscribe(batch => this.zone.run(() => {
+      const unseen = batch.filter(event => !this.openAskItems.isOpen(event.boardItemId));
+      if (unseen.length === 1) this.displayAskToast(unseen[0]);
+      else if (unseen.length > 1) this.displayAskGroupToast(unseen);
+    }));
   }
 
-  // An item whose asks are on screen refreshes itself (its panel listens too), so a toast there
-  // would only repeat what the user is looking at.
   private displayAskToast(event: AskEventPayload): void {
-    if (this.openAskItems.isOpen(event.boardItemId)) return;
-
     const ref = this.snackBar.openFromComponent(AskToastComponent, {
       duration: 12_000,
       horizontalPosition: 'right',
@@ -117,6 +131,19 @@ export class AppComponent implements OnInit {
     });
 
     ref.onAction().subscribe(() =>
-      this.router.navigate(['/board'], { queryParams: { openItemId: event.boardItemId, boardId: event.boardId } }));
+      this.router.navigate(['/board'], { queryParams: askLink(event.boardId, event.boardItemId, leadsToAsk(event) ? event.askId : null) }));
+  }
+
+  // Several at once: one toast, whose action opens "Waiting for you".
+  private displayAskGroupToast(events: AskEventPayload[]): void {
+    const ref = this.snackBar.openFromComponent(AskGroupToastComponent, {
+      duration: 12_000,
+      horizontalPosition: 'right',
+      verticalPosition: 'top',
+      panelClass: ['clean-reminder-viewport-override'],
+      data: events,
+    });
+
+    ref.onAction().subscribe(() => this.askAttention.openTray());
   }
 }

@@ -3,30 +3,123 @@ import {
   ASK_CLOSURE_MISSING_MESSAGE,
   ASK_ANSWER_REQUIRED_CODE,
   ASK_EXACT_TIME_FORMAT,
+  ASK_REPLY_COUNTER_FROM,
+  ASK_REPLY_LIMIT_THRESHOLDS,
+  ASK_REPLY_MAX_LENGTH,
   AskAction,
   AskCancelReason,
   AskState,
+  AskTurnReason,
   NUDGE_TOO_SOON_MESSAGE,
   askDayFormat,
+  askLink,
   askErrorMessage,
   askKeyDates,
   askStatusLine,
   askViewpoint,
   asksToReview,
   buildAskClosure,
+  crossedThreshold,
   isAnswerRequiredError,
+  limitThresholds,
+  newestFirst,
   isNudgeTooSoonError,
   parseReplyBody,
+  quotedNote,
   replyExcerpt,
   isStaleAskClosureError,
   isWithinDay,
   timeAgo,
+  toAskAttention,
   toAskSummary,
   toContributors
 } from './board-item-ask.model';
 import { makeAsk } from './board-item-ask.testing';
 
 describe('board-item-ask model', () => {
+  describe('quotedNote', () => {
+    it('keeps a short note as it is, on one line', () => {
+      expect(quotedNote('Review the\n  migration')).toBe('Review the migration');
+    });
+
+    it('cuts a long note at 80 characters with an ellipsis', () => {
+      const long = 'x'.repeat(200);
+      expect(quotedNote(long)).toBe('x'.repeat(80) + '…');
+    });
+
+    it('gives nothing to quote for an empty note', () => {
+      expect(quotedNote('')).toBeNull();
+      expect(quotedNote('   ')).toBeNull();
+      expect(quotedNote(null)).toBeNull();
+    });
+  });
+
+  describe('newestFirst', () => {
+    it('puts the newest ask first, by when it was asked', () => {
+      const asks = [
+        makeAsk({ id: 1, dateCreated: '2026-10-01T09:00:00Z' }),
+        makeAsk({ id: 2, dateCreated: '2026-10-03T09:00:00Z' }),
+        makeAsk({ id: 3, dateCreated: '2026-10-02T09:00:00Z' })
+      ];
+      expect(newestFirst(asks).map(a => a.id)).toEqual([2, 3, 1]);
+    });
+
+    it('puts the higher id first when two were asked at the same moment', () => {
+      const asks = [
+        makeAsk({ id: 4, dateCreated: '2026-10-02T09:00:00Z' }),
+        makeAsk({ id: 5, dateCreated: '2026-10-02T09:00:00Z' })
+      ];
+      expect(newestFirst(asks).map(a => a.id)).toEqual([5, 4]);
+    });
+
+    it('leaves the list it was given as it was', () => {
+      const asks = [makeAsk({ id: 1, dateCreated: '2026-10-01T09:00:00Z' }), makeAsk({ id: 2, dateCreated: '2026-10-02T09:00:00Z' })];
+      newestFirst(asks);
+      expect(asks.map(a => a.id)).toEqual([1, 2]);
+    });
+  });
+
+  describe('crossedThreshold', () => {
+    const note = limitThresholds(200, 180);
+    const message = (previous: number, current: number, thresholds = note) =>
+      crossedThreshold(previous, current, thresholds)?.message ?? null;
+
+    it('says how much is left on reaching the warning, and when the limit is reached', () => {
+      expect(message(179, 180)).toBe('20 characters left');
+      expect(message(199, 200)).toBe('Character limit reached');
+    });
+
+    it('stays quiet while typing between thresholds', () => {
+      for (let length = 181; length < 200; length++) {
+        expect(message(length - 1, length)).withContext(`at ${length}`).toBeNull();
+      }
+      expect(message(0, 179)).toBeNull();
+    });
+
+    it('stays quiet while deleting, even across a threshold', () => {
+      expect(message(200, 199)).toBeNull();
+      expect(message(181, 170)).toBeNull();
+      expect(message(190, 190)).toBeNull();
+    });
+
+    it('announces again after dropping below a threshold and typing back over it', () => {
+      expect(message(179, 180)).toBe('20 characters left');
+      expect(message(180, 170)).toBeNull();
+      expect(message(170, 180)).toBe('20 characters left');
+    });
+
+    it('gives only the highest threshold when one paste passes both', () => {
+      expect(message(0, 200)).toBe('Character limit reached');
+    });
+
+    it('warns replies as their counter appears, and at their limit', () => {
+      expect(ASK_REPLY_LIMIT_THRESHOLDS).toEqual(limitThresholds(ASK_REPLY_MAX_LENGTH, ASK_REPLY_COUNTER_FROM));
+      expect(message(1799, 1800, ASK_REPLY_LIMIT_THRESHOLDS)).toBe('200 characters left');
+      expect(message(1800, 1999, ASK_REPLY_LIMIT_THRESHOLDS)).toBeNull();
+      expect(message(1999, 2000, ASK_REPLY_LIMIT_THRESHOLDS)).toBe('Character limit reached');
+    });
+  });
+
   describe('toContributors', () => {
     const done = (id: number, recipient: string, completedAt: string, note = `ask ${id}`) => makeAsk({
       id, state: AskState.Completed, recipientUserId: recipient, recipientFullName: `${recipient} name`, completedAt, note
@@ -121,6 +214,21 @@ describe('board-item-ask model', () => {
     ];
 
     expect(asksToReview(asks).map(a => a.id)).toEqual([1, 3]);
+  });
+
+  it('toAskAttention counts the asks the server says are your move, never deciding it itself', () => {
+    expect(toAskAttention([
+      makeAsk({ id: 1, state: AskState.Pending, yourMove: AskTurnReason.Respond }),
+      // Pending but not your move (someone else's), as the server says: not counted.
+      makeAsk({ id: 2, state: AskState.Pending, yourMove: null }),
+      makeAsk({ id: 3, state: AskState.Declined, isRequired: true, yourMove: AskTurnReason.ResolveRequirement })
+    ])).toEqual({ yourMove: 2 });
+    expect(toAskAttention([])).toEqual({ yourMove: 0 });
+  });
+
+  it('askLink opens the item with the ask in view, or just the item', () => {
+    expect(askLink(3, 9, 5)).toEqual({ openItemId: 9, boardId: 3, askId: 5 });
+    expect(askLink(3, 9, null)).toEqual({ openItemId: 9, boardId: 3 });
   });
 
   it('toAskSummary counts like the board does', () => {
@@ -257,6 +365,38 @@ describe('board-item-ask model', () => {
       }));
 
       expect(dates.map(d => d.label)).toEqual(['Asked', 'Last nudged', 'Accepted', 'Done']);
+    });
+
+    it('dates a cancel when the ask records it, and keeps each reason\'s wording', () => {
+      const cancelledAt = '2026-10-26T21:43:00Z';
+      expect(askStatusLine(makeAsk({ state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn, cancelledAt })))
+        .toEqual([{ label: 'Withdrawn', iso: cancelledAt }]);
+      expect(askStatusLine(makeAsk({ state: AskState.Cancelled, cancelReason: AskCancelReason.ItemCompleted, cancelledAt })))
+        .toEqual([{ label: 'Closed when the item was completed', iso: cancelledAt }]);
+      expect(askStatusLine(makeAsk({ state: AskState.Cancelled, cancelReason: AskCancelReason.RecipientRemoved, cancelledAt })))
+        .toEqual([{ label: 'Closed: the recipient left the board', iso: cancelledAt }]);
+    });
+
+    it('lists the cancel among the key dates, with who did it, in time order', () => {
+      const dates = askKeyDates(makeAsk({
+        state: AskState.Cancelled,
+        cancelReason: AskCancelReason.Withdrawn,
+        dateCreated: '2026-10-26T21:42:00Z',
+        respondedAt: '2026-10-26T21:42:30Z',
+        cancelledAt: '2026-10-26T21:43:00Z',
+        cancelledByFullName: 'Rae Requester'
+      }));
+
+      expect(dates.map(d => [d.label, d.iso, d.by])).toEqual([
+        ['Asked', '2026-10-26T21:42:00Z', 'Rae Requester'],
+        ['Accepted', '2026-10-26T21:42:30Z', 'Ayse Recipient'],
+        ['Withdrawn', '2026-10-26T21:43:00Z', 'Rae Requester']
+      ]);
+    });
+
+    it('leaves the cancel out of the key dates when the ask doesn\'t record when', () => {
+      const dates = askKeyDates(makeAsk({ state: AskState.Cancelled, cancelReason: AskCancelReason.Withdrawn }));
+      expect(dates.map(d => d.label)).toEqual(['Asked']);
     });
 
     it('shows the decline with its reason, and only what the ask records', () => {

@@ -33,6 +33,23 @@ export enum AskAction {
   ClearExpectsAnswer = 13
 }
 
+/**
+ * Why an ask is the current user's move (AskTurn on the server, the one place this is decided).
+ * Respond: accept or decline. Deliver: mark done what you accepted. ResolveRequirement: a required
+ * ask was declined or cancelled; ask someone else or waive it.
+ */
+export enum AskTurnReason {
+  Respond = 0,
+  Deliver = 1,
+  ResolveRequirement = 2
+}
+
+/** What an item's asks need from the current user (BoardItemDto.askAttention). */
+export interface AskAttention {
+  /** How many of the item's asks are the current user's move. */
+  yourMove: number;
+}
+
 /** A plain-text message on an ask from its requester or recipient (AskReplyDto). */
 export interface AskReply {
   id: number;
@@ -51,6 +68,8 @@ export interface BoardItemAsk {
   boardItemId: number;
   boardItemTitle: string;
   boardId: number;
+  /** Filled for the caller's own lists ("Waiting for you"); null elsewhere. */
+  boardTitle?: string | null;
   requestedByUserId: string;
   requestedByFullName: string;
   recipientUserId: string;
@@ -70,6 +89,10 @@ export interface BoardItemAsk {
   completedByUserId: string | null;
   completedByFullName: string | null;
   cancelReason: AskCancelReason | null;
+  /** When it was cancelled, and by whom; null while it isn't, or for a cancel with no record of it. */
+  cancelledAt: string | null;
+  cancelledByUserId: string | null;
+  cancelledByFullName: string | null;
   /** When the ask was made: its age. Never reset by edits or nudges. */
   dateCreated: string;
   lastNudgedAt: string | null;
@@ -84,6 +107,8 @@ export interface BoardItemAsk {
   /** Required and not Completed: blocks completing the item until it's resolved. */
   isUnmetRequirement: boolean;
   allowedActions: AskAction[];
+  /** Why the ask is the current user's move; null when it isn't theirs. Optional actions never make it so. */
+  yourMove: AskTurnReason | null;
   /** The current user may post a reply: they are the requester or recipient, and it isn't cancelled. */
   canReply: boolean;
   /** Oldest first. */
@@ -152,10 +177,24 @@ export interface ReassignAskRequest {
 
 export type AskStateChange = 'accept' | 'decline' | 'complete' | 'reopen' | 'cancel';
 
-export type AskDirection = 'received' | 'sent';
+/** received: asked of you; sent: asks you made; waiting: your move, as recipient or requester (AskTurn). */
+export type AskDirection = 'received' | 'sent' | 'waiting';
 
 /** The backend's 400 title when the completion snapshot doesn't match the item's asks any more. */
 export const ASKS_CHANGED_MESSAGE = "The item's asks changed; review them again.";
+
+/**
+ * The board link to an item, opening it with the ask in view (null: just the item). The board
+ * page switches to boardId first when another board is showing.
+ */
+export function askLink(boardId: number, boardItemId: number, askId: number | null): { openItemId: number; boardId: number; askId?: number } {
+  return askId === null ? { openItemId: boardItemId, boardId } : { openItemId: boardItemId, boardId, askId };
+}
+
+/** What an item's asks need from the current user: how many the server says are their move. */
+export function toAskAttention(asks: BoardItemAsk[]): AskAttention {
+  return { yourMove: asks.filter(a => a.yourMove !== null).length };
+}
 
 /** The backend's 400 title when an item with asks to review is completed without a closure. */
 export const ASK_CLOSURE_MISSING_MESSAGE = 'This item has open or required asks; review them before completing it.';
@@ -192,6 +231,23 @@ export interface AskContributor {
   userId: string;
   fullName: string;
   asks: { askId: number; note: string; completedAt: string }[];
+}
+
+/**
+ * The rail's order: the newest ask first, by when it was asked; the higher id first on a tie.
+ * Not by latest activity, so a card never moves while it's being read or replied to.
+ */
+export function newestFirst(asks: readonly BoardItemAsk[]): BoardItemAsk[] {
+  return [...asks].sort((a, b) => Date.parse(b.dateCreated) - Date.parse(a.dateCreated) || b.id - a.id);
+}
+
+/**
+ * Whether the rail lists an ask with the active ones: it's open (pending or accepted), or it's an
+ * unmet requirement, as the server says (required and not done, whatever its state: a declined
+ * or withdrawn one still needs asking again or waiving). Everything else is closed.
+ */
+export function isActiveAsk(ask: BoardItemAsk): boolean {
+  return ask.isOpen || ask.isUnmetRequirement;
 }
 
 /**
@@ -331,14 +387,16 @@ export function askStatusLine(ask: BoardItemAsk): AskStatusPart[] {
     case AskState.Completed:
       return [{ label: 'Done', iso: ask.completedAt }];
     case AskState.Cancelled:
-      return [{
-        label: ask.cancelReason === AskCancelReason.ItemCompleted
-          ? 'Closed when the item was completed'
-          : ask.cancelReason === AskCancelReason.RecipientRemoved
-            ? 'Closed: the recipient left the board'
-            : 'Withdrawn',
-        iso: null
-      }];
+      return [{ label: cancelLabel(ask), iso: ask.cancelledAt }];
+  }
+}
+
+/** How a cancelled ask ended, by its cancel reason. */
+export function cancelLabel(ask: BoardItemAsk): string {
+  switch (ask.cancelReason) {
+    case AskCancelReason.ItemCompleted: return 'Closed when the item was completed';
+    case AskCancelReason.RecipientRemoved: return 'Closed: the recipient left the board';
+    default: return 'Withdrawn';
   }
 }
 
@@ -353,7 +411,8 @@ export interface AskKeyDate {
 
 /**
  * The dates the ask records, oldest first: asked, the latest nudge, the latest accept or decline,
- * and done. Earlier nudges and reopen cycles aren't kept on the ask; the item's History has them.
+ * and done or cancelled. Earlier nudges and reopen cycles aren't kept on the ask; the item's
+ * History has them.
  */
 export function askKeyDates(ask: BoardItemAsk): AskKeyDate[] {
   const dates: AskKeyDate[] = [{ label: 'Asked', iso: ask.dateCreated, by: ask.requestedByFullName, note: null }];
@@ -373,6 +432,9 @@ export function askKeyDates(ask: BoardItemAsk): AskKeyDate[] {
   if (ask.completedAt && ask.state === AskState.Completed) {
     dates.push({ label: 'Done', iso: ask.completedAt, by: ask.completedByFullName, note: null });
   }
+  if (ask.cancelledAt && ask.state === AskState.Cancelled) {
+    dates.push({ label: cancelLabel(ask), iso: ask.cancelledAt, by: ask.cancelledByFullName, note: null });
+  }
 
   return dates.sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime());
 }
@@ -391,6 +453,39 @@ export const ASK_REPLY_MAX_LENGTH = 2000;
 
 /** The reply box shows its character count from this length on. */
 export const ASK_REPLY_COUNTER_FROM = 1800;
+
+/** A length worth announcing once, as typing reaches it. */
+export interface LengthThreshold {
+  at: number;
+  message: string;
+}
+
+/** "N characters left" at `warnAt`, then "Character limit reached" at `max`. */
+export function limitThresholds(max: number, warnAt: number): LengthThreshold[] {
+  return [
+    { at: warnAt, message: `${max - warnAt} characters left` },
+    { at: max, message: 'Character limit reached' }
+  ];
+}
+
+export const ASK_REPLY_LIMIT_THRESHOLDS = limitThresholds(ASK_REPLY_MAX_LENGTH, ASK_REPLY_COUNTER_FROM);
+
+/**
+ * The highest threshold that typing from `previous` to `current` characters reached, or null.
+ * A threshold is reached when previous < at <= current, so deleting never announces, and
+ * dropping below one lets it be reached, and announced, again.
+ */
+export function crossedThreshold(
+  previous: number, current: number, thresholds: readonly LengthThreshold[]
+): LengthThreshold | null {
+  let crossed: LengthThreshold | null = null;
+  for (const threshold of thresholds) {
+    if (previous < threshold.at && threshold.at <= current && (!crossed || threshold.at > crossed.at)) {
+      crossed = threshold;
+    }
+  }
+  return crossed;
+}
 
 /** The code of the 400 that refuses to mark an ask done before the recipient has answered. */
 export const ASK_ANSWER_REQUIRED_CODE = 'ASK_ANSWER_REQUIRED';
@@ -447,6 +542,15 @@ function pushText(segments: ReplySegment[], text: string): void {
 }
 
 /** A reply on one line, for a folded list: whitespace collapsed, fences dropped, cut at the length. */
+/** A decline reason or a waive reason, as the API enforces it (BoardItemAskLimits.ResponseNoteMaxLength). */
+export const ASK_RESPONSE_NOTE_MAX_LENGTH = 500;
+
+/** An ask's note quoted in a message: one line, cut at 80 characters with "…"; null when empty. */
+export function quotedNote(note: string | null | undefined): string | null {
+  const excerpt = replyExcerpt(note ?? '', 80);
+  return excerpt === '' ? null : excerpt;
+}
+
 export function replyExcerpt(body: string, max = 120): string {
   const text = body.replace(/```[\w+#.-]*/g, ' ').replace(/\s+/g, ' ').trim();
   return text.length > max ? text.slice(0, max).trimEnd() + '…' : text;

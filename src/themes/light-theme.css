@@ -54,6 +54,17 @@
 
   --board-column-bg: rgba(167, 187, 255, 0.6);
   --board-column-bg-hover: rgb(207, 216, 245);
+
+  /* The board card's "YOUR MOVE" signal: yellow and near-black, the board's only warm accent. */
+  --your-move-banner: #ffdb5c;
+  --your-move-banner-text: #141414;
+  --your-move-accent: #1c1c1c;
+  --your-move-count-bg: #1c1c1c;
+  --your-move-count-edge: #1c1c1c;
+  --your-move-count-text: #ffdb5c;
+
+  /* Every scrollbar's thumb (styles.css): a soft tint of the secondary text colour. */
+  --scrollbar-thumb: color-mix(in srgb, var(--text-secondary) 45%, transparent);
   
   --graph-canvas-start: #eef1f6;
   --graph-canvas-mid: #e4e9f2;

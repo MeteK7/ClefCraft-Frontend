@@ -1,12 +1,14 @@
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
 
-import { Subscription } from 'rxjs';
+import { EMPTY, Subject, Subscription, catchError, debounceTime, filter, groupBy, map, mergeMap, switchMap } from 'rxjs';
 import { BoardColumnComponent } from '../board-column/board-column.component';
 import { BoardService } from '../../_services/board.service';
 import { BoardView, toBoardView } from '../../board-engine/models/board-view.model';
 import { BoardItemView, toBoardItemView } from '../../board-engine/models/board-item-view.model';
 import { Board, Item } from '../../models/board.model';
-import { AskSummary } from '../../models/board-item-ask.model';
+import { AskAttention, AskSummary, toAskAttention, toAskSummary } from '../../models/board-item-ask.model';
+import { BoardItemAskService } from '../../_services/board-item-ask.service';
+import { NotificationRealtimeService } from '../../_services/notification-realtime.service';
 import {
   applyItemCreated,
   applyItemDeleted,
@@ -26,6 +28,9 @@ import { ItemDetailSidebarComponent } from '../item-detail-sidebar/item-detail-s
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Params, Router } from '@angular/router';
+
+/** How long ask events on one item are gathered into one refetch of its card. */
+export const ASK_REFRESH_DEBOUNCE_MS = 500;
 
 @Component({
     selector: 'app-board',
@@ -56,12 +61,21 @@ export class BoardComponent implements OnInit, OnDestroy {
   private boardsSub?: Subscription;
   private boardColumnItemsSub?: Subscription;
   private queryParamsSub?: Subscription;
+  private askEventsSub?: Subscription;
+
+  /** Items whose asks changed (an event pushed to the user), to refetch one card at a time. */
+  private readonly askRefreshes = new Subject<number>();
+
+  /** The item whose dialog is open: it keeps its own card current, so events skip it. */
+  private dialogItemId: number | null = null;
 
   constructor(private readonly router: Router,
     private boardEngine: BoardService,
     private dialog: MatDialog,
     private eRef: ElementRef,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private realtime: NotificationRealtimeService,
+    private askService: BoardItemAskService
   ) { }
 
   ngOnInit(): void {
@@ -75,12 +89,40 @@ export class BoardComponent implements OnInit, OnDestroy {
     });
 
     this.loadBoards();
+    this.listenForAskEvents();
   }
 
   ngOnDestroy(): void {
     this.boardsSub?.unsubscribe();
     this.boardColumnItemsSub?.unsubscribe();
     this.queryParamsSub?.unsubscribe();
+    this.askEventsSub?.unsubscribe();
+  }
+
+  /**
+   * An ask on a card of this board changed: refetch that item's asks and update only its card
+   * (summary and "Your move"). Bursts on one item make one request; an item whose dialog is open
+   * is skipped, since the dialog already keeps its card current.
+   */
+  private listenForAskEvents(): void {
+    this.askEventsSub = this.realtime.askEvents$.pipe(
+      filter(event => event.boardId === this.selectedBoardId && event.boardItemId !== this.dialogItemId),
+    ).subscribe(event => this.askRefreshes.next(event.boardItemId));
+
+    this.askEventsSub.add(this.askRefreshes.pipe(
+      groupBy(itemId => itemId),
+      mergeMap(item$ => item$.pipe(
+        debounceTime(ASK_REFRESH_DEBOUNCE_MS),
+        switchMap(itemId => this.askService.getForItem(itemId).pipe(
+          map(asks => ({ itemId, asks })),
+          catchError(() => EMPTY),
+        )),
+      )),
+    ).subscribe(({ itemId, asks }) => {
+      if (itemId !== this.dialogItemId) {
+        this.applyAskState(itemId, toAskSummary(asks), toAskAttention(asks));
+      }
+    }));
   }
 
   // ---------------------------------------------------------------------
@@ -177,22 +219,41 @@ export class BoardComponent implements OnInit, OnDestroy {
     const targetIdStr = params?.['openItemId'];
     if (!targetIdStr || !this.boardView) return;
 
+    // A link to an item on another board (a toast or "Waiting for you", while this page shows
+    // another board): switch to it first; once it has loaded, this runs again.
+    const linkedBoardId = Number(params?.['boardId']);
+    if (linkedBoardId && linkedBoardId !== this.boardView.id && this.boards.some(b => b.id === linkedBoardId)) {
+      if (this.selectedBoardId !== linkedBoardId) this.onBoardSelection(linkedBoardId);
+      return;
+    }
+
     const targetId = Number(targetIdStr);
     const commentIdStr = params?.['commentId'];
     const focusCommentId = commentIdStr ? Number(commentIdStr) : null;
+    const askIdStr = params?.['askId'];
+    const focusAskId = askIdStr ? Number(askIdStr) : null;
 
     const matchedItem = this.boardView.columns
       .flatMap(c => c.boardItems)
       .find(item => item.id === targetId);
 
     if (matchedItem) {
-      this.selection = selectItem(this.selection, matchedItem);
+      // An ask opens in the dialog whatever the view mode: only the dialog has Chime In.
+      if (focusAskId !== null) {
+        this.openItemDetailDialog(matchedItem, null, focusAskId);
+      } else {
+        this.selection = selectItem(this.selection, matchedItem);
 
-      if (this.selection.viewMode === 'dialog') {
-        this.openItemDetailDialog(matchedItem, focusCommentId);
+        if (this.selection.viewMode === 'dialog') {
+          this.openItemDetailDialog(matchedItem, focusCommentId);
+        }
       }
+    }
 
-      // Consume the deep-link params so this doesn't re-trigger.
+    // Consume the deep-link params so this doesn't re-trigger: once the item opened, or once the
+    // board the link named is showing without it (deleted or moved), so the link can't keep
+    // pulling the page back to that board.
+    if (matchedItem || (linkedBoardId && linkedBoardId === this.boardView.id)) {
       this.router.navigate([], {
         relativeTo: this.route,
         queryParams: {},
@@ -266,7 +327,7 @@ export class BoardComponent implements OnInit, OnDestroy {
     }
   }
 
-  openItemDetailDialog(item: BoardItemView | null, focusCommentId: number | null = null): void {
+  openItemDetailDialog(item: BoardItemView | null, focusCommentId: number | null = null, focusAskId: number | null = null): void {
     const dialogRef = this.dialog.open(ItemDetailDialogComponent, {
       ...ITEM_DIALOG_CONFIG,
       data: {
@@ -274,6 +335,7 @@ export class BoardComponent implements OnInit, OnDestroy {
         boardId: this.selectedBoardId,
         columns: this.boardView?.columns ?? [],
         focusCommentId,
+        focusAskId,
       },
     });
 
@@ -300,9 +362,15 @@ export class BoardComponent implements OnInit, OnDestroy {
     // Ask actions apply at once, without closing the dialog: keep the card's ask summary current
     // the same way a saved edit updates it.
     if (item) {
+      this.dialogItemId = item.id;
       const askSummarySub = dialogRef.componentInstance.askSummaryChange
-        .subscribe((summary: AskSummary) => this.applyAskSummary(item.id, summary));
-      dialogRef.afterClosed().subscribe(() => askSummarySub.unsubscribe());
+        .subscribe((summary: AskSummary) => this.applyAskState(item.id, summary));
+      askSummarySub.add(dialogRef.componentInstance.askAttentionChange
+        .subscribe((attention: AskAttention) => this.applyAskState(item.id, undefined, attention)));
+      dialogRef.afterClosed().subscribe(() => {
+        askSummarySub.unsubscribe();
+        if (this.dialogItemId === item.id) this.dialogItemId = null;
+      });
     }
 
     dialogRef.afterClosed().subscribe((result: ItemDetailDialogResult | undefined) => {
@@ -337,16 +405,17 @@ export class BoardComponent implements OnInit, OnDestroy {
         ...view,
         boardId: view.boardId ?? existing.boardId,
         boardColumnId: view.boardColumnId ?? existing.boardColumnId,
-        // A save response carries no ask summary (only the board load does); keep the card's.
+        // A save response carries no ask summary or attention (only the board load does); keep the card's.
         askSummary: view.askSummary ?? existing.askSummary,
+        askAttention: view.askAttention ?? existing.askAttention,
       }
       : view;
 
     this.boardView = applyItemUpdate(this.boardView, merged);
   }
 
-  /** Puts an item's fresh ask summary on its card. */
-  applyAskSummary(itemId: number, askSummary: AskSummary): void {
+  /** Puts an item's fresh ask summary and/or attention ("Your move") on its card. */
+  applyAskState(itemId: number, askSummary?: AskSummary, askAttention?: AskAttention): void {
     const existing = this.boardView?.columns
       .flatMap(c => c.boardItems)
       .find(i => i.id === itemId);
@@ -355,10 +424,14 @@ export class BoardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const next = {
+      askSummary: askSummary ?? existing.askSummary,
+      askAttention: askAttention ?? existing.askAttention,
+    };
     this.boardView = applyItemUpdate(this.boardView, {
       ...existing,
-      askSummary,
-      raw: { ...existing.raw, askSummary },
+      ...next,
+      raw: { ...existing.raw, ...next },
     });
   }
 

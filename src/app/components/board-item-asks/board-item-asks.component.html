@@ -39,11 +39,19 @@
         </mat-form-field>
       }
 
-      <mat-form-field appearance="outline" class="w-100">
+      <!-- The counter describes the note instead of being a mat-hint: the hint area is a live
+           region, which would read the count on every keystroke. Nearing the limit is announced
+           once per threshold instead (onNoteInput). -->
+      <mat-form-field appearance="outline" class="w-100" subscriptSizing="dynamic">
         <mat-label>What do you need?</mat-label>
-        <input matInput formControlName="note" [maxlength]="noteMaxLength" placeholder="Review the migration script" />
-        <mat-hint align="end">{{ form.value.note?.length ?? 0 }} / {{ noteMaxLength }}</mat-hint>
+        <input matInput formControlName="note" [maxlength]="noteMaxLength" placeholder="Review the migration script"
+          [aria-describedby]="noteCountId" (input)="onNoteInput($event)" />
       </mat-form-field>
+      @let noteLength = form.value.note?.length ?? 0;
+      <div class="ask-note-count" [id]="noteCountId">
+        <span aria-hidden="true">{{ noteLength }} / {{ noteMaxLength }}</span>
+        <span class="visually-hidden">{{ noteLength }} of {{ noteMaxLength }} characters</span>
+      </div>
 
       <div class="ask-form-row">
         <mat-form-field appearance="outline" class="ask-due">
@@ -79,10 +87,34 @@
     <p class="asks-empty">Need a quick opinion or a hand? Ask someone on this board.</p>
   }
 
+  <!-- Active asks first: open ones, and declined or withdrawn ones still required (someone has to
+       ask again or waive). Closed ones fold away below a counted toggle, newest first in each. -->
   <ul class="ask-list">
-    @for (ask of asks; track ask.id) {
+    @for (ask of activeAsks; track ask.id) {
+      <ng-container [ngTemplateOutlet]="askCard" [ngTemplateOutletContext]="{ $implicit: ask }" />
+    }
+  </ul>
+
+  @if (asks.length > 0 && activeAsks.length === 0) {
+    <p class="asks-empty">No open asks.</p>
+  }
+
+  @if (closedAsks.length > 0) {
+    <button type="button" class="asks-closed-toggle" [attr.aria-expanded]="closedOpen"
+      [attr.aria-controls]="closedListId" (click)="toggleClosed()">
+      <span class="asks-closed-label">Closed</span><span class="asks-closed-dot" aria-hidden="true">·</span><span class="asks-closed-count">{{ closedAsks.length }}</span><mat-icon aria-hidden="true">{{ closedOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+    </button>
+    <!-- Hidden rather than removed, so a folded card keeps its open Details and reply draft. -->
+    <ul class="ask-list" [id]="closedListId" [hidden]="!closedOpen">
+      @for (ask of closedAsks; track ask.id) {
+        <ng-container [ngTemplateOutlet]="askCard" [ngTemplateOutletContext]="{ $implicit: ask }" />
+      }
+    </ul>
+  }
+
+  <ng-template #askCard let-ask>
       <!-- Focusable from code only: "Helped by" beside the item's fields brings a card here. -->
-      <li class="ask-row" [class.closed]="!ask.isOpen && !ask.isUnmetRequirement" [class.revealed]="revealedAskId === ask.id"
+      <li class="ask-row" [class.closed]="!isActive(ask)" [class.revealed]="revealedAskId === ask.id"
         [attr.data-ask-id]="ask.id" tabindex="-1">
         <div class="ask-head">
           <div class="ask-line">
@@ -124,25 +156,32 @@
         <p class="ask-note">{{ ask.note }}</p>
 
         <!-- Where the ask stands, in one line; its key dates are a click away. Times are in the
-             viewer's own timezone (the API sends UTC instants). -->
+             viewer's own timezone (the API sends UTC instants). While Details is open it says
+             all of this with exact times, so the summary is left out. The toggle has its own
+             column, on the first line at the right, so it stays put whether the summary wraps,
+             shows or not (the same element, so focus stays on it). -->
         <p class="ask-meta ask-status">
-          @for (part of statusLine(ask); track $index) {
-            <span class="ask-status-part">{{ part.label }}@if (part.iso) {&nbsp;<ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: part.iso }" />}</span>
-          }
-          @if (ask.state === AskState.Declined && ask.responseNote) {
-            <span class="ask-reason" [matTooltip]="ask.responseNote">“{{ ask.responseNote }}”</span>
-          }
-          @if (markedBy(ask); as by) {
-            <span class="ask-marked">marked by {{ by }}</span>
-          }
-          @if (ask.dueDate && ask.isOpen) {
-            <span class="ask-due-on">
-              Due {{ ask.dueDate | date: dayFormat(ask.dueDate) }}
-              @if (isDueAfterItem(ask.dueDate)) {
-                <mat-icon class="ask-warning-icon" matTooltip="Due after the item itself">schedule</mat-icon>
+          <span class="ask-status-summary">
+            @if (!isDetailsOpen(ask)) {
+              @for (part of statusLine(ask); track $index) {
+                <span class="ask-status-part">{{ part.label }}@if (part.iso) {&nbsp;<ng-container [ngTemplateOutlet]="when" [ngTemplateOutletContext]="{ $implicit: part.iso }" />}</span>
               }
-            </span>
-          }
+              @if (ask.state === AskState.Declined && ask.responseNote) {
+                <span class="ask-reason" [matTooltip]="ask.responseNote">“{{ ask.responseNote }}”</span>
+              }
+              @if (markedBy(ask); as by) {
+                <span class="ask-marked">marked by {{ by }}</span>
+              }
+              @if (ask.dueDate && ask.isOpen) {
+                <span class="ask-due-on">
+                  Due {{ ask.dueDate | date: dayFormat(ask.dueDate) }}
+                  @if (isDueAfterItem(ask.dueDate)) {
+                    <mat-icon class="ask-warning-icon" matTooltip="Due after the item itself">schedule</mat-icon>
+                  }
+                </span>
+              }
+            }
+          </span>
           <button type="button" class="ask-details-toggle" [attr.aria-expanded]="isDetailsOpen(ask)"
             [attr.aria-controls]="'ask-dates-' + ask.id" (click)="toggleDetails(ask)">
             Details<mat-icon aria-hidden="true">{{ isDetailsOpen(ask) ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -169,7 +208,12 @@
               @if (ask.dueDate) {
                 <div class="ask-key-date">
                   <dt>Due</dt>
-                  <dd>{{ ask.dueDate | date: dayFormat(ask.dueDate) }}</dd>
+                  <dd>
+                    {{ ask.dueDate | date: dayFormat(ask.dueDate) }}
+                    @if (ask.isOpen && isDueAfterItem(ask.dueDate)) {
+                      <mat-icon class="ask-warning-icon" matTooltip="Due after the item itself">schedule</mat-icon>
+                    }
+                  </dd>
                 </div>
               }
             </dl>
@@ -226,8 +270,7 @@
           </div>
         }
       </li>
-    }
-  </ul>
+  </ng-template>
 
   <!-- One menu for every card; the trigger hands it the ask. -->
   <mat-menu #askMenu="matMenu" xPosition="before">

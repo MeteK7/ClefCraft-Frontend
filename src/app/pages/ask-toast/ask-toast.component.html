@@ -26,7 +26,7 @@
       <div class="reminder-actions">
         <button mat-stroked-button class="reminder-btn-view" (click)="onActionClicked()">
           <mat-icon>open_in_new</mat-icon>
-          View item
+          {{ leadsToAsk ? 'View ask' : 'View item' }}
         </button>
         <button mat-button class="reminder-btn-dismiss" (click)="onDismiss()">
           Dismiss

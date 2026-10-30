@@ -52,6 +52,17 @@ body.dark-theme {
   --board-column-bg: rgba(55, 65, 90, 0.6);
   --board-column-bg-hover: rgba(70, 82, 110, 0.75);
 
+  /* The board card's "YOUR MOVE" signal: yellow stripes and bars, a dark count chip. */
+  --your-move-banner: #ffdb5c;
+  --your-move-banner-text: #141414;
+  --your-move-accent: #ffdb5c;
+  --your-move-count-bg: #2e2e2e;
+  --your-move-count-edge: #3d3d3d;
+  --your-move-count-text: #ffdb5c;
+
+  /* Every scrollbar's thumb (styles.css): a soft tint of the secondary text colour. */
+  --scrollbar-thumb: color-mix(in srgb, var(--text-secondary) 45%, transparent);
+
   --success-light: #1b3320;
   --success-text: #81c995;
 

@@ -78,6 +78,16 @@
   font-weight: 500;
 }
 
+/* Where mat-form-field would put an end hint, typeset like one. */
+.ask-note-count {
+  margin-top: -4px;
+  padding: 0 16px;
+  text-align: right;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
 .ask-form-row {
   display: flex;
   flex-wrap: wrap;
@@ -101,6 +111,59 @@
   gap: 6px;
   margin: 0;
   color: var(--warning-text);
+}
+
+/* The folded closed list: display: flex would otherwise override the hidden attribute. */
+.ask-list[hidden] {
+  display: none;
+}
+
+/* "Closed · n": a plain row under a divider, between the active asks and the folded closed ones.
+   Label and count read as one phrase in the text colour; only the dot and the chevron are muted.
+   No box of any kind: the divider is its only line. */
+.asks-closed-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--divider);
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Folded, it's the panel's last row: keep some room below it. Open, the closed list follows. */
+.asks-closed-toggle[aria-expanded="false"] {
+  margin-bottom: 12px;
+}
+
+.asks-closed-dot {
+  margin: 0 6px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.asks-closed-toggle mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  color: var(--text-secondary);
+}
+
+.asks-closed-toggle:hover mat-icon {
+  color: var(--text);
+}
+
+.asks-closed-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .ask-list {
@@ -215,45 +278,60 @@
   white-space: pre-line;
 }
 
+/* The summary wraps in its own column; the Details toggle has the other, on the first line at the
+   right edge, so the summary's length, or its absence while Details is open, never moves it. Every
+   line is --ask-status-line high, the toggle's box included, so it lines up with the first one. */
 .ask-meta {
+  --ask-status-line: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 8px;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: var(--ask-status-line);
+  color: var(--text-secondary);
+}
+
+.ask-status-summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 2px 0;
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
+  min-width: 0;
 }
 
-.ask-meta > span {
+.ask-status-summary > span {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-height: var(--ask-status-line);
 }
 
-.ask-meta > span + span::before {
+.ask-status-summary > span + span::before {
   content: "·";
   margin: 0 6px;
 }
 
 /* Each fact keeps its words together, so a wrapped line never starts mid-fact. */
-.ask-status > span {
+.ask-status-summary > span {
   white-space: nowrap;
 }
 
 /* A decline reason stays on one line; the full text is on hover and under Details. */
-.ask-status > .ask-reason {
+.ask-status-summary > .ask-reason {
   display: inline-block;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: var(--ask-status-line);
 }
 
 .ask-details-toggle {
   display: inline-flex;
   align-items: center;
-  margin-left: auto;
+  height: var(--ask-status-line);
   padding: 0 0 0 8px;
   border: 0;
   background: none;
@@ -298,6 +376,10 @@
 .ask-key-dates dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.ask-key-dates dd .ask-warning-icon {
+  vertical-align: middle;
 }
 
 .ask-full-history {
