@@ -107,6 +107,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
   readonly hours: number[] = Array.from({ length: 24 }, (_, i) => i);
   readonly MAX_VISIBLE_LANES = 3;
   readonly HOUR_HEIGHT = 80;
+  /** Below this height (px) a time block can't fit the title and time on two lines, so it shows them on one. */
+  readonly COMPACT_BLOCK_HEIGHT = 44;
 
   // ── Interaction sessions ───────────────────────────────────────────────────
 
